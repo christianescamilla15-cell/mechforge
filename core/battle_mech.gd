@@ -13,6 +13,12 @@ class Slot:
 		def = p_def
 		uses_left = p_def.uses if p_def.uses > 0 else -1
 
+	func clone() -> Slot:
+		var copy := Slot.new(def)
+		copy.uses_left = uses_left
+		copy.used_this_turn = used_this_turn
+		return copy
+
 
 var build: MechBuild
 var position: int = 0
@@ -32,7 +38,10 @@ var shutdown_last_turn: bool = false
 var slots: Dictionary[String, Slot] = {}
 
 
-func _init(p_build: MechBuild, rules: RulesConfig, p_position: int) -> void:
+## Sin argumentos crea un mech vacio; solo lo usa clone().
+func _init(p_build: MechBuild = null, rules: RulesConfig = null, p_position: int = 0) -> void:
+	if p_build == null:
+		return
 	build = p_build
 	position = p_position
 	var s := build.summary(rules)
@@ -53,6 +62,25 @@ func _init(p_build: MechBuild, rules: RulesConfig, p_position: int) -> void:
 	_add_slot("charge", build.charge)
 	_add_slot("teleport", build.teleport)
 	_add_slot("hook", build.hook)
+
+
+func clone() -> BattleMech:
+	var copy := BattleMech.new()
+	copy.build = build
+	copy.position = position
+	copy.max_health = max_health
+	copy.health = health
+	copy.energy = energy
+	copy.energy_cap = energy_cap
+	copy.energy_regen = energy_regen
+	copy.heat = heat
+	copy.heat_cap = heat_cap
+	copy.cooling = cooling
+	copy.res = res.duplicate()
+	copy.shutdown_last_turn = shutdown_last_turn
+	for key in slots:
+		copy.slots[key] = slots[key].clone()
+	return copy
 
 
 func _add_slot(key: String, def: ItemDef) -> void:

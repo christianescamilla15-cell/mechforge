@@ -78,6 +78,12 @@ Cada una es un interruptor en `RulesConfig`, encendido por defecto, para poder m
 | M5 | Iniciativa: quien empieza tiene 1 sola acción en su primer turno. | Compensa la ventaja de abrir. |
 | M6 | La energía se regenera al inicio del turno propio, no al final. | Con la regla original, un drenaje dejaba al rival en 0 justo antes de jugar y lo bloqueaba por completo. Así siempre le queda su regeneración para actuar. |
 
+**Efecto medido con el simulador (F3):**
+- **M1** hace los combates casi deterministas: entre mechs parejos, un 1 % de ventaja mueve la tasa de victoria unos 10 puntos. Por eso el balance se mide con el margen (vida que le sobra al ganador) además de la tasa.
+- **M5:** sin ella, quien empieza gana el 71 % de los combates espejo; con ella, alrededor del 55–58 %. El valor exacto oscila entre 31 % y 69 % según la vida total, porque depende de si hacen falta un número par o impar de acciones para matar.
+- **M6:** sin ella, el mech de energía gana el 82 % y quien empieza el 69 %.
+- **M2:** con los mechs de ejemplo no cambia nada medible. Los apagados son el 0.5 % de los turnos y nunca se encadenan; queda como red de seguridad para builds extremos.
+
 ## 3. Estadísticas
 | Clave | Significado | Viene de |
 |---|---|---|
@@ -128,27 +134,43 @@ Unas 58 piezas con nombres propios (nunca los del original).
 
 **Cómo se guardan:** `data/catalog.json` tiene las estadísticas de cada pieza en el tier máximo (Divino a nivel máximo). El resto de tiers y niveles se calcula bajándolas en proporción (§8). `data/validation.json` fija los rangos de peso y la composición mínima que exige el validador, y `data/builds.json` los mechs de ejemplo (uno por elemento y un híbrido).
 
-**Valores de partida** (los ajusta el simulador en F3). El daño es más bajo que en el original para que los combates duren más de tres rondas:
+**Valores tras el ajuste de F3** (Divino a nivel máximo). El daño es más bajo que en el original para que los combates duren más de tres rondas:
 
-| Tipo | Valores en Divino máximo |
+| Tipo | Valores |
 |---|---|
-| Torso | 315–365 kg · vida 1150–1550 · cap. energía 180–400 · regen 50–125 · cap. calor 240–400 · enfriamiento 80–135 · resistencias 15–30 |
-| Piernas | 116–140 kg · vida 400–520 · andar 1 y salto 2, o ruedas con andar 3 · pisotón ~90–155 |
-| Lateral | 30–60 kg · alcances [1,1], [1,2], [1,3], [2,4], [3,6] · daño medio: físico ~230, calor y energía ~175 |
-| Superior | 48–70 kg · alcances [3,6], [4,8], [5,9] · daño medio: físico ~260, calor y energía ~215; las de 2 usos, ~340 y ~270 |
-| Dron | 30–42 kg · daño medio ~60–120 |
-| Módulo | 18–48 kg · resistencia 45 · vida 300 · capacidad 140 · regen o enfriamiento 60 |
+| Torso | 315–365 kg · vida 1200–1600 · cap. energía 180–400 · regen 50–125 · cap. calor 250–400 · enfriamiento 85–135 · resistencias 15–30 |
+| Piernas | 116–140 kg · vida 400–520 · andar 1 y salto 2, o ruedas con andar 3 · pisotón: físico ~135–150, calor y energía ~110–120 |
+| Lateral | 30–60 kg · alcances [1,1], [1,2], [1,3], [2,4], [3,6] · daño medio: físico 194–248, calor y energía 172–232; las de utilidad, 76–135 |
+| Superior | 48–70 kg · alcances [3,6], [4,8], [5,9] · daño medio: físico 208–248, calor y energía 194–232; las de 2 usos, 330 y 292 |
+| Dron | 30–42 kg · daño medio: físico 92–116, calor y energía 68–97 |
+| Módulo | 18–48 kg · resistencia 45 (o 28 a las tres) · vida 300 · capacidad 140 · regen o enfriamiento 60 |
 | Especiales | 14–22 kg · 1 uso |
 
-- **Identidad de elemento** (la exige el validador): las armas físicas no dan calor ni drenan energía; las de calor llevan `daño_calor` (laterales ~50) y las de energía `daño_energia` (laterales ~60), a cambio de un 20–25 % menos de daño directo.
-- **Costos:** las armas físicas gastan energía y algo de calor; las de calor gastan sobre todo calor propio; las de energía, sobre todo energía.
+- **Identidad de elemento** (la exige el validador): las armas físicas no dan calor ni drenan energía; las de calor llevan `daño_calor` (laterales 39–48) y las de energía `daño_energia` (laterales 70–80), a cambio de un 7–11 % menos de daño directo.
+- **Costos:** las armas físicas gastan energía (laterales 30–45) y algo de calor; las de calor gastan sobre todo calor propio; las de energía, sobre todo energía. El costo de energía de las físicas es lo que hace que el drenaje les pese.
 - Las armas con usos limitados (1–3) pegan más fuerte o tienen un efecto grande (bombas de calor y de drenaje, daño a capacidades).
 - **Tier inicial:** el equipo básico empieza en Común; las piezas especializadas, en Raro, Épico o Legendario. Todas llegan a Divino.
 
 ## 7. IA del rival
-- **Por utilidad:** enumera todas las secuencias legales de 2 acciones (unas 600 como mucho) y puntúa cada una con el valor esperado. Suma el daño esperado, el calor y la energía que le niega al rival, y el valor de la posición resultante (tener al rival a tiro de las armas propias y quedar fuera del alcance de las suyas). Resta el riesgo propio de enfriado forzado o apagado y la vida perdida por backfire.
-- **Dificultad:** fácil (mucho ruido en la puntuación; a veces elige la segunda mejor opción), normal, y difícil (además mira la mejor respuesta del rival a 1 turno).
+- **Búsqueda:** en su turno prueba cada secuencia legal de 2 acciones en una copia del combate (unas 600 como mucho), usando el daño esperado en lugar de tiradas, y valora el estado en el que queda. Ejecuta la primera acción de la mejor secuencia y vuelve a decidir antes de la segunda.
+- **Valoración**, en fracciones de barra de vida:
+  - Diferencia de vida entre los dos mechs.
+  - Lo que vale una acción de cada mech: el daño medio de sus dos mejores armas sobre la vida del rival. Todo lo demás se mide en esa unidad.
+  - Acciones que el calor ya le quitó al rival (enfriado forzado o apagado), a su valor completo.
+  - Calor acumulado: cada `enfriamiento` de calor acabará costando una acción, así que vale una fracción de una acción (`heat_discount`), a favor si es del rival y en contra si es propio.
+  - Energía: cuánto le falta a cada mech para disparar sus dos armas más caras.
+  - Posición: qué parte del mejor daño de cada uno alcanza a la distancia actual.
+- **No enfría antes de tiempo.** El enfriado forzado cuesta la misma acción que enfriar voluntariamente y además aprovecha el margen del tope de calor. Una versión anterior de la IA enfriaba por miedo al sobrecalentamiento y perdía la mitad de sus acciones.
+- **Dificultad:** al azar (solo para pruebas), fácil (ruido en la valoración), normal, y difícil (revisa las mejores jugadas contra la mejor respuesta del rival). Los parámetros están en `AIConfig`.
 - La misma IA sirve para los enemigos de la campaña y para el simulador de balance.
+
+### 7.1 Cómo se mide el balance
+- `tools/sim.ps1` enfrenta a todos los mechs de `data/builds.json` entre sí con la IA normal, en paralelo, y comprueba las puertas de la fase F3. Con `-Trace` imprime un combate jugada por jugada.
+- **Promedia sobre varias escalas de vida** (por defecto 0.92 a 1.08). Con poco azar, quién gana un cruce parejo depende de la paridad de las acciones necesarias para matar; promediar mide el balance y no ese artefacto. Con `--levels` promedia también sobre niveles del tier.
+- **Resultado en Divino máximo** (1600 combates): físico 51.5 %, calor 49.8 %, energía 48.8 %, híbrido 48.0 %. Márgenes entre elementos de ±1 %. Duración media de 12.3 turnos. Un 23 % de los turnos empieza con enfriado forzado.
+- **Limitación conocida:** en tiers bajos los números son pequeños y el redondeo desplaza el balance. En Común, promediando niveles, los tres elementos quedan en 50 %, pero el híbrido de ejemplo sube al 61 %; nivel a nivel, un elemento puede irse a ±10 puntos.
+- Los mechs de ejemplo llevan el mismo paquete de módulos (blindaje, matriz defensiva, generador y disipador) para que la comparación mida los elementos y no qué contra lleva cada uno. Los de calor, energía y el híbrido llevan un segundo blindaje porque sus piezas pesan menos.
+- El balance está ajustado para estos cuatro mechs. Otros builds pueden romperlo; se revisará cuando existan los enemigos de la campaña (F8).
 
 ## 8. Progresión (completa)
 - **Tiers:** Común → Raro → Épico → Legendario → Mítico → Divino. Cada pieza tiene un tier inicial y un tier máximo.
@@ -164,7 +186,10 @@ Unas 58 piezas con nombres propios (nunca los del original).
 - **Objetivo de ritmo:** llevar un build completo a Divino debe costar unas 8–12 horas de juego. Se mide con el simulador en la fase F7.
 
 ## 9. Campaña
-- Mapa de nodos con **3 capítulos**, cada uno con unos 10 combates y un jefe.
+**Visión (del usuario, 2026-11-16):** recuperar la versión antigua de Super Mechs para un jugador. Empiezas con un robot sencillo y avanzas combate a combate hasta un jefe superior al que solo se vence con táctica. Aquella versión era una demo que no pasaba de los primeros 10 combates; aquí va completa. La meta es unir la originalidad y el detalle del juego antiguo con las mecánicas de combate modernas. No hay multijugador.
+
+- El jugador empieza con un mech básico de tier Común (torso, piernas y un par de armas) y lo va completando con lo que gana.
+- Escalera de combates en **3 capítulos**, cada uno con unos 10 combates y un jefe al final.
 - Los enemigos tienen builds predefinidos (en datos) que suben de tier por capítulo. Los jefes tienen piezas únicas y reglas especiales (por ejemplo, más capacidad de calor).
 - Los combates se pueden repetir para farmear. Cada capítulo desbloquea piezas y niveles del taller de mejoras.
 - La curva de dificultad se valida con el simulador: el build "esperado" del jugador en cada capítulo debe ganar entre el 55 % y el 70 % de las veces contra los enemigos normales.

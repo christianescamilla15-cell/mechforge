@@ -8,10 +8,22 @@
       "items": {
         "torso": "torso_baluarte",
         "legs": "piernas_zancos",
-        "sides": ["lat_mandoble", "lat_trabuco", "lat_remachadora", "lat_rifle_riel"],
-        "tops": ["sup_canon_yunque"],
+        "sides": [
+          "lat_mandoble",
+          "lat_trabuco",
+          "lat_remachadora",
+          "lat_rifle_riel"
+        ],
+        "tops": [
+          "sup_canon_yunque"
+        ],
         "drone": "dron_avispa",
-        "modules": ["mod_blindaje", "mod_placas", "mod_aislante", "mod_generador", "mod_bateria", "mod_disipador"],
+        "modules": [
+          "mod_blindaje",
+          "mod_matriz",
+          "mod_generador",
+          "mod_disipador"
+        ],
         "charge": "esp_embestida",
         "hook": "esp_garfio"
       }
@@ -23,10 +35,23 @@
       "items": {
         "torso": "torso_fragua",
         "legs": "piernas_pisabrasas",
-        "sides": ["lat_hoja_ignea", "lat_lanzallamas", "lat_mortero", "lat_lanza_termica"],
-        "tops": ["sup_cohetes"],
+        "sides": [
+          "lat_hoja_ignea",
+          "lat_lanzallamas",
+          "lat_mortero",
+          "lat_lanza_termica"
+        ],
+        "tops": [
+          "sup_cohetes"
+        ],
         "drone": "dron_ascua",
-        "modules": ["mod_blindaje", "mod_placas", "mod_aislante", "mod_faraday", "mod_disipador", "mod_sumidero", "mod_generador"],
+        "modules": [
+          "mod_blindaje",
+          "mod_blindaje",
+          "mod_matriz",
+          "mod_generador",
+          "mod_disipador"
+        ],
         "charge": "esp_embestida",
         "hook": "esp_garfio"
       }
@@ -38,10 +63,23 @@
       "items": {
         "torso": "torso_dinamo",
         "legs": "piernas_zancas_arco",
-        "sides": ["lat_sable_arco", "lat_descargador", "lat_bobina", "lat_canon_iones"],
-        "tops": ["sup_proyector"],
+        "sides": [
+          "lat_sable_arco",
+          "lat_descargador",
+          "lat_bobina",
+          "lat_canon_iones"
+        ],
+        "tops": [
+          "sup_proyector"
+        ],
         "drone": "dron_chispa",
-        "modules": ["mod_blindaje", "mod_placas", "mod_aislante", "mod_faraday", "mod_disipador", "mod_generador", "mod_bateria"],
+        "modules": [
+          "mod_blindaje",
+          "mod_blindaje",
+          "mod_matriz",
+          "mod_generador",
+          "mod_disipador"
+        ],
         "charge": "esp_embestida",
         "teleport": "esp_baliza",
         "hook": "esp_garfio"
@@ -54,10 +92,24 @@
       "items": {
         "torso": "torso_centinela",
         "legs": "piernas_zancos",
-        "sides": ["lat_trabuco", "lat_lanzallamas", "lat_bobina", "lat_rifle_riel"],
-        "tops": ["sup_lluvia_ceniza", "sup_arco_galvanico"],
+        "sides": [
+          "lat_trabuco",
+          "lat_lanzallamas",
+          "lat_bobina",
+          "lat_rifle_riel"
+        ],
+        "tops": [
+          "sup_lluvia_ceniza",
+          "sup_arco_galvanico"
+        ],
         "drone": "dron_avispa",
-        "modules": ["mod_blindaje", "mod_nucleo_dual", "mod_matriz", "mod_generador", "mod_disipador"],
+        "modules": [
+          "mod_blindaje",
+          "mod_blindaje",
+          "mod_matriz",
+          "mod_generador",
+          "mod_disipador"
+        ],
         "charge": "esp_embestida"
       }
     }

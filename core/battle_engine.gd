@@ -13,19 +13,27 @@ var turn_number: int = 0
 ## -1 mientras el combate sigue; si no, el indice del ganador.
 var winner: int = -1
 var events: Array[Dictionary] = []
+## Si es false no se guarda el registro (las copias de busqueda de la IA).
+var logging: bool = true
+## Si es >= 0, todas las tiradas de dano usan este valor en vez del RNG.
+## La IA evalua con 0.5 (dano esperado) para no depender de la suerte.
+var fixed_roll: float = -1.0
 
 var _rng := RandomNumberGenerator.new()
 var _first_turn := true
 
 
+## Sin argumentos crea un motor vacio; solo lo usa clone().
 func _init(
-	p_rules: RulesConfig,
-	build_a: MechBuild,
-	build_b: MechBuild,
-	seed_value: int,
+	p_rules: RulesConfig = null,
+	build_a: MechBuild = null,
+	build_b: MechBuild = null,
+	seed_value: int = 0,
 	starter: int = 0,
 	start_pair: int = -1
 ) -> void:
+	if p_rules == null:
+		return
 	rules = p_rules
 	_rng.seed = seed_value
 	var pair_index := start_pair
@@ -47,6 +55,29 @@ func defender() -> BattleMech:
 
 func is_over() -> bool:
 	return winner >= 0
+
+
+## Copia independiente del estado. Con for_search no guarda registro y usa el
+## dano esperado, que es lo que necesita la IA para probar jugadas.
+func clone(for_search: bool = true) -> BattleEngine:
+	var copy := BattleEngine.new()
+	copy.rules = rules
+	copy.mechs = [mechs[0].clone(), mechs[1].clone()]
+	copy.turn = turn
+	copy.actions_left = actions_left
+	copy.turn_number = turn_number
+	copy.winner = winner
+	copy._first_turn = _first_turn
+	if for_search:
+		copy.logging = false
+		copy.fixed_roll = 0.5
+	else:
+		copy.logging = logging
+		copy.fixed_roll = fixed_roll
+		copy.events = events.duplicate(true)
+		copy._rng.seed = _rng.seed
+		copy._rng.state = _rng.state
+	return copy
 
 
 # --- Consultas ---------------------------------------------------------------
@@ -144,19 +175,23 @@ func legal_actions() -> Array[BattleAction]:
 	var out: Array[BattleAction] = []
 	if is_over() or actions_left <= 0:
 		return out
-	var candidates: Array[BattleAction] = [
-		BattleAction.cool(), BattleAction.stomp(), BattleAction.charge(), BattleAction.hook()
-	]
-	for key in attacker().weapon_keys():
-		candidates.append(BattleAction.weapon(key))
+	var me := attacker()
+	var foe := defender()
+	out.append(BattleAction.cool())
+	if me.slots["legs"].def.deals_damage() and why_cant_use(me, foe, "legs") == "":
+		out.append(BattleAction.stomp())
+	for key in me.weapon_keys():
+		if why_cant_use(me, foe, key) == "":
+			out.append(BattleAction.weapon(key))
+	if why_cant_use(me, foe, "charge") == "":
+		out.append(BattleAction.charge())
+	if why_cant_use(me, foe, "hook") == "":
+		out.append(BattleAction.hook())
 	for pos in walkable_positions():
-		candidates.append(BattleAction.walk(pos))
-	if attacker().slots.has("teleport"):
+		out.append(BattleAction.walk(pos))
+	if why_cant_use(me, foe, "teleport") == "":
 		for pos in teleportable_positions():
-			candidates.append(BattleAction.teleport(pos))
-	for action in candidates:
-		if why_illegal(action) == "":
-			out.append(action)
+			out.append(BattleAction.teleport(pos))
 	return out
 
 
@@ -240,8 +275,9 @@ func apply(action: BattleAction) -> String:
 				me.energy -= tele.def.energy_cost
 				_spend_use(tele)
 				_log("teleport", {"slot": "teleport", "damage": 0})
-			events[-1]["from"] = from
-			events[-1]["to"] = me.position
+			if logging:
+				events[-1]["from"] = from
+				events[-1]["to"] = me.position
 	actions_left -= 1
 	if _check_winner():
 		return ""
@@ -307,7 +343,10 @@ func _use(
 ) -> void:
 	var slot := user.slots[key]
 	var def := slot.def
-	var damage := _damage(def, target, _rng.randf() if def.deals_damage() else 0.0)
+	var roll := 0.0
+	if def.deals_damage():
+		roll = fixed_roll if fixed_roll >= 0.0 else _rng.randf()
+	var damage := _damage(def, target, roll)
 
 	user.health -= def.backfire
 	user.heat += def.heat_cost
@@ -404,6 +443,8 @@ func _check_winner() -> bool:
 
 
 func _log(event: String, data: Dictionary = {}) -> void:
+	if not logging:
+		return
 	var entry := {"event": event, "turn": turn_number, "actor": turn}
 	entry.merge(data)
 	events.append(entry)

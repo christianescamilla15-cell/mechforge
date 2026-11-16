@@ -8,7 +8,7 @@ Actualiza la tabla de estado al terminar cada tarea. Una fase se cierra solo cua
 | F0 | Preparación | **cerrada** 2026-11-16 | Godot 4.7.2 + GUT 9.7.1 + gdtoolkit 4.5.0. `tools/test.ps1` en verde y devuelve exit 1 con un test roto; `--import` sin errores |
 | F1 | Motor de combate (core) | **cerrada** 2026-11-16 | 63 tests / 197 comprobaciones en verde (`test_battle_turns`, `test_battle_weapons`, `test_mech_build`). Prueba de mutación: quitar la rotura de energía hace fallar la suite. `gdlint` y `gdformat` limpios |
 | F2 | Datos y catálogo | **cerrada** 2026-11-16 | 58 piezas en `data/catalog.json`; el validador pasa con los 214 nombres del original prohibidos. 4 mechs de ejemplo (994, 985, 983 y 984 kg). 95 tests / 333 comprobaciones; 96 combates de estrés con acciones al azar sin romper el estado. Añadida la mejora M6 |
-| F3 | IA y simulador de balance | pendiente | |
+| F3 | IA y simulador de balance | **cerrada** 2026-11-16 | Puertas en Divino máximo, 1600 combates: físico 51.5 %, calor 49.8 %, energía 48.8 %, híbrido 48.0 %; 12.3 turnos; sin apagados seguidos; IA normal 100 % contra IA al azar. 109 tests / 428 comprobaciones. Limitaciones en la sección F3 |
 | F4 | Spike de arte | pendiente | Requiere aprobación del usuario |
 | F5 | Combate jugable (UI) | pendiente | |
 | F6 | Taller de armado | pendiente | |
@@ -54,6 +54,13 @@ Orden: F0 → F1 → F2 → F3 en serie (cada una depende de la anterior). F4 pu
 - Combates de 6 a 14 turnos de media.
 - Con M2 encendido, ningún combate tiene dos apagados seguidos.
 
+**Cómo se midió y qué queda pendiente:**
+- El simulador promedia sobre 5 escalas de vida (0.92–1.08) para no medir la paridad de un valor concreto. Para reproducirlo: `tools/sim.ps1 --battles=100 --seed=4242`.
+- Épico (100 combates por cruce) también pasa. En Común, promediando niveles, los elementos quedan en 50 % pero el híbrido sube al 61 %: el redondeo de números pequeños desplaza el balance. No se ha corregido.
+- Con M5 quien empieza gana el 55–58 % de los espejos (71 % sin M5). Queda una ventaja pequeña para quien empieza.
+- El balance vale para los cuatro mechs de ejemplo, que pelean casi siempre a distancia 1–2: las armas de largo alcance apenas se usan. Dar valor real a la distancia queda para el paso 2 (terreno) o para cuando existan los enemigos de la campaña.
+- Rendimiento: unos 95 ms por combate con 12 hilos (10 000 combates ≈ 16 minutos).
+
 ### F4 — Spike de arte (IA)
 - Elegir la herramienta (local en la RTX 4050 o un Space de Hugging Face) y fijar el estilo: prompt base, referencias y siluetas.
 - Producir 3 mechs completos (uno por elemento): piezas con fondo transparente, normal maps y JSON de anclas.
@@ -80,6 +87,8 @@ Orden: F0 → F1 → F2 → F3 en serie (cada una depende de la anterior). F4 pu
 **Puerta:** tests de economía y de guardado y carga de ida y vuelta en verde; el simulador da entre 8 y 12 horas hasta Divino.
 
 ### F8 — Campaña
+- Visión en el GDD §9: un jugador, se empieza con un robot sencillo y se avanza hasta un jefe que exige táctica, como en la versión antigua del juego.
+- Buscar antes si esa versión antigua (Flash, un jugador) se conserva, para tomar de referencia su ritmo y su nivel de detalle.
 - Mapa de nodos, 3 capítulos con unos 10 combates y un jefe cada uno, enemigos en datos, recompensas y desbloqueos.
 
 **Puerta:** el capítulo 1 se juega completo; el simulador confirma el 55–70 % de victorias del build esperado en cada capítulo.
