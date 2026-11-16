@@ -213,6 +213,6 @@ Menú · Taller (armado con resumen de stats, barra de peso y avisos) · Inventa
 
 **Montaje:** una imagen por pieza con fondo transparente. El torso define los puntos de montaje (2 piernas, 4 laterales y 2 superiores) y cada arma su punto de agarre, en un JSON de anclas por pieza. Es el mismo sistema del original.
 
-**Pipeline (se decide en el spike F4):** silueta → generación con estilo fijo → quitar fondo (rembg o similar) → recortar y normalizar escala → normal map → anclas → revisión en un visor de montaje dentro de Godot. La herramienta se elige en el spike: local en la RTX 4050 (SDXL con descarga de memoria, o FLUX cuantizado; `diffusers` no está instalado) o un Space de Hugging Face. El estilo se aprueba con 3 mechs completos, uno por elemento, antes de producir el catálogo entero.
+**Pipeline** (detalle, licencias y alternativas en `docs/reference/art-pipeline.md`): silueta y bloque de color nuestros → generación local con un modelo de ilustración japonesa (Illustrious-XL) guiado por un ControlNet → recorte del fondo → reducción a 512 px → mapa normal → anclas → revisión en un visor de montaje dentro de Godot. Todo corre en la RTX 4050 del usuario, sin servicios en la nube. El estilo se aprueba con mechs de referencia, uno por elemento, antes de producir el catálogo entero.
 
 **Presupuesto de rendimiento:** 60 FPS fijos en combate y modo de bajo consumo del procesador en los menús. Las texturas de cada pieza no pasan de 512 px de lado y se agrupan en atlas. Se mide en la laptop en la fase F5.

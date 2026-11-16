@@ -62,9 +62,15 @@ Orden: F0 → F1 → F2 → F3 en serie (cada una depende de la anterior). A pet
 - Rendimiento: unos 95 ms por combate con 12 hilos (10 000 combates ≈ 16 minutos).
 
 ### F4 — Spike de arte (IA)
-- Elegir la herramienta (local en la RTX 4050 o un Space de Hugging Face) y fijar el estilo: prompt base, referencias y siluetas.
-- Producir 3 mechs completos (uno por elemento): piezas con fondo transparente, normal maps y JSON de anclas.
-- Visor de montaje en Godot con luces 2D y un shader de calor de prueba.
+Decidido con el usuario: generación local y estilo mecha japonés. El pipeline y sus alternativas están en `docs/reference/art-pipeline.md`. Pasos, cada uno con su comprobación:
+
+1. **Entorno** (`tools/art/setup.ps1`): entorno virtual aislado con torch para CUDA y diffusers. Comprobación: el script termina con "ENTORNO OK".
+2. **Prueba de estilo** (`tools/art/style_test.py`): mechs completos de referencia, uno por elemento, solo con el modelo base. Comprobación: mirar las imágenes; medir segundos por imagen y pico de VRAM. **Aquí el usuario aprueba o corrige el estilo** antes de seguir.
+3. **Control de silueta:** generar una pieza desde una silueta nuestra con el ControlNet. Comprobación: el contorno recortado coincide con la silueta.
+4. **Recorte y normales:** fondo transparente con BiRefNet y mapa normal con Marigold. Comprobación: bordes limpios; una esfera de prueba se ilumina en Godot desde el lado correcto.
+5. **3 mechs completos por piezas** (uno por elemento) con su JSON de anclas, y visor de montaje en Godot con luces 2D y un shader de calor de prueba.
+
+Si SDXL resulta demasiado lento en 6 GB, el plan B es un modelo SD 1.5 de anime (cabe entero en la GPU, a menor resolución).
 
 **Puerta:** el usuario aprueba el estilo viendo capturas de los 3 mechs montados, iluminados y con el shader de calor.
 
