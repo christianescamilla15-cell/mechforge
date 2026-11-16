@@ -57,6 +57,15 @@ No hay versión HTML5 del juego: la web es Flash y escritorio y móvil son Adobe
 ## Modos del original
 Campaña 1v1, 2v2 y 3v3; PvP por emparejamiento con rangos; torneo semanal; clanes y alianzas con guerras semanales; Titanes (jefes de clan); base con crafteo; cajas de fortuna; chat. Es online (MMO).
 
+## La versión antigua (2012–2013)
+El usuario recuerda una versión para un jugador: empezabas con un robot sencillo y avanzabas combate a combate hasta un jefe; era una demo que no pasaba de unos 10 combates. Es la que quiere recuperar (GDD §9). Buscado el 2026-11-16:
+
+- El usuario la jugó hace más de 10 años y cree que existe desde hace unos 20 (hacia 2006). Lo más antiguo que se pudo documentar es de 2012, así que o estuvo antes en algún portal de juegos Flash, o era un juego anterior parecido. Falta que el usuario recuerde dónde la jugaba o algún detalle para localizarla.
+- **No se encontró esa demo conservada** ni una descripción de ella. Queda sin confirmar en qué portal estaba.
+- Wayback Machine tiene capturas de `supermechs.com` desde febrero de 2012 (una página con solo el texto "Super Mechs!"). En la de junio de 2012 el sitio ya cargaba el cliente Flash `BMMPortal.swf` con la descripción "Battle other players in your own Mech Warrior!", es decir, ya era multijugador.
+- Una [reseña de enero de 2013](https://playlikecrazy.blogspot.com/2013/01/super-mechs.html) lo describe en beta, jugable en silvergames.com con registro: un tutorial, combates contra mechs de la computadora y contra otros jugadores, experiencia y créditos, "cientos" de mejoras para comprar, una ametralladora (minigun) y **kits de reparación** para recuperar vida en mitad del combate.
+- Detalle de aquella época que el juego actual ya no tiene y que podemos recuperar: los consumibles de combate (kits de reparación).
+
 ## Quejas recurrentes de la comunidad (oportunidades)
 - Calor y energía desbalanceados; las bombas de calor encadenan apagados.
 - La rotura de energía pierde valor contra armas sin costo de energía.
