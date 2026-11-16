@@ -216,3 +216,48 @@ Menú · Taller (armado con resumen de stats, barra de peso y avisos) · Inventa
 **Pipeline** (detalle, licencias y alternativas en `docs/reference/art-pipeline.md`): silueta y bloque de color nuestros → generación local con un modelo de ilustración japonesa (Illustrious-XL) guiado por un ControlNet → recorte del fondo → reducción a 512 px → mapa normal → anclas → revisión en un visor de montaje dentro de Godot. Todo corre en la RTX 4050 del usuario, sin servicios en la nube. El estilo se aprueba con mechs de referencia, uno por elemento, antes de producir el catálogo entero.
 
 **Presupuesto de rendimiento:** 60 FPS fijos en combate y modo de bajo consumo del procesador en los menús. Las texturas de cada pieza no pasan de 512 px de lado y se agrupan en atlas. Se mide en la laptop en la fase F5.
+
+## 12. Presentación: entorno, animaciones, efectos y sonido
+**Requisito del usuario (2026-11-16):** el juego debe cubrir el entorno, las animaciones, los sonidos y el resto de la presentación al nivel del juego original. Todo el contenido es propio: no se usan sus escenarios, animaciones, sonidos ni música.
+
+### 12.1 Entorno
+- **Escenarios de arena:** uno por capítulo de la campaña más uno de entrenamiento (4 en total). Cada uno en capas para dar profundidad: fondo lejano, estructuras intermedias y suelo. El suelo queda alineado con las 10 casillas.
+- Se generan con el mismo modelo local que los mechs, para que compartan estilo.
+- **Vida ambiental:** partículas de polvo, humo o chispas, luces que parpadean y un leve desplazamiento de las capas con las sacudidas de cámara.
+- **Luz:** cada escenario define su luz ambiente y la dirección de su luz principal; los mapas normales de los mechs responden a ella.
+
+### 12.2 Animaciones
+Animación por piezas (cada pieza es un sprite que se mueve, gira o se desplaza), más partículas y shaders.
+
+| Grupo | Animaciones |
+|---|---|
+| Reposo | Respiración del mech, dron flotando, parpadeo de propulsores y sensores |
+| Movimiento | Paso de piernas con balanceo del cuerpo; ruedas girando; salto con agachada, arco y polvo al caer |
+| Ataques cuerpo a cuerpo | Tajo de espada con estela; golpe de martillo; pisotón |
+| Ataques a distancia | Retroceso del arma, fogonazo y proyectil según el tipo: bala con trazadora, obús en arco, cohete con humo, chorro de llamas, rayo y arco eléctrico, pulso de drenaje |
+| Especiales | Embestida con estela e impacto; salto con destello al desaparecer y aparecer; gancho con cable que sale y recoge |
+| Dron | Disparo desde su posición |
+| Impactos | Destello, sacudida y chispas; en los golpes fuertes, sacudida de cámara y una pausa breve |
+| Estados | Brillo de calor creciente; vapor al enfriar; apagado (luces fuera, postura caída y humo); sin energía (parpadeo y arcos); daños visibles con poca vida |
+| Final | Explosión y piezas que saltan al ser destruido; pose de victoria |
+| Interfaz | Números flotantes, barras que se mueven con suavidad, cartel de turno, respuesta de los botones y transiciones entre pantallas |
+
+Cada pieza del catálogo llevará un campo `fx` con su tipo de presentación (por ejemplo `espada`, `bala`, `cohete`, `llama`, `rayo`), del que salen su animación de ataque, su proyectil y su sonido.
+
+### 12.3 Sonido y música
+- **Efectos**, por categoría:
+  - Interfaz: pasar por un botón, pulsar, confirmar y error.
+  - Movimiento: paso, salto, caída y ruedas.
+  - Armas, uno por tipo de `fx`: tajo e impacto de metal, disparo, cañonazo, lanzamiento y explosión de cohete, llamas, rayo, descarga eléctrica y drenaje.
+  - Especiales: embestida, salto y gancho.
+  - Estados: alarma de sobrecalentamiento, vapor al enfriar, apagado, reencendido y aviso de energía agotada.
+  - Impactos ligeros y pesados, explosión de destrucción, y fanfarrias de victoria y derrota.
+  - Ambiente: un bucle por escenario.
+- **Música:** menú, taller, combate normal, combate contra jefe, victoria y derrota.
+- **Origen:** bibliotecas de dominio público (CC0) para empezar, con cada archivo anotado en `assets/audio/CREDITS.md` junto a su licencia. No se usa ningún sonido ni música del juego original.
+- **Técnica:** buses separados para música, efectos e interfaz con su volumen en ajustes, y una pequeña variación de tono en los efectos repetidos para que no cansen.
+
+### 12.4 Cómo se comprueba
+- **Cobertura:** un test recorre los tipos de evento del motor y los tipos de `fx` del catálogo y falla si alguno no tiene animación o sonido asignado.
+- **Vista:** la prueba en vivo guarda capturas de cada tipo de acción en cada escenario, y se revisan.
+- **Oído:** no se puede verificar de forma automática que un sonido suena bien. El test comprueba que el archivo existe y se lanza; el usuario valida el resultado escuchándolo.

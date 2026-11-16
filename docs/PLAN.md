@@ -69,6 +69,7 @@ Decidido con el usuario: generación local y estilo mecha japonés. El pipeline 
 3. **Control de silueta:** generar una pieza desde una silueta nuestra con el ControlNet. Comprobación: el contorno recortado coincide con la silueta.
 4. **Recorte y normales:** fondo transparente con BiRefNet y mapa normal con Marigold. Comprobación: bordes limpios; una esfera de prueba se ilumina en Godot desde el lado correcto.
 5. **3 mechs completos por piezas** (uno por elemento) con su JSON de anclas, y visor de montaje en Godot con luces 2D y un shader de calor de prueba.
+6. **Un escenario de arena en capas** con el mismo estilo (GDD §12.1), para aprobar mechs y fondo juntos.
 
 Si SDXL resulta demasiado lento en 6 GB, el plan B es un modelo SD 1.5 de anime (cabe entero en la GPU, a menor resolución).
 
@@ -87,6 +88,14 @@ Si SDXL resulta demasiado lento en 6 GB, el plan B es un modelo SD 1.5 de anime 
 - Los textos de la interfaz están en `ui/texts.gd`.
 - Pruebas en vivo: `tools/live.ps1` abre el juego real, la IA juega el combate y se guardan capturas; con `-Ui` el lado del jugador pasa por los mismos controles que una persona. CDP no aplica: el juego es una app nativa de Godot, no un navegador.
 - `tools/play.ps1` abre el juego para jugar a mano.
+
+**Falta en F5 (presentación del combate, GDD §12):**
+- Campo `fx` en el catálogo y su validación.
+- Animaciones por piezas de todos los grupos del GDD §12.2, con partículas, sacudida de cámara y pausa en los golpes fuertes.
+- Sonido de cada evento del combate (GDD §12.3) y música de combate.
+- Escenario de la arena en capas (GDD §12.1), al menos el de entrenamiento.
+
+**Puerta de presentación:** el test de cobertura pasa (ningún evento ni tipo de `fx` sin animación o sonido); la prueba en vivo deja capturas revisadas de cada tipo de acción sobre el escenario; el usuario da el visto bueno al sonido escuchándolo; 60 FPS medidos en la laptop.
 
 ### F6 — Taller de armado
 - Equipar piezas por hueco, barra de peso con sobrecarga, resumen de stats, avisos (sin torso o piernas, resistencias repetidas, más de 1010 kg) y vista previa del mech montado.
@@ -108,7 +117,8 @@ Si SDXL resulta demasiado lento en 6 GB, el plan B es un modelo SD 1.5 de anime 
 **Puerta:** el capítulo 1 se juega completo; el simulador confirma el 55–70 % de victorias del build esperado en cada capítulo.
 
 ### F9 — Pulido y exportación
-- Sonido básico, ajustes (volumen, velocidad de animación) y textos en la tabla de traducción.
+- Los 4 escenarios, la música de menú y taller, y los sonidos de interfaz que falten (GDD §12).
+- Ajustes (volumen de música, efectos e interfaz; velocidad de animación) y textos en la tabla de traducción.
 - Exportar el `.exe` de Windows.
 
 **Puerta:** el `.exe` arranca desde una carpeta limpia, en otra ruta, y se puede jugar un combate.
@@ -122,6 +132,7 @@ Si SDXL resulta demasiado lento en 6 GB, el plan B es un modelo SD 1.5 de anime 
 | Generación de imágenes | decidir en F4 | sprites (torch con CUDA 12.1 ya está; `diffusers` no) |
 | rembg o similar | instalar en F4 | quitar fondos |
 | Generador de normal maps (Laigter o mapa de profundidad) | decidir en F4 | relieve para la luz 2D |
+| Bibliotecas de sonido CC0 | elegir en F5 | efectos y música (anotar cada archivo y su licencia) |
 | Plantillas de exportación de Godot 4.7.2 | instalar en F9 | exportar el `.exe` |
 
 ## Estimación honesta
