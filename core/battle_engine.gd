@@ -447,4 +447,21 @@ func _log(event: String, data: Dictionary = {}) -> void:
 		return
 	var entry := {"event": event, "turn": turn_number, "actor": turn}
 	entry.merge(data)
+	# Foto del estado tras el evento: la pantalla la usa para animar paso a paso.
+	entry["state"] = [_snapshot(mechs[0]), _snapshot(mechs[1])]
+	entry["actions_left"] = actions_left
 	events.append(entry)
+
+
+func _snapshot(mech: BattleMech) -> Dictionary:
+	return {
+		"pos": mech.position,
+		"health": mech.health,
+		"heat": mech.heat,
+		"energy": mech.energy,
+		"heat_cap": mech.heat_cap,
+		"energy_cap": mech.energy_cap,
+		"cooling": mech.cooling,
+		"regen": mech.energy_regen,
+		"res": mech.res.duplicate(),
+	}

@@ -13,6 +13,14 @@ En construcción. El avance por fases está en [docs/PLAN.md](docs/PLAN.md) y el
 - Godot 4.7.2 estándar (GDScript).
 - Para formato y lint: `pip install gdtoolkit`.
 
+## Jugar
+
+```powershell
+.\tools\play.ps1
+```
+
+Abre un combate de prueba contra la IA: eliges tu mech, el rival, el tier y la dificultad. De momento los mechs se dibujan con figuras provisionales.
+
 ## Pruebas
 
 Los tests usan [GUT](https://github.com/bitwes/Gut), incluido en `addons/gut/`. Para correrlos sin abrir el editor (PowerShell):
@@ -22,6 +30,11 @@ Los tests usan [GUT](https://github.com/bitwes/Gut), incluido en `addons/gut/`. 
 ```
 
 El script espera el ejecutable de Godot en la ruta indicada en `tools/godot.ps1`; ajústala si lo tienes en otro lugar.
+
+Otras herramientas:
+
+- `tools\sim.ps1`: simulador de balance (IA contra IA). Con `-Trace` imprime un combate jugada por jugada.
+- `tools\live.ps1 -Ui`: prueba en vivo. Abre el juego, lo juega a través de los controles y guarda capturas.
 
 ## Estructura
 

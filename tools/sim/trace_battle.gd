@@ -45,7 +45,7 @@ func _initialize() -> void:
 		if action == null or engine.apply(action) != "":
 			break
 		while printed < engine.events.size():
-			_print_event(engine, engine.events[printed], ids)
+			_print_event(engine.events[printed], ids)
 			printed += 1
 	print(
 		(
@@ -56,17 +56,17 @@ func _initialize() -> void:
 	quit(0)
 
 
-func _print_event(engine: BattleEngine, entry: Dictionary, ids: Array) -> void:
+func _print_event(entry: Dictionary, ids: Array) -> void:
 	var detail := ""
 	for key: String in entry:
-		if not key in ["event", "turn", "actor"]:
+		if not key in ["event", "turn", "actor", "state", "actions_left"]:
 			detail += " %s=%s" % [key, entry[key]]
 	var state := ""
 	for i in 2:
-		var m := engine.mechs[i]
+		var m: Dictionary = entry["state"][i]
 		state += (
 			"  [%d] pos %d vida %d cal %d/%d ene %d/%d"
-			% [i, m.position, m.health, m.heat, m.heat_cap, m.energy, m.energy_cap]
+			% [i, m["pos"], m["health"], m["heat"], m["heat_cap"], m["energy"], m["energy_cap"]]
 		)
 	print(
 		(

@@ -1,0 +1,530 @@
+class_name BattleScreen
+extends Control
+## Pantalla de combate. Lee el estado del motor y le envia acciones; nunca
+## cambia el estado por su cuenta. Reproduce los eventos del motor uno a uno
+## usando la foto de estado que trae cada evento.
+
+signal event_played(entry: Dictionary)
+signal finished(player_won: bool)
+signal rematch_requested
+signal menu_requested
+## Se mostro la prevision de una accion (lo usa la prueba en vivo).
+signal preview_shown
+
+const STEP_SECONDS := 0.42
+const COLOR_BACKGROUND := Color("0b1017")
+const COLOR_WALK := Color("1f5f3a")
+const COLOR_TELEPORT := Color("4b2f7a")
+const COLOR_DAMAGE := Color("ffe9e0")
+const COLOR_HEAT := Color("ff8a3d")
+const COLOR_COOL := Color("9fd8ff")
+
+var rules: RulesConfig
+var engine: BattleEngine
+## Indice del mech que controla el jugador.
+var player: int = 0
+var enemy_ai: BattleAI
+## Si no es null, la IA juega tambien por el jugador (pruebas automaticas).
+var player_ai: BattleAI
+## Si no es null, elige las jugadas del jugador pero las ejecuta a traves de
+## los mismos controles que usaria una persona (pasar el raton, pulsar, elegir
+## casilla). Sirve para probar la interfaz en vivo.
+var ui_driver: BattleAI
+## Multiplicador de velocidad de las animaciones.
+var speed: float = 1.0
+var names: Array[String] = [Txt.t("you"), Txt.t("rival")]
+
+var _arena: ArenaView
+var _panels: Array[StatPanel] = []
+var _turn_label: Label
+var _actions_label: Label
+var _hint_label: Label
+var _preview: RichTextLabel
+var _log: RichTextLabel
+var _action_bar: ActionBar
+var _result: PanelContainer
+var _result_label: Label
+
+var _shown: int = 0
+var _busy: bool = true
+var _teleport_mode: bool = false
+## Lo ultimo que se mostro de cada mech, para dibujar entre eventos.
+var _state: Array[Dictionary] = []
+
+
+func _ready() -> void:
+	_build_ui()
+
+
+## Empieza un combate nuevo. Llamar despues de anadir la pantalla al arbol.
+func start(
+	p_rules: RulesConfig,
+	build_player: MechBuild,
+	build_enemy: MechBuild,
+	seed_value: int,
+	difficulty: BattleAI.Difficulty
+) -> void:
+	rules = p_rules
+	enemy_ai = BattleAI.new(difficulty, seed_value + 1)
+	engine = BattleEngine.new(rules, build_player, build_enemy, seed_value, seed_value % 2)
+	_shown = 0
+	_busy = true
+	_teleport_mode = false
+	_result.hide()
+	_log.clear()
+	_arena.cells = rules.arena_size
+	for i in 2:
+		_panels[i].set_title(names[i])
+		_arena.mechs[i].setup(engine.mechs[i].build, 1 if i == 0 else -1)
+	_action_bar.build_for(engine.mechs[player])
+	# Espera a que el contenedor tenga tamano antes de colocar los mechs.
+	await get_tree().process_frame
+	await get_tree().process_frame
+	_state = [_live_state(0), _live_state(1)]
+	# Los eventos previos a la primera accion (por ejemplo, una regeneracion)
+	# se dan por mostrados: el estado inicial ya los incluye.
+	_shown = engine.events.size()
+	_place_mechs()
+	_show_state()
+	_advance()
+
+
+# --- Flujo del combate -------------------------------------------------------
+
+
+func _advance() -> void:
+	_busy = false
+	_refresh()
+	if engine.is_over():
+		_show_result()
+		return
+	var ai := enemy_ai if engine.turn != player else player_ai
+	if ai == null:
+		if ui_driver != null:
+			_drive_ui()
+		return  # Turno del jugador: espera a que pulse algo.
+	_busy = true
+	_refresh()
+	await get_tree().create_timer(0.3 / speed).timeout
+	var action := ai.choose_action(engine)
+	if action != null:
+		_perform(action)
+
+
+func _perform(action: BattleAction) -> void:
+	_busy = true
+	_teleport_mode = false
+	_refresh()
+	var reason := engine.apply(action)
+	if reason != "":
+		push_warning("accion rechazada: %s" % reason)
+	await _play_new_events()
+	_advance.call_deferred()
+
+
+func _play_new_events() -> void:
+	while _shown < engine.events.size():
+		var entry := engine.events[_shown]
+		_shown += 1
+		await _play_event(entry)
+		event_played.emit(entry)
+
+
+func _play_event(entry: Dictionary) -> void:
+	var actor: int = entry["actor"]
+	var target := 1 - actor
+	var snapshot: Array = entry["state"]
+	var event: String = entry["event"]
+	var step := STEP_SECONDS / speed
+	var line := _log_line(entry)
+	if line != "":
+		_log.append_text(line + "\n")
+
+	match event:
+		"weapon", "stomp", "charge", "hook", "teleport", "drone":
+			# Primero se mueve quien ataca (embestida, salto, espada).
+			var attacker_cell: int = snapshot[actor]["pos"]
+			if attacker_cell != _state[actor]["pos"] and event != "weapon":
+				await _arena.mechs[actor].move_to(_arena.cell_point(attacker_cell), step).finished
+				_arena.update_facing()
+			if event != "drone":
+				_arena.mechs[actor].lunge(step)
+			var damage: int = entry.get("damage", 0)
+			if damage > 0:
+				_arena.mechs[target].hit(step)
+				_arena.float_text(_state[target]["pos"], "-%d" % damage, COLOR_DAMAGE)
+			var heat_gain: int = snapshot[target]["heat"] - _state[target]["heat"]
+			if heat_gain > 0:
+				_arena.float_text(_state[target]["pos"], "+%d" % heat_gain, COLOR_HEAT)
+			await get_tree().create_timer(step).timeout
+			# Despues, empujes, jalones y retrocesos.
+			for i in 2:
+				var cell: int = snapshot[i]["pos"]
+				if cell != _state[i]["pos"] or _arena.mechs[i].position != _arena.cell_point(cell):
+					_arena.mechs[i].move_to(_arena.cell_point(cell), step * 0.7)
+			await get_tree().create_timer(step * 0.7).timeout
+		"walk":
+			await _arena.mechs[actor].move_to(_arena.cell_point(entry["to"]), step).finished
+		"cool", "forced_cool", "shutdown":
+			var amount: int = entry.get("amount", 0)
+			_arena.float_text(_state[actor]["pos"], "-%d" % amount, COLOR_COOL)
+			if event == "shutdown":
+				_arena.mechs[actor].set_heat(1.0, true)
+				await get_tree().create_timer(step * 2.0).timeout
+			else:
+				await get_tree().create_timer(step).timeout
+		"regen":
+			pass
+		"win":
+			await get_tree().create_timer(step).timeout
+
+	_state = [snapshot[0], snapshot[1]]
+	_arena.update_facing()
+	_show_state()
+
+
+## Juega el turno del jugador usando los controles de la interfaz.
+func _drive_ui() -> void:
+	var pause := 0.5 / speed
+	await get_tree().create_timer(pause).timeout
+	var action := ui_driver.choose_action(engine)
+	if action == null or not _can_act():
+		return
+	match action.type:
+		BattleAction.Type.WALK:
+			_on_cell_hovered(action.position)
+			preview_shown.emit()
+			await get_tree().create_timer(pause).timeout
+			_on_cell_clicked(action.position)
+		BattleAction.Type.TELEPORT:
+			_on_teleport_requested()
+			preview_shown.emit()
+			await get_tree().create_timer(pause).timeout
+			_on_cell_clicked(action.position)
+		_:
+			_on_action_hovered(action)
+			preview_shown.emit()
+			await get_tree().create_timer(pause).timeout
+			_on_action_chosen(action)
+
+
+# --- Entrada del jugador -----------------------------------------------------
+
+
+func _on_action_chosen(action: BattleAction) -> void:
+	if _can_act() and engine.why_illegal(action) == "":
+		_perform(action)
+
+
+func _on_teleport_requested() -> void:
+	if not _can_act():
+		return
+	_teleport_mode = not _teleport_mode
+	_refresh()
+
+
+func _on_cell_clicked(cell: int) -> void:
+	if not _can_act():
+		return
+	if _teleport_mode:
+		if cell in engine.teleportable_positions():
+			_perform(BattleAction.teleport(cell))
+	elif cell in engine.walkable_positions():
+		_perform(BattleAction.walk(cell))
+
+
+func _on_action_hovered(action: BattleAction) -> void:
+	if action == null or engine == null or not _can_act():
+		_preview.text = ""
+		return
+	_preview.text = _preview_text(action)
+
+
+func _on_cell_hovered(cell: int) -> void:
+	if cell < 0 or engine == null or not _can_act():
+		return
+	if not _teleport_mode and cell in engine.walkable_positions():
+		var distance := absi(cell - engine.mechs[1 - player].position)
+		_preview.text = Txt.t("preview_move", [cell, distance])
+
+
+func _can_act() -> bool:
+	return not _busy and not engine.is_over() and engine.turn == player and player_ai == null
+
+
+# --- Dibujo ------------------------------------------------------------------
+
+
+func _refresh() -> void:
+	if engine == null:
+		return
+	var mine := engine.turn == player
+	var whose := Txt.t("your_turn") if mine else Txt.t("rival_turn")
+	_turn_label.text = Txt.t("turn_of", [engine.turn_number, whose])
+	_actions_label.text = Txt.t("actions_left", [engine.actions_left])
+	var can_act := _can_act()
+	_action_bar.refresh(can_act, _reason_for, _uses_left_for)
+	var highlights := {}
+	if can_act:
+		if _teleport_mode:
+			for cell in engine.teleportable_positions():
+				highlights[cell] = COLOR_TELEPORT
+			_hint_label.text = Txt.t("teleport_hint")
+		else:
+			for cell in engine.walkable_positions():
+				highlights[cell] = COLOR_WALK
+			_hint_label.text = Txt.t("walk_hint")
+	else:
+		_hint_label.text = "" if engine.is_over() or mine else Txt.t("thinking")
+	_arena.set_highlights(highlights)
+
+
+func _show_state() -> void:
+	for i in 2:
+		var state := _state[i]
+		_panels[i].show_state(state, engine.mechs[i].max_health)
+		var ratio := float(state["heat"]) / float(maxi(state["heat_cap"], 1))
+		_arena.mechs[i].set_heat(ratio)
+
+
+func _place_mechs() -> void:
+	for i in 2:
+		_arena.mechs[i].place(_arena.cell_point(_state[i]["pos"]))
+	_arena.update_facing()
+
+
+func _show_result() -> void:
+	var won := engine.winner == player
+	_result_label.text = Txt.t("victory") if won else Txt.t("defeat")
+	_result_label.add_theme_color_override(
+		"font_color", Color("7dff9b") if won else Color("ff7d7d")
+	)
+	_result.show()
+	finished.emit(won)
+
+
+func _live_state(index: int) -> Dictionary:
+	var m := engine.mechs[index]
+	return {
+		"pos": m.position,
+		"health": m.health,
+		"heat": m.heat,
+		"energy": m.energy,
+		"heat_cap": m.heat_cap,
+		"energy_cap": m.energy_cap,
+		"cooling": m.cooling,
+		"regen": m.energy_regen,
+		"res": m.res.duplicate(),
+	}
+
+
+func _reason_for(action: BattleAction) -> String:
+	if action.type == BattleAction.Type.TELEPORT:
+		return engine.why_cant_use(engine.mechs[player], engine.mechs[1 - player], "teleport")
+	return engine.why_illegal(action)
+
+
+func _uses_left_for(action: BattleAction) -> int:
+	var key := _slot_of(action)
+	var slots := engine.mechs[player].slots
+	return slots[key].uses_left if slots.has(key) else -1
+
+
+func _slot_of(action: BattleAction) -> String:
+	match action.type:
+		BattleAction.Type.WEAPON:
+			return action.slot
+		BattleAction.Type.STOMP:
+			return "legs"
+		BattleAction.Type.CHARGE:
+			return "charge"
+		BattleAction.Type.HOOK:
+			return "hook"
+		BattleAction.Type.TELEPORT:
+			return "teleport"
+	return ""
+
+
+func _preview_text(action: BattleAction) -> String:
+	var mine := engine.mechs[player]
+	var foe := engine.mechs[1 - player]
+	if action.type == BattleAction.Type.COOL:
+		return Txt.t("preview_cool", [mine.heat, maxi(0, mine.heat - mine.cooling)])
+	var key := _slot_of(action)
+	var def := mine.slots[key].def
+	var title := "[b]%s[/b]" % def.display_name
+	if action.type == BattleAction.Type.TELEPORT:
+		return "%s\n%s" % [title, Txt.t("teleport_hint")]
+	var reason := engine.why_illegal(action)
+	if reason != "":
+		return "%s\n%s" % [title, Txt.t("illegal", [reason])]
+	var p := engine.preview(action)
+	var lines: Array[String] = [title]
+	if p["dmg_max"] > 0:
+		lines.append(Txt.t("preview_damage", [p["dmg_min"], p["dmg_max"]]))
+	else:
+		lines.append(Txt.t("preview_no_damage"))
+	if def.backfire > 0:
+		lines.append(Txt.t("preview_backfire", [def.backfire]))
+	lines.append(
+		Txt.t("preview_self", [p["self_heat"], mine.heat_cap, p["self_energy"], mine.energy_cap])
+	)
+	lines.append(
+		Txt.t(
+			"preview_target", [p["target_heat"], foe.heat_cap, p["target_energy"], foe.energy_cap]
+		)
+	)
+	if p["self_overheats"]:
+		lines.append("[color=#ff6b5a]%s[/color]" % Txt.t("preview_self_overheat"))
+	if p["target_overheats"]:
+		lines.append("[color=#7dff9b]%s[/color]" % Txt.t("preview_target_overheat"))
+	return "\n".join(lines)
+
+
+func _log_line(entry: Dictionary) -> String:
+	var actor: int = entry["actor"]
+	var who := names[actor]
+	var item := ""
+	var slot: String = entry.get("slot", "")
+	if slot != "" and engine.mechs[actor].slots.has(slot):
+		item = engine.mechs[actor].slots[slot].def.display_name
+	var damage: int = entry.get("damage", 0)
+	match entry["event"]:
+		"weapon":
+			return Txt.t("log_weapon", [who, item, damage])
+		"stomp":
+			return Txt.t("log_stomp", [who, damage])
+		"drone":
+			return Txt.t("log_drone", [who, item, damage])
+		"charge":
+			return Txt.t("log_charge", [who, damage])
+		"hook":
+			return Txt.t("log_hook", [who, damage])
+		"teleport":
+			return Txt.t("log_teleport", [who, entry.get("to", 0), damage])
+		"walk":
+			return Txt.t("log_walk", [who, entry["from"], entry["to"]])
+		"cool":
+			return Txt.t("log_cool", [who, entry["amount"]])
+		"forced_cool":
+			return "[color=#ffb37a]%s[/color]" % Txt.t("log_forced", [who, entry["amount"]])
+		"shutdown":
+			return "[color=#ff6b5a]%s[/color]" % Txt.t("log_shutdown", [who, entry["amount"]])
+		"win":
+			return "[b]%s[/b]" % Txt.t("log_win", [names[entry["winner"]]])
+	return ""
+
+
+# --- Construccion de la interfaz ---------------------------------------------
+
+
+func _build_ui() -> void:
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var background := ColorRect.new()
+	background.color = COLOR_BACKGROUND
+	background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	background.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(background)
+
+	var margin := MarginContainer.new()
+	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	for side: String in ["left", "right", "top", "bottom"]:
+		margin.add_theme_constant_override("margin_" + side, 14)
+	add_child(margin)
+	var root := VBoxContainer.new()
+	root.add_theme_constant_override("separation", 8)
+	margin.add_child(root)
+
+	# Arriba: panel del jugador, turno y panel del rival.
+	var top := HBoxContainer.new()
+	root.add_child(top)
+	_panels.append(StatPanel.new())
+	top.add_child(_panels[0])
+	var center := VBoxContainer.new()
+	center.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	center.alignment = BoxContainer.ALIGNMENT_CENTER
+	top.add_child(center)
+	_turn_label = _label(center, 22)
+	_actions_label = _label(center, 16)
+	_hint_label = _label(center, 14)
+	_hint_label.add_theme_color_override("font_color", Color("9fb0c3"))
+	_panels.append(StatPanel.new())
+	top.add_child(_panels[1])
+
+	# Centro: la arena.
+	_arena = ArenaView.new()
+	_arena.custom_minimum_size = Vector2(0, 310)
+	_arena.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_arena.cell_clicked.connect(_on_cell_clicked)
+	_arena.cell_hovered.connect(_on_cell_hovered)
+	root.add_child(_arena)
+
+	# Abajo: registro, prevision y acciones.
+	var bottom := HBoxContainer.new()
+	bottom.custom_minimum_size = Vector2(0, 220)
+	bottom.add_theme_constant_override("separation", 10)
+	root.add_child(bottom)
+	_log = RichTextLabel.new()
+	_log.bbcode_enabled = true
+	_log.scroll_following = true
+	_log.custom_minimum_size = Vector2(400, 0)
+	_log.add_theme_font_size_override("normal_font_size", 13)
+	_log.add_theme_font_size_override("bold_font_size", 13)
+	bottom.add_child(_log)
+	var right := VBoxContainer.new()
+	right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	bottom.add_child(right)
+	_preview = RichTextLabel.new()
+	_preview.bbcode_enabled = true
+	_preview.custom_minimum_size = Vector2(0, 92)
+	_preview.add_theme_font_size_override("normal_font_size", 14)
+	_preview.add_theme_font_size_override("bold_font_size", 15)
+	right.add_child(_preview)
+	_action_bar = ActionBar.new()
+	_action_bar.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_action_bar.action_chosen.connect(_on_action_chosen)
+	_action_bar.teleport_requested.connect(_on_teleport_requested)
+	_action_bar.action_hovered.connect(_on_action_hovered)
+	right.add_child(_action_bar)
+
+	# Resultado, centrado sobre la arena.
+	_result = PanelContainer.new()
+	_result.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+	_result.custom_minimum_size = Vector2(360, 170)
+	var result_style := StyleBoxFlat.new()
+	result_style.bg_color = Color("141c27")
+	result_style.border_color = Color("5a6f88")
+	result_style.set_border_width_all(2)
+	result_style.set_corner_radius_all(8)
+	result_style.set_content_margin_all(18)
+	_result.add_theme_stylebox_override("panel", result_style)
+	_result.position -= _result.custom_minimum_size / 2.0
+	add_child(_result)
+	var result_box := VBoxContainer.new()
+	result_box.alignment = BoxContainer.ALIGNMENT_CENTER
+	result_box.add_theme_constant_override("separation", 14)
+	_result.add_child(result_box)
+	_result_label = _label(result_box, 44)
+	var buttons := HBoxContainer.new()
+	buttons.alignment = BoxContainer.ALIGNMENT_CENTER
+	buttons.add_theme_constant_override("separation", 12)
+	result_box.add_child(buttons)
+	var rematch := Button.new()
+	rematch.text = Txt.t("rematch")
+	rematch.custom_minimum_size = Vector2(130, 42)
+	rematch.pressed.connect(func() -> void: rematch_requested.emit())
+	buttons.add_child(rematch)
+	var menu := Button.new()
+	menu.text = Txt.t("menu")
+	menu.custom_minimum_size = Vector2(130, 42)
+	menu.pressed.connect(func() -> void: menu_requested.emit())
+	buttons.add_child(menu)
+	_result.hide()
+
+
+func _label(parent: Node, font_size: int) -> Label:
+	var label := Label.new()
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.add_theme_font_size_override("font_size", font_size)
+	parent.add_child(label)
+	return label

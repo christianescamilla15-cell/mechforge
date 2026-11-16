@@ -9,14 +9,14 @@ Actualiza la tabla de estado al terminar cada tarea. Una fase se cierra solo cua
 | F1 | Motor de combate (core) | **cerrada** 2026-11-16 | 63 tests / 197 comprobaciones en verde (`test_battle_turns`, `test_battle_weapons`, `test_mech_build`). Prueba de mutación: quitar la rotura de energía hace fallar la suite. `gdlint` y `gdformat` limpios |
 | F2 | Datos y catálogo | **cerrada** 2026-11-16 | 58 piezas en `data/catalog.json`; el validador pasa con los 214 nombres del original prohibidos. 4 mechs de ejemplo (994, 985, 983 y 984 kg). 95 tests / 333 comprobaciones; 96 combates de estrés con acciones al azar sin romper el estado. Añadida la mejora M6 |
 | F3 | IA y simulador de balance | **cerrada** 2026-11-16 | Puertas en Divino máximo, 1600 combates: físico 51.5 %, calor 49.8 %, energía 48.8 %, híbrido 48.0 %; 12.3 turnos; sin apagados seguidos; IA normal 100 % contra IA al azar. 109 tests / 428 comprobaciones. Limitaciones en la sección F3 |
-| F4 | Spike de arte | pendiente | Requiere aprobación del usuario |
-| F5 | Combate jugable (UI) | pendiente | |
+| F4 | Spike de arte | en curso | Decidido: generación local en la RTX 4050 y estilo mecha japonés (GDD §11). Entorno en `C:\Users\DANNY\dev\tools\mechforge-art\venv` (`tools/art/setup.ps1`); falta instalarle torch con CUDA y elegir el modelo. Requiere aprobación del estilo por el usuario |
+| F5 | Combate jugable (UI) | en curso | Parte jugable con arte provisional hecha el 2026-11-16: combate completo contra la IA con previsión, casillas resaltadas, registro y resultado. `tools/live.ps1 -Ui` lo juega en la ventana real a través de los controles y guarda capturas (revisadas). 112 tests / 445 comprobaciones. Falta: arte definitivo, animación por piezas, partículas y medir 60 FPS |
 | F6 | Taller de armado | pendiente | |
 | F7 | Progresión y guardado | pendiente | |
 | F8 | Campaña | pendiente | |
 | F9 | Pulido y exportación | pendiente | |
 
-Orden: F0 → F1 → F2 → F3 en serie (cada una depende de la anterior). F4 puede empezar en paralelo a F1–F3 porque no toca el core. F5 necesita F1–F4.
+Orden: F0 → F1 → F2 → F3 en serie (cada una depende de la anterior). A petición del usuario (2026-11-16), el combate jugable de F5 se hizo antes que F4, con figuras provisionales, para poder probar las mecánicas en vivo cuanto antes; el arte de F4 sustituye después el dibujo de `MechView` sin tocar el resto.
 
 ## Paso 1
 
@@ -73,6 +73,14 @@ Orden: F0 → F1 → F2 → F3 en serie (cada una depende de la anterior). F4 pu
 - Animación por piezas, partículas y sacudida de cámara (GDD §11).
 
 **Puerta:** un combate completo contra la IA de principio a fin, con capturas de 3 momentos (inicio, apagado del rival y victoria); 60 FPS medidos en la laptop.
+
+**Hecho en la parte jugable:**
+- `scenes/main.tscn`: menú mínimo para elegir mech propio, rival, tier y dificultad.
+- `BattleScreen` reproduce los eventos del motor uno a uno con la foto de estado que trae cada evento; nunca cambia el estado por su cuenta.
+- `MechView` dibuja cada pieza como un bloque del color de su elemento, y el calor tiñe el torso de rojo.
+- Los textos de la interfaz están en `ui/texts.gd`.
+- Pruebas en vivo: `tools/live.ps1` abre el juego real, la IA juega el combate y se guardan capturas; con `-Ui` el lado del jugador pasa por los mismos controles que una persona. CDP no aplica: el juego es una app nativa de Godot, no un navegador.
+- `tools/play.ps1` abre el juego para jugar a mano.
 
 ### F6 — Taller de armado
 - Equipar piezas por hueco, barra de peso con sobrecarga, resumen de stats, avisos (sin torso o piernas, resistencias repetidas, más de 1010 kg) y vista previa del mech montado.
