@@ -269,6 +269,8 @@ func _begin_turn() -> void:
 			actions = 1
 			_log("forced_cool", {"amount": amount})
 	me.shutdown_last_turn = shutdown
+	if rules.m6_regen_at_turn_start:
+		_regen(me)
 	if _first_turn and rules.m5_first_turn_single_action:
 		actions = mini(actions, 1)
 	_first_turn = false
@@ -286,11 +288,17 @@ func _end_turn(fire_drone: bool) -> void:
 		_use(me, foe, "drone", "drone")
 		if _check_winner():
 			return
-	var before := me.energy
-	me.energy = mini(me.energy_cap, me.energy + me.energy_regen)
-	_log("regen", {"amount": me.energy - before})
+	if not rules.m6_regen_at_turn_start:
+		_regen(me)
 	turn = 1 - turn
 	_begin_turn()
+
+
+func _regen(mech: BattleMech) -> void:
+	var before := mech.energy
+	mech.energy = mini(mech.energy_cap, mech.energy + mech.energy_regen)
+	if mech.energy != before:
+		_log("regen", {"amount": mech.energy - before})
 
 
 ## Usa la pieza del hueco: tira el dano, aplica costos y efectos, y mueve.

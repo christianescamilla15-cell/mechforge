@@ -7,7 +7,7 @@ Actualiza la tabla de estado al terminar cada tarea. Una fase se cierra solo cua
 |---|---|---|---|
 | F0 | Preparación | **cerrada** 2026-11-16 | Godot 4.7.2 + GUT 9.7.1 + gdtoolkit 4.5.0. `tools/test.ps1` en verde y devuelve exit 1 con un test roto; `--import` sin errores |
 | F1 | Motor de combate (core) | **cerrada** 2026-11-16 | 63 tests / 197 comprobaciones en verde (`test_battle_turns`, `test_battle_weapons`, `test_mech_build`). Prueba de mutación: quitar la rotura de energía hace fallar la suite. `gdlint` y `gdformat` limpios |
-| F2 | Datos y catálogo | pendiente | |
+| F2 | Datos y catálogo | **cerrada** 2026-11-16 | 58 piezas en `data/catalog.json`; el validador pasa con los 214 nombres del original prohibidos. 4 mechs de ejemplo (994, 985, 983 y 984 kg). 95 tests / 333 comprobaciones; 96 combates de estrés con acciones al azar sin romper el estado. Añadida la mejora M6 |
 | F3 | IA y simulador de balance | pendiente | |
 | F4 | Spike de arte | pendiente | Requiere aprobación del usuario |
 | F5 | Combate jugable (UI) | pendiente | |

@@ -18,3 +18,14 @@ extends Resource
 @export var m2_no_chain_shutdown: bool = true
 ## M5: quien empieza tiene 1 sola accion en su primer turno.
 @export var m5_first_turn_single_action: bool = true
+## M6: la energia se regenera al inicio del turno propio y no al final, para
+## que un drenaje no deje al rival en cero justo antes de jugar.
+@export var m6_regen_at_turn_start: bool = true
+
+@export_group("Progresion")
+## Multiplicador de estadisticas por tier, de Comun a Divino (GDD 8).
+@export var tier_mult: Array[float] = [1.0, 1.35, 1.8, 2.4, 3.2, 4.2]
+## Nivel maximo dentro de cada tier.
+@export var tier_max_level: Array[int] = [10, 15, 20, 25, 30, 40]
+## Bonus al llegar al nivel maximo del tier (0.3 = +30 %).
+@export var level_bonus: float = 0.3

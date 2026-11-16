@@ -6,15 +6,64 @@ extends Resource
 
 enum Type { TORSO, LEGS, SIDE, TOP, DRONE, MODULE, CHARGE, TELEPORT, HOOK }
 enum Element { PHYSICAL, HEAT, ENERGY, COMBINED }
+enum Tier { COMMON, RARE, EPIC, LEGENDARY, MYTHIC, DIVINE }
 
 const TAG_MELEE := "melee"
 const TAG_SWORD := "espada"
+const KNOWN_TAGS: Array[String] = [TAG_MELEE, TAG_SWORD]
+
+## Estadisticas que crecen con el tier y el nivel (GDD 8).
+const SCALED_STATS: Array[String] = [
+	"health",
+	"energy_cap",
+	"energy_regen",
+	"heat_cap",
+	"cooling",
+	"res_physical",
+	"res_heat",
+	"res_energy",
+	"dmg_min",
+	"dmg_max",
+	"heat_dmg",
+	"energy_dmg",
+	"res_dmg",
+	"heat_cap_dmg",
+	"cooling_dmg",
+	"energy_cap_dmg",
+	"energy_regen_dmg",
+	"backfire",
+	"heat_cost",
+	"energy_cost",
+]
+## Estadisticas que no cambian nunca.
+const FIXED_STATS: Array[String] = [
+	"weight",
+	"walk",
+	"jump",
+	"range_min",
+	"range_max",
+	"push",
+	"pull",
+	"recoil",
+	"advance",
+	"retreat",
+	"uses",
+]
 
 @export var id: String = ""
 @export var display_name: String = ""
 @export var type: Type = Type.SIDE
 @export var element: Element = Element.PHYSICAL
 @export var tags: PackedStringArray = []
+## Tiers entre los que puede existir la pieza. Las estadisticas del catalogo
+## son siempre las de Divino a nivel maximo; ItemScaling las baja al resto.
+@export var tier_min: Tier = Tier.COMMON
+@export var tier_max: Tier = Tier.DIVINE
+## Tier y nivel a los que estan resueltas las estadisticas de esta instancia.
+@export var tier: Tier = Tier.DIVINE
+@export var level: int = 0
+## Datos de arte: ruta del sprite y anclas de montaje (los define la fase F4).
+@export var art: Dictionary = {}
 
 @export_group("Cuerpo")
 @export var weight: int = 0

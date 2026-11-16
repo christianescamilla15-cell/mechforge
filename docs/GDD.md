@@ -28,7 +28,7 @@ Conservamos el núcleo de Super Mechs: arena lineal, 2 acciones por turno, tres 
    - El calor no baja solo: únicamente con la acción de enfriar o con el enfriado forzado.
 2. **Acciones:** 2 por turno (1 si hubo enfriado forzado). Cada arma se puede usar **una sola vez por turno**.
 3. **Dron:** tras la última acción dispara automáticamente si puede pagar sus costos y tiene al rival en alcance. No gasta acción. Si el dron tiene usos, son por pelea. En un turno perdido por apagado el dron no dispara, pero la energía sí se regenera.
-4. **Fin de turno:** regenera `energía += regeneración` (sin pasar de la capacidad) y se vacía la lista de armas usadas.
+4. **Energía:** al **inicio** de cada turno propio se regenera `energía += regeneración`, sin pasar de la capacidad (mejora M6; el original regeneraba al final del turno).
 5. **Victoria:** gana quien deje al rival en 0 de vida. Si ambos caen en la misma acción (por backfire), gana quien conserve más vida; si empatan, gana el defensor.
 
 ### 2.3 Acciones disponibles
@@ -76,6 +76,7 @@ Cada una es un interruptor en `RulesConfig`, encendido por defecto, para poder m
 | M3 | Previsualización: antes de confirmar, la UI muestra el daño final mín–máx tras resistencias, el calor y la energía resultantes de ambos mechs, y avisa si la acción provoca enfriado forzado o apagado. | Las fórmulas del original eran opacas. |
 | M4 | El dron está siempre activo: no existe la acción de encenderlo o apagarlo. | Era una acción torpe que casi nadie usaba bien. |
 | M5 | Iniciativa: quien empieza tiene 1 sola acción en su primer turno. | Compensa la ventaja de abrir. |
+| M6 | La energía se regenera al inicio del turno propio, no al final. | Con la regla original, un drenaje dejaba al rival en 0 justo antes de jugar y lo bloqueaba por completo. Así siempre le queda su regeneración para actuar. |
 
 ## 3. Estadísticas
 | Clave | Significado | Viene de |
@@ -125,20 +126,24 @@ Unas 58 piezas con nombres propios (nunca los del original).
 | Módulo | — | 10 (vida, cada resistencia, calor, energía y combinados) |
 | Especiales | — | 3 (carga, teletransporte, gancho) |
 
-**Anclas de balance:** valores de cada tipo en el tier máximo (Divino, nivel máximo), tomados de las medianas del catálogo original. La fase F2 deriva de ellos la base por tier y nivel con los multiplicadores de §8.
+**Cómo se guardan:** `data/catalog.json` tiene las estadísticas de cada pieza en el tier máximo (Divino a nivel máximo). El resto de tiers y niveles se calcula bajándolas en proporción (§8). `data/validation.json` fija los rangos de peso y la composición mínima que exige el validador, y `data/builds.json` los mechs de ejemplo (uno por elemento y un híbrido).
 
-| Tipo | Anclas |
+**Valores de partida** (los ajusta el simulador en F3). El daño es más bajo que en el original para que los combates duren más de tres rondas:
+
+| Tipo | Valores en Divino máximo |
 |---|---|
-| Torso | 310–370 kg · vida ~1200 · cap. energía ~240 · regen ~64 · cap. calor ~280 · enfriamiento ~80 · resistencias ~20 |
-| Piernas | 115–150 kg · vida ~430 · andar 1 y salto 2 (ruedas: andar 3) · pisotón ~[180, 220] |
-| Lateral | 8–86 kg (mediana ~47) · alcances típicos [1,1], [1,2], [2,4], [3,6] · daño medio ~290 en armas de 2 o más usos |
-| Superior | 19–75 kg (mediana ~50) · alcances típicos [3,6], [4,8], [8,8] · daño medio ~330 |
-| Dron | 20–51 kg (mediana ~43) · daño medio ~200 |
-| Módulo | 15–60 kg (mediana ~28) · resistencia ~40 · vida ~170 · capacidad ~120 · regen o enfriamiento ~55 |
+| Torso | 315–365 kg · vida 1150–1550 · cap. energía 180–400 · regen 50–125 · cap. calor 240–400 · enfriamiento 80–135 · resistencias 15–30 |
+| Piernas | 116–140 kg · vida 400–520 · andar 1 y salto 2, o ruedas con andar 3 · pisotón ~90–155 |
+| Lateral | 30–60 kg · alcances [1,1], [1,2], [1,3], [2,4], [3,6] · daño medio: físico ~230, calor y energía ~175 |
+| Superior | 48–70 kg · alcances [3,6], [4,8], [5,9] · daño medio: físico ~260, calor y energía ~215; las de 2 usos, ~340 y ~270 |
+| Dron | 30–42 kg · daño medio ~60–120 |
+| Módulo | 18–48 kg · resistencia 45 · vida 300 · capacidad 140 · regen o enfriamiento 60 |
+| Especiales | 14–22 kg · 1 uso |
 
-- Las armas de calor y energía hacen menos daño directo, pero suman calor o quitan energía: en los laterales, alrededor de 90 de calor o 120 de energía.
-- Las armas con usos limitados (1–3) pegan más fuerte que las de usos ilimitados.
-- El backfire va en armas muy fuertes, como precio.
+- **Identidad de elemento** (la exige el validador): las armas físicas no dan calor ni drenan energía; las de calor llevan `daño_calor` (laterales ~50) y las de energía `daño_energia` (laterales ~60), a cambio de un 20–25 % menos de daño directo.
+- **Costos:** las armas físicas gastan energía y algo de calor; las de calor gastan sobre todo calor propio; las de energía, sobre todo energía.
+- Las armas con usos limitados (1–3) pegan más fuerte o tienen un efecto grande (bombas de calor y de drenaje, daño a capacidades).
+- **Tier inicial:** el equipo básico empieza en Común; las piezas especializadas, en Raro, Épico o Legendario. Todas llegan a Divino.
 
 ## 7. IA del rival
 - **Por utilidad:** enumera todas las secuencias legales de 2 acciones (unas 600 como mucho) y puntúa cada una con el valor esperado. Suma el daño esperado, el calor y la energía que le niega al rival, y el valor de la posición resultante (tener al rival a tiro de las armas propias y quedar fuera del alcance de las suyas). Resta el riesgo propio de enfriado forzado o apagado y la vida perdida por backfire.
@@ -148,7 +153,9 @@ Unas 58 piezas con nombres propios (nunca los del original).
 ## 8. Progresión (completa)
 - **Tiers:** Común → Raro → Épico → Legendario → Mítico → Divino. Cada pieza tiene un tier inicial y un tier máximo.
 - **Niveles por tier:** 10 / 15 / 20 / 25 / 30 / 40.
-- **Crecimiento:** `stat(tier, nivel) = base × mult_tier[tier] × (1 + 0.3 × nivel / nivel_máx)`, con `mult_tier` = 1.0 / 1.35 / 1.8 / 2.4 / 3.2 / 4.2. El peso no escala. Los costos crecen con la mitad de la pendiente que el daño, para que subir de nivel siempre se note.
+- **Crecimiento:** `poder(tier, nivel) = mult_tier[tier] × (1 + 0.3 × nivel / nivel_máx)`, con `mult_tier` = 1.0 / 1.35 / 1.8 / 2.4 / 3.2 / 4.2. Va de 1.0 (Común nivel 0) a 5.46 (Divino nivel 40), y transformar una pieza siempre la mejora aunque reinicie el nivel.
+- **Escalado proporcional:** `stat = stat_del_catálogo × poder / 5.46`, redondeado y con mínimo 1. Escalan la vida, las capacidades, la regeneración, el enfriamiento, las resistencias, todos los daños, el backfire y los costos. No escalan el peso, el movimiento, el alcance, los empujes ni los usos. Como todo usa el mismo factor, un duelo entre mechs del mismo tier se comporta igual en cualquier tier: el balance se ajusta una sola vez.
+- Los costos escalan igual que el daño. Un arma de tier alto en un torso de tier bajo gasta una parte grande de su energía y su calor: hay que subir el núcleo para alimentar las armas grandes.
 - **Poder y fusión:** el nivel sube con "poder", que se gana fusionando piezas sobrantes (su poder depende de su tier) o núcleos.
 - **Transformación:** al llegar al nivel máximo de su tier, la pieza puede transformarse al siguiente pagando oro y núcleos. Vuelve al nivel 0 del nuevo tier.
 - **Monedas:** **oro** (sale de los combates) y **núcleos** (salen del botín y de desarmar piezas repetidas). No hay moneda de pago.

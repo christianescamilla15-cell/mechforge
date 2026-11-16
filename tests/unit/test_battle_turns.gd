@@ -32,11 +32,36 @@ func test_empieza_con_energia_llena_y_calor_cero() -> void:
 	assert_eq(e.mechs[0].health, 1000)
 
 
-func test_regenera_energia_al_final_del_turno_sin_pasar_el_tope() -> void:
+func test_m6_regenera_al_inicio_del_turno_propio() -> void:
 	var e := Fx.engine(Fx.build(), Fx.build())
 	e.mechs[0].energy = 10
 	Fx.pass_turn(e)
+	assert_eq(e.mechs[0].energy, 10, "al acabar su turno aun no regenera")
+	Fx.pass_turn(e)
+	assert_eq(e.turn, 0)
+	assert_eq(e.mechs[0].energy, 60, "regenera al empezar su turno siguiente")
+
+
+func test_m6_un_drenaje_total_deja_la_regeneracion_para_jugar() -> void:
+	var drain := Fx.gun({"element": ItemDef.Element.ENERGY, "energy_dmg": 999})
+	var e := Fx.engine(Fx.build([drain]), Fx.build([Fx.gun({"energy_cost": 40})]))
+	e.apply(BattleAction.weapon("side0"))
+	assert_eq(e.mechs[1].energy, 0)
+	Fx.pass_turn(e)
+	assert_eq(e.mechs[1].energy, 50)
+	assert_eq(e.apply(BattleAction.weapon("side0")), "", "le alcanza para disparar")
+
+
+func test_sin_m6_regenera_al_final_del_turno() -> void:
+	var rules := Fx.rules({"m6_regen_at_turn_start": false})
+	var e := Fx.engine(Fx.build(), Fx.build(), 0, rules)
+	e.mechs[0].energy = 10
+	Fx.pass_turn(e)
 	assert_eq(e.mechs[0].energy, 60)
+
+
+func test_la_regeneracion_no_pasa_del_tope() -> void:
+	var e := Fx.engine(Fx.build(), Fx.build())
 	e.mechs[1].energy = 190
 	Fx.pass_turn(e)
 	assert_eq(e.mechs[1].energy, 200)
