@@ -1,0 +1,216 @@
+# Nombres de objetos del Super Mechs original (fuente: github.com/Enegg/Item-packs items.json).
+# PROHIBIDOS en el catalogo de MechForge. Comparar sin mayusculas ni espacios.
+Abomination
+Advanced Repulser
+Advanced Teleporter
+Anguish
+Annihilation
+Archimonde
+Armor Annihilator
+Ash Creator
+Avenger
+BackBreaker
+Backstabber
+Backstabbing Guardian
+Backstabbing Protector
+Basalt Dissolver
+Basalt Polisher
+Basic Teleporter
+Battery Armor
+BigDaddy
+Blizzard Dissolver
+BloodWeep
+BrightRoar
+Broken Blizzard Annihilator
+Broken Blizzard Dissolver
+Broken Devourer
+Brutality
+BullDog
+Bunker Shell
+Burning Shower
+Chaos Bringer
+Charge Engine
+Charged Walkers
+Clash
+Cockpit Burner
+Cockpit Electrocuter
+Cockpit Piercer
+Combined Engine Unit
+Combined Storage Unit
+Cooling Mass Booster
+Corrupt Light
+Cracked Plasma Cannon
+Crimson Rapture
+Damaged Armor Annihilator
+Damaged Armor Dissolver
+Dark Eagle
+DawnBlaze
+Defence Matrix
+Delerium
+Desert Fury
+Desert Snake
+Desolation
+Devouring Paws
+Disintegration
+Distance Controller
+Distance Generator
+Distance Shredder
+Double Teleporter
+Drunk Lightning
+DustMaker
+Dynamic Stompers
+Dynamite Boots
+Ejection Blast
+Electrocuted Scope
+Electrolyte
+EMP
+Energy Battery Armor
+Energy Engine
+Energy Fortress
+Energy Free Armor
+Energy Mass Booster
+Energy Protector
+Energy Storage Unit
+Evac Spark
+Explosive Retreat
+Face Shocker
+Falcon
+FireFly
+Flame Battery Armor
+Flame Spear
+FlameWave
+Flaminator
+Flaming Grappling Hook
+Flaming Hammer
+Flaming Scope
+Fractured Basalt Annihilator
+Fractured Basalt Dissolver
+Fractured Cyber Armor
+Fractured Heat Armor
+Frantic Brute
+Frantic Flame
+Frantic Lightning
+Grave Diggers
+Greedy
+Grim Cobra
+GrimReaper
+Half Burnt Scope
+Hardened Platinum Vest
+Heat Bomb
+Heat Engine
+Heat Protector
+Heat Storage Unit
+HeatPoint
+HeronMark
+Hollow Cyber Armor
+Hollow Spectral Armor
+Hot Flash
+HurlBat
+Hybrid Energy Cannon
+Hybrid Heat Cannon
+Hysteria
+Interceptor
+Iron Boots
+Iron Frenzy
+Iron Plating
+Last Resort Vulcan
+Last Words
+Lazy Falcon
+Lightning Cutter
+Lightning Platinum Vest
+Lightning Recoiler
+Lightning Scope
+Lightning Supporters
+Magma Blast
+Magma Recoiler
+Malfunctioning Blaster
+Malice Beam
+Massive Lava Feet
+Massive Shocker Feet
+Massive Stone Feet
+Maximum Protector
+Mercy
+Mighty Cannon
+Mighty Protector
+Misguided Rocket Battery
+Molten Platinum Vest
+Mortal Bullet
+Murmur
+Naga
+Nemo
+Night Eagle
+NightFall
+Nightmare
+Obsolete Energy Cannon
+Overcharged Rocket Battery
+Overcooking Oven
+Overheated Heat Bomb
+Overload Preventor
+Overloaded EMP
+Party Crasher
+Perimeter Protector
+Physical Protector
+Piercing Fox
+Plasma Fortress
+Platinum Fortress
+Platinum Grappling Hook
+Platinum Plating
+Purifier
+Quad Core Booster
+Rail Gun
+Reckless Beam
+Reckoning
+Recoil Stompers
+Red Rain
+Repulser
+Rock Polisher
+Rock Recoiler
+Rolling Beasts
+Rusty Cyber Armor
+Rusty Energy Armor
+Rusty Heat Blaster
+Sabretooth
+Sacrifice Cannon
+Savagery
+Savior Resistance
+Scorching Feet
+Scrapped Energy Blaster
+Selfish Guardian
+Selfish Protector
+SeraphBlade
+Shadow Wolf
+Shocking Grappling Hook
+Shockwave
+Sith
+Snack
+Solar Torch
+Sorrow
+Space Invader
+Sparked Runners
+Spartan Carnage
+SpineFall
+StormWeaver
+Superb Charge Engine
+SuperCharge Protector
+Supreme Cannon
+Sweetie
+Swoop
+Terror Cry
+TerrorBlade
+The Claw
+Tonto
+Torment
+UltraBright
+Ultrahot Protector
+Unreliable Guardian
+Unreliable Protector
+Unrepaired Laser Cannon
+Unstable Power Cell
+Valiant Sniper
+Vandal Rage
+Viking Hammer
+Void
+War Hammer
+WindForge
+Windigo
+Zarkares

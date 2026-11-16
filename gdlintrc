@@ -1,0 +1,4 @@
+# Las funciones de validacion devuelven un motivo por regla, y cada archivo
+# de tests agrupa muchas pruebas: esos dos limites no aplican aqui.
+max-returns: 16
+max-public-methods: 80

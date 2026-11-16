@@ -1,0 +1,20 @@
+class_name RulesConfig
+extends Resource
+## Todos los numeros de reglas y los interruptores de mejoras (GDD 2 y 4).
+## M3 (previsualizacion) vive en BattleEngine.preview y M4 (dron siempre
+## activo) no necesita interruptor: no existe la accion de alternarlo.
+
+@export var arena_size: int = 10
+@export var start_positions: Array[Vector2i] = [Vector2i(4, 5), Vector2i(3, 6), Vector2i(2, 8)]
+@export var actions_per_turn: int = 2
+
+@export var max_weight: int = 1000
+@export var overload: int = 10
+@export var overload_hp_penalty_per_kg: int = 15
+
+## M1: variacion maxima de dano (max - min) como fraccion de la media.
+@export var m1_max_damage_spread: float = 0.30
+## M2: sin apagados seguidos.
+@export var m2_no_chain_shutdown: bool = true
+## M5: quien empieza tiene 1 sola accion en su primer turno.
+@export var m5_first_turn_single_action: bool = true

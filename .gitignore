@@ -1,0 +1,12 @@
+# Godot 4
+.godot/
+/android/
+*.translation
+# Exports
+/export/
+/build/
+# Art pipeline scratch (raw generations before curation)
+/art_raw/
+# OS
+Thumbs.db
+.DS_Store
