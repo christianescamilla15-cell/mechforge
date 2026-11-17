@@ -70,7 +70,18 @@ Conclusiones:
 - El fondo sale con un tinte verdoso o cálido en vez del gris de la referencia. No importa: se recorta.
 - `from_pipe` convierte el pipeline a 32 bits si no se le pasa `torch_dtype`; el fallo aparece como "mat1 and mat2 must have the same dtype".
 
-Siguiente prueba (sin hacer): añadir el arma sobre un cuerpo ya elegido con el pipeline de inpainting (`StableDiffusionXLControlNetUnionInpaintPipeline`) y sacar el sprite del arma de los píxeles que cambian. Así el arma se dibuja con el mech delante, que es donde el modelo acierta.
+Segunda tanda (2026-11-16, 16 imágenes más), ya con la línea de diseño elegida por el usuario (`art/cuerpo_elegido.png`: esbelta, blanca, con luces cian):
+
+| Prueba | Resultado |
+|---|---|
+| Cuerpo en calor y energía, bloque inicial con la paleta del elemento | **Mal**: sale plano y caricaturesco. El relleno de color saturado aplana el dibujo |
+| Cuerpo en calor y energía, bloque inicial blanco y gris, color pedido solo en el prompt (`--init-palette physical`) | **Bien**: vuelven el detalle y el trazo. La semilla 101 conserva la familia en los tres elementos; la 102 se va siempre al diseño con alas (coincidencia 0.30–0.40) |
+| Silueta de la imagen elegida como molde, solo contorno y relleno gris (`--shape-from`) | **Muy mal**: manchas brillantes sin estructura. Un contorno vacío no le basta al modelo |
+| Armas sueltas con control suelto y negativos de arma de mano | Ya no salen rifles con empuñadura. Calidad desigual: un cañón bueno, otro simple; los lanzamisiles son cajas; las espadas salen medievales, no de mecha |
+
+Receta que funciona hoy para cuerpos: bloque inicial con paleta `physical`, todas las líneas del bloque como control, escala 0.55, final 0.4, fuerza 1.0, color por prompt. Hay que generar varias semillas y curar.
+
+Siguiente paso (sin hacer): generar varias semillas del cuerpo con el bloque neutro, descartar las de coincidencia menor de 0.5, elegir a ojo, y cortar torso y piernas por la cadera con el recorte de fondo. Las armas y los drones se generan sueltos y se curan igual. El inpainting queda de reserva.
 
 ## Límites de los 6 GB de VRAM
 - El UNet (5.14 GB) más el ControlNet (2.5 GB) no caben a la vez en 16 bits. Guardando los dos en 8 bits (`tools/art/sd.py`) sí caben con `enable_model_cpu_offload()`: pico de 4.3 GB y 42 segundos por imagen. Exige tener el vigilante de transcripciones en pausa.

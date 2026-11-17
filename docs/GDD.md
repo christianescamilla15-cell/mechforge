@@ -212,6 +212,11 @@ Menú · Taller (armado con resumen de stats, barra de peso y avisos) · Inventa
 
 **Sensación de referencia (usuario, 2026-11-16):** del juego antiguo le atraía su aire a Metal Slug: maquinaria robusta y compacta, dibujada a mano con mucho detalle, y animación con peso. Se toma como guía de proporciones y de movimiento (§12), sin copiar su arte y sin cambiar el estilo aprobado.
 
+**Líneas de diseño (usuario, 2026-11-16):**
+- **Mechs del jugador y rivales normales:** línea esbelta, blanca con luces de color. Referencia: `docs/reference/art/cuerpo_elegido.png`.
+- **Jefes:** línea robusta, tipo tanque andante, más pesada y con más blindaje.
+- **Personalización de cabeza a pies:** como en el original, el jugador elige cada pieza entre distintos estilos y diseños y se pueden mezclar. Por eso torso, piernas, armas y dron son sprites separados con anclas comunes.
+
 **Lo que lo hace propio:**
 1. **Generación guiada por silueta.** Para cada pieza definimos una silueta o blockout simple (forma, perspectiva lateral y escala). La IA la "pinta" con un estilo fijo (img2img o ControlNet). Así todas las piezas comparten perspectiva, escala y luz, que es el punto débil de generar a ciegas.
 2. **Iluminación 2D con mapas de relieve.** Cada sprite lleva su normal map (derivado de un mapa de profundidad generado, o con una herramienta como Laigter) para que las luces 2D de Godot le den volumen.

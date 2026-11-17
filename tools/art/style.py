@@ -44,8 +44,14 @@ ELEMENT_COLORS = {
 SUBJECT_PARTS = {
     "torso": "upper body, from side, profile, solo, armor, shoulder armor, thrusters",
     "legs": "mechanical legs, lower body, from side, profile, solo, armor",
-    "cannon": "cannon, weapon focus, from side, profile, solo, gun barrel, still life",
+    "cannon": "arm cannon, cannon, weapon focus, from side, solo, gun barrel, still life",
+    "sword": "sword, huge weapon, weapon focus, from side, solo, still life",
+    "pod": "missile pod, weapon focus, from side, solo, still life",
 }
+# Lo que hay que evitar en cada pieza suelta, ademas de NEGATIVE: sin esto
+# las armas salen como armas de mano, con empunadura y gatillo.
+WEAPON_NEGATIVE = "trigger, handgun, pistol grip, gun stock, holding, hands"
+PART_NEGATIVE = {"cannon": WEAPON_NEGATIVE, "sword": "holding, hands, sheath", "pod": "holding, hands"}
 PART_COLORS = {
     "physical": "steel grey armor, white armor",
     "heat": "orange armor, red armor, glowing vents",
@@ -64,6 +70,11 @@ CLEAN_SUFFIX = "anime coloring, clean lineart, cel shading, simple background, g
 def subject_for(part):
     """Etiquetas del sujeto: el mech entero o una pieza suelta."""
     return SUBJECT_PARTS.get(part, SUBJECT_WHOLE_MECH)
+
+
+def negative_for(part):
+    extra = PART_NEGATIVE.get(part, "")
+    return NEGATIVE + (", " + extra if extra else "")
 
 
 def colors_for(part, element):

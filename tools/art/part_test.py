@@ -21,6 +21,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 import torch
+from PIL import Image
 
 import blockout
 import sd
@@ -61,11 +62,22 @@ def silhouette_match(image, mask):
     return iou, covered, outside
 
 
+def shape_from_image(path):
+    """Usa la silueta de una imagen ya generada como molde: el contorno manda
+    y el interior queda libre. El bloque inicial es gris neutro, para que el
+    color lo ponga el prompt y no un relleno plano."""
+    figure = foreground_mask(Image.open(path))
+    mask = Image.fromarray((figure * 255).astype(np.uint8), "L")
+    init = Image.new("RGB", mask.size, blockout.BACKGROUND)
+    init.paste((205, 206, 210), mask=mask)
+    return init, blockout.contour_of(mask), mask
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--batch", required=True, help="nombre de la tanda (subcarpeta de salida)")
     parser.add_argument("--parts", nargs="+", default=["mech", "torso", "legs", "cannon"])
-    parser.add_argument("--element", choices=sorted(style.ELEMENT_COLORS), default="physical")
+    parser.add_argument("--element", nargs="+", choices=sorted(style.ELEMENT_COLORS), default=["physical"])
     parser.add_argument("--seeds", type=int, nargs="+", default=[101])
     parser.add_argument(
         "--control",
@@ -79,6 +91,12 @@ def main():
     )
     parser.add_argument("--control-scale", type=float, nargs="+", default=[0.5])
     parser.add_argument("--control-end", type=float, nargs="+", default=[0.4])
+    parser.add_argument(
+        "--init-palette",
+        choices=sorted(blockout.PALETTES),
+        help="paleta del bloque inicial; por defecto la del elemento. El color final lo pide el prompt",
+    )
+    parser.add_argument("--shape-from", type=Path, help="imagen cuya silueta se usa como molde en vez del bloque")
     parser.add_argument("--fit", action="store_true", help="pieza agrandada al 80 %% del lienzo")
     parser.add_argument("--steps", type=int, default=style.STEPS)
     parser.add_argument("--offload", choices=sd.OFFLOAD_CHOICES, default="fp8")
@@ -91,18 +109,23 @@ def main():
     print("modelo cargado en %.0f s" % (time.time() - started), flush=True)
 
     grid = list(
-        itertools.product(args.parts, args.control, args.strength, args.control_scale, args.control_end, args.seeds)
+        itertools.product(
+            args.parts, args.element, args.control, args.strength, args.control_scale, args.control_end, args.seeds
+        )
     )
     print("%d imagenes por generar" % len(grid), flush=True)
-    for part, control_kind, strength, scale, end, seed in grid:
-        init, control, mask = blockout.render(part, args.element, args.fit)
+    for part, element, control_kind, strength, scale, end, seed in grid:
+        init, control, mask = blockout.render(part, args.init_palette or element, args.fit)
         if control_kind == "contour":
             control = blockout.contour_of(mask)
-        prompt = style.prompt(style.subject_for(part), style.colors_for(part, args.element))
+        if args.shape_from:
+            init, control, mask = shape_from_image(args.shape_from)
+            control.save(out / "_molde_control.png")
+        prompt = style.prompt(style.subject_for(part), style.colors_for(part, element))
         started = time.time()
         image = pipe(
             prompt=prompt,
-            negative_prompt=style.NEGATIVE,
+            negative_prompt=style.negative_for(part),
             image=init,
             strength=strength,
             control_image=[control],
@@ -117,7 +140,7 @@ def main():
         ).images[0]
         name = "%s_%s_%d%s_%s_s%03d_c%03d_e%03d.png" % (
             part,
-            args.element,
+            element,
             seed,
             "_fit" if args.fit else "",
             control_kind,
