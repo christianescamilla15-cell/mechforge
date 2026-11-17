@@ -89,6 +89,8 @@ Si SDXL resulta demasiado lento en 6 GB, el plan B es un modelo SD 1.5 de anime 
 - Pruebas en vivo: `tools/live.ps1` abre el juego real, la IA juega el combate y se guardan capturas; con `-Ui` el lado del jugador pasa por los mismos controles que una persona. CDP no aplica: el juego es una app nativa de Godot, no un navegador.
 - `tools/play.ps1` abre el juego para jugar a mano.
 
+**Primeros modelos en el juego (2026-11-16):** el combate ya dibuja el torso 18 y las piernas 18 del chasis ligero, unidos por el aro y coloreados por elemento (assets/mechs, scenes/battle/mech_sprites.gd, tools/art/export_parts.py). Comprobado con tools/live.ps1 y capturas revisadas. Todos los mechs usan ese mismo juego de piezas; las armas aún no tienen arte y no se dibujan (solo el dron, provisional).
+
 **Falta en F5 (presentación del combate, GDD §12):**
 - Campo `fx` en el catálogo y su validación.
 - Animaciones por piezas de todos los grupos del GDD §12.2, con partículas, sacudida de cámara y pausa en los golpes fuertes.
@@ -104,12 +106,13 @@ Si SDXL resulta demasiado lento en 6 GB, el plan B es un modelo SD 1.5 de anime 
 ### Rediseño del 2026-11-16: trabajo de motor pendiente
 El usuario amplió el diseño en una sesión (GDD §1.1, §8, §9 y §12.2; docs/CATALOGO_ARMAS.md; docs/CHASIS.md). El motor de combate actual sigue con las reglas anteriores y pasa sus 113 tests. Lo que hay que construir, en este orden, cada paso con sus tests y su comprobación de balance:
 
-1. **Chasis:** el mech pasa a tener chasis (ligero, medio o pesado) con sus bonificaciones: el ligero gasta mucha menos energía en sus armas; el pesado tiene mucha más vida y resistencias y se consigue después del nivel 10. El chasis sube de nivel. **Hecho en parte el 2026-11-16:** chasis en el motor con sus multiplicadores, tres chasis en datos, 10 tests (123 en total) y simulador de chasis contra chasis; todos los cruces quedan entre el 40 % y el 60 % (docs/CHASIS.md, sección 5). Falta: niveles del chasis, elegir chasis en el menú y en los mechs de ejemplo, y repetir el ajuste con el catálogo nuevo.
+1. **Chasis:** el mech pasa a tener chasis (ligero, medio o pesado) con sus bonificaciones: el ligero gasta mucha menos energía en sus armas; el pesado tiene mucha más vida y resistencias y se consigue después del nivel 10. El chasis sube de nivel. **Hecho en parte el 2026-11-16:** chasis en el motor con sus multiplicadores, tres chasis en datos, 10 tests (123 en total) y simulador de chasis contra chasis; todos los cruces quedan entre el 40 % y el 60 % (docs/CHASIS.md, sección 5). La bonificación ya crece con el nivel del chasis (20 % en el nivel 0, completa en el 30). Falta: elegir chasis en el menú y en los mechs de ejemplo, y repetir el ajuste con el catálogo nuevo.
 2. **Huecos:** 2 brazos, 2 hombros y 1 pecho en vez de 4 laterales y 2 superiores; nuevo tipo de pieza para el arma de pecho.
 3. **Nivel del jugador:** experiencia por combate y desbloqueo de huecos (soporte al 3, segundo brazo al 5, pecho al 10, hombros al 15 y al 20).
 4. **Catálogo generado:** las 111 armas salen de la tabla forma × tipo × munición; el validador y el simulador comprueban el resultado. Hay que rehacer los mechs de ejemplo.
 5. **Árbol de habilidades y materia oscura:** por diseñar con el usuario antes de programarlo.
-6. **Balance:** repetir las puertas de F3 con Mítica como techo de las piezas normales y con los tres chasis.
+6. **Bonificaciones que caen en la arena** (GDD §2.8) y **habilidades de combate** del chasis: pedidas el 2026-11-16, sin programar.
+7. **Balance:** repetir las puertas de F3 con Mítica como techo de las piezas normales y con los tres chasis.
 
 
 ### F6 — Taller de armado

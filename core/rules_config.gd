@@ -29,3 +29,10 @@ extends Resource
 @export var tier_max_level: Array[int] = [6, 12, 18, 24, 30, 50]
 ## Bonus al llegar al nivel maximo del tier (0.3 = +30 %).
 @export var level_bonus: float = 0.3
+
+@export_group("Chasis")
+## Parte de la bonificacion de un chasis que ya se tiene en el nivel 0: al
+## principio las diferencias entre chasis son pequenas (docs/CHASIS.md).
+@export var chassis_start_share: float = 0.2
+## Nivel maximo de un chasis; ahi su bonificacion es completa.
+@export var chassis_max_level: int = 30

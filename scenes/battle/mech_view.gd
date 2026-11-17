@@ -13,6 +13,11 @@ const ELEMENT_COLORS: Array[Color] = [
 const OUTLINE := Color("10151c")
 ## Escala del dibujo: un mech debe caber en su casilla con el rival al lado.
 const DRAW_SCALE := 0.72
+## Juego de sprites del chasis ligero (assets/mechs). De momento todos los
+## mechs usan el mismo, coloreado segun el elemento de cada pieza.
+const SPRITE_SET := "ligero_18"
+## Cuanto suben las armas provisionales para quedar sobre el torso nuevo.
+const SPRITE_WEAPON_LIFT := -44.0
 
 var build: MechBuild
 ## 1 si mira a la derecha, -1 si mira a la izquierda.
@@ -21,10 +26,13 @@ var heat_ratio: float = 0.0
 var shut_down: bool = false
 
 var _base_position := Vector2.ZERO
+## Arte por piezas del mech; null mientras no este exportado (se usan bloques).
+var _sprites: MechSprites
 
 
 func setup(p_build: MechBuild, p_facing: int) -> void:
 	build = p_build
+	_sprites = MechSprites.load_set(SPRITE_SET)
 	set_facing(p_facing)
 
 
@@ -78,24 +86,15 @@ func _draw() -> void:
 		return
 	var dim := 0.45 if shut_down else 1.0
 
-	# Piernas: dos patas, o ruedas si no saltan.
-	var legs_color := _color(build.legs, dim)
-	if build.legs.jump > 0:
-		_box(Rect2(-34, -62, 22, 62), legs_color)
-		_box(Rect2(10, -62, 22, 62), legs_color)
-		_box(Rect2(-40, -8, 34, 8), legs_color.darkened(0.25))
-		_box(Rect2(6, -8, 34, 8), legs_color.darkened(0.25))
-	else:
-		_box(Rect2(-46, -40, 92, 26), legs_color)
-		for x: float in [-30.0, 0.0, 30.0]:
-			draw_circle(Vector2(x, -14), 15, legs_color.darkened(0.3))
-			draw_arc(Vector2(x, -14), 15, 0, TAU, 20, OUTLINE, 2.0)
-
-	# Torso con sensor frontal.
-	var torso_color := _color(build.torso, dim)
-	_box(Rect2(-46, -158, 92, 98), torso_color)
-	_box(Rect2(-36, -148, 72, 26), torso_color.lightened(0.18))
-	_box(Rect2(20, -142, 20, 10), Color("fff3a0") if not shut_down else Color("3a3a3a"))
+	if _sprites != null:
+		_sprites.draw(self, build.torso.element, build.legs.element, _body_tint(dim))
+		# Las armas todavia no tienen arte: con el mech dibujado no se pintan
+		# sus bloques provisionales, que taparian el dibujo. Solo el dron.
+		draw_set_transform(Vector2(0.0, SPRITE_WEAPON_LIFT))
+		_draw_drone(dim)
+		draw_set_transform(Vector2.ZERO)
+		return
+	_draw_block_body(dim)
 
 	# Armas laterales: dos delante y dos detras, apuntando al rival.
 	var side_slots: Array[Vector2] = [
@@ -123,6 +122,15 @@ func _draw() -> void:
 		_box(Rect2(-30, y, 34, 20), color.darkened(0.25))
 		_box(Rect2(0, y + 4, 60, 11), color)
 
+	_draw_drone(dim)
+
+	# El calor tine el torso de rojo.
+	if heat_ratio > 0.02 and not shut_down:
+		var glow := Color(1.0, 0.15, 0.05, minf(heat_ratio, 1.0) * 0.55)
+		draw_rect(Rect2(-46, -158, 92, 98), glow)
+
+
+func _draw_drone(dim: float) -> void:
 	# Dron flotando detras.
 	if build.drone != null:
 		var color := _color(build.drone, dim)
@@ -130,10 +138,37 @@ func _draw() -> void:
 		draw_arc(Vector2(-70, -206), 15, 0, TAU, 24, OUTLINE, 2.0)
 		_box(Rect2(-62, -210, 20, 7), color.lightened(0.3))
 
-	# El calor tine el torso de rojo.
-	if heat_ratio > 0.02 and not shut_down:
-		var glow := Color(1.0, 0.15, 0.05, minf(heat_ratio, 1.0) * 0.55)
-		draw_rect(Rect2(-46, -158, 92, 98), glow)
+
+## Bloques provisionales de piernas y torso, para cuando no hay arte.
+func _draw_block_body(dim: float) -> void:
+	# Piernas: dos patas, o ruedas si no saltan.
+	var legs_color := _color(build.legs, dim)
+	if build.legs.jump > 0:
+		_box(Rect2(-34, -62, 22, 62), legs_color)
+		_box(Rect2(10, -62, 22, 62), legs_color)
+		_box(Rect2(-40, -8, 34, 8), legs_color.darkened(0.25))
+		_box(Rect2(6, -8, 34, 8), legs_color.darkened(0.25))
+	else:
+		_box(Rect2(-46, -40, 92, 26), legs_color)
+		for x: float in [-30.0, 0.0, 30.0]:
+			draw_circle(Vector2(x, -14), 15, legs_color.darkened(0.3))
+			draw_arc(Vector2(x, -14), 15, 0, TAU, 20, OUTLINE, 2.0)
+
+	# Torso con sensor frontal.
+	var torso_color := _color(build.torso, dim)
+	_box(Rect2(-46, -158, 92, 98), torso_color)
+	_box(Rect2(-36, -148, 72, 26), torso_color.lightened(0.18))
+	_box(Rect2(20, -142, 20, 10), Color("fff3a0") if not shut_down else Color("3a3a3a"))
+
+
+## Tinte del arte: se oscurece apagado y enrojece con el calor.
+func _body_tint(dim: float) -> Color:
+	var tint := Color(dim, dim, dim)
+	if not shut_down:
+		# Solo se nota a partir de media barra de calor.
+		var hot := clampf((heat_ratio - 0.5) / 0.5, 0.0, 1.0)
+		tint = tint.lerp(Color(1.0, 0.42, 0.3), hot * 0.55)
+	return tint
 
 
 func _color(item: ItemDef, dim: float) -> Color:

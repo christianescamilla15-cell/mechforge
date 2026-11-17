@@ -88,6 +88,36 @@ func test_la_potencia_de_disparo_multiplica_el_dano() -> void:
 	assert_eq(before - engine.mechs[1].health, 100)
 
 
+func test_al_maximo_nivel_el_chasis_rinde_completo() -> void:
+	var r := RulesConfig.new()
+	var heavy := _chassis({"health_mult": 1.25, "damage_mult": 0.9})
+	var top := heavy.at_level(r.chassis_max_level, r)
+	assert_almost_eq(top.health_mult, 1.25, 0.0001)
+	assert_almost_eq(top.damage_mult, 0.9, 0.0001)
+	assert_eq(top.level, r.chassis_max_level)
+
+
+func test_al_principio_las_diferencias_son_pequenas() -> void:
+	var r := RulesConfig.new()
+	var heavy := _chassis({"health_mult": 1.25, "damage_mult": 0.9})
+	var start := heavy.at_level(0, r)
+	# En el nivel 0 solo se tiene la parte inicial de la bonificacion.
+	assert_almost_eq(start.health_mult, 1.0 + 0.25 * r.chassis_start_share, 0.0001)
+	assert_almost_eq(start.damage_mult, 1.0 - 0.1 * r.chassis_start_share, 0.0001)
+	assert_almost_eq(heavy.health_mult, 1.25, 0.0001, "el chasis original no cambia")
+
+
+func test_mejorar_el_chasis_potencia_su_bonificacion() -> void:
+	var r := RulesConfig.new()
+	var heavy := _chassis({"health_mult": 1.25})
+	var previous := 1.0
+	for step in [0, 10, 20, 30]:
+		var current := heavy.at_level(step, r).health_mult
+		assert_gt(current, previous, "nivel %d" % step)
+		previous = current
+	assert_almost_eq(heavy.at_level(999, r).health_mult, 1.25, 0.0001, "no pasa del maximo")
+
+
 func test_los_tres_chasis_del_juego_cargan_sin_errores() -> void:
 	var library := ChassisLibrary.load_file("res://data/chassis.json")
 	assert_eq(library.errors, [] as Array[String])

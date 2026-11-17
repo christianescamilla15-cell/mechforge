@@ -6,6 +6,7 @@ extends SceneTree
 ##   --battles=N      combates por cruce, mech y escala de vida (por defecto 6)
 ##   --tier=MYTHIC    clase de todas las piezas (Mitica es el techo normal)
 ##   --seed=1         semilla base
+##   --chassis-level=N nivel de los chasis (por defecto el maximo)
 ## Promedia sobre las mismas escalas de vida que el simulador de balance y
 ## alterna quien empieza, por la misma razon (ver balance_sim.gd).
 
@@ -31,13 +32,14 @@ func _initialize() -> void:
 		return
 
 	var level := _rules.tier_max_level[tier]
+	var chassis_level := int(args.get("chassis-level", str(_rules.chassis_max_level)))
 	for id in library.ids():
 		for chassis_id in chassis.ids():
 			for s in HP_SCALES.size():
 				var build := library.make(id, catalog, _rules, tier, level)
 				for item in build.all_items():
 					item.health = roundi(item.health * HP_SCALES[s])
-				build.chassis = chassis.get_def(chassis_id)
+				build.chassis = chassis.get_def(chassis_id).at_level(chassis_level, _rules)
 				_builds["%s/%s@%d" % [id, chassis_id, s]] = build
 
 	var ids := chassis.ids()

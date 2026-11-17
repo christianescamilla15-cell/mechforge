@@ -93,6 +93,15 @@ Cada una es un interruptor en `RulesConfig`, encendido por defecto, para poder m
 - **M6:** sin ella, el mech de energía gana el 82 % y quien empieza el 69 %.
 - **M2:** con los mechs de ejemplo no cambia nada medible. Los apagados son el 0.5 % de los turnos y nunca se encadenan; queda como red de seguridad para builds extremos.
 
+### 2.8 Bonificaciones que caen en la arena
+Pedido por el usuario el 2026-11-16, como en el juego antiguo. **Sin programar todavía.**
+
+- Durante el combate pasa una nave y deja caer una bonificación en la arena.
+- Quien la toma obtiene una ventaja durante **3 turnos**: por ejemplo más armadura o más potencia de disparo.
+- Todo es al azar: qué bonificación es y cuánto da, desde una ligera hasta una extrema de **hasta el 50 %** en alguna potencia o habilidad.
+- Propuesta para programarlo, por confirmar: la bonificación cae en una casilla libre y la toma el mech que se mueve a ella; el azar sale de la misma semilla del combate, para que siga siendo reproducible; la IA valora ir a por ella; el tipo se ve antes de tomarla y la cantidad no.
+
+
 ## 3. Estadísticas
 | Clave | Significado | Viene de |
 |---|---|---|

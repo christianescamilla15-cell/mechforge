@@ -81,6 +81,17 @@ Aprobados por el usuario el 2026-11-16. Cada chasis tiene su carácter en combat
 - Depende mucho del mech: con el de calor el medio le gana al pesado el 94 % de las veces, y con el híbrido solo el 4 %. Elegir chasis según lo que llevas montado es parte del juego, pero esos extremos hay que suavizarlos.
 - Estos números son provisionales: hay que repetir el ajuste cuando cambien los huecos y el catálogo de armas.
 
+**La bonificación crece con el nivel del chasis** (usuario, 2026-11-16): los números de la tabla son los del nivel máximo. Al principio las diferencias entre chasis son pequeñas y se potencian al mejorarlo. En el motor: en el nivel 0 el chasis da el 20 % de su bonificación y crece de forma lineal hasta el nivel 30 (RulesConfig.chassis_start_share y chassis_max_level; ChassisDef.at_level). Medido con 360 combates por nivel:
+
+| Nivel del chasis | Ligero contra medio | Ligero contra pesado | Medio contra pesado |
+|---|---|---|---|
+| 0 | 50.0 / 50.0 | 48.3 / 51.7 | 54.2 / 45.8 |
+| 15 | 41.7 / 58.3 | 42.5 / 57.5 | 52.5 / 47.5 |
+| 30 | 39.2 / 60.8 | 50.8 / 49.2 | 49.2 / 50.8 |
+
+**Habilidades de combate** (usuario, 2026-11-16; por diseñar): el chasis permite una serie de habilidades que se usan durante la batalla. Va junto con el árbol de habilidades (docs/CATALOGO_ARMAS.md, sección 4).
+
+
 ## 6. Cómo se dibujan las piezas
 
 Método nuevo: **cada pieza se dibuja ya montada**.
