@@ -1,6 +1,6 @@
 class_name ArenaShop
 extends RefCounted
-## Tienda de arena (GDD 8): mejoras permanentes que se compran con el oro que
+## Armeria (GDD 8): mejoras permanentes que se compran con las celdas que
 ## dan los combates. Sigue la estructura del original: cada mejora tiene 10
 ## niveles pequenos (docs/reference/original-mechanics.md).
 ## Datos en data/arena_shop.json: {"steps", "tracks", "prices", "rewards"}.
@@ -11,7 +11,8 @@ var steps: Array[int] = []
 var tracks: Dictionary[String, Dictionary] = {}
 ## Oro que cuesta llegar a cada nivel desde el anterior.
 var prices: Array[int] = []
-## Oro que da cada resultado: "win", "loss" y "boss_win".
+## Celdas que da cada resultado: "arena_win", "arena_loss", "campaign_win",
+## "campaign_loss", "boss_win" y "boss_loss".
 var rewards: Dictionary = {}
 var errors: Array[String] = []
 
@@ -88,9 +89,6 @@ func reward(kind: String) -> int:
 func upgrades_for(levels: Dictionary) -> ArenaUpgrades:
 	var out := ArenaUpgrades.new()
 	for track: String in tracks:
-		var amount := value(track, int(levels.get(track, 0)))
-		if track == "health":
-			out.health = roundi(amount)
-		elif track in out:
-			out.set(track, amount)
+		if track in out:
+			out.set(track, value(track, int(levels.get(track, 0))))
 	return out

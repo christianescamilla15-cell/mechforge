@@ -1,0 +1,74 @@
+{
+  "schema_version": 1,
+  "world_bosses": 10,
+  "on_boss_loss": "new_game",
+  "zones": [
+    {
+      "id": "zona_1",
+      "name": "Frontera de Chatarra",
+      "tier": "COMMON",
+      "player_level": 6,
+      "arena": {
+        "level": 6,
+        "difficulty": "NORMAL"
+      },
+      "fights": [
+        {
+          "enemy": "fisico_vanguardia",
+          "level": 0,
+          "difficulty": "EASY"
+        },
+        {
+          "enemy": "calor_horno",
+          "level": 0,
+          "difficulty": "EASY"
+        },
+        {
+          "enemy": "energia_tempestad",
+          "level": 1,
+          "difficulty": "EASY"
+        },
+        {
+          "enemy": "hibrido_quimera",
+          "level": 2,
+          "difficulty": "NORMAL"
+        },
+        {
+          "enemy": "fisico_vanguardia",
+          "level": 3,
+          "difficulty": "NORMAL"
+        },
+        {
+          "enemy": "calor_horno",
+          "level": 4,
+          "difficulty": "NORMAL"
+        },
+        {
+          "enemy": "energia_tempestad",
+          "level": 4,
+          "difficulty": "NORMAL"
+        },
+        {
+          "enemy": "hibrido_quimera",
+          "level": 5,
+          "difficulty": "HARD"
+        },
+        {
+          "enemy": "calor_horno",
+          "level": 6,
+          "difficulty": "HARD"
+        },
+        {
+          "enemy": "energia_tempestad",
+          "level": 6,
+          "difficulty": "HARD"
+        }
+      ],
+      "boss": {
+        "enemy": "jefe_zona_1",
+        "level": 6,
+        "difficulty": "HARD"
+      }
+    }
+  ]
+}

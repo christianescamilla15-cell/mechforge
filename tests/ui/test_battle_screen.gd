@@ -52,6 +52,35 @@ func test_cada_evento_trae_la_foto_del_estado_que_usa_la_pantalla() -> void:
 	assert_eq(entry["state"][1]["pos"], engine.mechs[1].position)
 
 
+func test_en_la_campana_no_hay_revancha_y_se_ve_lo_que_se_cobra() -> void:
+	var screen := BattleScreen.new()
+	screen.speed = 400.0
+	screen.allow_rematch = false
+	add_child_autofree(screen)
+	screen.player_ai = BattleAI.new(D.NORMAL, 11)
+	screen.finished.connect(func(_won: bool) -> void: screen.set_result_note("+250 celdas"))
+	screen.start(_rules, _build("fisico_vanguardia"), _build("calor_horno"), 3, D.NORMAL)
+	await wait_for_signal(screen.finished, 60.0)
+	assert_true(screen._result.visible)
+	assert_true(screen._result_note.visible)
+	assert_eq(screen._result_note.text, "+250 celdas")
+	var shown := 0
+	for button: Button in screen._result.find_children("*", "Button", true, false):
+		if button.visible:
+			shown += 1
+			assert_eq(button.text, Txt.t("menu"))
+	assert_eq(shown, 1, "solo queda el boton de volver")
+
+
+func test_un_combate_nuevo_borra_la_nota_del_anterior() -> void:
+	var screen := _new_screen()
+	screen.player_ai = BattleAI.new(D.NORMAL, 11)
+	screen.set_result_note("+250 celdas")
+	screen.start(_rules, _build("fisico_vanguardia"), _build("calor_horno"), 3, D.NORMAL)
+	assert_false(screen._result_note.visible)
+	await wait_for_signal(screen.finished, 60.0)
+
+
 func _new_screen() -> BattleScreen:
 	var screen := BattleScreen.new()
 	screen.speed = 400.0

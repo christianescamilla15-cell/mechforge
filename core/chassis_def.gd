@@ -34,6 +34,15 @@ const MAX_MULT := 3.0
 ## Acciones de mas por turno. Solo para jefes: es lo que los hace dificiles
 ## sin darles mas vida. No crece con el nivel.
 @export var extra_actions: int = 0
+## Habilidad especial de un jefe (GDD 9.1): su nombre y lo que hace, para la
+## interfaz. Es una ventaja que el jugador no puede tener en esa zona.
+@export var ability: String = ""
+@export var ability_text: String = ""
+
+
+## Los chasis de jefe son los que tienen habilidad especial o acciones de mas.
+func is_boss() -> bool:
+	return ability != "" or extra_actions > 0
 
 
 ## Devuelve el chasis tal como rinde a ese nivel. Los multiplicadores de los

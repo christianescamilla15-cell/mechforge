@@ -88,6 +88,9 @@ Regla de trabajo que pidió el usuario: no se hace nada desde cero. Cada mecáni
 - Clases y niveles máximos (6/12/18/24/30/50), chasis con bonificaciones y tipos de arma ligados a la clase.
 - Mejoras M1 a M6 del GDD, que responden a las quejas de la comunidad.
 
+**Se aparta del original por ajuste nuestro (pendiente del visto bueno del usuario)**
+- Blindaje de la tienda: +15 % de vida en vez de +350 planos, porque aquí la vida escala con la clase (GDD §9.2).
+
 **Me aparté sin base y hay que corregir**
 - **Alcance de la artillería:** puse 5–9, que no existe en el original. Las armas superiores del original son [4,8], [3,6] y de alcance fijo [8,8] y [7,7]. La artillería pasa a alcance fijo.
 - **Proporción de alcances en armas laterales:** en el original domina [2,4] (32 de 79), luego [1,2] (23), [3,6] (16) y [1,1] (6). Al generar las 111 armas hay que respetar esa proporción, no repartir a partes iguales.
@@ -101,3 +104,21 @@ Regla de trabajo que pidió el usuario: no se hace nada desde cero. Cada mecáni
 **No está en el análisis**
 - La nave que deja bonificaciones: sale del recuerdo del usuario, no de las fuentes. Sus números (turno 3, cada 5, del 10 al 50 %, 3 turnos) son propuesta nuestra.
 
+## Referencia de estructura: Swords and Sandals (2026-11-17)
+El usuario nombró este juego como modelo de lo que pasa **fuera del combate** y lo confirmó con una captura de la búsqueda. Es una serie Flash de gladiadores (el segundo, *Emperor's Reign*, es de 2007). Sirve de referencia para el ciclo de la partida, no para el combate, que sigue siendo el de este documento.
+
+**Lo que dicen las fuentes** (wiki de fans y fichas de tiendas; fiabilidad media):
+- Combates por turnos de un gladiador contra otro en la arena.
+- El gladiador sube de nivel y reparte puntos entre sus estadísticas (la wiki de fans habla de 8 estadísticas y 4 puntos por nivel).
+- Fuera de la arena hay tiendas y herrero para comprar y equipar armas y armadura; el nivel desbloquea equipo mejor.
+- Se asciende venciendo a los campeones de la arena, que hacen de jefes; los torneos van por tramos de nivel y pagan oro y experiencia.
+- **No confirmado:** qué pasa al perder un duelo. Las fuentes no lo dicen; la regla de que perder contra el jefe termina la partida es decisión del usuario (GDD §9).
+
+**Lo que tomamos** (GDD §9):
+- Una base con tres sitios: la **campaña** (los combates de la zona y su jefe), la **arena** (combates sueltos para juntar moneda) y la **armería** (comprar puntos de mejora).
+- El jugador decide cuándo desafiar al jefe: ir directo es una apuesta, y farmear en la arena la va volviendo segura.
+- Perder contra el jefe termina la partida y se empieza de cero.
+
+**Lo que no tomamos:** nombres, personajes, arte ni sonido. Tampoco su combate.
+
+Fuentes: [wiki de fans](https://swordsandsandals.fandom.com/wiki/Swords_and_sandals_gladiator), [Wikipedia](https://en.wikipedia.com/wiki/Swords_and_Sandals), [TV Tropes](https://www.tvtropes.org/pmwiki/pmwiki.php/VideoGame/SwordsAndSandals), [ficha de Steam de la reedición](https://store.steampowered.com/app/649600/Swords_and_Sandals_2_Redux_Maximus_Edition/), [Flash Legacy](https://www.flashlegacy.com/game/swords-and-sandals-2-emperors-reign).

@@ -36,6 +36,9 @@ var speed: float = 1.0
 ## Escenario del combate (data/stages.json); vacio = el de por defecto.
 var stage: Dictionary = {}
 var names: Array[String] = [Txt.t("you"), Txt.t("rival")]
+## Si al terminar se ofrece repetir el combate, y con que texto ("" = revancha).
+var allow_rematch: bool = true
+var rematch_text: String = ""
 
 var _arena: ArenaView
 var _panels: Array[StatPanel] = []
@@ -47,6 +50,7 @@ var _log: RichTextLabel
 var _action_bar: ActionBar
 var _result: PanelContainer
 var _result_label: Label
+var _result_note: Label
 
 var _shown: int = 0
 var _busy: bool = true
@@ -74,6 +78,7 @@ func start(
 	_busy = true
 	_teleport_mode = false
 	_result.hide()
+	set_result_note("")
 	_log.clear()
 	_arena.cells = rules.arena_size
 	for i in 2:
@@ -378,6 +383,12 @@ func _show_result() -> void:
 	finished.emit(won)
 
 
+## Linea bajo el resultado: lo que el jugador cobra o pierde con el combate.
+func set_result_note(text: String) -> void:
+	_result_note.text = text
+	_result_note.visible = text != ""
+
+
 func _live_state(index: int) -> Dictionary:
 	var m := engine.mechs[index]
 	return {
@@ -591,12 +602,15 @@ func _build_ui() -> void:
 	result_box.add_theme_constant_override("separation", 14)
 	_result.add_child(result_box)
 	_result_label = _label(result_box, 44)
+	_result_note = _label(result_box, 18)
+	_result_note.hide()
 	var buttons := HBoxContainer.new()
 	buttons.alignment = BoxContainer.ALIGNMENT_CENTER
 	buttons.add_theme_constant_override("separation", 12)
 	result_box.add_child(buttons)
 	var rematch := Button.new()
-	rematch.text = Txt.t("rematch")
+	rematch.text = rematch_text if rematch_text != "" else Txt.t("rematch")
+	rematch.visible = allow_rematch
 	rematch.custom_minimum_size = Vector2(130, 42)
 	rematch.pressed.connect(func() -> void: rematch_requested.emit())
 	buttons.add_child(rematch)

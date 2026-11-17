@@ -221,26 +221,47 @@ Unas 58 piezas con nombres propios (nunca los del original).
 - **Por confirmar con el usuario:** si una pieza puede subir de clase (hoy sí, con la transformación de más abajo, hasta Mítica) o si su clase es fija, y si las clases y las etapas valen igual para torsos, piernas y drones (hoy sí) o solo para armas.
 - **Poder y fusión:** el nivel sube con "poder", que se gana fusionando piezas sobrantes (su poder depende de su tier) o núcleos.
 - **Transformación:** al llegar al nivel máximo de su tier, la pieza puede transformarse al siguiente pagando oro y núcleos. Vuelve al nivel 0 del nuevo tier.
-- **Monedas:** **oro** (sale de los combates) y **núcleos** (salen del botín y de desarmar piezas repetidas). No hay moneda de pago.
+- **Monedas:** **celdas de plasma** (salen de los combates) y **núcleos** (salen del botín y de desarmar piezas repetidas). No hay moneda de pago. El usuario pidió el 2026-11-17 que la moneda no fuera "oro" ni "monedas", que no pegan con un juego de robots; "celdas de plasma" es la propuesta: los robots funcionan con energía y se la quitan al rival vencido. En el código y en el guardado se sigue llamando `gold`; el nombre visible vive en la tabla de textos, así que cambiarlo es una línea. Donde este documento diga oro, léase celdas.
 - **Botín:** cada victoria da oro y una tirada de botín, con mejores tablas en los capítulos avanzados. Hay cajas que se ganan jugando, nunca con dinero.
 - **Tienda del taller** (recuerdo del usuario, 2026-11-16: en el juego antiguo había un taller donde comprabas piezas e ibas armando tu robot o tus robots). Vende por oro las piezas básicas de cada capítulo, con un surtido que cambia al avanzar; lo raro sigue saliendo del botín.
 - **Garaje:** se pueden guardar varios mechs armados y elegir con cuál pelear.
-- **Taller de mejoras permanentes** (el equivalente de la tienda de arena): niveles comprados con oro. Daño, energía y calor hasta +20 %; resistencias hasta +40 %; vida hasta +350 plana; backfire hasta −20 %.
+- **Armería** (el equivalente de la tienda de arena del original): puntos de mejora permanentes comprados con celdas. Daño, energía y calor hasta +20 %; resistencias hasta +40 %; vida hasta +15 %; backfire hasta −20 % (§9.2).
 - **Objetivo de ritmo:** llevar un build completo a Divino debe costar unas 8–12 horas de juego. Se mide con el simulador en la fase F7.
 
 ## 9. Campaña
 **Visión (del usuario, 2026-11-16):** recuperar la versión antigua de Super Mechs para un jugador. Empiezas con un robot sencillo y avanzas combate a combate hasta un jefe superior al que solo se vence con táctica. Aquella versión era una demo que no pasaba de los primeros 10 combates; aquí va completa. La meta es unir la originalidad y el detalle del juego antiguo con las mecánicas de combate modernas. No hay multijugador.
 
-- El jugador empieza con un mech básico de tier Común (torso, piernas y un par de armas) y lo va completando con lo que gana.
+- **Estructura de la partida** (usuario, 2026-11-17; modelo: Swords and Sandals, docs/reference/original-mechanics.md). El jugador tiene una base con tres sitios:
+  - **Campaña:** los combates de la zona, en orden, y su jefe. Cada victoria avanza al siguiente.
+  - **Arena:** combates sueltos contra un rival al azar, repetibles, para juntar celdas. No avanzan la campaña.
+  - **Armería:** donde las celdas se cambian por puntos de mejora (§9.2) y, más adelante, por mejoras de armas y de blindaje pieza a pieza.
+- **Cada zona son 10 combates y un jefe.** Se puede ir directo, los 10 combates seguidos y el jefe, o pasar antes por la arena.
+- **Perder contra un jefe termina la partida** y se empieza de cero: se pierden las celdas, las mejoras y el avance; solo queda el historial (partidas perdidas y mejor marca). El juego avisa antes de entrar al combate. Perder un combate normal o uno de arena no cuesta nada: se puede repetir. La regla está en data/campaign.json (`on_boss_loss`: `new_game` o `retry`).
+- **Ritmo que pidió el usuario:** unos 50 combates ganados para tener opciones reales contra el primer jefe, y unos 100 para ganarle con facilidad. Ir directo debe ser una apuesta difícil, de táctica.
+- El jugador empieza con un mech básico de clase Básica y lo va mejorando con lo que gana.
 - **Mundo con 10 jefes** (pedido del usuario, 2026-11-16): el mundo se divide en 10 zonas, cada una con sus combates normales y un jefe al final. Los **3 últimos jefes** sueltan las piezas de clase Única. Sustituye a los 3 capítulos del plan anterior; donde este documento diga "capítulo" léase "zona". Más mundos quedan para el paso 2.
 - Los enemigos tienen builds predefinidos (en datos) que suben de tier por capítulo. Los jefes tienen piezas únicas y reglas especiales (por ejemplo, más capacidad de calor).
-- Los combates se pueden repetir para farmear. Cada capítulo desbloquea piezas y niveles del taller de mejoras.
+- Para farmear está la arena; los combates de campaña se ganan una sola vez. Cada zona desbloqueará piezas en la armería.
 - La curva de dificultad se valida con el simulador: el build "esperado" del jugador en cada capítulo debe ganar entre el 55 % y el 70 % de las veces contra los enemigos normales.
 
-### 9.1 El jefe final
-Pedido por el usuario el 2026-11-16: vencerlo debe ser extremadamente difícil, **no por la cantidad de vida**; usando las bonificaciones y los ataques con táctica, en teoría se puede ganar. La otra vía es reunir monedas en la arena para comprar mejor armamento.
+### 9.1 Los jefes
+**Reglas que fijó el usuario:**
+- Vencer a un jefe debe ser extremadamente difícil, **no por la cantidad de vida**; usando las bonificaciones y los ataques con táctica, en teoría se puede ganar. La otra vía es reunir celdas en la arena para comprar mejoras (2026-11-16).
+- **Cada jefe tiene su diseño propio y una habilidad especial:** una ventaja que el jugador no puede conseguir en la zona en la que está. Sus ejemplos: superblindaje, energía infinita, velocidad y poder de daño (2026-11-17).
 
-**Cómo está hecho** (data/chassis.json, chasis "jefe"; data/builds.json, mech "jefe_final"):
+**Cómo se hace:** la habilidad es el chasis del jefe (data/chassis.json: `ability`, `ability_text` y los números que cambia). Todos los jefes tienen la vida de un mech normal de su clase. El menú enseña la habilidad antes del combate. Cada habilidad deja un punto débil, que es la vía táctica.
+
+| Jefe | Habilidad | Qué hace | Punto débil | Estado |
+|---|---|---|---|---|
+| 1 · Capataz del Orden | Superblindaje | Sus resistencias valen el doble | Se enfría un 30 % peor; el drenaje de energía le hace daño que la coraza no para | Hecho y medido (§9.2) |
+| por asignar | Velocidad | Hace 3 acciones por turno en vez de 2 | Se enfría un 30 % peor | Hecho y medido (abajo); hoy lo usa el jefe final |
+| por asignar | Poder de daño | Sus armas pegan mucho más | por definir | El motor ya lo permite; falta medirlo |
+| por asignar | Energía infinita | Sus armas no gastan energía y no se le puede drenar | por definir | Falta en el motor |
+| 10 · Coloso del Orden | por decidir | | | Hoy usa Velocidad |
+
+Faltan seis habilidades y el reparto por zona: se deciden con el usuario. Por ahora los dos jefes construidos montan piezas de los mechs de ejemplo; su diseño y sus armas propias llegan con el catálogo nuevo.
+
+**El jefe de velocidad, medido el 2026-11-16** (data/chassis.json, chasis "jefe"; data/builds.json, mech "jefe_final"):
 - Tiene la misma vida que un mech normal de su clase.
 - Juega **3 acciones por turno** en vez de 2, con las armas de los tres elementos.
 - Resiste un 20 % más.
@@ -261,8 +282,8 @@ Pedido por el usuario el 2026-11-16: vencerlo debe ser extremadamente difícil, 
 - La IA que hace de jugador no busca las bonificaciones tan bien como una persona; un jugador atento debería sacar más partido.
 
 
-### 9.2 La segunda vía: oro de la arena y tienda
-Hecho el 2026-11-16 (core/arena_shop.gd, core/player_profile.gd, data/arena_shop.json; 13 tests). Sigue la tienda de arena del original: seis mejoras permanentes en 10 niveles pequeños, con su misma tabla de pasos (0, 1, 3, 5, 7, 9, 11, 13, 15, 17 y 20 sobre 20).
+### 9.2 La segunda vía: la arena y la armería
+Hecho el 2026-11-16 y ajustado el 2026-11-17 (core/arena_shop.gd, core/player_profile.gd, core/campaign.gd, data/arena_shop.json). La armería sigue la tienda de arena del original: seis mejoras permanentes en 10 niveles pequeños, con su misma tabla de pasos (0, 1, 3, 5, 7, 9, 11, 13, 15, 17 y 20 sobre 20).
 
 | Mejora | Tope |
 |---|---|
@@ -270,27 +291,42 @@ Hecho el 2026-11-16 (core/arena_shop.gd, core/player_profile.gd, data/arena_shop
 | Energía y regeneración | +20 % |
 | Calor y enfriamiento | +20 % |
 | Resistencias | +40 % |
-| Blindaje (vida) | +350 |
+| Blindaje (vida) | +15 % |
 | Amortiguación del retroceso propio | −20 % |
 
-- Cada combate da oro: 250 por ganar, 60 por perder y 2500 por vencer a un jefe. El progreso se guarda en user://save.json.
-- Las mejoras solo cuentan para el mech del jugador. Se compran desde el menú.
-- **Los precios y las recompensas son propuesta nuestra**: el análisis del original da la estructura y los topes, no cuánto costaba cada nivel.
+- **Blindaje en porcentaje:** el original da +350 de vida plana, pensado para mechs de su clase más alta. Aquí todo escala con la clase, y en la clase Básica esos 350 casi duplicaban la vida. +15 % es lo que valen 350 puntos en la clase Mítica, y pesa igual en cualquier clase. Ajuste nuestro, pendiente del visto bueno del usuario.
+- **Recompensas** (celdas de plasma): 250 por ganar en la arena o en la campaña, 60 por perder, 2500 por vencer a un jefe. Perder contra el jefe no paga: termina la partida (§9).
+- **Precios por nivel** (cada mejora por separado): 150, 200, 300, 400, 450, 550, 600, 700, 800 y 950. Están puestos para el ritmo que pidió el usuario: unos 50 combates ganados llevan todo al nivel 6 y unos 100, al nivel 9. Una prueba (tests/unit/test_arena_shop.gd) vigila que se mantenga.
 
-**Medido con tools/sim/shop_route_sim.gd** (jefe y jugador en clase Mítica, bonificaciones encendidas, IA difícil, 40 combates por casilla; todas las mejoras al mismo nivel):
+**Medido el 2026-11-17 contra el primer jefe** (tools/sim/shop_route_sim.gd: Capataz del Orden con Superblindaje, todo en clase Básica nivel 6, bonificaciones encendidas, IA difícil en los dos lados, 40 combates por casilla; todas las mejoras al mismo nivel):
 
-| Nivel de tienda | Oro total | Combates de arena ganados | Físico | Calor | Energía | Híbrido | Media |
+| Armería | Celdas | Combates ganados | Físico | Calor | Energía | Híbrido | Media |
 |---|---|---|---|---|---|---|---|
-| 0 | 0 | 0 | 0 % | 7.5 % | 7.5 % | 0 % | 3.8 % |
-| 2 | 4 800 | 20 | 10 % | 47.5 % | 10 % | 2.5 % | 17.5 % |
-| 4 | 16 800 | 68 | 35 % | 72.5 % | 37.5 % | 40 % | 46.3 % |
-| 6 | 40 800 | 164 | 47.5 % | 92.5 % | 72.5 % | 60 % | 68.1 % |
-| 8 | 81 600 | 327 | 90 % | 100 % | 82.5 % | 87.5 % | 90 % |
-| 10 | 145 800 | 584 | 100 % | 100 % | 97.5 % | 97.5 % | 98.8 % |
+| 0 | 0 | 0 | 2.5 % | 7.5 % | 12.5 % | 0 % | 5.6 % |
+| 2 | 2 100 | 9 | 0 % | 12.5 % | 22.5 % | 0 % | 8.8 % |
+| 4 | 6 300 | 26 | 0 % | 65 % | 47.5 % | 0 % | 28.1 % |
+| 5 | 9 000 | 36 | 20 % | 90 % | 65 % | 2.5 % | 44.4 % |
+| 6 | 12 300 | 50 | 22.5 % | 85 % | 65 % | 17.5 % | 47.5 % |
+| 7 | 15 900 | 64 | 52.5 % | 95 % | 95 % | 40 % | 70.6 % |
+| 8 | 20 100 | 81 | 72.5 % | 100 % | 87.5 % | 65 % | 81.3 % |
+| 9 | 24 900 | 100 | 87.5 % | 97.5 % | 90 % | 75 % | 87.5 % |
+| 10 | 30 600 | 123 | 100 % | 100 % | 97.5 % | 95 % | 98.1 % |
 
-- La subida es gradual: cada dos niveles acercan la victoria, sin el salto brusco que había entre clases de equipo.
-- Las dos vías se suman: con el mech de calor (el que ataca el punto débil del jefe) basta el nivel 2 para ganar casi la mitad de las veces; con el físico hace falta el nivel 6.
-- Con estos precios, llevar todo al máximo son 584 combates ganados. Es demasiado para un solo jefe; hay que ajustar precios y recompensas cuando exista la campaña entera.
+- **Ir directo es una apuesta:** los 10 combates de la campaña dan para el nivel 2 de la armería, con un 9 % de victorias de media.
+- **Con unos 50 combates** se gana casi la mitad de las veces; con el mech adecuado, mucho más.
+- **Con unos 100** se gana casi siempre.
+- **El mech importa:** el superblindaje se come el daño de las armas físicas, así que el mech de calor (que lo sobrecalienta) y el de energía (cuyo drenaje la coraza no para) son los que mejor lo vencen. El físico necesita casi el doble de mejoras.
+- Las mejoras se compran todas a la par en la medición; un jugador que concentre sus celdas en las que le sirven llegará antes.
+- **Pendiente:** con estos precios la armería queda casi al máximo tras el primer jefe. Para las zonas siguientes la progresión tendrá que venir de las piezas (tienda de piezas, niveles y transformación, F7), o habrá que abrir niveles de armería por zona.
+
+**La curva de la zona 1 sin mejoras** (tools/sim/campaign_sim.gd, el jugador con la IA difícil, 40 combates por casilla):
+
+| Combate | 1–5 | 6 | 7 | 8 | 9 | 10 | Jefe |
+|---|---|---|---|---|---|---|---|
+| Victorias de media | 100 % | 98.8 % | 93.8 % | 88.1 % | 58.1 % | 36.3 % | 6.3 % |
+
+- Los primeros combates son de aprendizaje; los dos últimos ya piden pasar por la arena o jugar fino.
+- Ganar los 10 seguidos y al jefe sin perder ni uno: 1 % de las veces.
 
 
 ## 10. Pantallas

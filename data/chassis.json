@@ -4,6 +4,7 @@
     {"id": "ligero", "name": "Ligero", "unlock_level": 1, "health_mult": 0.9, "energy_cost_mult": 0.6, "damage_mult": 1.2},
     {"id": "medio", "name": "Medio", "unlock_level": 5, "health_mult": 1.03, "damage_mult": 1.1, "heat_cap_mult": 1.15, "cooling_mult": 1.15},
     {"id": "pesado", "name": "Pesado", "unlock_level": 11, "health_mult": 1.25, "resistance_mult": 1.25, "energy_cost_mult": 1.15, "damage_mult": 0.9},
-    {"id": "jefe", "name": "Jefe", "unlock_level": 999, "resistance_mult": 1.2, "cooling_mult": 0.7, "extra_actions": 1}
+    {"id": "jefe", "name": "Jefe", "unlock_level": 999, "resistance_mult": 1.2, "cooling_mult": 0.7, "extra_actions": 1, "ability": "Velocidad", "ability_text": "Hace tres acciones por turno en vez de dos."},
+    {"id": "jefe_blindado", "name": "Jefe blindado", "unlock_level": 999, "resistance_mult": 2.0, "cooling_mult": 0.7, "ability": "Superblindaje", "ability_text": "Su coraza resiste el doble que la de cualquier mech de esta zona."}
   ]
 }

@@ -114,6 +114,35 @@
       }
     },
     {
+      "id": "jefe_zona_1",
+      "name": "Capataz del Orden",
+      "element": "PHYSICAL",
+      "boss": true,
+      "chassis": "jefe_blindado",
+      "items": {
+        "torso": "torso_baluarte",
+        "legs": "piernas_zancos",
+        "sides": [
+          "lat_mandoble",
+          "lat_trabuco",
+          "lat_remachadora",
+          "lat_rifle_riel"
+        ],
+        "tops": [
+          "sup_canon_yunque"
+        ],
+        "drone": "dron_avispa",
+        "modules": [
+          "mod_blindaje",
+          "mod_matriz",
+          "mod_generador",
+          "mod_disipador"
+        ],
+        "charge": "esp_embestida",
+        "hook": "esp_garfio"
+      }
+    },
+    {
       "id": "jefe_final",
       "name": "Coloso del Orden",
       "element": "HYBRID",

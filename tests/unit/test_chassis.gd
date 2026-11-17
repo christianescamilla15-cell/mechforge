@@ -169,6 +169,39 @@ func test_un_jefe_tiene_3_acciones_y_al_enfriar_a_la_fuerza_solo_1() -> void:
 	assert_eq(engine.actions_left, 1)
 
 
+func test_cada_jefe_tiene_una_habilidad_especial_y_la_explica() -> void:
+	# GDD 9.1: cada jefe tiene una ventaja que el jugador no puede conseguir.
+	var library := ChassisLibrary.load_file("res://data/chassis.json")
+	var builds := BuildLibrary.load_file("res://data/builds.json")
+	assert_gt(builds.boss_ids().size(), 1)
+	for id in builds.boss_ids():
+		var def := library.get_def(builds.chassis_of(id))
+		assert_not_null(def, "%s tiene chasis de jefe" % id)
+		assert_true(def.is_boss(), id)
+		assert_ne(def.ability, "", "%s tiene habilidad" % id)
+		assert_ne(def.ability_text, "", "%s explica su habilidad" % id)
+		assert_almost_eq(def.health_mult, 1.0, 0.0001, "%s no es dificil por su vida" % id)
+		assert_gt(def.unlock_level, 100, "el jugador no puede conseguir el chasis de %s" % id)
+
+
+func test_los_chasis_del_jugador_no_son_de_jefe() -> void:
+	var library := ChassisLibrary.load_file("res://data/chassis.json")
+	for id: String in ["ligero", "medio", "pesado"]:
+		assert_false(library.get_def(id).is_boss(), id)
+
+
+func test_el_superblindaje_resiste_mucho_mas_con_las_mismas_acciones() -> void:
+	var r := Fx.rules()
+	var library := ChassisLibrary.load_file("res://data/chassis.json")
+	var armored := library.get_def("jefe_blindado").at_level(r.chassis_max_level, r)
+	assert_eq(armored.extra_actions, 0, "su ventaja es la coraza, no la velocidad")
+	var plain := _build(null).summary(r)
+	var boss := _build(armored).summary(r)
+	assert_gte(boss["res_physical"], plain["res_physical"] * 2, "al menos el doble")
+	var engine := BattleEngine.new(r, _build(armored), _build(null), 1, 0, 0)
+	assert_eq(engine.actions_left, r.actions_per_turn)
+
+
 func test_los_datos_malos_se_avisan() -> void:
 	var library := ChassisLibrary.new()
 	library.add({"name": "sin id"})

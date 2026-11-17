@@ -3,6 +3,8 @@ extends RefCounted
 ## Chasis cargados desde JSON (data/chassis.json).
 ## Formato: {"schema_version": 1, "chassis": [{"id", "name", "unlock_level",
 ## y los multiplicadores de ChassisDef.MULTIPLIERS que cambie}]}
+## Los de jefe llevan ademas "ability" y "ability_text" (su habilidad
+## especial) y, si la tienen, "extra_actions".
 
 var defs: Dictionary[String, ChassisDef] = {}
 var errors: Array[String] = []
@@ -44,6 +46,9 @@ func add(raw: Variant) -> void:
 			def.extra_actions = int(raw[key])
 			if def.extra_actions < 0 or def.extra_actions > 2:
 				errors.append("%s: extra_actions debe estar entre 0 y 2" % id)
+			continue
+		if key in ["ability", "ability_text"]:
+			def.set(key, str(raw[key]))
 			continue
 		if not key in ChassisDef.MULTIPLIERS:
 			errors.append("%s: campo desconocido '%s'" % [id, key])

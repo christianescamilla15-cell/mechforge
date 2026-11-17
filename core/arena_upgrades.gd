@@ -11,15 +11,15 @@ extends Resource
 @export var heat: float = 0.0
 ## Fraccion que se suma a las tres resistencias.
 @export var resistance: float = 0.0
-## Vida que se suma, en puntos.
-@export var health: int = 0
+## Fraccion que se suma a la vida.
+@export var health: float = 0.0
 ## Fraccion que se quita al dano que las armas le hacen a quien las dispara.
 @export var backfire: float = 0.0
 
 
 ## Aplica las mejoras a las estadisticas sumadas de un mech (MechBuild.summary).
 func apply(stats: Dictionary) -> void:
-	stats["health"] += health
+	stats["health"] = roundi(stats["health"] * (1.0 + health))
 	for key: String in ["energy_cap", "energy_regen"]:
 		stats[key] = roundi(stats[key] * (1.0 + energy))
 	for key: String in ["heat_cap", "cooling"]:

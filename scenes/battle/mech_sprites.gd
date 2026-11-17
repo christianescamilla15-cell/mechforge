@@ -32,7 +32,7 @@ static func for_build(build: MechBuild) -> MechSprites:
 	if torsos.is_empty() or legs.is_empty():
 		return null
 	var out := MechSprites.new()
-	var boss := build.chassis != null and build.chassis.extra_actions > 0
+	var boss := build.chassis != null and build.chassis.is_boss()
 	if boss and _load_anchors(BOSS_SET).get("torso") is Dictionary:
 		out.torso_set = BOSS_SET
 		out.legs_set = BOSS_SET
