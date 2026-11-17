@@ -88,6 +88,10 @@ func _draw() -> void:
 
 	if _sprites != null:
 		_sprites.draw(self, build.torso.element, build.legs.element, _body_tint(dim))
+		# Provisional: el canon de pecho hace de arma superior hasta que el
+		# motor tenga el hueco de pecho (docs/CATALOGO_ARMAS.md).
+		if not build.tops.is_empty():
+			_sprites.draw_piece(self, "chest", build.tops[0].element, _body_tint(dim))
 		# Las armas todavia no tienen arte: con el mech dibujado no se pintan
 		# sus bloques provisionales, que taparian el dibujo. Solo el dron.
 		draw_set_transform(Vector2(0.0, SPRITE_WEAPON_LIFT))

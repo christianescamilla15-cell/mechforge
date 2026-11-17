@@ -43,7 +43,7 @@ ZONES = {
     "torso": (-405, -RING_BAND, -275, 290),
     "legs": (RING_BAND, 440, -300, 330),
     # Arma del pecho: sale del frente del torso, bajo el casco.
-    "chest": (-165, -RING_BAND, 30, 340),
+    "chest": (-140, -RING_BAND, 25, 420),
 }
 # El torso va sin brazos: los brazos los ponen las armas (docs/CHASIS.md).
 ZONE_NEGATIVE = {"torso": ", fingers, claws, mechanical arms, extra arms, gun, cannon, weapon"}
@@ -68,6 +68,18 @@ def ring_control(row, x):
     ImageDraw.Draw(control).rounded_rectangle(
         [x - rx, row - ry, x + rx, row + ry], radius=ry, outline=(255, 255, 255), width=blockout.LINE_WIDTH
     )
+    return control
+
+
+def chest_control(row, x):
+    """Silueta del canon de pecho: caja junto al torso, canon y boca."""
+    control = Image.new("RGB", (SIZE, SIZE), (0, 0, 0))
+    draw = ImageDraw.Draw(control)
+    white, width = (255, 255, 255), blockout.LINE_WIDTH
+    draw.rounded_rectangle([x + 45, row - 122, x + 170, row - 38], radius=14, outline=white, width=width)
+    draw.rectangle([x + 170, row - 100, x + 368, row - 62], outline=white, width=width)
+    draw.rectangle([x + 368, row - 108, x + 408, row - 54], outline=white, width=width)
+    draw.ellipse([x + 85, row - 100, x + 125, row - 60], outline=white, width=width)
     return control
 
 
@@ -109,6 +121,8 @@ def main():
         soft = mask.filter(ImageFilter.GaussianBlur(4))
         if zone == "ring":
             control, scale, end = ring_control(row, x), 0.9, 0.8
+        elif zone == "chest":
+            control, scale, end = chest_control(row, x), 0.65, 0.5
         else:
             control, scale, end = block_control, args.control_scale, args.control_end
         subject = ZONE_SUBJECT.get(zone, style.subject_for("chassis"))

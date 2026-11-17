@@ -56,11 +56,14 @@ func hip_point() -> Vector2:
 
 ## Dibuja piernas y torso con los pies en el origen del lienzo.
 func draw(canvas: CanvasItem, torso_element: int, legs_element: int, tint: Color) -> void:
-	_draw_piece(canvas, "legs", legs_element, tint)
-	_draw_piece(canvas, "torso", torso_element, tint)
+	draw_piece(canvas, "legs", legs_element, tint)
+	draw_piece(canvas, "torso", torso_element, tint)
 
 
-func _draw_piece(canvas: CanvasItem, kind: String, element: int, tint: Color) -> void:
+## Dibuja una pieza del juego (torso, piernas o un arma montada) en su sitio.
+func draw_piece(canvas: CanvasItem, kind: String, element: int, tint: Color) -> void:
+	if not anchors.get(kind) is Dictionary:
+		return
 	var texture := _texture(kind, element)
 	if texture == null:
 		return
