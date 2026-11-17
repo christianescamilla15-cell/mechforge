@@ -245,6 +245,8 @@ Menú · Taller (armado con resumen de stats, barra de peso y avisos) · Inventa
 - **Jefes:** línea robusta, tipo tanque andante, más pesada y con más blindaje.
 - **Personalización de cabeza a pies:** como en el original, el jugador elige cada pieza entre distintos estilos y diseños y se pueden mezclar. Por eso torso, piernas, armas y dron son sprites separados con anclas comunes.
 
+**Chasis (reformulación del 2026-11-16):** las piezas ya no se cortan de cuerpos independientes. Cada robot tiene un chasis con uniones estándar (aro de cintura, brazos, hombros, pecho y espalda) y cada pieza se dibuja ya montada sobre el maniquí de ese chasis. El jugador puede conseguir robots con otros chasis. El diseño completo y la prueba están en docs/CHASIS.md.
+
 **Lo que lo hace propio:**
 1. **Generación guiada por silueta.** Para cada pieza definimos una silueta o blockout simple (forma, perspectiva lateral y escala). La IA la "pinta" con un estilo fijo (img2img o ControlNet). Así todas las piezas comparten perspectiva, escala y luz, que es el punto débil de generar a ciegas.
 2. **Iluminación 2D con mapas de relieve.** Cada sprite lleva su normal map (derivado de un mapa de profundidad generado, o con una herramienta como Laigter) para que las luces 2D de Godot le den volumen.

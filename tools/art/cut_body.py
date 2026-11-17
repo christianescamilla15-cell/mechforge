@@ -50,10 +50,11 @@ def crop_piece(image, mask, hip):
     return piece, (hip[1] - box[0], hip[0] - box[1])
 
 
-def cut(path, band):
+def cut(path, band, fixed=None):
     image = Image.open(path).convert("RGB")
     mask = cutout.clean_figure(image)
-    row, x = find_hip(mask, band)
+    # Con el chasis estandar la cintura esta siempre en el mismo punto.
+    row, x = fixed if fixed else find_hip(mask, band)
     upper, lower = mask.copy(), mask.copy()
     upper[row + OVERLAP :] = False
     lower[: row - OVERLAP] = False
@@ -97,13 +98,15 @@ def main():
     parser.add_argument(
         "--band", type=float, nargs=2, default=[0.30, 0.58], help="franja donde buscar la cadera (fraccion de la altura)"
     )
+    parser.add_argument("--hip", type=int, nargs=2, metavar=("FILA", "X"), help="cintura fija del chasis estandar")
+    parser.add_argument("--torsos", nargs="*", type=Path, default=[], help="imagenes de las que solo se usa el torso")
     parser.add_argument("--mix", action="store_true", help="hoja con cada torso sobre cada par de piernas")
     args = parser.parse_args()
 
     args.out.mkdir(parents=True, exist_ok=True)
     cuts, anchors = {}, {}
-    for path in args.images:
-        result = cut(path, args.band)
+    for path in list(args.images) + list(args.torsos):
+        result = cut(path, args.band, tuple(args.hip) if args.hip else None)
         cuts[path.stem] = result
         for kind in ("torso", "legs"):
             piece, anchor = result[kind]
@@ -114,8 +117,11 @@ def main():
     names = list(cuts)
     sheet([cuts[n]["check"] for n in names], min(4, len(names)), 512, names).save(args.out / "_corte.png")
     if args.mix:
-        combos = [mounted(cuts[t]["torso"], cuts[l]["legs"]) for l in names for t in names]
-        sheet(combos, len(names), 400).save(args.out / "_mezcla.png")
+        # Si se dieron torsos aparte, las imagenes principales solo ponen las piernas.
+        tops = [p.stem for p in args.torsos] or names
+        bottoms = [p.stem for p in args.images]
+        combos = [mounted(cuts[t]["torso"], cuts[l]["legs"]) for l in bottoms for t in tops]
+        sheet(combos, len(tops), 400).save(args.out / "_mezcla.png")
     print("%d cuerpos cortados en %s" % (len(names), args.out))
 
 

@@ -98,6 +98,8 @@ PARTS = {
         ("accent", [(100, -900), (140, -893), (143, -870), (104, -875)]),
         ("accent", [(106, -860), (146, -854), (150, -828), (110, -832)]),
     ],
+    # Aro de acople de la cintura: la union comun entre torso y piernas.
+    "ring": [("frame", [(60, -404), (50, -394), (22, -385), (-18, -381), (-62, -381), (-102, -385), (-130, -394), (-140, -404), (-130, -414), (-102, -423), (-62, -427), (-18, -427), (22, -423), (50, -414)])],
 }
 # Conjuntos de piezas, en el orden en que se tapan. "body" es el mech sin
 # armas: de ahi se cortan torso y piernas (las piezas sueltas no le salen
@@ -105,6 +107,8 @@ PARTS = {
 GROUPS = {
     "mech": ["legs", "torso", "cannon"],
     "body": ["legs", "torso"],
+    # Cuerpo sobre el chasis estandar: piernas, aro de cintura y torso.
+    "chassis": ["legs", "torso", "ring"],
 }
 # Altura de la cadera en espacio de mech: por ahi se separan torso y piernas.
 HIP_Y = -400

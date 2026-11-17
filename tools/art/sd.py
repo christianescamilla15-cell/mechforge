@@ -27,7 +27,7 @@ def load_pipeline(offload="fp8", controlled=""):
     """Devuelve el pipeline listo para generar.
 
     controlled: "" para texto a imagen sin control (prueba de estilo),
-    "txt2img" o "img2img" para anadir el ControlNet de silueta.
+    "txt2img", "img2img" o "inpaint" para anadir el ControlNet de silueta.
     """
     checkpoint = hf_hub_download(style.MODEL_REPO, style.MODEL_FILE)
     vae = AutoencoderKL.from_pretrained(style.VAE_REPO, torch_dtype=torch.float16)
@@ -40,17 +40,18 @@ def load_pipeline(offload="fp8", controlled=""):
         from diffusers import (
             ControlNetUnionModel,
             StableDiffusionXLControlNetUnionImg2ImgPipeline,
+            StableDiffusionXLControlNetUnionInpaintPipeline,
             StableDiffusionXLControlNetUnionPipeline,
         )
 
         controlnet = ControlNetUnionModel.from_pretrained(CONTROLNET_REPO, torch_dtype=torch.float16)
         if offload == "fp8":
             _store_in_8_bits(controlnet)
-        kind = (
-            StableDiffusionXLControlNetUnionImg2ImgPipeline
-            if controlled == "img2img"
-            else StableDiffusionXLControlNetUnionPipeline
-        )
+        kind = {
+            "img2img": StableDiffusionXLControlNetUnionImg2ImgPipeline,
+            "inpaint": StableDiffusionXLControlNetUnionInpaintPipeline,
+            "txt2img": StableDiffusionXLControlNetUnionPipeline,
+        }[controlled]
         # from_pipe convierte todo a 32 bits si no se le dice el tipo.
         pipe = kind.from_pipe(pipe, controlnet=controlnet, torch_dtype=torch.float16)
 

@@ -91,6 +91,8 @@ Elecciones del usuario (2026-11-16), guardadas en art/elegidos/: cuerpos del jug
 
 **Prueba de mezcla de los 4 cuerpos del jugador (tools/art/cut_body.py --mix):** el recorte y el montaje funcionan, pero las piezas todavía no son intercambiables. Cada cuerpo se corta por su punto más estrecho, que en unos es el cuello y en otros la cintura, así que al mezclar aparecen dos pechos apilados o proporciones que no casan, y la unión se ve como una línea recta. Corrección prevista: que el bloque marque una cintura estrecha con una junta redonda siempre a la misma altura, cortar por esa altura fija y no por la fila más estrecha, y tapar la unión con una pieza de acople común.
 
+**Cambio de método (2026-11-16):** la mezcla de piezas cortadas de cuerpos distintos no funciona, y el usuario pidió reformular el diseño. El método nuevo está en docs/CHASIS.md: un maniquí por chasis y cada pieza dibujada ya montada (inpainting con el aro de cintura fijo, tools/art/halves_test.py). Probado con 3 torsos y 3 pares de piernas: las 9 combinaciones encajan y conservan el detalle. Con control firme (escala 0.75, final 0.6) el chasis se respeta pero el dibujo sale plano, igual que en la primera prueba. Lo que sigue en esta lista queda sustituido por las correcciones de CHASIS.md, sección 6.
+
 Siguiente paso (sin hacer): generar varias semillas del cuerpo con el bloque neutro, descartar las de coincidencia menor de 0.5, elegir a ojo, y cortar torso y piernas por la cadera con el recorte de fondo. Las armas y los drones se generan sueltos y se curan igual. El inpainting queda de reserva.
 
 ## Límites de los 6 GB de VRAM

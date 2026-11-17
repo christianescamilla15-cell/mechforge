@@ -65,6 +65,8 @@ WEAPON_NEGATIVE = "trigger, handgun, pistol grip, gun stock, holding, hands"
 BODY_NEGATIVE = "wings, sword, energy blade, energy beam, laser, firing, holding weapon"
 PART_NEGATIVE = {
     "body": BODY_NEGATIVE,
+    # En el chasis los brazos los ponen las armas: el torso va sin brazos.
+    "chassis": BODY_NEGATIVE + ", arms, hands",
     "cannon": WEAPON_NEGATIVE,
     "sword": "holding, hands, sheath",
     "plasma": WEAPON_NEGATIVE,
