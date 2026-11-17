@@ -77,6 +77,41 @@ func move_to(at: Vector2, seconds: float) -> Tween:
 	return tween
 
 
+## Salto en arco hasta otra casilla: asi se mueve cuando pasa por encima del
+## rival o va mas lejos de lo que anda, y asi atacan las espadas.
+func jump_to(at: Vector2, seconds: float) -> Tween:
+	var from := position
+	_base_position = at
+	var height := clampf(absf(at.x - from.x) * 0.3, 60.0, 190.0)
+	var tween := create_tween()
+	tween.tween_method(_arc_step.bind(from, at, height), 0.0, 1.0, seconds)
+	return tween
+
+
+func _arc_step(progress: float, from: Vector2, to: Vector2, height: float) -> void:
+	position = from.lerp(to, progress) + Vector2(0.0, -height * 4.0 * progress * (1.0 - progress))
+
+
+## Teletransporte: se desvanece, cambia de sitio y reaparece.
+func blink_to(at: Vector2, seconds: float) -> Tween:
+	_base_position = at
+	var tween := create_tween()
+	tween.tween_property(self, "modulate:a", 0.0, seconds * 0.4)
+	tween.tween_property(self, "position", at, 0.0)
+	tween.tween_property(self, "modulate:a", 1.0, seconds * 0.4)
+	return tween
+
+
+## Embestida: arranca despacio y llega de golpe.
+func dash_to(at: Vector2, seconds: float) -> Tween:
+	_base_position = at
+	var tween := create_tween()
+	tween.tween_property(self, "position", at, seconds).set_trans(Tween.TRANS_EXPO).set_ease(
+		Tween.EASE_IN
+	)
+	return tween
+
+
 ## Pequeno avance hacia el rival y vuelta, al atacar.
 func lunge(seconds: float) -> Tween:
 	var tween := create_tween()

@@ -71,3 +71,33 @@ El usuario recuerda una versión para un jugador: empezabas con un robot sencill
 - La rotura de energía pierde valor contra armas sin costo de energía.
 - Mezclar armas de calor y de energía en un mismo build se desaconseja: pocas builds viables.
 - El progreso por tiers es largo y pesa más que la táctica.
+
+## Contraste con lo construido (2026-11-16)
+Regla de trabajo que pidió el usuario: no se hace nada desde cero. Cada mecánica y cada detalle se afina partiendo de este análisis; lo que se aparte de él debe ser una decisión explícita.
+
+**Coincide con el original**
+- Arena de 10 posiciones y pares de salida: se mantienen. El "mapa más grande" que pidió el usuario es de pantalla (campo más ancho con cámara), no de reglas; así los alcances de las armas siguen valiendo.
+- Turno, calor, energía, daño, rotura de energía, efectos sobre el defensor, empujes y jalones, y lo que impide disparar: en el motor, con sus tests.
+- Movimiento: se anda o se salta según `max(andar, salto)`. La animación lo respeta desde hoy: salto en arco cuando el mech va más lejos de lo que anda o pasa por encima del rival; las espadas saltan junto al rival; la embestida, el teletransporte y el gancho tienen cada uno su gesto.
+- Elementos físico, explosivo y eléctrico: son nuestras municiones cinética, térmica e iónica.
+- Peso máximo, sobrecarga, resistencias exclusivas, tiers con rango de transformación y tienda de mejoras: en el diseño.
+- De la versión de 2013: experiencia y créditos (nivel del jugador y oro), tienda con muchas mejoras (tienda del taller) y combates contra mechs de la computadora.
+
+**Se aparta del original por decisión del usuario**
+- Huecos de arma: el original lleva 4 laterales y 2 superiores (6 armas). El usuario fijó 2 brazos, 2 hombros y 1 pecho (5 armas) más el robot de soporte.
+- Clases y niveles máximos (6/12/18/24/30/50), chasis con bonificaciones y tipos de arma ligados a la clase.
+- Mejoras M1 a M6 del GDD, que responden a las quejas de la comunidad.
+
+**Me aparté sin base y hay que corregir**
+- **Alcance de la artillería:** puse 5–9, que no existe en el original. Las armas superiores del original son [4,8], [3,6] y de alcance fijo [8,8] y [7,7]. La artillería pasa a alcance fijo.
+- **Proporción de alcances en armas laterales:** en el original domina [2,4] (32 de 79), luego [1,2] (23), [3,6] (16) y [1,1] (6). Al generar las 111 armas hay que respetar esa proporción, no repartir a partes iguales.
+- **Huecos que faltan en nuestro diseño:** el original tiene escudo y perk. El usuario ya mencionó el escudo; el perk encaja con el árbol de habilidades.
+- **Dron:** en el original se enciende y eso recarga sus usos; nosotros lo dejamos siempre activo (mejora M4). Está decidido, pero la animación de encendido se puede conservar como despliegue del robot de soporte.
+
+**Del original, aún sin usar**
+- Kits de reparación en mitad del combate (versión de 2013): candidato a tipo de bonificación o a habilidad de combate.
+- Ruedas (andar 3, sin salto) como tipo de piernas.
+
+**No está en el análisis**
+- La nave que deja bonificaciones: sale del recuerdo del usuario, no de las fuentes. Sus números (turno 3, cada 5, del 10 al 50 %, 3 turnos) son propuesta nuestra.
+

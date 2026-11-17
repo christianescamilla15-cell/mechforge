@@ -243,6 +243,23 @@ func explode(at: Vector2, seconds: float) -> void:
 		delay.tween_callback(sparks.bind(at + offset, colors[i], seconds * 0.5))
 
 
+## Cable del gancho entre dos mechs; se desvanece mientras tira.
+func cable(from_index: int, to_index: int, seconds: float) -> void:
+	var line := Line2D.new()
+	line.width = 5.0
+	line.default_color = Color("c8d2de")
+	line.points = PackedVector2Array([mechs[from_index].hit_point(), mechs[to_index].hit_point()])
+	_fx.add_child(line)
+	var tween := create_tween()
+	tween.tween_property(line, "modulate:a", 0.0, seconds)
+	tween.tween_callback(line.queue_free)
+
+
+## Polvo que levanta un mech al caer de un salto.
+func dust(at: Vector2, seconds: float) -> void:
+	sparks(at + Vector2(0.0, -6.0), Color("b9aa90"), seconds)
+
+
 ## Sacudida de camara; se apaga sola.
 func shake(strength: float) -> void:
 	_shake = maxf(_shake, strength)

@@ -147,9 +147,11 @@ func _play_event(entry: Dictionary) -> void:
 		"weapon", "stomp", "charge", "hook", "teleport", "drone":
 			# Primero se mueve quien ataca (embestida, salto, espada).
 			var attacker_cell: int = snapshot[actor]["pos"]
-			if attacker_cell != _state[actor]["pos"] and event != "weapon":
-				await _arena.mechs[actor].move_to(_arena.cell_point(attacker_cell), step).finished
+			if attacker_cell != _state[actor]["pos"]:
+				await _approach(event, entry, actor, _arena.cell_point(attacker_cell), step)
 				_arena.update_facing()
+			if event == "hook":
+				_arena.cable(actor, target, step * 1.6)
 			var shot_color := _shot_color(entry, actor)
 			if event == "drone":
 				await _arena.fire_between(actor, target, shot_color, step, true)
@@ -173,7 +175,12 @@ func _play_event(entry: Dictionary) -> void:
 					_arena.mechs[i].move_to(_arena.cell_point(cell), step * 0.7)
 			await get_tree().create_timer(step * 0.7).timeout
 		"walk":
-			await _arena.mechs[actor].move_to(_arena.cell_point(entry["to"]), step).finished
+			var destination := _arena.cell_point(entry["to"])
+			if _is_jump(entry, actor):
+				await _arena.mechs[actor].jump_to(destination, step).finished
+				_arena.dust(destination, step * 0.6)
+			else:
+				await _arena.mechs[actor].move_to(destination, step).finished
 		"cool", "forced_cool", "shutdown":
 			var amount: int = entry.get("amount", 0)
 			_arena.float_text(_state[actor]["pos"], "-%d" % amount, COLOR_COOL)
@@ -201,6 +208,35 @@ func _play_event(entry: Dictionary) -> void:
 	_arena.set_drop(entry.get("drop", {}))
 	_arena.update_facing()
 	_show_state()
+
+
+## Como llega el atacante junto al rival antes de golpear, segun la jugada:
+## el teletransporte aparece, la embestida arranca de golpe y la espada salta.
+## Las armas que retroceden o avanzan se mueven despues del disparo.
+func _approach(event: String, entry: Dictionary, actor: int, point: Vector2, step: float) -> void:
+	var mover := _arena.mechs[actor]
+	match event:
+		"teleport":
+			await mover.blink_to(point, step).finished
+		"charge":
+			await mover.dash_to(point, step * 0.6).finished
+		"weapon":
+			var def := _event_def(entry, actor)
+			if def != null and def.has_tag(ItemDef.TAG_SWORD):
+				await mover.jump_to(point, step * 0.8).finished
+				_arena.dust(point, step * 0.5)
+		_:
+			await mover.move_to(point, step).finished
+
+
+## Un movimiento es un salto si va mas lejos de lo que el mech anda o si
+## pasa por encima del rival (reglas del original).
+func _is_jump(entry: Dictionary, actor: int) -> bool:
+	var from: int = entry["from"]
+	var to: int = entry["to"]
+	var rival: int = _state[1 - actor]["pos"]
+	var walk: int = engine.mechs[actor].slots["legs"].def.walk
+	return absi(to - from) > walk or (from - rival) * (to - rival) < 0
 
 
 ## Pieza con la que se hizo la jugada de un evento, o null.

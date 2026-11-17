@@ -62,7 +62,7 @@ Cada casilla marcada es un diseño de arma. Cada diseño existe en las tres muni
 |---|---|---|---|---|---|---|
 | Batería | Salva a larga distancia | 4–8 | Rotativa | Lanzamisiles | Batería de plasma | Batería láser |
 | Ancla | Atrae al rival hacia ti | 3–6 | | Arpón | | Haz tractor |
-| Artillería | El mayor alcance; usos limitados | 5–9 | | Obús | Mortero de plasma | Lanza orbital |
+| Artillería | Alcance fijo: solo acierta a esa distancia exacta; usos limitados | 7 u 8 | | Obús | Mortero de plasma | Lanza orbital |
 
 ### Pecho: 5 diseños, 15 armas
 El arma pesada. El pecho se abre y el arma sale del interior del torso. Mucho daño, mucho costo de energía y calor, y retroceso.
@@ -121,3 +121,5 @@ Las armas van guardadas dentro del cuerpo. La primera vez que se usa cada una en
 1. Los rangos de clase de cañón y bláster (tabla 2).
 2. Las reglas exactas de la materia oscura y el diseño de los árboles de habilidades.
 3. Si faltan tipos de arma (por ejemplo eléctricas, de gravedad o escudos como arma) o formas.
+4. Los huecos de escudo y de perk, que el original tiene y aquí faltan (docs/reference/original-mechanics.md, "Contraste con lo construido").
+5. La proporción de alcances de las armas de brazo debe seguir la del original: la mayoría de alcance medio.
