@@ -10,7 +10,7 @@ Investigado el 2026-11-16 para el objetivo del GDD §11: piezas de mech en estil
    - Imagen de control: nuestra silueta con las líneas interiores principales, en modo garabato (scribble).
    - Imagen inicial: nuestro bloque de color plano, que fija la paleta y la dirección de la luz.
    - Alternativa si no se lleva bien con el modelo de anime: `Eugeoter/noob-sdxl-controlnet-scribble_pidinet` y sus variantes (2.5 GB cada una).
-3. **Piezas, no mechs enteros:** se generan tres mechs completos solo como referencia de estilo, y luego cada pieza desde su propia silueta en un lienzo de 1024 px. Recortar un mech entero deja las juntas ocultas sin dibujar y las piezas no serían intercambiables.
+3. **Del mech entero a las piezas** (cambiado el 2026-11-16 tras medirlo, ver "Control de silueta: lo medido"): el modelo dibuja bien mechs enteros y mal piezas sueltas. Se genera el cuerpo completo (torso y piernas) desde nuestro bloque y se corta por la cadera; las armas se añaden después sobre ese cuerpo y se extraen por diferencia.
 4. **Transparencia:** pedir fondo gris liso y recortar con `ZhengPeng7/BiRefNet` (MIT, 0.44 GB) o `joelseytre/toonout` (MIT, afinado para anime). Quitar el halo del borde y reducir de 1024 a 512 px con alfa premultiplicado. Descartar los resultados cuyo contorno se aparte de la silueta dibujada.
 5. **Mapas normales:** `prs-eth/marigold-normals-v1-1` (OpenRAIL++, 1.73 GB) con `MarigoldNormalsPipeline`, enmascarado con el alfa del sprite. Laigter (GPL-3.0, tiene modo sin interfaz) puede añadir el detalle de las líneas de panel.
 6. **Consistencia entre piezas**, de lo más barato a lo más caro: plantilla de prompt y semillas fijas, colores del bloque inicial, remapeo de paleta al final y, si hiciera falta, un LoRA de estilo entrenado con las piezas ya aprobadas (no viable en local, ver límites).
@@ -29,7 +29,7 @@ Investigado el 2026-11-16 para el objetivo del GDD §11: piezas de mech en estil
 ## Ajustes de partida
 - Muestreador Euler a, 25–28 pasos, CFG 5.5.
 - Resolución 1024×1024; 832×1216 para piernas y 1216×832 para armas largas.
-- Escala del ControlNet 0.6–0.8 con `control_guidance_end` 0.7; fuerza de img2img alrededor de 0.85; de 4 a 8 semillas por pieza.
+- ControlNet en modo garabato con el bloque de color como imagen inicial. Medido: escala 0.55, `control_guidance_end` 0.4 y fuerza de img2img 1.0 para mechs enteros. Con escala 0.7, final 0.7 y fuerza 0.85 el modelo calca el bloque. De 4 a 8 semillas por diseño, descartando las de coincidencia baja.
 - `diffusers` ignora los pesos tipo `(etiqueta:1.2)` y corta el prompt a 77 tokens: prompts cortos.
 
 Prompt positivo:
@@ -52,8 +52,28 @@ Etiquetas comprobadas en Danbooru: `mecha`, `no_humans`, `mecha_focus`, `non-hum
 - Cargar el modelo tarda 13 segundos.
 - **Los 2 GB que faltaban los ocupaba el vigilante de transcripciones de NexusForge** (tarea programada `NexusForge-TranscriptionWatcher`), que mantiene Whisper cargado en la GPU aunque esté en reposo. `tools/art/run.ps1` lo pausa mientras un script usa la GPU y lo vuelve a arrancar al terminar.
 
+## Control de silueta: lo medido (2026-11-16)
+Herramientas: `tools/art/blockout.py` dibuja los bloques (polígonos por pieza) y `tools/art/part_test.py` genera y mide la coincidencia con la silueta (IoU entre la figura generada y el bloque). 24 imágenes, mech físico.
+
+| Prueba | Ajustes | Coincidencia (IoU) | Resultado |
+|---|---|---|---|
+| Mech entero y piezas, control firme | escala 0.7, final 0.7, fuerza 0.85 | 0.88–0.96 | **Calca el bloque**: formas planas, sin detalle mecánico ni el trazo aprobado. No sirve |
+| Mech entero, control suelto (8 variantes) | escala 0.35–0.55, final 0.25–0.4, fuerza 1.0 | 0.62–0.68 | **Bien**: detalle, trazo de tinta y color plano; las 8 forman una familia. Respeta la distribución, no el contorno exacto |
+| Piezas sueltas, control suelto | escala 0.55, final 0.4 | 0.28–0.72 | **Mal**: el torso sale como una nave, las piernas como piernas humanas cortadas y el cañón como un rifle de mano |
+| Cuerpo sin armas, 3 semillas | escala 0.55, final 0.4 | 0.62 / 0.35 / 0.83 | Dos de tres en familia; la de 0.35 se va a un diseño con alas y espadas. La de 0.83 sale robusta y con el trazo más parecido a la referencia |
+| Cañón suelto, control firme, 3 semillas | escala 0.9, final 0.6 | 0.71–0.79 | Otra vez calca el bloque y le añade una empuñadura. Flojo |
+
+Conclusiones:
+- Con control firme el resultado vale lo que valga nuestro bloque, y unos polígonos toscos dan un dibujo tosco.
+- Con control suelto el modelo pone el diseño y nosotros la distribución. Solo funciona con mechs enteros.
+- La coincidencia sirve de filtro automático: por debajo de 0.6 el diseño se salió de la familia.
+- El fondo sale con un tinte verdoso o cálido en vez del gris de la referencia. No importa: se recorta.
+- `from_pipe` convierte el pipeline a 32 bits si no se le pasa `torch_dtype`; el fallo aparece como "mat1 and mat2 must have the same dtype".
+
+Siguiente prueba (sin hacer): añadir el arma sobre un cuerpo ya elegido con el pipeline de inpainting (`StableDiffusionXLControlNetUnionInpaintPipeline`) y sacar el sprite del arma de los píxeles que cambian. Así el arma se dibuja con el mech delante, que es donde el modelo acierta.
+
 ## Límites de los 6 GB de VRAM
-- El UNet (5.14 GB) más el ControlNet (2.5 GB) no caben a la vez. `enable_model_cpu_offload()` no basta porque deja ambos en la GPU; hay que usar `enable_group_offload` o `enable_sequential_cpu_offload`, más VAE por teselas. Será lento.
+- El UNet (5.14 GB) más el ControlNet (2.5 GB) no caben a la vez en 16 bits. Guardando los dos en 8 bits (`tools/art/sd.py`) sí caben con `enable_model_cpu_offload()`: pico de 4.3 GB y 42 segundos por imagen. Exige tener el vigilante de transcripciones en pausa.
 - Entrenar un LoRA de SDXL pide 8 GB como mínimo: no es viable en esta laptop.
 - IP-Adapter añade un codificador de 2.5 GB: último recurso.
 

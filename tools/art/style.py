@@ -39,6 +39,19 @@ ELEMENT_COLORS = {
     "energy": "blue armor, cyan armor, glowing energy lines, antenna",
 }
 
+# Piezas sueltas (paso 3 de F4): que se dibuja y de que color, sin las
+# etiquetas de mech entero. "mech" usa lo mismo que la referencia.
+SUBJECT_PARTS = {
+    "torso": "upper body, from side, profile, solo, armor, shoulder armor, thrusters",
+    "legs": "mechanical legs, lower body, from side, profile, solo, armor",
+    "cannon": "cannon, weapon focus, from side, profile, solo, gun barrel, still life",
+}
+PART_COLORS = {
+    "physical": "steel grey armor, white armor",
+    "heat": "orange armor, red armor, glowing vents",
+    "energy": "blue armor, cyan armor, glowing energy lines",
+}
+
 # Variante descartada: pedia linea limpia y sombreado cel. Se conserva solo
 # para poder comparar; el usuario eligio el trazo de la referencia.
 CLEAN_PREFIX = (
@@ -46,6 +59,15 @@ CLEAN_PREFIX = (
     "no humans, mecha, robot, mecha focus, science fiction"
 )
 CLEAN_SUFFIX = "anime coloring, clean lineart, cel shading, simple background, grey background"
+
+
+def subject_for(part):
+    """Etiquetas del sujeto: el mech entero o una pieza suelta."""
+    return SUBJECT_PARTS.get(part, SUBJECT_WHOLE_MECH)
+
+
+def colors_for(part, element):
+    return ELEMENT_COLORS[element] if part == "mech" else PART_COLORS[element]
 
 
 def prompt(subject, colors, variant="approved"):

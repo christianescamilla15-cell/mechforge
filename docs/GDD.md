@@ -182,6 +182,8 @@ Unas 58 piezas con nombres propios (nunca los del original).
 - **Transformación:** al llegar al nivel máximo de su tier, la pieza puede transformarse al siguiente pagando oro y núcleos. Vuelve al nivel 0 del nuevo tier.
 - **Monedas:** **oro** (sale de los combates) y **núcleos** (salen del botín y de desarmar piezas repetidas). No hay moneda de pago.
 - **Botín:** cada victoria da oro y una tirada de botín, con mejores tablas en los capítulos avanzados. Hay cajas que se ganan jugando, nunca con dinero.
+- **Tienda del taller** (recuerdo del usuario, 2026-11-16: en el juego antiguo había un taller donde comprabas piezas e ibas armando tu robot o tus robots). Vende por oro las piezas básicas de cada capítulo, con un surtido que cambia al avanzar; lo raro sigue saliendo del botín.
+- **Garaje:** se pueden guardar varios mechs armados y elegir con cuál pelear.
 - **Taller de mejoras permanentes** (el equivalente de la tienda de arena): niveles comprados con oro. Daño, energía y calor hasta +20 %; resistencias hasta +40 %; vida hasta +350 plana; backfire hasta −20 %.
 - **Objetivo de ritmo:** llevar un build completo a Divino debe costar unas 8–12 horas de juego. Se mide con el simulador en la fase F7.
 
@@ -207,6 +209,8 @@ Menú · Taller (armado con resumen de stats, barra de peso y avisos) · Inventa
 **Estilo aprobado (usuario, 2026-11-16):** la referencia es `docs/reference/art/estilo_aprobado.png`. El estilo final debe ser exactamente ese, no una aproximación: mecha de proporciones realistas, línea de tinta con trazo de boceto técnico, color plano con paleta contenida y fondo gris neutro. No debe perderse ni ese trazo ni ese realismo gráfico. El prompt y los ajustes con los que se generó están fijados en `tools/art/style.py`, y la misma semilla reproduce la imagen. Se probó una variante de línea limpia y sombreado cel y se descartó: sale más colorida y caricaturesca.
 
 **Cómo se vigila:** cada lote nuevo de piezas se revisa en una hoja junto a la referencia antes de aceptarlo.
+
+**Sensación de referencia (usuario, 2026-11-16):** del juego antiguo le atraía su aire a Metal Slug: maquinaria robusta y compacta, dibujada a mano con mucho detalle, y animación con peso. Se toma como guía de proporciones y de movimiento (§12), sin copiar su arte y sin cambiar el estilo aprobado.
 
 **Lo que lo hace propio:**
 1. **Generación guiada por silueta.** Para cada pieza definimos una silueta o blockout simple (forma, perspectiva lateral y escala). La IA la "pinta" con un estilo fijo (img2img o ControlNet). Así todas las piezas comparten perspectiva, escala y luz, que es el punto débil de generar a ciegas.

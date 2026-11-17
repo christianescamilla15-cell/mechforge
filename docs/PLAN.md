@@ -66,7 +66,7 @@ Decidido con el usuario: generación local y estilo mecha japonés. El pipeline 
 
 1. **Entorno** (`tools/art/setup.ps1`): entorno virtual aislado con torch para CUDA y diffusers. Comprobación: el script termina con "ENTORNO OK". **Hecho.**
 2. **Prueba de estilo** (`tools/art/style_test.py`): mechs completos de referencia, uno por elemento, solo con el modelo base. Comprobación: mirar las imágenes; medir segundos por imagen y pico de VRAM. **Hecho: el usuario aprobó el estilo** con la imagen del mech físico de semilla 101 y pidió que el arte final sea exactamente ese. `tools/art/style.py` guarda el prompt y los ajustes, y todo script de arte los toma de ahí.
-3. **Control de silueta:** generar una pieza desde una silueta nuestra con el ControlNet. Comprobación: el contorno recortado coincide con la silueta.
+3. **Control de silueta:** generar desde una silueta nuestra con el ControlNet. Comprobación: el contorno recortado coincide con la silueta. **A medias (2026-11-16):** el ControlNet funciona en la laptop (42 s por imagen, pico de 4.3 GB) y los mechs enteros salen bien con control suelto, pero las piezas sueltas no (`docs/reference/art-pipeline.md`, "Control de silueta: lo medido"). Nuevo camino: cuerpo entero cortado por la cadera y armas añadidas por inpainting. Falta probar el inpainting y que el usuario elija la línea de diseño del cuerpo.
 4. **Recorte y normales:** fondo transparente con BiRefNet y mapa normal con Marigold. Comprobación: bordes limpios; una esfera de prueba se ilumina en Godot desde el lado correcto.
 5. **3 mechs completos por piezas** (uno por elemento) con su JSON de anclas, y visor de montaje en Godot con luces 2D y un shader de calor de prueba.
 6. **Un escenario de arena en capas** con el mismo estilo (GDD §12.1), para aprobar mechs y fondo juntos.
@@ -99,6 +99,7 @@ Si SDXL resulta demasiado lento en 6 GB, el plan B es un modelo SD 1.5 de anime 
 
 ### F6 — Taller de armado
 - Equipar piezas por hueco, barra de peso con sobrecarga, resumen de stats, avisos (sin torso o piernas, resistencias repetidas, más de 1010 kg) y vista previa del mech montado.
+- Tienda dentro del taller y garaje con varios mechs guardados (GDD §8): es lo que el usuario recuerda del juego antiguo.
 
 **Puerta:** armar un mech, guardarlo, pelear con él y ver el resultado.
 
