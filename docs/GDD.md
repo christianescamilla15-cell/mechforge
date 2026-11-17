@@ -94,13 +94,17 @@ Cada una es un interruptor en `RulesConfig`, encendido por defecto, para poder m
 - **M2:** con los mechs de ejemplo no cambia nada medible. Los apagados son el 0.5 % de los turnos y nunca se encadenan; queda como red de seguridad para builds extremos.
 
 ### 2.8 Bonificaciones que caen en la arena
-Pedido por el usuario el 2026-11-16, como en el juego antiguo. **Sin programar todavía.**
+Pedido por el usuario el 2026-11-16, como en el juego antiguo. **En el motor desde ese día** (tests/unit/test_drops.gd, 11 tests).
 
-- Durante el combate pasa una nave y deja caer una bonificación en la arena.
-- Quien la toma obtiene una ventaja durante **3 turnos**: por ejemplo más armadura o más potencia de disparo.
-- Todo es al azar: qué bonificación es y cuánto da, desde una ligera hasta una extrema de **hasta el 50 %** en alguna potencia o habilidad.
-- Propuesta para programarlo, por confirmar: la bonificación cae en una casilla libre y la toma el mech que se mueve a ella; el azar sale de la misma semilla del combate, para que siga siendo reproducible; la IA valora ir a por ella; el tipo se ve antes de tomarla y la cantidad no.
-
+- Durante el combate pasa una nave y deja caer una bonificación en una casilla libre de la arena.
+- La toma el mech que llega a esa casilla, sea andando, saltando o empujado.
+- Quien la toma tiene la ventaja durante **3 turnos propios**.
+- Todo es al azar: el tipo (más **armadura**: recibe menos daño; más **potencia de disparo**: hace más daño) y la cantidad, entre el **10 % y el 50 %**. El azar sale de la semilla del combate, así que un combate se repite igual.
+- El tipo se ve en cuanto cae; la cantidad solo al tomarla.
+- Cae la primera en el turno 3 y otra cada 5 turnos si no queda ninguna en la arena.
+- La IA la valora (lo que da por los turnos que le quedan) y va a por ella cuando le compensa.
+- Todos los números están en RulesConfig (grupo Bonificaciones). En las reglas vienen apagadas, para no alterar las pruebas ni el simulador; el juego las enciende al arrancar.
+- **Sin medir todavía:** cómo cambian el balance. Falta añadirlas al simulador. Más tipos (energía, enfriamiento, reparación) quedan por decidir con el usuario.
 
 ## 3. Estadísticas
 | Clave | Significado | Viene de |

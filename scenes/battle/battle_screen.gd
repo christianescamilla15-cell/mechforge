@@ -18,6 +18,7 @@ const COLOR_TELEPORT := Color("4b2f7a")
 const COLOR_DAMAGE := Color("ffe9e0")
 const COLOR_HEAT := Color("ff8a3d")
 const COLOR_COOL := Color("9fd8ff")
+const COLOR_DROP := Color("ffe27a")
 
 var rules: RulesConfig
 var engine: BattleEngine
@@ -175,10 +176,20 @@ func _play_event(entry: Dictionary) -> void:
 				await get_tree().create_timer(step).timeout
 		"regen":
 			pass
+		"drop_spawn":
+			_arena.set_drop(entry["drop"])
+			await get_tree().create_timer(step).timeout
+		"drop_taken":
+			var percent := roundi(float(entry["amount"]) * 100.0)
+			var label := "+%d %% %s" % [percent, Txt.t("drop_%s_short" % entry["kind"])]
+			_arena.float_text(snapshot[entry["who"]]["pos"], label, COLOR_DROP)
+			await get_tree().create_timer(step).timeout
 		"win":
 			await get_tree().create_timer(step).timeout
 
 	_state = [snapshot[0], snapshot[1]]
+	# Cada evento trae la bonificacion que queda en la arena tras el.
+	_arena.set_drop(entry.get("drop", {}))
 	_arena.update_facing()
 	_show_state()
 
@@ -410,6 +421,16 @@ func _log_line(entry: Dictionary) -> String:
 			return "[color=#ffb37a]%s[/color]" % Txt.t("log_forced", [who, entry["amount"]])
 		"shutdown":
 			return "[color=#ff6b5a]%s[/color]" % Txt.t("log_shutdown", [who, entry["amount"]])
+		"drop_spawn":
+			var spawn_args := [Txt.t("drop_" + entry["kind"]), entry["cell"]]
+			return "[color=#ffe27a]%s[/color]" % Txt.t("log_drop_spawn", spawn_args)
+		"drop_taken":
+			var taken_args := [names[entry["who"]], Txt.t("drop_" + entry["kind"])]
+			taken_args.append(roundi(float(entry["amount"]) * 100.0))
+			taken_args.append(entry["turns"])
+			return "[color=#ffe27a]%s[/color]" % Txt.t("log_drop_taken", taken_args)
+		"buff_end":
+			return Txt.t("log_buff_end", [names[entry["who"]], Txt.t("drop_" + entry["kind"])])
 		"win":
 			return "[b]%s[/b]" % Txt.t("log_win", [names[entry["winner"]]])
 	return ""

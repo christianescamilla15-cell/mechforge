@@ -48,6 +48,14 @@ const ES := {
 	"log_forced": "%s está sobrecalentado: enfría %d y solo tiene 1 acción",
 	"log_shutdown": "¡%s se apaga! Enfría %d y pierde el turno",
 	"log_win": "%s gana el combate",
+	"log_drop_spawn": "Una nave deja caer una bonificación de %s en la casilla %d",
+	"log_drop_taken": "%s toma la bonificación: %s +%d %% durante %d turnos",
+	"log_buff_end": "A %s se le acaba la bonificación de %s",
+	"drop_armor": "armadura",
+	"drop_firepower": "potencia de disparo",
+	"drop_armor_short": "ARM",
+	"drop_firepower_short": "POT",
+	"buffs": "Ventajas",
 	"victory": "VICTORIA",
 	"defeat": "DERROTA",
 	"rematch": "Revancha",
@@ -65,7 +73,9 @@ const ES := {
 	"thinking": "El rival piensa…",
 }
 
-const TIER_NAMES: Array[String] = ["Básica", "Intermedia", "Avanzada", "Legendaria", "Mítica", "Única"]
+const TIER_NAMES: Array[String] = [
+	"Básica", "Intermedia", "Avanzada", "Legendaria", "Mítica", "Única"
+]
 const ELEMENT_NAMES: Array[String] = ["Físico", "Calor", "Energía", "Combinado"]
 
 

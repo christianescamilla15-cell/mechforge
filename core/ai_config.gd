@@ -14,6 +14,9 @@ extends Resource
 ## Cuanto cuesta quedar a una distancia desde la que las armas no alcanzan
 ## (acercarse cuesta una accion; 1 seria la accion entera).
 @export var position_discount: float = 0.5
+## Lo que vale cada turno de una bonificacion del 100 por ciento (GDD 2.8),
+## en barras de vida: una del 30 por ciento durante 3 turnos vale 0.3 x 3 x esto.
+@export var buff_turn_value: float = 0.15
 ## Valor de ganar o perder el combate.
 @export var win_value: float = 100.0
 

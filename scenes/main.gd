@@ -31,6 +31,8 @@ var _shot_events: Dictionary = {}
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	# En el juego la nave deja bonificaciones en la arena (GDD 2.8).
+	_rules.drops_enabled = true
 	for arg in OS.get_cmdline_user_args():
 		var parts := arg.trim_prefix("--").split("=", true, 1)
 		_args[parts[0]] = parts[1] if parts.size() > 1 else "true"
@@ -181,7 +183,20 @@ func _start_autoplay() -> void:
 func _on_autoplay_event(entry: Dictionary) -> void:
 	# Una captura la primera vez que pasa cada cosa interesante.
 	var event: String = entry["event"]
-	if event in ["weapon", "drone", "forced_cool", "shutdown", "charge", "hook", "teleport"]:
+	if (
+		event
+		in [
+			"weapon",
+			"drone",
+			"forced_cool",
+			"shutdown",
+			"charge",
+			"hook",
+			"teleport",
+			"drop_spawn",
+			"drop_taken"
+		]
+	):
 		if not _shot_events.has(event):
 			_shot_events[event] = true
 			_shot(event)

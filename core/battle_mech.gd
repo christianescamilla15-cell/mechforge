@@ -33,6 +33,8 @@ var cooling: int = 0
 ## Resistencias indexadas por ItemDef.Element (fisico, calor, energia).
 var res: Array[int] = [0, 0, 0]
 var shutdown_last_turn: bool = false
+## Bonificaciones en vigor (GDD 2.8): {"kind", "amount", "turns"}.
+var buffs: Array[Dictionary] = []
 ## Huecos que actuan en combate: "legs", "side0".."side3", "top0", "top1",
 ## "drone", "charge", "teleport", "hook".
 var slots: Dictionary[String, Slot] = {}
@@ -78,6 +80,7 @@ func clone() -> BattleMech:
 	copy.cooling = cooling
 	copy.res = res.duplicate()
 	copy.shutdown_last_turn = shutdown_last_turn
+	copy.buffs = buffs.duplicate(true)
 	for key in slots:
 		copy.slots[key] = slots[key].clone()
 	return copy
@@ -90,11 +93,21 @@ func energy_cost(def: ItemDef) -> int:
 	return build.chassis.energy_cost(def)
 
 
-## Potencia de disparo de este mech: depende de su chasis.
+## Potencia de disparo de este mech: su chasis y las bonificaciones en vigor.
 func damage_mult() -> float:
-	if build == null or build.chassis == null:
-		return 1.0
-	return build.chassis.damage_mult
+	var base := 1.0
+	if build != null and build.chassis != null:
+		base = build.chassis.damage_mult
+	return base * (1.0 + buff_amount("firepower"))
+
+
+## Suma de las bonificaciones en vigor de ese tipo (0 si no tiene ninguna).
+func buff_amount(kind: String) -> float:
+	var total := 0.0
+	for buff in buffs:
+		if buff["kind"] == kind:
+			total += buff["amount"]
+	return total
 
 
 func _add_slot(key: String, def: ItemDef) -> void:

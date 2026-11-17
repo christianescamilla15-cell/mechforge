@@ -38,7 +38,13 @@ func show_state(state: Dictionary, max_health: int) -> void:
 	_set_bar("heat", state["heat"], state["heat_cap"])
 	_set_bar("energy", state["energy"], state["energy_cap"])
 	var res: Array = state["res"]
-	_detail_label.text = ("%s: %d / %d / %d" % [Txt.t("resist"), res[0], res[1], res[2]])
+	var detail := "%s: %d / %d / %d" % [Txt.t("resist"), res[0], res[1], res[2]]
+	# Ventajas en vigor (GDD 2.8): que da cada una y cuantos turnos le quedan.
+	for buff: Dictionary in state.get("buffs", []):
+		var percent := roundi(float(buff["amount"]) * 100.0)
+		var short := Txt.t("drop_%s_short" % buff["kind"])
+		detail += "  ·  +%d %% %s (%d)" % [percent, short, buff["turns"]]
+	_detail_label.text = detail
 
 
 func _add_bar(box: VBoxContainer, key: String, title: String, color: Color) -> void:

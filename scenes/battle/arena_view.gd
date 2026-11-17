@@ -11,6 +11,8 @@ const CELL_HEIGHT := 46.0
 const COLOR_CELL := Color("1c2633")
 const COLOR_CELL_LINE := Color("3a4a5e")
 const COLOR_FLOOR := Color("0e141c")
+## Color de la caja de bonificacion segun lo que da (GDD 2.8).
+const DROP_COLORS := {"armor": Color("6fb6ff"), "firepower": Color("ffb347")}
 
 var cells: int = 10
 var mechs: Array[MechView] = []
@@ -18,6 +20,8 @@ var mechs: Array[MechView] = []
 ## Casillas resaltadas: {indice: color}.
 var _highlights: Dictionary = {}
 var _hovered: int = -1
+## Bonificacion que hay en la arena: {"cell", "kind"}; vacio si no hay.
+var _drop: Dictionary = {}
 ## Textos flotantes vivos por casilla, para no encimarlos.
 var _floating: Dictionary = {}
 
@@ -46,6 +50,13 @@ func set_highlights(highlights: Dictionary) -> void:
 
 
 ## Hace que los dos mechs se miren.
+## Muestra u oculta la bonificacion que dejo la nave (GDD 2.8).
+func set_drop(drop: Dictionary) -> void:
+	if drop != _drop:
+		_drop = drop.duplicate()
+		queue_redraw()
+
+
 func update_facing() -> void:
 	var left := 0 if mechs[0].position.x <= mechs[1].position.x else 1
 	mechs[left].set_facing(1)
@@ -98,6 +109,27 @@ func _draw() -> void:
 			16,
 			Color("8fa3b8")
 		)
+	if not _drop.is_empty():
+		_draw_drop()
+
+
+## La bonificacion como una caja sobre su casilla, del color de su tipo.
+func _draw_drop() -> void:
+	var center := Vector2(cell_point(_drop["cell"]).x, FLOOR_Y - 34.0)
+	var color: Color = DROP_COLORS.get(_drop["kind"], Color.WHITE)
+	var box := Rect2(center - Vector2(24, 20), Vector2(48, 40))
+	draw_rect(box, color.darkened(0.55))
+	draw_rect(box, color, false, 3.0)
+	draw_line(center + Vector2(0, 20), Vector2(center.x, FLOOR_Y), color.darkened(0.3), 2.0)
+	draw_string(
+		get_theme_default_font(),
+		box.position + Vector2(0, 26),
+		Txt.t("drop_%s_short" % _drop["kind"]),
+		HORIZONTAL_ALIGNMENT_CENTER,
+		box.size.x,
+		15,
+		color.lightened(0.4)
+	)
 
 
 func _gui_input(event: InputEvent) -> void:

@@ -36,3 +36,18 @@ extends Resource
 @export var chassis_start_share: float = 0.2
 ## Nivel maximo de un chasis; ahi su bonificacion es completa.
 @export var chassis_max_level: int = 30
+
+@export_group("Bonificaciones")
+## Bonificaciones que deja caer una nave en la arena (GDD 2.8). Apagadas por
+## defecto para no alterar los combates de prueba; el juego las enciende.
+@export var drops_enabled: bool = false
+## Turno en que cae la primera, y cada cuantos turnos cae otra si no queda ninguna.
+@export var drop_first_turn: int = 3
+@export var drop_every: int = 5
+## Turnos propios que dura la ventaja de quien la toma.
+@export var drop_duration: int = 3
+## Cuanto da: al azar entre una ventaja ligera y una extrema.
+@export var drop_min: float = 0.1
+@export var drop_max: float = 0.5
+## Tipos posibles: "armor" reduce el dano recibido; "firepower" sube el causado.
+@export var drop_kinds: Array[String] = ["armor", "firepower"]

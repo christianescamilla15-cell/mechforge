@@ -95,6 +95,9 @@ func evaluate(e: BattleEngine, me: int) -> float:
 	score += config.energy_discount * foe_strike * per_turn * _energy_starvation(foe, mine, false)
 	score -= config.energy_discount * my_strike * per_turn * _energy_starvation(mine, foe, true)
 
+	# Bonificaciones en vigor (GDD 2.8): valen por lo que dan y lo que les queda.
+	score += config.buff_turn_value * (_buff_worth(mine) - _buff_worth(foe))
+
 	var distance := absi(mine.position - foe.position)
 	score -= config.position_discount * my_strike * (1.0 - _reach(mine, distance))
 	score += config.position_discount * foe_strike * (1.0 - _reach(foe, distance))
@@ -134,6 +137,13 @@ func _worst_reply_value(state: BattleEngine, me: int) -> float:
 
 func _turn_ended(after: BattleEngine, before: BattleEngine) -> bool:
 	return after.is_over() or after.turn_number != before.turn_number
+
+
+func _buff_worth(mech: BattleMech) -> float:
+	var total := 0.0
+	for buff in mech.buffs:
+		total += buff["amount"] * buff["turns"]
+	return total
 
 
 func _ratio(value: int, total: int) -> float:

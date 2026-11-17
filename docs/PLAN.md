@@ -89,7 +89,7 @@ Si SDXL resulta demasiado lento en 6 GB, el plan B es un modelo SD 1.5 de anime 
 - Pruebas en vivo: `tools/live.ps1` abre el juego real, la IA juega el combate y se guardan capturas; con `-Ui` el lado del jugador pasa por los mismos controles que una persona. CDP no aplica: el juego es una app nativa de Godot, no un navegador.
 - `tools/play.ps1` abre el juego para jugar a mano.
 
-**Primeros modelos en el juego (2026-11-16):** el combate ya dibuja el torso 18 y las piernas 18 del chasis ligero, unidos por el aro y coloreados por elemento (assets/mechs, scenes/battle/mech_sprites.gd, tools/art/export_parts.py). Comprobado con tools/live.ps1 y capturas revisadas. Todos los mechs usan ese mismo juego de piezas; las armas aún no tienen arte y no se dibujan (solo el dron, provisional).
+**Primeros modelos en el juego (2026-11-16):** el combate ya dibuja el torso 18 y las piernas 18 del chasis ligero, unidos por el aro y coloreados por elemento (assets/mechs, scenes/battle/mech_sprites.gd, tools/art/export_parts.py). Comprobado con tools/live.ps1 y capturas revisadas. Después se añadieron dos torsos y dos pares de piernas más (cada mech elige los suyos según sus piezas del catálogo) y el cañón de pecho dibujado en su sitio, que de momento se muestra en los mechs con arma superior. Las demás armas aún no tienen arte; el dron sigue provisional.
 
 **Falta en F5 (presentación del combate, GDD §12):**
 - Campo `fx` en el catálogo y su validación.
@@ -111,7 +111,7 @@ El usuario amplió el diseño en una sesión (GDD §1.1, §8, §9 y §12.2; docs
 3. **Nivel del jugador:** experiencia por combate y desbloqueo de huecos (soporte al 3, segundo brazo al 5, pecho al 10, hombros al 15 y al 20).
 4. **Catálogo generado:** las 111 armas salen de la tabla forma × tipo × munición; el validador y el simulador comprueban el resultado. Hay que rehacer los mechs de ejemplo.
 5. **Árbol de habilidades y materia oscura:** por diseñar con el usuario antes de programarlo.
-6. **Bonificaciones que caen en la arena** (GDD §2.8) y **habilidades de combate** del chasis: pedidas el 2026-11-16, sin programar.
+6. **Bonificaciones que caen en la arena** (GDD §2.8): **hechas el 2026-11-16** en el motor, la IA y la pantalla (137 tests; comprobado con tools/live.ps1: cae la caja y un mech la toma). Falta medir su efecto en el balance. Las **habilidades de combate** del chasis siguen sin diseñar.
 7. **Balance:** repetir las puertas de F3 con Mítica como techo de las piezas normales y con los tres chasis.
 
 

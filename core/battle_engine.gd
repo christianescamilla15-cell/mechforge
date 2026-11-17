@@ -19,8 +19,14 @@ var logging: bool = true
 ## La IA evalua con 0.5 (dano esperado) para no depender de la suerte.
 var fixed_roll: float = -1.0
 
+## Bonificacion que hay en la arena (GDD 2.8): {"cell", "kind", "amount"};
+## vacio si no hay ninguna.
+var drop: Dictionary = {}
+
 var _rng := RandomNumberGenerator.new()
 var _first_turn := true
+## Las copias que usa la IA para probar jugadas no hacen caer bonificaciones.
+var _spawns_drops := true
 
 
 ## Sin argumentos crea un motor vacio; solo lo usa clone().
@@ -68,6 +74,8 @@ func clone(for_search: bool = true) -> BattleEngine:
 	copy.turn_number = turn_number
 	copy.winner = winner
 	copy._first_turn = _first_turn
+	copy.drop = drop.duplicate()
+	copy._spawns_drops = _spawns_drops and not for_search
 	if for_search:
 		copy.logging = false
 		copy.fixed_roll = 0.5
@@ -278,6 +286,7 @@ func apply(action: BattleAction) -> String:
 			if logging:
 				events[-1]["from"] = from
 				events[-1]["to"] = me.position
+	_check_pickup()
 	actions_left -= 1
 	if _check_winner():
 		return ""
@@ -289,6 +298,7 @@ func apply(action: BattleAction) -> String:
 func _begin_turn() -> void:
 	var me := attacker()
 	turn_number += 1
+	_maybe_spawn_drop()
 	for slot: BattleMech.Slot in me.slots.values():
 		slot.used_this_turn = false
 	var actions := rules.actions_per_turn
@@ -326,6 +336,8 @@ func _end_turn(fire_drone: bool) -> void:
 			return
 	if not rules.m6_regen_at_turn_start:
 		_regen(me)
+	_check_pickup()
+	_tick_buffs(me)
 	turn = 1 - turn
 	_begin_turn()
 
@@ -388,6 +400,10 @@ func _damage(def: ItemDef, attacker: BattleMech, target: BattleMech, roll: float
 		damage = roundi(damage * attacker.damage_mult())
 		if def.element != ItemDef.Element.COMBINED:
 			damage = maxi(1, damage - target.res[def.element])
+		# Bonificacion de armadura del rival (GDD 2.8); sin ella no cambia nada.
+		var armor := target.buff_amount("armor")
+		if armor > 0.0:
+			damage = maxi(1, roundi(damage * (1.0 - armor)))
 	# Rotura de energia: lo que el arma drena de mas se vuelve dano.
 	return damage + maxi(0, def.energy_dmg - target.energy)
 
@@ -407,6 +423,61 @@ func _apply_movement(user: BattleMech, target: BattleMech, def: ItemDef) -> void
 	if def.pull > 0:
 		var gap := absi(target.position - user.position) - 1
 		target.position -= mini(def.pull, gap) * dir
+
+
+# --- Bonificaciones (GDD 2.8) --------------------------------------------------
+
+
+## Hace caer una bonificacion en una casilla libre cuando toca. Que es y
+## cuanto da salen del azar del combate, asi que se repite con la misma semilla.
+func _maybe_spawn_drop() -> void:
+	if not (rules.drops_enabled and _spawns_drops and drop.is_empty()):
+		return
+	var since := turn_number - rules.drop_first_turn
+	if since < 0 or since % maxi(rules.drop_every, 1) != 0:
+		return
+	var free: Array[int] = []
+	for cell in rules.arena_size:
+		if cell != mechs[0].position and cell != mechs[1].position:
+			free.append(cell)
+	if free.is_empty() or rules.drop_kinds.is_empty():
+		return
+	var amount := lerpf(rules.drop_min, rules.drop_max, _rng.randf())
+	drop = {
+		"cell": free[_rng.randi_range(0, free.size() - 1)],
+		"kind": rules.drop_kinds[_rng.randi_range(0, rules.drop_kinds.size() - 1)],
+		"amount": snappedf(amount, 0.01),
+	}
+	_log("drop_spawn", {"cell": drop["cell"], "kind": drop["kind"]})
+
+
+## Si un mech esta sobre la bonificacion, la toma: llego andando, saltando o
+## empujado, da igual.
+func _check_pickup() -> void:
+	if drop.is_empty():
+		return
+	for who in 2:
+		if mechs[who].position != drop["cell"]:
+			continue
+		var buff := {"kind": drop["kind"], "amount": drop["amount"], "turns": rules.drop_duration}
+		mechs[who].buffs.append(buff)
+		drop = {}
+		var data := {"who": who, "kind": buff["kind"], "amount": buff["amount"]}
+		data["turns"] = buff["turns"]
+		_log("drop_taken", data)
+		return
+
+
+## Al acabar su turno, a las bonificaciones de un mech les queda un turno menos.
+func _tick_buffs(mech: BattleMech) -> void:
+	var kept: Array[Dictionary] = []
+	for buff in mech.buffs:
+		buff["turns"] -= 1
+		if buff["turns"] > 0:
+			kept.append(buff)
+		else:
+			_log("buff_end", {"who": mechs.find(mech), "kind": buff["kind"]})
+	mech.buffs = kept
 
 
 ## +1 si el rival esta a la derecha de user, -1 si esta a la izquierda.
@@ -452,6 +523,7 @@ func _log(event: String, data: Dictionary = {}) -> void:
 	# Foto del estado tras el evento: la pantalla la usa para animar paso a paso.
 	entry["state"] = [_snapshot(mechs[0]), _snapshot(mechs[1])]
 	entry["actions_left"] = actions_left
+	entry["drop"] = drop.duplicate()
 	events.append(entry)
 
 
@@ -466,4 +538,5 @@ func _snapshot(mech: BattleMech) -> Dictionary:
 		"cooling": mech.cooling,
 		"regen": mech.energy_regen,
 		"res": mech.res.duplicate(),
+		"buffs": mech.buffs.duplicate(true),
 	}
