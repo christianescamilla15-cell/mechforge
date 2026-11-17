@@ -68,7 +68,9 @@ func test_el_arma_de_pecho_pelea_como_un_arma_mas() -> void:
 	assert_has(engine.mechs[0].weapon_keys(), "chest")
 	assert_eq(engine.apply(BattleAction.weapon("chest")), "")
 	assert_eq(engine.mechs[1].health, engine.mechs[1].max_health - 300)
-	assert_eq(build.total_weight(), Fx.build([Fx.gun()]).total_weight() + 60, "su peso cuenta")
+	var plain := Fx.build([Fx.gun()])
+	assert_eq(build.total_weight(), plain.total_weight(), "va aparte: no cuenta para el peso")
+	assert_eq(build.summary(Fx.rules())["health"], plain.summary(Fx.rules())["health"])
 
 
 func test_el_catalogo_tiene_las_111_armas_y_15_de_pecho() -> void:

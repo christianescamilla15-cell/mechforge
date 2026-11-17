@@ -12,6 +12,9 @@ extends SceneTree
 ##   --start-tier=COMMON       clase de las piezas al llegar (por defecto, Basica)
 ##   --start-level=0           nivel de las piezas al llegar
 ##   --start-armory=0          nivel de las mejoras de la armeria al llegar
+##   --chest=bought|owned|none arma de pecho del jugador (canon pesado de su
+##                             elemento): comprada en esta zona (se paga
+##                             con las celdas), traida de antes, o ninguna
 ##   --seed=1
 ## Las victorias se cobran a la tarifa de la arena de la zona. Bonificaciones
 ## encendidas; el jugador juega con la IA dificil y el jefe con la de la
@@ -39,6 +42,7 @@ func _initialize() -> void:
 	var start_tier: int = ItemDef.Tier[args.get("start-tier", "COMMON")]
 	var start_level := int(args.get("start-level", "0"))
 	var start_armory := int(args.get("start-armory", "0"))
+	var chest_mode: String = args.get("chest", "none")
 	var wins_list: Array[int] = []
 	for text: String in str(args.get("wins", "10;25;50;75;100")).split(";"):
 		wins_list.append(int(text))
@@ -50,6 +54,7 @@ func _initialize() -> void:
 	var shop := ArenaShop.load_file("res://data/arena_shop.json")
 	var workshop := Workshop.load_file("res://data/workshop.json")
 	var campaign := Campaign.load_file("res://data/campaign.json", library)
+	var garage := Garage.load_file("res://data/part_shop.json")
 	var problems := (
 		catalog.errors
 		+ library.errors
@@ -71,19 +76,28 @@ func _initialize() -> void:
 	var reward := shop.reward("arena_win") * campaign.reward_mult(zone)
 	for wins in wins_list:
 		for id in library.band_ids(campaign.band_of(zone)):
+			var items: Dictionary = library.specs[id]["items"].duplicate(true)
+			var chest := ""
+			if chest_mode != "none":
+				chest = _chest_for(catalog, library.element_of(id), campaign.band_of(zone))
+				items["chest"] = chest
+				_fit_weight(items, catalog)
 			var profile := PlayerProfile.new()
-			for item in library.item_ids(id):
+			for item in BuildLibrary.items_of(items):
 				profile.parts[item] = {"tier": start_tier, "level": start_level}
 			for track in shop.track_ids():
 				profile.shop_levels[track] = start_armory
 			profile.gold = roundi(wins * reward)
+			if chest_mode == "bought":
+				# Se compra en la tienda de la zona: llega en su clase, nivel 0.
+				profile.parts[chest] = {"tier": tier, "level": 0}
+				profile.gold -= garage.price(catalog, _rules, workshop, chest, tier)
 			var cap := campaign.level_cap(zone)
-			_spend(profile, library.item_ids(id), tier, cap, workshop, shop, catalog)
+			if profile.gold > 0:
+				_spend(profile, BuildLibrary.items_of(items), tier, cap, workshop, shop, catalog)
 			var key := "%s@%d" % [id, wins]
 			_states[key] = profile
-			var build := library.make(
-				id, catalog, _rules, ItemDef.Tier.COMMON, 0, null, profile.parts
-			)
+			var build := catalog.make_build(items, _rules, ItemDef.Tier.COMMON, 0, profile.parts)
 			build.upgrades = shop.upgrades_for(profile.shop_levels)
 			_builds[key] = build
 			for n in battles:
@@ -112,6 +126,41 @@ func _initialize() -> void:
 	WorkerThreadPool.wait_for_group_task_completion(group)
 	_report(wins_list, library, library.band_ids(campaign.band_of(zone)), shop, battles, reward)
 	quit(0)
+
+
+## Canon pesado del elemento del mech (los hibridos, fisico) y del tipo de
+## arma de la zona; si la zona no tiene, el de canon.
+func _chest_for(catalog: Catalog, element: String, band: String) -> String:
+	var ammo := {"PHYSICAL": "cin", "HEAT": "ter", "ENERGY": "ion"}
+	var suffix: String = ammo.get(element, "cin")
+	for type_id: String in [band, "canon", "blaster", "laser"]:
+		var id := "canon_pesado_%s_%s" % [type_id, suffix]
+		if catalog.get_item(id) != null:
+			return id
+	return ""
+
+
+## Quita modulos (primero los repetidos) hasta que el mech pese lo permitido,
+## como haria el jugador al montar el arma de pecho.
+func _fit_weight(items: Dictionary, catalog: Catalog) -> void:
+	var modules: Array = items.get("modules", []).duplicate()
+	while _weight(items, catalog) > _rules.max_weight and not modules.is_empty():
+		var repeated := modules.filter(func(m: Variant) -> bool: return modules.count(m) > 1)
+		modules.erase(repeated[-1] if not repeated.is_empty() else modules[-1])
+		items["modules"] = modules
+
+
+func _weight(items: Dictionary, catalog: Catalog) -> int:
+	var total := 0
+	# El arma de pecho no cuenta para el limite (MechBuild.total_weight).
+	for key: String in ["torso", "legs", "drone", "charge", "teleport", "hook"]:
+		if str(items.get(key, "")) != "":
+			total += catalog.get_item(items[key]).weight
+	for key: String in ["sides", "tops", "modules"]:
+		for id: Variant in items.get(key, []):
+			if str(id) != "":
+				total += catalog.get_item(id).weight
+	return total
 
 
 ## Compra lo mas barato que pueda pagar hasta quedarse sin celdas.

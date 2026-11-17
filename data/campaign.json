@@ -491,7 +491,7 @@
         "difficulty": "HARD"
       },
       "band": "laser",
-      "enemy_armory": 6
+      "enemy_armory": 8
     },
     {
       "id": "zona_8",
@@ -562,7 +562,7 @@
       },
       "drops_unique": true,
       "band": "laser",
-      "enemy_armory": 6
+      "enemy_armory": 8
     },
     {
       "id": "zona_9",
@@ -633,7 +633,7 @@
       },
       "drops_unique": true,
       "band": "laser",
-      "enemy_armory": 6
+      "enemy_armory": 8
     },
     {
       "id": "zona_10",
@@ -704,7 +704,7 @@
       },
       "drops_unique": true,
       "band": "laser",
-      "enemy_armory": 6
+      "enemy_armory": 8
     }
   ]
 }

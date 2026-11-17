@@ -35,10 +35,15 @@ func all_items() -> Array[ItemDef]:
 	return out
 
 
+## Peso que cuenta para el limite. El arma de pecho no cuenta: va en un hueco
+## reforzado aparte, que se abre en el nivel 10 del jugador (GDD 4). Medido el
+## 2026-11-17: si contara, montarla obligaba a quitar modulos y el mech salia
+## peor que sin ella.
 func total_weight() -> int:
 	var total := 0
 	for item in all_items():
-		total += item.weight
+		if item != chest:
+			total += item.weight
 	return total
 
 
@@ -87,6 +92,8 @@ func summary(rules: RulesConfig) -> Dictionary:
 	for item in all_items():
 		for key: String in s:
 			s[key] += item.get(key)
+	if chest != null:
+		s["weight"] -= chest.weight
 	if chassis != null:
 		chassis.apply(s)
 	if upgrades != null:
