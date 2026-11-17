@@ -49,13 +49,18 @@ En vista lateral, el brazo y el hombro del lado lejano se dibujan detrás del to
 - Todas las piezas se dibujan en blanco y al mismo aumento, para que el grosor de línea sea igual.
 - El robot entero lleva un solo esquema de color por zonas (`tools/art/recolor.py`), que es lo que más unifica.
 
-## 5. Chasis previstos (propuesta)
+## 5. Los tres chasis
 
-| Chasis | Línea de diseño | Para quién |
-|---|---|---|
-| Ligero | Esbelta: la que eligió el usuario (`docs/reference/art/elegidos/jugador/`) | El primer robot del jugador |
-| Medio | Intermedia, por definir | Segundo robot del jugador |
-| Pesado | Robusta, tipo tanque andante (`docs/reference/art/elegidos/jefes/`) | Los jefes; si el jugador puede conseguirlo queda por decidir |
+Aprobados por el usuario el 2026-11-16. Cada chasis tiene su carácter en combate y se mejora por niveles, como cualquier pieza.
+
+| Chasis | Línea de diseño | Carácter en combate | Se consigue |
+|---|---|---|---|
+| Ligero | Esbelta: la que eligió el usuario (docs/reference/art/elegidos/jugador/) | Sus armas consumen mucha menos energía, así que dispara más y con más potencia. Menos vida | Es el primer robot |
+| Medio | Intermedia, por definir | Equilibrado (propuesta: mejor manejo del calor) | Por definir (propuesta: nivel 5) |
+| Pesado | Robusta, tipo tanque andante (docs/reference/art/elegidos/jefes/). Es también la de los jefes | Un salto enorme de vida y de resistencias. Más lento y con mayor consumo (propuesta) | Después del nivel 10 |
+
+- El jugador elige: seguir mejorando su chasis ligero al siguiente nivel, o pasar al pesado para ganar aguante.
+- Los números de cada bonificación están por fijar y se comprobarán con el simulador de balance, para que ningún chasis sea siempre el mejor.
 
 ## 6. Cómo se dibujan las piezas
 
@@ -73,6 +78,13 @@ Como todas las piezas se dibujaron contra el mismo aro, cualquier torso casa con
 - El dibujo conserva el detalle y la línea de tinta, a diferencia de cuando se le obligaba a seguir un bloque (ahí sale plano).
 - Fallos por corregir: al repintar medio lienzo el modelo inventa suelo y horizonte, y el recorte de fondo falla (hay que repintar solo la envolvente de la pieza); los torsos salen con brazos y armas aunque se pidan sin ellos; unas piernas salieron demasiado inclinadas; algún tinte de color donde debía ser blanco.
 
+**Segunda prueba, ya sobre el chasis ligero (2026-11-16):**
+- **Maniquí:** el cuerpo elegido por el usuario (físico 101) con un aro de acople añadido en la cintura, repintando solo esa franja. Guardado en docs/reference/art/elegidos/maniqui_ligero.png. El aro está en la fila 530, columna 493 del lienzo de 1024.
+- **Piezas:** 3 torsos y 3 pares de piernas, repintando solo la envolvente de cada pieza y sin bloque de control (manda el maniquí).
+- **Resultado:** las 9 combinaciones encajan en el aro, con el detalle y la línea del estilo aprobado, todas en blanco, y el recorte de fondo sale limpio: desaparecieron el suelo inventado y los rectángulos.
+- **Sigue fallando:** un torso salió con brazos y manos; los torsos son grandes para las piernas más finas; cada torso tiene un lenguaje de formas algo distinto.
+- **Costo medido:** 50 segundos por pieza, pico de 4.3 GB de VRAM.
+
 ## 7. Qué cambia respecto a lo anterior
 
 - Los cuerpos elegidos por el usuario pasan a ser la referencia de estilo del chasis ligero, no piezas para cortar.
@@ -82,6 +94,6 @@ Como todas las piezas se dibujaron contra el mismo aro, cualquier torso casa con
 
 ## 8. Por decidir
 
-1. Cuántos chasis hay en el primer mundo y si el jugador puede conseguir el pesado.
-2. Si las armas son exclusivas de un chasis o se comparten entre chasis de tamaño parecido.
+1. Los números de las bonificaciones de cada chasis y cuándo se consigue el medio.
+2. Si las armas son exclusivas de un chasis o se comparten entre chasis de tamaño parecido. Mientras no se decida se comparten, con la regla de que quepan en la unión.
 3. Cuántos torsos y piernas distintos tiene cada chasis al empezar.

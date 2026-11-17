@@ -101,6 +101,17 @@ Si SDXL resulta demasiado lento en 6 GB, el plan B es un modelo SD 1.5 de anime 
 
 **Puerta de presentación:** el test de cobertura pasa (ningún evento ni tipo de `fx` sin animación o sonido); la prueba en vivo deja capturas revisadas de cada tipo de acción sobre el escenario; el usuario da el visto bueno al sonido escuchándolo; 60 FPS medidos en la laptop.
 
+### Rediseño del 2026-11-16: trabajo de motor pendiente
+El usuario amplió el diseño en una sesión (GDD §1.1, §8, §9 y §12.2; docs/CATALOGO_ARMAS.md; docs/CHASIS.md). El motor de combate actual sigue con las reglas anteriores y pasa sus 113 tests. Lo que hay que construir, en este orden, cada paso con sus tests y su comprobación de balance:
+
+1. **Chasis:** el mech pasa a tener chasis (ligero, medio o pesado) con sus bonificaciones: el ligero gasta mucha menos energía en sus armas; el pesado tiene mucha más vida y resistencias y se consigue después del nivel 10. El chasis sube de nivel.
+2. **Huecos:** 2 brazos, 2 hombros y 1 pecho en vez de 4 laterales y 2 superiores; nuevo tipo de pieza para el arma de pecho.
+3. **Nivel del jugador:** experiencia por combate y desbloqueo de huecos (soporte al 3, segundo brazo al 5, pecho al 10, hombros al 15 y al 20).
+4. **Catálogo generado:** las 111 armas salen de la tabla forma × tipo × munición; el validador y el simulador comprueban el resultado. Hay que rehacer los mechs de ejemplo.
+5. **Árbol de habilidades y materia oscura:** por diseñar con el usuario antes de programarlo.
+6. **Balance:** repetir las puertas de F3 con Mítica como techo de las piezas normales y con los tres chasis.
+
+
 ### F6 — Taller de armado
 - Equipar piezas por hueco, barra de peso con sobrecarga, resumen de stats, avisos (sin torso o piernas, resistencias repetidas, más de 1010 kg) y vista previa del mech montado.
 - Tienda dentro del taller y garaje con varios mechs guardados (GDD §8): es lo que el usuario recuerda del juego antiguo.
