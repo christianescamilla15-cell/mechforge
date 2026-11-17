@@ -89,7 +89,7 @@ func why_cant_use(user: BattleMech, target: BattleMech, key: String) -> String:
 		return "no tiene esa pieza"
 	var slot := user.slots[key]
 	var def := slot.def
-	if def.energy_cost > user.energy:
+	if user.energy_cost(def) > user.energy:
 		return "falta energia"
 	if def.backfire > 0 and def.backfire >= user.health:
 		return "falta vida"
@@ -220,13 +220,13 @@ func preview(action: BattleAction) -> Dictionary:
 		if action.type == BattleAction.Type.TELEPORT:
 			hits = absi(action.position - foe.position) == 1
 		if hits:
-			out["dmg_min"] = _damage(def, foe, 0.0)
-			out["dmg_max"] = _damage(def, foe, 1.0)
+			out["dmg_min"] = _damage(def, me, foe, 0.0)
+			out["dmg_max"] = _damage(def, me, foe, 1.0)
 			out["target_heat"] = foe.heat + def.heat_dmg
 			out["target_energy"] = maxi(0, foe.energy - def.energy_dmg)
 			out["self_health"] = me.health - def.backfire
 		out["self_heat"] = me.heat + def.heat_cost
-		out["self_energy"] = me.energy - def.energy_cost
+		out["self_energy"] = me.energy - me.energy_cost(def)
 	out["self_overheats"] = out["self_heat"] > me.heat_cap
 	out["target_overheats"] = out["target_heat"] > foe.heat_cap
 	return out
@@ -272,7 +272,7 @@ func apply(action: BattleAction) -> String:
 				# Sin rival al lado no hay golpe, pero el salto se paga igual.
 				var tele := me.slots["teleport"]
 				me.heat += tele.def.heat_cost
-				me.energy -= tele.def.energy_cost
+				me.energy -= me.energy_cost(tele.def)
 				_spend_use(tele)
 				_log("teleport", {"slot": "teleport", "damage": 0})
 			if logging:
@@ -346,11 +346,11 @@ func _use(
 	var roll := 0.0
 	if def.deals_damage():
 		roll = fixed_roll if fixed_roll >= 0.0 else _rng.randf()
-	var damage := _damage(def, target, roll)
+	var damage := _damage(def, user, target, roll)
 
 	user.health -= def.backfire
 	user.heat += def.heat_cost
-	user.energy -= def.energy_cost
+	user.energy -= user.energy_cost(def)
 
 	target.health -= damage
 	target.heat += def.heat_dmg
@@ -380,10 +380,12 @@ func _spend_use(slot: BattleMech.Slot) -> void:
 
 
 ## Dano final (GDD 2.4). roll en [0, 1].
-func _damage(def: ItemDef, target: BattleMech, roll: float) -> int:
+func _damage(def: ItemDef, attacker: BattleMech, target: BattleMech, roll: float) -> int:
 	var damage := 0
 	if def.deals_damage():
 		damage = def.dmg_min + roundi(roll * (def.dmg_max - def.dmg_min))
+		# Con potencia 1.0 el resultado es exactamente el de antes.
+		damage = roundi(damage * attacker.damage_mult())
 		if def.element != ItemDef.Element.COMBINED:
 			damage = maxi(1, damage - target.res[def.element])
 	# Rotura de energia: lo que el arma drena de mas se vuelve dano.

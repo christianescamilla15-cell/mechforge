@@ -83,6 +83,20 @@ func clone() -> BattleMech:
 	return copy
 
 
+## Energia que le cuesta a este mech usar una pieza: depende de su chasis.
+func energy_cost(def: ItemDef) -> int:
+	if build == null or build.chassis == null:
+		return def.energy_cost
+	return build.chassis.energy_cost(def)
+
+
+## Potencia de disparo de este mech: depende de su chasis.
+func damage_mult() -> float:
+	if build == null or build.chassis == null:
+		return 1.0
+	return build.chassis.damage_mult
+
+
 func _add_slot(key: String, def: ItemDef) -> void:
 	if def != null:
 		slots[key] = Slot.new(def)

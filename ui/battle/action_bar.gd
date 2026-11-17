@@ -12,6 +12,8 @@ signal action_hovered(action: BattleAction)
 
 var _buttons: Array[Button] = []
 var _actions: Array[BattleAction] = []
+## Mech cuyas piezas se muestran; de el sale el costo real de cada arma.
+var _mech: BattleMech
 
 
 func _init() -> void:
@@ -21,6 +23,7 @@ func _init() -> void:
 
 ## Crea los botones a partir de las piezas del mech del jugador.
 func build_for(mech: BattleMech) -> void:
+	_mech = mech
 	for button in _buttons:
 		button.queue_free()
 	_buttons.clear()
@@ -81,8 +84,9 @@ func _item_title(title: String, def: ItemDef) -> String:
 	var parts: Array[String] = []
 	if def.range_max > 0:
 		parts.append("%d–%d" % [def.range_min, def.range_max])
-	if def.energy_cost > 0:
-		parts.append("E%d" % def.energy_cost)
+	var energy_cost := _mech.energy_cost(def) if _mech != null else def.energy_cost
+	if energy_cost > 0:
+		parts.append("E%d" % energy_cost)
 	if def.heat_cost > 0:
 		parts.append("C%d" % def.heat_cost)
 	return title if parts.is_empty() else "%s\n%s" % [title, " · ".join(parts)]

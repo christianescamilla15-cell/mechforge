@@ -37,9 +37,13 @@ RING_RADIUS = (110, 24)
 # si no, el modelo inventa suelo y horizonte.
 ZONES = {
     "ring": (-46, 46, -175, 175),
-    "torso": (-470, -RING_BAND, -340, 400),
+    # Algo mas ajustada que el torso del maniqui (-409, -275, 250): acota el
+    # tamano para que el conjunto se vea estable sobre las piernas finas.
+    "torso": (-405, -RING_BAND, -275, 290),
     "legs": (RING_BAND, 440, -300, 330),
 }
+# El torso va sin brazos: los brazos los ponen las armas (docs/CHASIS.md).
+ZONE_NEGATIVE = {"torso": ", fingers, claws, mechanical arms, extra arms, gun, cannon, weapon"}
 ZONE_SUBJECT = {
     "ring": "full body, standing, from side, profile, solo, armor, mechanical joint, waist",
 }
@@ -79,6 +83,12 @@ def main():
     )
     parser.add_argument("--control-scale", type=float, default=0.45, help="0 = sin bloque: manda el maniqui")
     parser.add_argument("--control-end", type=float, default=0.35)
+    parser.add_argument(
+        "--strength",
+        type=float,
+        default=0.9,
+        help="cuanto se aparta del maniqui en la zona repintada; por debajo de 1 hereda sus formas",
+    )
     args = parser.parse_args()
 
     out = OUT / args.batch
@@ -102,10 +112,10 @@ def main():
             started = time.time()
             image = pipe(
                 prompt=style.prompt(subject, colors),
-                negative_prompt=style.negative_for("chassis"),
+                negative_prompt=style.negative_for("chassis") + ZONE_NEGATIVE.get(zone, ""),
                 image=mannequin,
                 mask_image=mask,
-                strength=1.0,
+                strength=1.0 if zone == "ring" else args.strength,
                 control_image=[control],
                 control_mode=[sd.MODE_SCRIBBLE],
                 controlnet_conditioning_scale=scale,

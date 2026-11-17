@@ -104,7 +104,7 @@ Si SDXL resulta demasiado lento en 6 GB, el plan B es un modelo SD 1.5 de anime 
 ### Rediseño del 2026-11-16: trabajo de motor pendiente
 El usuario amplió el diseño en una sesión (GDD §1.1, §8, §9 y §12.2; docs/CATALOGO_ARMAS.md; docs/CHASIS.md). El motor de combate actual sigue con las reglas anteriores y pasa sus 113 tests. Lo que hay que construir, en este orden, cada paso con sus tests y su comprobación de balance:
 
-1. **Chasis:** el mech pasa a tener chasis (ligero, medio o pesado) con sus bonificaciones: el ligero gasta mucha menos energía en sus armas; el pesado tiene mucha más vida y resistencias y se consigue después del nivel 10. El chasis sube de nivel.
+1. **Chasis:** el mech pasa a tener chasis (ligero, medio o pesado) con sus bonificaciones: el ligero gasta mucha menos energía en sus armas; el pesado tiene mucha más vida y resistencias y se consigue después del nivel 10. El chasis sube de nivel. **Hecho en parte el 2026-11-16:** chasis en el motor con sus multiplicadores, tres chasis en datos, 10 tests (123 en total) y simulador de chasis contra chasis; todos los cruces quedan entre el 40 % y el 60 % (docs/CHASIS.md, sección 5). Falta: niveles del chasis, elegir chasis en el menú y en los mechs de ejemplo, y repetir el ajuste con el catálogo nuevo.
 2. **Huecos:** 2 brazos, 2 hombros y 1 pecho en vez de 4 laterales y 2 superiores; nuevo tipo de pieza para el arma de pecho.
 3. **Nivel del jugador:** experiencia por combate y desbloqueo de huecos (soporte al 3, segundo brazo al 5, pecho al 10, hombros al 15 y al 20).
 4. **Catálogo generado:** las 111 armas salen de la tabla forma × tipo × munición; el validador y el simulador comprueban el resultado. Hay que rehacer los mechs de ejemplo.

@@ -60,7 +60,26 @@ Aprobados por el usuario el 2026-11-16. Cada chasis tiene su carácter en combat
 | Pesado | Robusta, tipo tanque andante (docs/reference/art/elegidos/jefes/). Es también la de los jefes | Un salto enorme de vida y de resistencias. Más lento y con mayor consumo (propuesta) | Después del nivel 10 |
 
 - El jugador elige: seguir mejorando su chasis ligero al siguiente nivel, o pasar al pesado para ganar aguante.
-- Los números de cada bonificación están por fijar y se comprobarán con el simulador de balance, para que ningún chasis sea siempre el mejor.
+- **En el motor desde el 2026-11-16** (core/chassis_def.gd, data/chassis.json, 10 tests): el chasis multiplica la vida, las resistencias, la capacidad de calor, el enfriamiento, el gasto de energía de las armas y la potencia de disparo.
+
+**Números actuales, medidos con tools/sim/chassis_sim.gd** (el mismo mech con un chasis contra el mismo mech con otro, 600 combates, clase Mítica):
+
+| Chasis | Vida | Resistencias | Potencia de disparo | Gasto de energía | Calor |
+|---|---|---|---|---|---|
+| Ligero | −10 % | igual | +20 % | −40 % | igual |
+| Medio | +3 % | igual | +10 % | igual | +15 % de capacidad y enfriamiento |
+| Pesado | +25 % | +25 % | −10 % | +15 % | igual |
+
+| Cruce | Gana el primero | Gana el segundo |
+|---|---|---|
+| Ligero contra medio | 40.5 % | 59.5 % |
+| Ligero contra pesado | 45.0 % | 55.0 % |
+| Medio contra pesado | 50.0 % | 50.0 % |
+
+- Ningún chasis gana siempre: todos los cruces quedan entre el 40 % y el 60 %. El ligero es de momento el más flojo.
+- Lo que no funcionó: ahorrar energía, por sí solo, no le daba nada al ligero (perdía el 100 % contra el pesado), porque a estos mechs no les falta energía. Por eso su ventaja real es la potencia de disparo. Y un pesado con +40 % de vida y resistencias ganaba el 100 %.
+- Depende mucho del mech: con el de calor el medio le gana al pesado el 94 % de las veces, y con el híbrido solo el 4 %. Elegir chasis según lo que llevas montado es parte del juego, pero esos extremos hay que suavizarlos.
+- Estos números son provisionales: hay que repetir el ajuste cuando cambien los huecos y el catálogo de armas.
 
 ## 6. Cómo se dibujan las piezas
 

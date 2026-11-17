@@ -178,7 +178,7 @@ func _energy_starvation(mech: BattleMech, enemy: BattleMech, before_enemy_turn: 
 	for key in mech.weapon_keys():
 		var slot := mech.slots[key]
 		if slot.uses_left != 0 and slot.def.energy_cost > 0:
-			costs.append(slot.def.energy_cost)
+			costs.append(mech.energy_cost(slot.def))
 	if costs.is_empty():
 		return 0.0
 	costs.sort()

@@ -6,6 +6,8 @@ const SIDE_SLOTS := 4
 const TOP_SLOTS := 2
 const MODULE_SLOTS := 8
 
+## Chasis sobre el que va montado (docs/CHASIS.md); null = sin bonificaciones.
+@export var chassis: ChassisDef
 @export var torso: ItemDef
 @export var legs: ItemDef
 @export var sides: Array[ItemDef] = []
@@ -64,7 +66,8 @@ func validate(rules: RulesConfig) -> Array[String]:
 	return problems
 
 
-## Estadisticas sumadas del mech, con la penalizacion de sobrecarga aplicada.
+## Estadisticas sumadas del mech, con el chasis y la penalizacion de
+## sobrecarga aplicados.
 func summary(rules: RulesConfig) -> Dictionary:
 	var s := {
 		"weight": 0,
@@ -80,6 +83,8 @@ func summary(rules: RulesConfig) -> Dictionary:
 	for item in all_items():
 		for key: String in s:
 			s[key] += item.get(key)
+	if chassis != null:
+		chassis.apply(s)
 	var over: int = s["weight"] - rules.max_weight
 	if over > 0:
 		s["health"] = maxi(1, s["health"] - over * rules.overload_hp_penalty_per_kg)
