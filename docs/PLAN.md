@@ -91,6 +91,8 @@ Si SDXL resulta demasiado lento en 6 GB, el plan B es un modelo SD 1.5 de anime 
 
 **Primeros modelos en el juego (2026-11-16):** el combate ya dibuja el torso 18 y las piernas 18 del chasis ligero, unidos por el aro y coloreados por elemento (assets/mechs, scenes/battle/mech_sprites.gd, tools/art/export_parts.py). Comprobado con tools/live.ps1 y capturas revisadas. Después se añadieron dos torsos y dos pares de piernas más (cada mech elige los suyos según sus piezas del catálogo) y el cañón de pecho dibujado en su sitio, que de momento se muestra en los mechs con arma superior. Las demás armas aún no tienen arte; el dron sigue provisional.
 
+**Arena, animaciones y escenarios (2026-11-16):** campo más ancho que la pantalla con cámara que sigue y se aleja, y paisaje en capas con animaciones (scenes/battle/arena_view.gd). Primeras animaciones de combate: despliegue del cañón al primer disparo, retroceso, fogonazo, proyectil, chispas, sacudida de cámara, respiración, rebote al andar, desplome al apagarse, explosión y caída al ser destruido, y la nave que suelta la bonificación. Cuatro escenarios como datos (data/stages.json, scenes/battle/stage_library.gd). tools/clip.ps1 graba un combate real y saca un GIF para que el usuario lo revise; el primer clip ya se le envió. 142 tests.
+
 **Falta en F5 (presentación del combate, GDD §12):**
 - Campo `fx` en el catálogo y su validación.
 - Animaciones por piezas de todos los grupos del GDD §12.2, con partículas, sacudida de cámara y pausa en los golpes fuertes.

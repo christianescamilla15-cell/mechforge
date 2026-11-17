@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "stages": [
+    {
+      "id": "ciudad",
+      "name": "Ciudad del Orden",
+      "sky_top": "070b16", "sky_horizon": "2a2148",
+      "stars": 90,
+      "body": "planet", "body_color": "4d3f86",
+      "ships": 3,
+      "far": {"style": "towers", "color": "161d33", "height": 150, "tile": 130},
+      "near": {"style": "towers", "color": "0c111d", "height": 230, "tile": 300},
+      "ambient": "none",
+      "haze": "7359b359",
+      "floor": "0e141c", "cell": "1c2633", "cell_line": "3a4a5e"
+    },
+    {
+      "id": "desierto",
+      "name": "Desierto de Óxido",
+      "sky_top": "2b0f12", "sky_horizon": "c8622e",
+      "stars": 12,
+      "body": "suns", "body_color": "ffd9a0",
+      "ships": 1,
+      "far": {"style": "dunes", "color": "7a3320", "height": 120, "tile": 520},
+      "near": {"style": "peaks", "color": "3d1a14", "height": 170, "tile": 260},
+      "ambient": "dust",
+      "haze": "ffb07a59",
+      "floor": "24120e", "cell": "3a2018", "cell_line": "7a4a32"
+    },
+    {
+      "id": "orbital",
+      "name": "Anillo Orbital",
+      "sky_top": "02030a", "sky_horizon": "0b1630",
+      "stars": 150,
+      "body": "giant", "body_color": "2f6f9f",
+      "ships": 5,
+      "far": {"style": "trusses", "color": "1a2740", "height": 210, "tile": 190},
+      "near": {"style": "trusses", "color": "0a101c", "height": 300, "tile": 420},
+      "ambient": "sparks",
+      "haze": "3a78c233",
+      "floor": "0a0f18", "cell": "172231", "cell_line": "3e5876"
+    },
+    {
+      "id": "entrenamiento",
+      "name": "Hangar de Pruebas",
+      "sky_top": "0a1414", "sky_horizon": "1d3a38",
+      "stars": 0,
+      "body": "none", "body_color": "ffffff",
+      "ships": 0,
+      "far": {"style": "trusses", "color": "152624", "height": 260, "tile": 240},
+      "near": {"style": "towers", "color": "0b1716", "height": 120, "tile": 340},
+      "ambient": "sparks",
+      "haze": "6fd9c82e",
+      "floor": "0c1514", "cell": "1a2c2a", "cell_line": "3c635e"
+    }
+  ]
+}

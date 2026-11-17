@@ -8,6 +8,8 @@ param(
     [string]$Tier = 'EPIC',
     [int]$Seed = 1,
     [double]$Speed = 3,
+    # Escenario (data/stages.json); vacio = el que toque.
+    [string]$Stage = '',
     # El jugador actua a traves de los controles de la interfaz.
     [switch]$Ui,
     [string]$Shots = (Join-Path $env:TEMP 'mechforge-live')
@@ -17,7 +19,7 @@ New-Item -ItemType Directory -Force $Shots | Out-Null
 Get-ChildItem $Shots -Filter *.png | Remove-Item -Confirm:$false
 $env:MECHFORGE_SHOTS = $Shots.Replace('\', '/')
 & "$PSScriptRoot\godot.ps1" --headless --path $root --import *> $null
-& "$PSScriptRoot\godot.ps1" --path $root --resolution 1280x720 '++' --autoplay "--player=$Player" "--enemy=$Enemy" "--tier=$Tier" "--seed=$Seed" "--speed=$Speed" $(if ($Ui) { '--ui' })
+& "$PSScriptRoot\godot.ps1" --path $root --resolution 1280x720 '++' --autoplay "--player=$Player" "--enemy=$Enemy" "--tier=$Tier" "--seed=$Seed" "--speed=$Speed" $(if ($Stage) { "--stage=$Stage" }) $(if ($Ui) { '--ui' })
 $code = $LASTEXITCODE
 Write-Output "capturas en: $Shots"
 Get-ChildItem $Shots -Filter *.png | ForEach-Object { $_.Name }

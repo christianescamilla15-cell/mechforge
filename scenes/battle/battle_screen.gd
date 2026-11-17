@@ -33,6 +33,8 @@ var player_ai: BattleAI
 var ui_driver: BattleAI
 ## Multiplicador de velocidad de las animaciones.
 var speed: float = 1.0
+## Escenario del combate (data/stages.json); vacio = el de por defecto.
+var stage: Dictionary = {}
 var names: Array[String] = [Txt.t("you"), Txt.t("rival")]
 
 var _arena: ArenaView
@@ -500,6 +502,7 @@ func _build_ui() -> void:
 
 	# Centro: la arena.
 	_arena = ArenaView.new()
+	_arena.set_stage(stage)
 	_arena.custom_minimum_size = Vector2(0, 340)
 	_arena.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_arena.cell_clicked.connect(_on_cell_clicked)

@@ -20,17 +20,26 @@ const MAX_ZOOM := 1.0
 const VIEW_MARGIN_CELLS := 1.6
 ## Rapidez con la que la camara alcanza su objetivo.
 const CAMERA_SPEED := 4.0
-const COLOR_CELL := Color("1c2633")
-const COLOR_CELL_LINE := Color("3a4a5e")
-const COLOR_FLOOR := Color("0e141c")
 ## Color de la caja de bonificacion segun lo que da (GDD 2.8).
 const DROP_COLORS := {"armor": Color("6fb6ff"), "firepower": Color("ffb347")}
 ## Paisaje provisional, dibujado por codigo hasta que haya escenarios con el
 ## estilo aprobado. Cuanto mas lejos esta una capa, menos se mueve.
-const SKY_TOP := Color("070b16")
-const SKY_HORIZON := Color("2a2148")
-const COLOR_FAR := Color("161d33")
-const COLOR_NEAR := Color("0c111d")
+## Escenario por defecto, por si no se indica ninguno (data/stages.json).
+const DEFAULT_STAGE := {
+	"sky_top": Color("070b16"),
+	"sky_horizon": Color("2a2148"),
+	"stars": 90,
+	"body": "planet",
+	"body_color": Color("4d3f86"),
+	"ships": 3,
+	"far": {"style": "towers", "color": Color("161d33"), "height": 150, "tile": 130},
+	"near": {"style": "towers", "color": Color("0c111d"), "height": 230, "tile": 300},
+	"ambient": "none",
+	"haze": Color(0.45, 0.35, 0.7, 0.35),
+	"floor": Color("0e141c"),
+	"cell": Color("1c2633"),
+	"cell_line": Color("3a4a5e"),
+}
 const PARALLAX_STARS := 0.03
 const PARALLAX_PLANET := 0.06
 const PARALLAX_SHIPS := 0.12
@@ -58,6 +67,8 @@ var _overlay := Node2D.new()
 var _camera_x := -1.0
 var _zoom := 1.0
 var _time := 0.0
+## Escenario en uso: colores y elementos del paisaje.
+var _stage: Dictionary = DEFAULT_STAGE.duplicate(true)
 ## Fuerza de la sacudida de camara en curso.
 var _shake := 0.0
 ## Caida de la bonificacion desde la nave: 0 arriba, 1 en el suelo.
@@ -303,17 +314,17 @@ func _camera_shift() -> float:
 
 
 func _draw_floor() -> void:
-	_floor.draw_rect(Rect2(-3000, 0, world_width() + 6000, 600), COLOR_FLOOR)
+	_floor.draw_rect(Rect2(-3000, 0, world_width() + 6000, 600), _stage["floor"])
 	var font := get_theme_default_font()
 	for cell in cells:
 		var rect := Rect2(cell * CELL_WIDTH + 4, 4, CELL_WIDTH - 8, CELL_HEIGHT - 8)
-		var color := COLOR_CELL
+		var color: Color = _stage["cell"]
 		if _highlights.has(cell):
 			color = _highlights[cell]
 			if cell == _hovered:
 				color = color.lightened(0.25)
 		_floor.draw_rect(rect, color)
-		_floor.draw_rect(rect, COLOR_CELL_LINE, false, 2.0)
+		_floor.draw_rect(rect, _stage["cell_line"], false, 2.0)
 		_floor.draw_string(
 			font,
 			rect.position + Vector2(0, 27),
@@ -375,23 +386,34 @@ func _draw_overlay() -> void:
 # --- Paisaje de fondo (coordenadas de pantalla) -----------------------------------
 
 
+## Cambia el escenario: colores y elementos del paisaje (data/stages.json).
+func set_stage(stage: Dictionary) -> void:
+	_stage = DEFAULT_STAGE.duplicate(true)
+	_stage.merge(stage, true)
+	_floor.queue_redraw()
+
+
 func _draw() -> void:
 	var horizon := size.y - FLOOR_MARGIN
+	var top: Color = _stage["sky_top"]
+	var low: Color = _stage["sky_horizon"]
 	var bands := 16
 	for i in bands:
 		var t := float(i) / float(bands - 1)
 		var band := Rect2(0, horizon * i / bands, size.x, horizon / bands + 1.0)
-		draw_rect(band, SKY_TOP.lerp(SKY_HORIZON, t * t))
+		draw_rect(band, top.lerp(low, t * t))
 	var shift := _camera_shift()
 	_draw_stars(shift * PARALLAX_STARS, horizon)
-	_draw_planet(shift * PARALLAX_PLANET, horizon)
+	_draw_body(shift * PARALLAX_PLANET, horizon)
 	_draw_ships(shift * PARALLAX_SHIPS, horizon)
-	_draw_skyline(shift * PARALLAX_FAR, horizon, 130.0, 150.0, COLOR_FAR, 11.0)
-	_draw_skyline(shift * PARALLAX_NEAR, horizon, 300.0, 230.0, COLOR_NEAR, 47.0)
+	_draw_layer(_stage["far"], shift * PARALLAX_FAR, horizon, 11.0)
+	_draw_layer(_stage["near"], shift * PARALLAX_NEAR, horizon, 47.0)
+	_draw_ambient(shift * PARALLAX_NEAR, horizon)
 	# Bruma sobre el horizonte, para separar el fondo del suelo.
+	var haze: Color = _stage["haze"]
 	for i in 6:
-		var haze := Color(0.45, 0.35, 0.7, 0.05 * (i + 1))
-		draw_rect(Rect2(0, horizon - 60.0 + i * 10.0, size.x, 10.0), haze)
+		var strip := Rect2(0, horizon - 60.0 + i * 10.0, size.x, 10.0)
+		draw_rect(strip, Color(haze.r, haze.g, haze.b, haze.a * (i + 1) / 6.0))
 
 
 ## Numero entre 0 y 1 que depende solo de sus argumentos: el paisaje es
@@ -402,7 +424,7 @@ func _noise(index: float, salt: float) -> float:
 
 func _draw_stars(offset: float, horizon: float) -> void:
 	var span := size.x + 200.0
-	for i in 90:
+	for i in int(_stage["stars"]):
 		var x := fposmod(_noise(i, 1.0) * span - offset, span) - 100.0
 		var y := _noise(i, 2.0) * horizon * 0.85
 		var twinkle := 0.55 + 0.45 * sin(_time * (0.6 + _noise(i, 3.0) * 2.0) + i)
@@ -410,24 +432,48 @@ func _draw_stars(offset: float, horizon: float) -> void:
 		draw_circle(Vector2(x, y), radius, Color(0.85, 0.9, 1.0, 0.25 + 0.6 * twinkle))
 
 
-func _draw_planet(offset: float, horizon: float) -> void:
-	var center := Vector2(size.x * 0.74 - offset, horizon * 0.36)
-	draw_circle(center, 96.0, Color("3b2f66"))
-	draw_circle(center + Vector2(-22, -16), 96.0, Color("4d3f86"))
-	draw_circle(center + Vector2(30, 24), 70.0, Color(0.1, 0.08, 0.2, 0.35))
-	draw_arc(center, 138.0, -0.5, 0.9, 40, Color(0.7, 0.6, 1.0, 0.35), 3.0)
-	draw_circle(center + Vector2(-190, -70), 20.0, Color("6f6aa3"))
+## El astro del escenario: un planeta con anillo, dos soles o un gigante que
+## ocupa media pantalla.
+func _draw_body(offset: float, horizon: float) -> void:
+	var color: Color = _stage["body_color"]
+	match str(_stage["body"]):
+		"planet":
+			var center := Vector2(size.x * 0.74 - offset, horizon * 0.36)
+			draw_circle(center, 96.0, color.darkened(0.25))
+			draw_circle(center + Vector2(-22, -16), 96.0, color)
+			draw_circle(center + Vector2(30, 24), 70.0, Color(0.1, 0.08, 0.2, 0.35))
+			draw_arc(center, 138.0, -0.5, 0.9, 40, color.lightened(0.45) * Color(1, 1, 1, 0.4), 3.0)
+			draw_circle(center + Vector2(-190, -70), 20.0, color.lightened(0.25))
+		"suns":
+			var big := Vector2(size.x * 0.3 - offset, horizon * 0.42)
+			for i in 4:
+				draw_circle(big, 150.0 - 26.0 * i, Color(color.r, color.g, color.b, 0.12 + 0.1 * i))
+			draw_circle(big, 62.0, color.lightened(0.3))
+			draw_circle(big + Vector2(210, -70), 26.0, Color("ff9a5a"))
+		"giant":
+			var center := Vector2(size.x * 0.68 - offset, horizon + 250.0)
+			draw_circle(center, 560.0, color.darkened(0.45))
+			draw_circle(center + Vector2(-30, -26), 545.0, color.darkened(0.2))
+			for i in 5:
+				var band_y := horizon - 60.0 - 44.0 * i
+				var alpha := 0.1 + 0.03 * i
+				draw_line(
+					Vector2(0, band_y),
+					Vector2(size.x, band_y + 16.0),
+					color.lightened(0.4) * Color(1, 1, 1, alpha),
+					9.0
+				)
 
 
 ## Naves que cruzan el cielo a distintas alturas y velocidades.
 func _draw_ships(offset: float, horizon: float) -> void:
 	var span := size.x + 400.0
-	for i in 3:
+	for i in int(_stage["ships"]):
 		var direction := 1.0 if i % 2 == 0 else -1.0
 		var speed := 26.0 + 18.0 * i
 		var x := fposmod(direction * _time * speed + _noise(i, 5.0) * span - offset, span) - 200.0
-		var y := horizon * (0.16 + 0.13 * i) + sin(_time * 0.7 + i) * 6.0
-		var length := 34.0 + 12.0 * i
+		var y := horizon * (0.14 + 0.11 * (i % 4)) + sin(_time * 0.7 + i) * 6.0
+		var length := 34.0 + 10.0 * (i % 3)
 		var nose := Vector2(x + direction * length, y)
 		var hull := PackedVector2Array(
 			[
@@ -437,20 +483,35 @@ func _draw_ships(offset: float, horizon: float) -> void:
 				Vector2(x, y + 5.0)
 			]
 		)
-		draw_colored_polygon(hull, Color("202a44"))
+		var top: Color = _stage["sky_top"]
+		draw_colored_polygon(hull, top.lightened(0.16))
 		var glow := 0.6 + 0.4 * sin(_time * 9.0 + i * 2.0)
-		var engine := Vector2(x - direction * length * 0.62, y)
-		draw_circle(engine, 3.5, Color(0.45, 0.9, 1.0, glow))
+		draw_circle(Vector2(x - direction * length * 0.62, y), 3.5, Color(0.45, 0.9, 1.0, glow))
+
+
+## Una capa del paisaje segun su estilo.
+func _draw_layer(layer: Dictionary, offset: float, horizon: float, salt: float) -> void:
+	var color: Color = layer["color"]
+	var height := float(layer["height"])
+	var tile := float(layer["tile"])
+	match str(layer["style"]):
+		"towers":
+			_draw_towers(offset, horizon, tile, height, color, salt)
+		"dunes":
+			_draw_dunes(offset, horizon, tile, height, color, salt)
+		"peaks":
+			_draw_peaks(offset, horizon, tile, height, color, salt)
+		"trusses":
+			_draw_trusses(offset, horizon, tile, height, color, salt)
 
 
 ## Una fila de torres. Cada una sale del numero de su tramo, asi que el
 ## paisaje se repite igual al volver sobre el mismo sitio.
-func _draw_skyline(
+func _draw_towers(
 	offset: float, horizon: float, tile: float, max_height: float, color: Color, salt: float
 ) -> void:
 	var first := int(floor(offset / tile)) - 1
-	var count := int(size.x / tile) + 3
-	for step in count:
+	for step in int(size.x / tile) + 3:
 		var index := first + step
 		var x := index * tile - offset
 		var height := 30.0 + _noise(index, salt) * max_height
@@ -466,10 +527,87 @@ func _draw_skyline(
 		for row in int(height / 26.0):
 			if _noise(index * 7.0 + row, salt + 3.0) > 0.6:
 				var flicker := 0.35 + 0.25 * sin(_time * 1.3 + index + row * 2.0)
-				var window := Rect2(
-					x + width * 0.25, horizon - height + 12.0 + row * 26.0, width * 0.5, 5.0
+				var y := horizon - height + 12.0 + row * 26.0
+				draw_rect(
+					Rect2(x + width * 0.25, y, width * 0.5, 5.0), Color(0.55, 0.85, 1.0, flicker)
 				)
-				draw_rect(window, Color(0.55, 0.85, 1.0, flicker))
+
+
+## Dunas: una sola silueta ondulada.
+func _draw_dunes(
+	offset: float, horizon: float, tile: float, max_height: float, color: Color, salt: float
+) -> void:
+	var points := PackedVector2Array([Vector2(0, horizon)])
+	var x := 0.0
+	while x <= size.x + 24.0:
+		var world := (x + offset) / tile
+		var wave := (
+			0.5 + 0.35 * sin(world * TAU + salt) + 0.15 * sin(world * TAU * 2.7 + salt * 2.0)
+		)
+		points.append(Vector2(x, horizon - 20.0 - wave * max_height))
+		x += 24.0
+	points.append(Vector2(size.x, horizon))
+	draw_colored_polygon(points, color)
+
+
+## Picos de roca, uno por tramo, con algun resto clavado en lo alto.
+func _draw_peaks(
+	offset: float, horizon: float, tile: float, max_height: float, color: Color, salt: float
+) -> void:
+	var first := int(floor(offset / tile)) - 1
+	for step in int(size.x / tile) + 3:
+		var index := first + step
+		var x := index * tile - offset
+		var height := 40.0 + _noise(index, salt) * max_height
+		var lean := (_noise(index, salt + 1.0) - 0.5) * tile * 0.5
+		var peak := Vector2(x + tile * 0.5 + lean, horizon - height)
+		draw_colored_polygon(
+			PackedVector2Array(
+				[Vector2(x - tile * 0.2, horizon), peak, Vector2(x + tile * 1.2, horizon)]
+			),
+			color
+		)
+		if _noise(index, salt + 2.0) > 0.6:
+			draw_line(peak, peak + Vector2(18, -34), color.lightened(0.12), 4.0)
+			var blink := 0.5 + 0.5 * sin(_time * 1.6 + index)
+			draw_circle(peak + Vector2(18, -36), 2.5, Color(1.0, 0.75, 0.3, blink))
+
+
+## Estructura metalica: columnas, vigas cruzadas y luces de posicion.
+func _draw_trusses(
+	offset: float, horizon: float, tile: float, max_height: float, color: Color, salt: float
+) -> void:
+	var first := int(floor(offset / tile)) - 1
+	var beam_y := horizon - max_height * 0.72
+	draw_rect(Rect2(0, beam_y, size.x, 10.0), color)
+	for step in int(size.x / tile) + 3:
+		var index := first + step
+		var x := index * tile - offset
+		var height := max_height * (0.75 + 0.25 * _noise(index, salt))
+		draw_rect(Rect2(x, horizon - height, 14.0, height), color)
+		draw_line(Vector2(x + 7.0, beam_y), Vector2(x + tile + 7.0, horizon - 24.0), color, 4.0)
+		draw_line(Vector2(x + tile + 7.0, beam_y), Vector2(x + 7.0, horizon - 24.0), color, 4.0)
+		var blink := 0.5 + 0.5 * sin(_time * 2.6 + index * 2.1)
+		draw_circle(Vector2(x + 7.0, horizon - height - 4.0), 3.0, Color(0.4, 1.0, 0.85, blink))
+
+
+## Lo que flota en el aire: polvo que pasa o chispas que caen.
+func _draw_ambient(offset: float, horizon: float) -> void:
+	var kind := str(_stage["ambient"])
+	if kind == "none":
+		return
+	var span := size.x + 120.0
+	for i in 46:
+		var drift := _time * (30.0 + 40.0 * _noise(i, 31.0))
+		if kind == "dust":
+			var x := fposmod(_noise(i, 32.0) * span + drift - offset, span) - 60.0
+			var y := horizon * (0.45 + 0.55 * _noise(i, 33.0)) + sin(_time + i) * 5.0
+			draw_circle(Vector2(x, y), 1.5 + 2.0 * _noise(i, 34.0), Color(1.0, 0.8, 0.6, 0.22))
+		else:
+			var x := fposmod(_noise(i, 32.0) * span - offset, span) - 60.0
+			var y := fposmod(_noise(i, 33.0) * horizon + drift, horizon)
+			var alpha := 0.25 + 0.5 * absf(sin(_time * 6.0 + i))
+			draw_line(Vector2(x, y), Vector2(x - 2.0, y - 7.0), Color(1.0, 0.85, 0.5, alpha), 2.0)
 
 
 # --- Raton -------------------------------------------------------------------

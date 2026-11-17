@@ -290,6 +290,13 @@ Requisito del usuario (2026-11-16): las interacciones deben ir acordes al diseñ
 - **Vida ambiental:** partículas de polvo, humo o chispas, luces que parpadean y un leve desplazamiento de las capas con las sacudidas de cámara.
 - **Luz:** cada escenario define su luz ambiente y la dirección de su luz principal; los mapas normales de los mechs responden a ella.
 
+**Campo y cámara** (pedido del usuario, 2026-11-16: como en el juego antiguo y como los escenarios de KOF). El campo es más ancho que la pantalla y se recorre hacia adelante y hacia atrás: cada casilla mide 230 de ancho, así que las 10 suman 2300. Una cámara sigue el punto medio de los dos mechs y se aleja cuando se separan. El paisaje va en capas que se mueven a distinta velocidad según su lejanía, con animaciones propias: estrellas que titilan, naves que cruzan, luces que parpadean, polvo o chispas en el aire.
+
+**Escenarios hechos (2026-11-16), como datos en data/stages.json:** Ciudad del Orden, Desierto de Óxido, Anillo Orbital y Hangar de Pruebas (el de entrenamiento). Cada uno define cielo, astro, dos capas de paisaje (torres, dunas, picos o estructura metálica), ambiente, bruma y colores del suelo. Están dibujados por código y son provisionales: falta generarlos con el modelo local en el estilo aprobado, como dice la lista de arriba, y repartirlos entre las 10 zonas del mundo.
+
+**Sin decidir:** si el campo crece también en casillas (hoy son 10). Cambiaría los alcances de las armas y obligaría a repetir el balance.
+
+
 ### 12.2 Animaciones
 Animación por piezas (cada pieza es un sprite que se mueve, gira o se desplaza), más partículas y shaders.
 

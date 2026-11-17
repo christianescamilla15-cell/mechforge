@@ -18,6 +18,9 @@ const MENU_DIFFICULTIES: Array[BattleAI.Difficulty] = [
 const AUTOPLAY_TIMEOUT_SECONDS := 180.0
 
 var _rules := RulesConfig.new()
+var _stages := StageLibrary.load_file("res://data/stages.json")
+## Para ir cambiando de escenario de un combate al siguiente.
+var _stage_seed: int = 0
 var _catalog: Catalog
 var _library: BuildLibrary
 var _menu: Control
@@ -130,6 +133,11 @@ func _start_battle() -> void:
 	var player_id := ids[_last["player"]]
 	var enemy_id := ids[_last["enemy"]]
 	_battle = BattleScreen.new()
+	# El escenario se puede pedir con --stage=<id>; si no, sale de la semilla.
+	_battle.stage = _stages.get_stage(str(_args.get("stage", "")))
+	if _battle.stage.is_empty():
+		_battle.stage = _stages.pick(_stage_seed)
+	_stage_seed += 1
 	_battle.names = [
 		"%s · %s" % [Txt.t("you"), _library.display_name(player_id)],
 		"%s · %s" % [Txt.t("rival"), _library.display_name(enemy_id)],
