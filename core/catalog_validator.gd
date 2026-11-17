@@ -37,7 +37,9 @@ const ATTACK_STATS: Array[String] = [
 ]
 const HEAT_ONLY: Array[String] = ["heat_dmg", "heat_cap_dmg", "cooling_dmg"]
 const ENERGY_ONLY: Array[String] = ["energy_dmg", "energy_cap_dmg", "energy_regen_dmg"]
-const WEAPON_TYPES: Array[ItemDef.Type] = [ItemDef.Type.SIDE, ItemDef.Type.TOP, ItemDef.Type.DRONE]
+const WEAPON_TYPES: Array[ItemDef.Type] = [
+	ItemDef.Type.SIDE, ItemDef.Type.TOP, ItemDef.Type.DRONE, ItemDef.Type.CHEST
+]
 const SPECIAL_TYPES: Array[ItemDef.Type] = [
 	ItemDef.Type.CHARGE, ItemDef.Type.TELEPORT, ItemDef.Type.HOOK
 ]
@@ -155,7 +157,7 @@ static func _check_type(def: ItemDef, problems: Array[String]) -> void:
 				if not def.has_tag(ItemDef.TAG_MELEE):
 					problems.append("el pisoton debe llevar la etiqueta melee")
 			_forbid(def, ["energy_cap", "energy_regen", "heat_cap", "cooling"], problems)
-		ItemDef.Type.SIDE, ItemDef.Type.TOP:
+		ItemDef.Type.SIDE, ItemDef.Type.TOP, ItemDef.Type.CHEST:
 			if not def.deals_damage() and def.heat_dmg == 0 and def.energy_dmg == 0:
 				problems.append("un arma debe hacer dano, calor o drenar energia")
 			_forbid(def, BODY_STATS + ["walk", "jump"], problems)

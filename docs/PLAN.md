@@ -109,8 +109,8 @@ Si SDXL resulta demasiado lento en 6 GB, el plan B es un modelo SD 1.5 de anime 
 El usuario amplió el diseño en una sesión (GDD §1.1, §8, §9 y §12.2; docs/CATALOGO_ARMAS.md; docs/CHASIS.md). El motor de combate actual sigue con las reglas anteriores y pasa sus 113 tests. Lo que hay que construir, en este orden, cada paso con sus tests y su comprobación de balance:
 
 1. **Chasis:** el mech pasa a tener chasis (ligero, medio o pesado) con sus bonificaciones: el ligero gasta mucha menos energía en sus armas; el pesado tiene mucha más vida y resistencias y se consigue después del nivel 10. El chasis sube de nivel. **Hecho en parte el 2026-11-16:** chasis en el motor con sus multiplicadores, tres chasis en datos, 10 tests (123 en total) y simulador de chasis contra chasis; todos los cruces quedan entre el 40 % y el 60 % (docs/CHASIS.md, sección 5). La bonificación ya crece con el nivel del chasis (20 % en el nivel 0, completa en el 30). Falta: elegir chasis en el menú y en los mechs de ejemplo, y repetir el ajuste con el catálogo nuevo.
-2. **Huecos:** el usuario corrigió el 2026-11-16: seis armas como en el original, 4 laterales y 2 superiores, que el motor ya tiene. No hay que cambiar los huecos. Queda por decidir dónde entra el arma de pecho.
-3. **Nivel del jugador:** experiencia por combate y desbloqueo de huecos (soporte al 3, segundo brazo al 5, pecho al 10, hombros al 15 y al 20).
+2. **Huecos:** el usuario corrigió el 2026-11-16: seis armas como en el original, 4 laterales y 2 superiores, que el motor ya tiene. No hay que cambiar los huecos. **El arma de pecho va aparte** (usuario, 2026-11-17): séptimo hueco, que se abre en el nivel 10 del jugador; hecho el mismo día, con sus 15 armas y el nivel del jugador.
+3. **Nivel del jugador:** experiencia por combate y desbloqueo de huecos. **Hecho el 2026-11-17:** soporte al 3 y pecho al 10, lo que fijó el usuario; las seis armas abiertas desde el principio, como en el original.
 4. **Catálogo generado:** las 111 armas salen de la tabla forma × tipo × munición; el validador y el simulador comprueban el resultado. Hay que rehacer los mechs de ejemplo. **Hecho en parte el 2026-11-17:** 96 armas (brazos, hombros y soporte) y 16 mechs de ejemplo, 4 por tipo de arma; las cuatro pasan las puertas de F3 (docs/CATALOGO_ARMAS.md). Faltan las 15 de pecho, pendientes de la decisión del usuario.
 5. **Árbol de habilidades y materia oscura:** por diseñar con el usuario antes de programarlo.
 6. **Bonificaciones que caen en la arena** (GDD §2.8): **hechas el 2026-11-16** en el motor, la IA y la pantalla (137 tests; comprobado con tools/live.ps1: cae la caja y un mech la toma). Falta medir su efecto en el balance. Las **habilidades de combate** del chasis siguen sin diseñar.
@@ -124,6 +124,17 @@ El usuario amplió el diseño en una sesión (GDD §1.1, §8, §9 y §12.2; docs
 **Base del jugador, campaña y jefes con habilidad (2026-11-17):** hecho y medido (GDD §9, §9.1 y §9.2; 178 tests). El menú es la base: Campaña (zona 1: 10 combates y un jefe), Arena (rival al azar, para juntar celdas) y Armería. Perder contra un jefe termina la partida, con aviso antes. La moneda pasa a ser "celdas de plasma". Cada jefe tiene una habilidad especial en su chasis; el primero, Superblindaje. Precios ajustados al ritmo del usuario: 50 combates ganados = 47.5 % contra el primer jefe, 100 = 87.5 %. Pendiente: las otras 9 zonas y la progresión por piezas para después del primer jefe.
 
 **Los 10 jefes con su habilidad (2026-11-17):** hecho y medido (GDD §9.1; 190 tests). Lista aprobada por el usuario. El motor tiene las habilidades nuevas en el chasis de jefe (energía infinita, regeneración, escudo, evasión, núcleo térmico y enjambre), la pantalla las enseña y tools/sim/bosses_sim.gd mide a todos con la misma vara. Pendiente: el diseño propio de cada jefe (arte y armas) y reajustarlos cuando exista cada zona.
+
+**Economía de las zonas 2–10 (medida el 2026-11-17, pendiente de ajuste):** tools/economy_sweep.ps1 mide cada zona empezando con lo que tendría el jugador al salir de la anterior. La zona 1 cumple el ritmo del usuario (50 victorias ≈ 40–47 % contra el jefe; 100 ≈ 91–97 %), pero de la 3 en adelante va demasiado rápido:
+
+| Zona | 10 victorias | 25 victorias | 50 victorias |
+|---|---|---|---|
+| 2 | 19 % | 47 % | 84 % |
+| 3 | 3 % | 73 % | 98 % |
+| 4 | 47 % | 100 % | 100 % |
+| 5 | 3 % | 67 % | 100 % |
+
+Causa: la armería llega al máximo hacia la zona 4 y los rivales no tienen nada equivalente. Propuesta: que el Orden también tenga su armería y la mejore zona a zona (un nivel de mejoras para los rivales de cada zona), y volver a medir. Se aparcó para hacer las animaciones de movimiento que pidió el usuario.
 
 ### F6 — Taller de armado
 - Equipar piezas por hueco, barra de peso con sobrecarga, resumen de stats, avisos (sin torso o piernas, resistencias repetidas, más de 1010 kg) y vista previa del mech montado.

@@ -4,7 +4,9 @@ extends Resource
 ## Un valor 0 significa "no aplica": sin alcance = llega a toda la arena,
 ## sin usos = ilimitado.
 
-enum Type { TORSO, LEGS, SIDE, TOP, DRONE, MODULE, CHARGE, TELEPORT, HOOK }
+## CHEST: arma de pecho, aparte de las 6 laterales y superiores (decision del
+## usuario, 2026-11-17).
+enum Type { TORSO, LEGS, SIDE, TOP, DRONE, MODULE, CHARGE, TELEPORT, HOOK, CHEST }
 enum Element { PHYSICAL, HEAT, ENERGY, COMBINED }
 enum Tier { COMMON, RARE, EPIC, LEGENDARY, MYTHIC, DIVINE }
 

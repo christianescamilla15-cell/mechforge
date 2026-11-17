@@ -140,11 +140,17 @@ func _process(delta: float) -> void:
 	queue_redraw()
 
 
-## True si este mech lleva el canon que se despliega del pecho.
+## True si este mech lleva el canon que se despliega del pecho. Mientras las
+## armas superiores no tengan dibujo propio, el canon tambien las representa.
 func has_cannon() -> bool:
 	if _sprites == null or build == null or _sprites.is_boss:
 		return false
-	return not build.tops.is_empty()
+	return build.chest != null or not build.tops.is_empty()
+
+
+## Pieza que da el color al canon del pecho.
+func _cannon_item() -> ItemDef:
+	return build.chest if build.chest != null else build.tops[0]
 
 
 ## Saca el arma de dentro del torso la primera vez que se usa en el combate.
@@ -207,16 +213,17 @@ func _draw_sprites(dim: float) -> void:
 	_sprites.draw_piece(
 		self, _sprites.legs_set, "legs", build.legs.element, tint, Vector2(0, bounce * 0.4)
 	)
-	# El canon de pecho hace de arma superior hasta que el motor tenga el
-	# hueco de pecho (docs/CATALOGO_ARMAS.md). Mientras sale va por detras del
-	# torso, para que parezca que viene de dentro.
+	# El canon de pecho: mientras sale va por detras del torso, para que
+	# parezca que viene de dentro.
 	var cannon_at := body + Vector2((1.0 - _deploy) * -RETRACT - _recoil, 0.0)
 	var cannon_tint := Color(tint.r, tint.g, tint.b, clampf(_deploy * 1.5, 0.0, 1.0))
 	if has_cannon() and _deploy > 0.0 and _deploy < 1.0:
-		_sprites.draw_piece(self, CHEST_SET, "chest", build.tops[0].element, cannon_tint, cannon_at)
+		_sprites.draw_piece(
+			self, CHEST_SET, "chest", _cannon_item().element, cannon_tint, cannon_at
+		)
 	_sprites.draw_piece(self, _sprites.torso_set, "torso", build.torso.element, tint, body)
 	if has_cannon() and _deploy >= 1.0:
-		_sprites.draw_piece(self, CHEST_SET, "chest", build.tops[0].element, tint, cannon_at)
+		_sprites.draw_piece(self, CHEST_SET, "chest", _cannon_item().element, tint, cannon_at)
 	# Las demas armas todavia no tienen arte y no se pintan; solo el dron.
 	var hover := Vector2(0.0, SPRITE_WEAPON_LIFT + sin(_time * 3.1) * 4.0)
 	draw_set_transform(hover)

@@ -64,6 +64,7 @@ func make_build(
 	build.torso = resolve.call(spec.get("torso"))
 	build.legs = resolve.call(spec.get("legs"))
 	build.drone = resolve.call(spec.get("drone"))
+	build.chest = resolve.call(spec.get("chest"))
 	build.charge = resolve.call(spec.get("charge"))
 	build.teleport = resolve.call(spec.get("teleport"))
 	build.hook = resolve.call(spec.get("hook"))

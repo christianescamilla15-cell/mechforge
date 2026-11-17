@@ -9,6 +9,7 @@
     "MODULE": 400,
     "CHARGE": 500,
     "TELEPORT": 600,
-    "HOOK": 500
+    "HOOK": 500,
+    "CHEST": 1000
   }
 }

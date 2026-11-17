@@ -1,6 +1,7 @@
 # Catálogo de armas
 
-**Estado (2026-11-17):** generadas las armas de brazo, hombro y robot de soporte: 32 diseños × 3 municiones = **96 armas** en `data/catalog.json` (tools/catalog_gen.py). Faltan las 15 de pecho, hasta que el usuario decida si el arma de pecho es una de las seis o va aparte. Los brazos van en los 4 huecos laterales y los hombros en los 2 superiores.
+**Estado (2026-11-17):** generadas las armas de brazo, hombro y robot de soporte: 32 diseños × 3 municiones = 96 armas en `data/catalog.json` (tools/catalog_gen.py). Las 15 de pecho se generaron el mismo día, cuando el usuario decidió que el arma de pecho va **aparte** de las seis: en total, las **111 armas** del catálogo. Los brazos van en los 4 huecos laterales, los hombros en los 2 superiores y el pecho en su propio hueco, que se abre en el nivel 10 del jugador.
+- **Pecho:** el cañón pesado toma los números de la artillería (2 usos) con alcance 3–8; la nova, los de las armas cortas con un 30 % más de daño, empuje de 2 casillas y 3 usos.
 
 **Cómo se generan** (tools/catalog_gen.py, armas base en tools/weapon_bases.json):
 - Cada forma toma sus números de un arma ya equilibrada del catálogo anterior, una por munición (por ejemplo, Corto = trabuco, lanzallamas y descargador).

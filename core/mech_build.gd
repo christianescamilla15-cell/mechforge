@@ -15,6 +15,8 @@ const MODULE_SLOTS := 8
 @export var sides: Array[ItemDef] = []
 @export var tops: Array[ItemDef] = []
 @export var drone: ItemDef
+## Arma de pecho: un canon o una nova, aparte de las seis armas.
+@export var chest: ItemDef
 @export var modules: Array[ItemDef] = []
 @export var charge: ItemDef
 @export var teleport: ItemDef
@@ -23,7 +25,7 @@ const MODULE_SLOTS := 8
 
 func all_items() -> Array[ItemDef]:
 	var out: Array[ItemDef] = []
-	for item: ItemDef in [torso, legs, drone, charge, teleport, hook]:
+	for item: ItemDef in [torso, legs, drone, chest, charge, teleport, hook]:
 		if item != null:
 			out.append(item)
 	for list: Array[ItemDef] in [sides, tops, modules]:

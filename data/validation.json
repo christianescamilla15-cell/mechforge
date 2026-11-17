@@ -1,21 +1,53 @@
 {
   "weight": {
-    "TORSO": [310, 370],
-    "LEGS": [115, 150],
-    "SIDE": [8, 86],
-    "TOP": [19, 75],
-    "DRONE": [20, 51],
-    "MODULE": [15, 60],
-    "CHARGE": [10, 30],
-    "TELEPORT": [10, 30],
-    "HOOK": [10, 30]
+    "TORSO": [
+      310,
+      370
+    ],
+    "LEGS": [
+      115,
+      150
+    ],
+    "SIDE": [
+      8,
+      86
+    ],
+    "TOP": [
+      19,
+      75
+    ],
+    "DRONE": [
+      20,
+      51
+    ],
+    "MODULE": [
+      15,
+      60
+    ],
+    "CHARGE": [
+      10,
+      30
+    ],
+    "TELEPORT": [
+      10,
+      30
+    ],
+    "HOOK": [
+      10,
+      30
+    ],
+    "CHEST": [
+      40,
+      90
+    ]
   },
   "min_per_element": {
     "TORSO": 2,
     "LEGS": 2,
     "SIDE": 6,
     "TOP": 3,
-    "DRONE": 2
+    "DRONE": 2,
+    "CHEST": 2
   },
   "min_total": {
     "MODULE": 10,

@@ -11,7 +11,7 @@ const FORBIDDEN_PATH := "res://docs/reference/original-item-names.txt"
 func test_el_catalogo_real_carga_sin_errores() -> void:
 	var catalog := Catalog.load_file(CATALOG_PATH)
 	assert_eq(catalog.errors, [] as Array[String])
-	assert_eq(catalog.items.size(), 121)
+	assert_eq(catalog.items.size(), 136)
 
 
 func test_el_catalogo_real_pasa_el_validador() -> void:
@@ -42,7 +42,10 @@ func test_cada_tipo_de_arma_existe_en_sus_clases() -> void:
 	}
 	var catalog := Catalog.load_file(CATALOG_PATH)
 	for def: ItemDef in catalog.items.values():
-		if def.type in [ItemDef.Type.SIDE, ItemDef.Type.TOP, ItemDef.Type.DRONE]:
+		if (
+			def.type
+			in [ItemDef.Type.SIDE, ItemDef.Type.TOP, ItemDef.Type.CHEST, ItemDef.Type.DRONE]
+		):
 			assert_true(ranges.has(def.weapon_type), def.id)
 			assert_eq([def.tier_min, def.tier_max], ranges[def.weapon_type], def.id)
 			assert_ne(def.form, "", def.id)
@@ -55,7 +58,7 @@ func test_cada_diseno_existe_en_las_tres_municiones() -> void:
 		if def.form != "":
 			var key := "%s_%s" % [def.form, def.weapon_type]
 			designs[key] = designs.get(key, []) + [def.element]
-	assert_eq(designs.size(), 32, "37 disenos menos los 5 de pecho, que faltan")
+	assert_eq(designs.size(), 37, "17 de brazo, 9 de hombro, 5 de pecho y 6 de soporte")
 	for key: String in designs:
 		assert_eq(designs[key].size(), 3, key)
 

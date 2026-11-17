@@ -7,8 +7,7 @@ estan en tools/weapon_bases.json, asi que se puede volver a generar.
     python tools/catalog_gen.py            escribe data/catalog.json
     python tools/catalog_gen.py --dry      solo muestra el resumen
 
-Sustituye las armas laterales, superiores y drones. Las armas de pecho no se
-generan todavia: falta decidir si son una de las seis armas o van aparte.
+Sustituye las armas laterales, superiores, de pecho y drones.
 """
 
 import json
@@ -63,6 +62,13 @@ FORMS = [
     # Artilleria: alcance fijo, como en el original (docs/reference/original-mechanics.md).
     ("artilleria", "TOP", ["sup_obus", "sup_meteoro", "sup_tormenta"], (8, 8),
      {"canon": ("Obús", "m"), "blaster": ("Mortero de plasma", "m"), "laser": ("Lanza orbital", "f")}),
+    # Pecho (decision del usuario, 2026-11-17: va aparte de las seis armas).
+    # Canon pesado: un disparo devastador en linea, pocos usos (base: la
+    # artilleria, con alcance 3-8). Nova: onda corta que dana y empuja.
+    ("canon_pesado", "CHEST", ["sup_obus", "sup_meteoro", "sup_tormenta"], (3, 8),
+     {"canon": ("Cañón de asedio", "m"), "blaster": ("Cañón de plasma", "m"), "laser": ("Cañón láser", "m")}),
+    ("nova", "CHEST", ["lat_trabuco", "lat_lanzallamas", "lat_descargador"], (1, 2),
+     {"blaster": ("Nova de plasma", "f"), "laser": ("Nova láser", "f")}),
     ("artillero", "DRONE", ["dron_avispa", "dron_ascua", "dron_chispa"], None,
      {"balas": ("Dron artillero", "m"), "canon": ("Dron bombardero", "m"), "blaster": ("Dron de plasma", "m"), "laser": ("Dron láser", "m")}),
     ("zapador", "DRONE", ["dron_buitre", "dron_fuelle", "dron_sanguijuela"], (1, 4),
@@ -71,6 +77,11 @@ FORMS = [
 # La lanza orbital y el mortero de plasma alcanzan a 7: dos distancias fijas,
 # como el original ([8,8] y [7,7]).
 FIXED_RANGE = {("artilleria", "blaster"): (7, 7)}
+# Ajustes propios de una forma sobre su arma base.
+FORM_EXTRA = {
+    # La nova pega mas que un arma corta, empuja dos casillas y tiene 3 usos.
+    "nova": {"dmg": 1.3, "push": 2, "uses": 3},
+}
 
 def make(form, slot, base, fixed, type_id, name, gender, element):
     t = TYPES[type_id]
@@ -81,6 +92,14 @@ def make(form, slot, base, fixed, type_id, name, gender, element):
     half = (top["dmg_max"] - top["dmg_min"]) / 2.0 * t["spread"]
     top["dmg_min"] = max(1, round(mean - half))
     top["dmg_max"] = max(top["dmg_min"], round(mean + half))
+    extra = FORM_EXTRA.get(form, {})
+    if extra.get("dmg"):
+        for key in ("dmg_min", "dmg_max", "heat_dmg", "energy_dmg"):
+            if top.get(key):
+                top[key] = max(1, round(top[key] * extra["dmg"]))
+    for key in ("push", "uses"):
+        if key in extra:
+            top[key] = extra[key]
     rng = FIXED_RANGE.get((form, type_id), fixed)
     if rng is not None:
         top["range_min"], top["range_max"] = rng
@@ -113,7 +132,7 @@ def main():
         for type_id, (name, gender) in names.items():
             for element, base_id in zip(ELEMENTS, bases):
                 generated.append(make(form, slot, base_items[base_id], fixed, type_id, name, gender, element))
-    kept = {k: v for k, v in items.items() if v["type"] not in ("SIDE", "TOP", "DRONE")}
+    kept = {k: v for k, v in items.items() if v["type"] not in ("SIDE", "TOP", "DRONE", "CHEST")}
     # Las piezas que no son armas existen en todas las clases normales.
     for item in kept.values():
         item["tier_min"] = "COMMON"

@@ -141,9 +141,33 @@ static func mean_power(
 ## Apunta el resultado de un combate en el perfil del jugador: cobra, avanza
 ## la campana o, si perdio contra un jefe, termina la partida. Los jefes que
 ## lo dicen en los datos ("drops_unique") dan ademas un nucleo unico.
-## `mode` es "arena" o "campaign". Devuelve {"gold", "game_over",
-## "zone_cleared", "boss", "unique"}.
-func finish_fight(profile: PlayerProfile, shop: ArenaShop, mode: String, won: bool) -> Dictionary:
+## Con `progression`, suma la experiencia del combate. `mode` es "arena" o
+## "campaign". Devuelve {"gold", "game_over", "zone_cleared", "boss",
+## "unique", "xp", "level_up"}.
+func finish_fight(
+	profile: PlayerProfile,
+	shop: ArenaShop,
+	mode: String,
+	won: bool,
+	progression: Progression = null
+) -> Dictionary:
+	var out := _settle(profile, shop, mode, won)
+	# Experiencia: tambien en la arena y al perder (menos), nunca al perder
+	# la partida contra un jefe.
+	out["xp"] = 0
+	out["level_up"] = false
+	if progression != null and not out["game_over"]:
+		var kind := "loss"
+		if won:
+			kind = "boss_win" if out["boss"] else "win"
+		var before := progression.level_for(profile.xp)
+		out["xp"] = progression.xp_for(kind)
+		profile.xp += out["xp"]
+		out["level_up"] = progression.level_for(profile.xp) > before
+	return out
+
+
+func _settle(profile: PlayerProfile, shop: ArenaShop, mode: String, won: bool) -> Dictionary:
 	var out := {
 		"gold": 0, "game_over": false, "zone_cleared": false, "boss": false, "unique": false
 	}

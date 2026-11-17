@@ -125,7 +125,7 @@ Pedido por el usuario el 2026-11-16, como en el juego antiguo. **En el motor des
 | `costo_calor`, `costo_energia` | costos por uso | armas, dron, especiales |
 
 ## 4. Armado
-- **Huecos:** torso, piernas, 4 armas laterales, 2 superiores, 1 dron, 8 módulos y un hueco por especial (carga, teletransporte y gancho).
+- **Huecos:** torso, piernas, 4 armas laterales, 2 superiores, 1 arma de pecho, 1 dron (robot de soporte), 8 módulos y un hueco por especial (carga, teletransporte y gancho). El arma de pecho va **aparte** de las seis armas del original (decisión del usuario, 2026-11-17).
 - **Peso:** límite de 1000 kg. Se permite sobrecarga hasta +10 kg, con −15 de vida por cada kg de más. Por encima de 1010 kg el mech no puede pelear.
 - **Obligatorio:** torso y piernas.
 - **Resistencias:** como máximo 1 módulo por tipo de resistencia.
@@ -219,7 +219,7 @@ Unas 58 piezas con nombres propios (nunca los del original).
 - **Piezas únicas:** solo las sueltan los 3 últimos jefes de los 10 de cada mundo (§9). No se compran ni se consiguen transformando otra pieza.
 - **Tipos de arma y clases** (usuario, 2026-11-16): balas en las clases Básica e Intermedia, cañón y bláster (plasma) en las medias, láser de Avanzada en adelante. El detalle está en docs/CATALOGO_ARMAS.md: 4 categorías por hueco, 37 diseños y 111 armas.
 - **Materia oscura:** el disparo más poderoso del juego; prácticamente aniquila al enemigo. No es un arma sino una habilidad del **árbol de habilidades** que elija el jugador, y solo se aplica al arma del pecho. El árbol de habilidades es un sistema nuevo, por diseñar.
-- **Huecos y nivel del jugador:** 2 brazos, 2 hombros, 1 pecho y robot de soporte, desbloqueados con el nivel del jugador (soporte al 3, pecho al 10, cinco armas al 20).
+- **Huecos y nivel del jugador:** seis armas como en el original (4 laterales y 2 superiores), más el arma de pecho y el robot de soporte. El nivel del jugador sube con la experiencia de los combates (data/progression.json: 100 por victoria, 25 por derrota, 500 por jefe; nivel 3 tras unas 3 victorias, nivel 10 tras unas 75, máximo 30). El robot de soporte se abre en el nivel 3 y el arma de pecho en el 10, como fijó el usuario; las seis armas están abiertas desde el principio. Las piezas de un hueco cerrado se pueden tener y montar, pero no pelean hasta que se abre.
 - **Por confirmar con el usuario:** si una pieza puede subir de clase (hoy sí, con la transformación de más abajo, hasta Mítica) o si su clase es fija, y si las clases y las etapas valen igual para torsos, piernas y drones (hoy sí) o solo para armas.
 - **Poder y fusión:** el nivel sube con "poder", que se gana fusionando piezas sobrantes (su poder depende de su tier) o núcleos.
 - **Transformación:** al llegar al nivel máximo de su clase, la pieza puede transformarse a la siguiente pagando celdas, si la zona ya llega a esa clase. Vuelve al nivel 0 de la nueva clase. A Única solo con un núcleo único (§9.3).

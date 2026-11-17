@@ -40,7 +40,7 @@ var evade_left: int = 0
 ## Bonificaciones en vigor (GDD 2.8): {"kind", "amount", "turns"}.
 var buffs: Array[Dictionary] = []
 ## Huecos que actuan en combate: "legs", "side0".."side3", "top0", "top1",
-## "drone", "charge", "teleport", "hook".
+## "chest", "drone", "charge", "teleport", "hook".
 var slots: Dictionary[String, Slot] = {}
 
 
@@ -64,6 +64,7 @@ func _init(p_build: MechBuild = null, rules: RulesConfig = null, p_position: int
 		_add_slot("side%d" % i, build.sides[i])
 	for i in build.tops.size():
 		_add_slot("top%d" % i, build.tops[i])
+	_add_slot("chest", build.chest)
 	_add_slot("drone", build.drone)
 	_add_slot("charge", build.charge)
 	_add_slot("teleport", build.teleport)
@@ -170,7 +171,7 @@ func _add_slot(key: String, def: ItemDef) -> void:
 func weapon_keys() -> Array[String]:
 	var out: Array[String] = []
 	for key in slots:
-		if key.begins_with("side") or key.begins_with("top"):
+		if key.begins_with("side") or key.begins_with("top") or key == "chest":
 			out.append(key)
 	return out
 

@@ -105,7 +105,7 @@ static func items_of(items: Dictionary) -> Array[String]:
 		for item: Variant in list:
 			if item != null and str(item) != "" and not str(item) in out:
 				out.append(str(item))
-	for key: String in ["charge", "teleport", "hook"]:
+	for key: String in ["chest", "charge", "teleport", "hook"]:
 		var item: Variant = items.get(key)
 		if item != null and str(item) != "" and not str(item) in out:
 			out.append(str(item))

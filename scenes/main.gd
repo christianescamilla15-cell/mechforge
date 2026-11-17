@@ -32,6 +32,7 @@ var _chassis := ChassisLibrary.load_file("res://data/chassis.json")
 var _shop := ArenaShop.load_file("res://data/arena_shop.json")
 var _workshop := Workshop.load_file("res://data/workshop.json")
 var _garage := Garage.load_file("res://data/part_shop.json")
+var _progression := Progression.load_file("res://data/progression.json")
 ## Celdas, mejoras, avance e historial del jugador.
 var _profile := PlayerProfile.new()
 ## Las pruebas automaticas no tocan el guardado del jugador.
@@ -186,6 +187,11 @@ func _add_mech_status(box: VBoxContainer) -> bool:
 	var problems := build.validate(_rules)
 	var line := Txt.t("mech_weight", [build.total_weight(), _rules.max_weight])
 	_text(box, "%s · %s" % [Txt.t("menu_player"), line], 16)
+	var next := _progression.next_level_xp(_profile.xp)
+	var level_line := Txt.t("player_level", [_player_level(), _profile.xp])
+	if next >= 0:
+		level_line += Txt.t("player_next", [next])
+	_text(box, level_line, 15, COLOR_MUTED)
 	if not problems.is_empty():
 		_text(box, Txt.t("mech_problems", [", ".join(problems)]), 14, COLOR_WARNING)
 	return problems.is_empty()
@@ -338,6 +344,7 @@ func _add_parts(box: VBoxContainer) -> void:
 		name_label.custom_minimum_size = Vector2(96, 0)
 		row.add_child(name_label)
 		var current := Garage.get_slot(_profile.build, slot)
+		var unlocked := _progression.is_unlocked(slot, _player_level())
 		var picker := OptionButton.new()
 		picker.custom_minimum_size = Vector2(190, 0)
 		# Ancho fijo: los nombres largos se recortan en vez de empujar la fila.
@@ -349,6 +356,7 @@ func _add_parts(box: VBoxContainer) -> void:
 			picker.add_item(_catalog.get_item(id).display_name)
 		picker.select(options.find(current) + 1)
 		picker.item_selected.connect(_on_slot_picked.bind(slot, options))
+		picker.disabled = not unlocked
 		row.add_child(picker)
 		var level_label := Label.new()
 		level_label.custom_minimum_size = Vector2(96, 0)
@@ -358,6 +366,11 @@ func _add_parts(box: VBoxContainer) -> void:
 		var buy := Button.new()
 		buy.custom_minimum_size = Vector2(130, 0)
 		row.add_child(buy)
+		if not unlocked:
+			level_label.text = Txt.t("slot_locked", [_progression.unlock_level(slot)])
+			buy.text = "—"
+			buy.disabled = true
+			continue
 		if current == "":
 			buy.text = "—"
 			buy.disabled = true
@@ -513,9 +526,16 @@ func _on_store_buy(id: String, zone_tier: int) -> void:
 	_show_menu()
 
 
-## Mech armado del jugador con la clase y el nivel de cada pieza.
+## Mech armado del jugador con la clase y el nivel de cada pieza, sin lo que
+## va en huecos que su nivel aun no abre.
 func _player_build() -> MechBuild:
-	return _catalog.make_build(_profile.build, _rules, ItemDef.Tier.COMMON, 0, _profile.parts)
+	var build := _catalog.make_build(_profile.build, _rules, ItemDef.Tier.COMMON, 0, _profile.parts)
+	_progression.apply_locks(build, _player_level())
+	return build
+
+
+func _player_level() -> int:
+	return _progression.level_for(_profile.xp)
 
 
 ## Piezas distintas del mech armado del jugador.
@@ -643,6 +663,7 @@ func _start_battle(spec: Dictionary) -> void:
 		player_build = _catalog.make_build(
 			spec["items"], _rules, ItemDef.Tier.COMMON, 0, _profile.parts
 		)
+		_progression.apply_locks(player_build, _player_level())
 	else:
 		var player_tier: ItemDef.Tier = spec["player_tier"]
 		player_build = _catalog.make_build(spec["items"], _rules, player_tier, spec["player_level"])
@@ -671,7 +692,7 @@ func _on_rematch() -> void:
 ## Al terminar un combate de campana o de arena el jugador cobra, avanza o,
 ## si perdio contra un jefe, pierde la partida. Se guarda el progreso.
 func _on_battle_finished(player_won: bool) -> void:
-	var result := _campaign.finish_fight(_profile, _shop, _spec["mode"], player_won)
+	var result := _campaign.finish_fight(_profile, _shop, _spec["mode"], player_won, _progression)
 	_save()
 	if result["game_over"]:
 		_last_result = Txt.t("result_game_over")
@@ -681,6 +702,8 @@ func _on_battle_finished(player_won: bool) -> void:
 		_last_result = Txt.t("result_zone_cleared", [result["gold"]])
 	else:
 		_last_result = Txt.t("result_reward", [result["gold"]])
+	if result["level_up"]:
+		_last_result += "\n" + Txt.t("result_level_up", [_player_level()])
 	_battle.set_result_note(_last_result)
 
 

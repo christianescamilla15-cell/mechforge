@@ -77,7 +77,7 @@ func _initialize() -> void:
 				profile.shop_levels[track] = start_armory
 			profile.gold = roundi(wins * reward)
 			var cap := campaign.level_cap(zone)
-			_spend(profile, library.item_ids(id), tier, cap, workshop, shop)
+			_spend(profile, library.item_ids(id), tier, cap, workshop, shop, catalog)
 			var key := "%s@%d" % [id, wins]
 			_states[key] = profile
 			var build := library.make(
@@ -119,7 +119,8 @@ func _spend(
 	max_tier: int,
 	cap_level: int,
 	workshop: Workshop,
-	shop: ArenaShop
+	shop: ArenaShop,
+	catalog: Catalog
 ) -> void:
 	while true:
 		var best_cost := -1
@@ -135,12 +136,16 @@ func _spend(
 			elif (
 				p["level"] >= _rules.tier_max_level[p["tier"]]
 				and (
-					profile.why_cant_transform(workshop, _rules, id, max_tier)
+					profile.why_cant_transform(
+						workshop, _rules, id, max_tier, catalog.get_item(id).tier_max
+					)
 					in ["", "faltan celdas"]
 				)
 			):
 				cost = workshop.transform_cost(p["tier"])
-				action = profile.transform.bind(workshop, _rules, id, max_tier)
+				action = profile.transform.bind(
+					workshop, _rules, id, max_tier, catalog.get_item(id).tier_max
+				)
 			if cost >= 0 and (best_cost < 0 or cost < best_cost):
 				best_cost = cost
 				best = action

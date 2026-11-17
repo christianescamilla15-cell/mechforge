@@ -18,6 +18,7 @@ const SLOTS: Array[String] = [
 	"side3",
 	"top0",
 	"top1",
+	"chest",
 	"drone",
 	"module0",
 	"module1",

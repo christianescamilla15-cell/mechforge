@@ -7,9 +7,11 @@ extends RefCounted
 ## La moneda se llama `gold` en el codigo y en el guardado; en pantalla se
 ## muestra con el nombre de la tabla de textos (GDD 8).
 
-const SCHEMA_VERSION := 4
+const SCHEMA_VERSION := 5
 
 var gold: int = 0
+## Experiencia total; de ella sale el nivel del jugador (Progression).
+var xp: int = 0
 ## Nivel comprado de cada mejora de la armeria: {id: nivel}.
 var shop_levels: Dictionary[String, int] = {}
 ## Clase y nivel de cada pieza, por id del catalogo: {id: {"tier", "level"}}.
@@ -76,6 +78,7 @@ func end_run() -> void:
 	best_boss_wins = maxi(best_boss_wins, boss_wins)
 	runs_lost += 1
 	gold = 0
+	xp = 0
 	shop_levels.clear()
 	parts.clear()
 	unique_cores = 0
@@ -211,6 +214,7 @@ func to_dict() -> Dictionary:
 	return {
 		"schema_version": SCHEMA_VERSION,
 		"gold": gold,
+		"xp": xp,
 		"shop_levels": shop_levels.duplicate(),
 		"parts": parts.duplicate(true),
 		"unique_cores": unique_cores,
@@ -228,11 +232,13 @@ func to_dict() -> Dictionary:
 
 
 ## Migraciones: la version 1 no tenia campana ni mech elegido, la 2 no tenia
-## piezas y la 3 no tenia mech armado; sus campos nuevos empiezan vacios y
+## piezas, la 3 no tenia mech armado y la 4 no tenia experiencia; sus campos
+## nuevos empiezan vacios y
 ## lo demas se conserva. Sin mech armado, el menu pide elegir uno.
 static func from_dict(data: Dictionary) -> PlayerProfile:
 	var profile := PlayerProfile.new()
 	profile.gold = maxi(0, int(data.get("gold", 0)))
+	profile.xp = maxi(0, int(data.get("xp", 0)))
 	profile.mech = str(data.get("mech", ""))
 	profile.unique_cores = maxi(0, int(data.get("unique_cores", 0)))
 	for id: Variant in data.get("owned", []):

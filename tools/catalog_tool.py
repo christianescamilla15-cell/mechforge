@@ -14,7 +14,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 CATALOG = ROOT / "data" / "catalog.json"
-TYPE_ORDER = ["TORSO", "LEGS", "SIDE", "TOP", "DRONE", "MODULE", "CHARGE", "TELEPORT", "HOOK"]
+TYPE_ORDER = ["TORSO", "LEGS", "SIDE", "TOP", "CHEST", "DRONE", "MODULE", "CHARGE", "TELEPORT", "HOOK"]
 ELEMENT_ORDER = ["PHYSICAL", "HEAT", "ENERGY", "COMBINED"]
 
 
