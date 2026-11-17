@@ -26,6 +26,6 @@ extends Resource
 ## Multiplicador de estadisticas por tier, de Comun a Divino (GDD 8).
 @export var tier_mult: Array[float] = [1.0, 1.35, 1.8, 2.4, 3.2, 4.2]
 ## Nivel maximo dentro de cada tier.
-@export var tier_max_level: Array[int] = [10, 15, 20, 25, 30, 40]
+@export var tier_max_level: Array[int] = [6, 12, 18, 24, 30, 50]
 ## Bonus al llegar al nivel maximo del tier (0.3 = +30 %).
 @export var level_bonus: float = 0.3

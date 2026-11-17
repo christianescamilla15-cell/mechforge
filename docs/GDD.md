@@ -14,6 +14,15 @@ Conservamos el núcleo de Super Mechs: arena lineal, 2 acciones por turno, tres 
 4. La progresión premia la táctica, no solo el grindeo.
 5. Los mechs se ven propios y vivos: luz, efectos y animación por piezas (§11).
 
+### 1.1 Historia y universo
+Definido por el usuario el 2026-11-16.
+
+- El universo está bajo un **orden de máquinas** que quiere conquistarlo todo, a cualquier costo.
+- Una parte de los robots se ha **insurreccionado** contra ese orden. Los insurrectos buscan la convivencia pacífica con las demás especies del universo.
+- El jugador es un robot insurrecto. Empieza con un mech sencillo y lo mejora combate a combate.
+- Cada mundo tiene **10 jefes** del orden. Los jefes usan la línea de diseño robusta; el jugador y los rivales normales, la esbelta (§11).
+- Los nombres de las facciones, los mundos y los jefes están por escribir.
+
 ## 2. Combate
 
 ### 2.1 Arena
@@ -173,11 +182,27 @@ Unas 58 piezas con nombres propios (nunca los del original).
 - El balance está ajustado para estos cuatro mechs. Otros builds pueden romperlo; se revisará cuando existan los enemigos de la campaña (F8).
 
 ## 8. Progresión (completa)
-- **Tiers:** Común → Raro → Épico → Legendario → Mítico → Divino. Cada pieza tiene un tier inicial y un tier máximo.
-- **Niveles por tier:** 10 / 15 / 20 / 25 / 30 / 40.
+- **Clases de pieza** (pedido del usuario, 2026-11-16). Sustituyen a los nombres de tier anteriores; en el código y en el catálogo los identificadores siguen siendo `COMMON` … `DIVINE`:
+
+  | Clase | Identificador | Nivel máximo | Etapas tecnológicas |
+  |---|---|---|---|
+  | Básica | `COMMON` | 6 | 1 |
+  | Intermedia | `RARE` | 12 | 2 |
+  | Avanzada | `EPIC` | 18 | 3 |
+  | Legendaria | `LEGENDARY` | 24 | 4 |
+  | Mítica | `MYTHIC` | 30 | 5 |
+  | Única | `DIVINE` | 50 | 8, más el remate del nivel 50 |
+
+  Donde este documento diga Común, Raro, Épico, Legendario, Mítico o Divino se refiere a estas mismas clases, en ese orden.
+- **Niveles por clase:** 6 / 12 / 18 / 24 / 30 / 50 (`RulesConfig.tier_max_level`).
 - **Crecimiento:** `poder(tier, nivel) = mult_tier[tier] × (1 + 0.3 × nivel / nivel_máx)`, con `mult_tier` = 1.0 / 1.35 / 1.8 / 2.4 / 3.2 / 4.2. Va de 1.0 (Común nivel 0) a 5.46 (Divino nivel 40), y transformar una pieza siempre la mejora aunque reinicie el nivel.
 - **Escalado proporcional:** `stat = stat_del_catálogo × poder / 5.46`, redondeado y con mínimo 1. Escalan la vida, las capacidades, la regeneración, el enfriamiento, las resistencias, todos los daños, el backfire y los costos. No escalan el peso, el movimiento, el alcance, los empujes ni los usos. Como todo usa el mismo factor, un duelo entre mechs del mismo tier se comporta igual en cualquier tier: el balance se ajusta una sola vez.
 - Los costos escalan igual que el daño. Un arma de tier alto en un torso de tier bajo gasta una parte grande de su energía y su calor: hay que subir el núcleo para alimentar las armas grandes.
+- **Mejora por niveles (micromejoras):** cada nivel es una mejora pequeña de la pieza, y cada nivel se nota también en su aspecto, que gana definición.
+- **Etapas tecnológicas:** cada 6 niveles la pieza pasa a una etapa más avanzada y cambia de dibujo: el arma se ve y dispara como una tecnología superior (§12.2). Dentro de una etapa, cada nivel añade detalle sobre ese dibujo (líneas de luz, brillo, piezas añadidas e intensidad de los efectos).
+- **Color personalizable:** el jugador puede cambiar los colores de cada pieza. Se hace con un shader sobre zonas de color del sprite (principal, secundario y luces), sin generar arte nuevo.
+- **Piezas únicas:** solo las sueltan los 3 últimos jefes de los 10 de cada mundo (§9). No se compran ni se consiguen transformando otra pieza.
+- **Por confirmar con el usuario:** si una pieza puede subir de clase (hoy sí, con la transformación de más abajo, hasta Mítica) o si su clase es fija, y si las clases y las etapas valen igual para torsos, piernas y drones (hoy sí) o solo para armas.
 - **Poder y fusión:** el nivel sube con "poder", que se gana fusionando piezas sobrantes (su poder depende de su tier) o núcleos.
 - **Transformación:** al llegar al nivel máximo de su tier, la pieza puede transformarse al siguiente pagando oro y núcleos. Vuelve al nivel 0 del nuevo tier.
 - **Monedas:** **oro** (sale de los combates) y **núcleos** (salen del botín y de desarmar piezas repetidas). No hay moneda de pago.
@@ -191,7 +216,7 @@ Unas 58 piezas con nombres propios (nunca los del original).
 **Visión (del usuario, 2026-11-16):** recuperar la versión antigua de Super Mechs para un jugador. Empiezas con un robot sencillo y avanzas combate a combate hasta un jefe superior al que solo se vence con táctica. Aquella versión era una demo que no pasaba de los primeros 10 combates; aquí va completa. La meta es unir la originalidad y el detalle del juego antiguo con las mecánicas de combate modernas. No hay multijugador.
 
 - El jugador empieza con un mech básico de tier Común (torso, piernas y un par de armas) y lo va completando con lo que gana.
-- Escalera de combates en **3 capítulos**, cada uno con unos 10 combates y un jefe al final.
+- **Mundo con 10 jefes** (pedido del usuario, 2026-11-16): el mundo se divide en 10 zonas, cada una con sus combates normales y un jefe al final. Los **3 últimos jefes** sueltan las piezas de clase Única. Sustituye a los 3 capítulos del plan anterior; donde este documento diga "capítulo" léase "zona". Más mundos quedan para el paso 2.
 - Los enemigos tienen builds predefinidos (en datos) que suben de tier por capítulo. Los jefes tienen piezas únicas y reglas especiales (por ejemplo, más capacidad de calor).
 - Los combates se pueden repetir para farmear. Cada capítulo desbloquea piezas y niveles del taller de mejoras.
 - La curva de dificultad se valida con el simulador: el build "esperado" del jugador en cada capítulo debe ganar entre el 55 % y el 70 % de las veces contra los enemigos normales.
@@ -262,6 +287,27 @@ Animación por piezas (cada pieza es un sprite que se mueve, gira o se desplaza)
 | Estados | Brillo de calor creciente; vapor al enfriar; apagado (luces fuera, postura caída y humo); sin energía (parpadeo y arcos); daños visibles con poca vida |
 | Final | Explosión y piezas que saltan al ser destruido; pose de victoria |
 | Interfaz | Números flotantes, barras que se mueven con suavidad, cartel de turno, respuesta de los botones y transiciones entre pantallas |
+
+**Armas: cómo se empuñan y cómo disparan** (pedido del usuario, 2026-11-16). Cada familia de arma tiene su propia forma de desplegarse, apuntar, disparar e impactar, y evoluciona con las etapas tecnológicas de la pieza (§8): el mismo cañón no se ve ni dispara igual en la etapa 1 que en la 5.
+
+| Familia | Despliegue y disparo | Proyectil e impacto |
+|---|---|---|
+| Balística ligera (ametralladora, rotativa) | El brazo se afianza, los cañones giran y vibra el retroceso | Ráfaga de trazadoras, casquillos, chispas en el blindaje |
+| Balística pesada (cañón, obús, mortero) | Se anclan las piernas, retroceso largo y humo en la boca | Proyectil visible, en arco si es obús; onda y cráter |
+| Escopeta y metralla | Golpe seco de retroceso | Abanico de perdigones a corta distancia |
+| Riel y gauss | Carga con arcos entre los raíles antes del disparo | Línea instantánea que atraviesa y deja estela |
+| Misiles y cohetes | Se abren las compuertas del lanzador | Estela de humo, vuelo guiado en curva, explosión |
+| Granadas y minas | Lanzamiento en parábola | Rebote, mecha y explosión retardada |
+| Láser | Lente que se enciende y carga | Rayo continuo que quema una línea en el blindaje |
+| Bláster y plasma | Bobina que se ilumina | Bola o perno de energía con salpicadura al impactar |
+| Llama y térmico | Piloto encendido y chorro | Cono de fuego, brasas y metal al rojo |
+| Eléctrico | Bobinas que chisporrotean | Arco ramificado que salta al rival y le drena energía |
+| Cuerpo a cuerpo (espada, hacha, martillo, taladro, sierra) | Desenvaine o arranque del motor y avance | Tajo con estela, golpe con sacudida, chispas continuas en taladro y sierra |
+| Escudos y defensas | Paneles que se despliegan o campo que se enciende | Destello al absorber el golpe; se agrieta o parpadea con poca vida |
+
+La etapa tecnológica cambia el dibujo del arma, el fogonazo, el proyectil, el impacto y el sonido. Para que el trabajo sea abarcable, cada familia define sus efectos una vez y cada etapa los varía (tamaño, color, número de proyectiles, capas de efecto).
+
+**Revisión por partes:** cada familia se le enseña al usuario en movimiento, en sus etapas, antes de darla por buena (ver `docs/PLAN.md`, fase F5).
 
 Cada pieza del catálogo llevará un campo `fx` con su tipo de presentación (por ejemplo `espada`, `bala`, `cohete`, `llama`, `rayo`), del que salen su animación de ataque, su proyectil y su sonido.
 

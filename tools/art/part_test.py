@@ -18,32 +18,17 @@ import itertools
 import time
 from pathlib import Path
 
-import cv2
 import numpy as np
 import torch
 from PIL import Image
 
 import blockout
+from cutout import foreground_mask
 import sd
 import style
 
 ROOT = Path(__file__).resolve().parents[2]
 OUT = ROOT / "art_raw" / "parts"
-
-
-def foreground_mask(image, tolerance=14):
-    """Separa la figura del fondo liso: es fondo lo que se parece al color del
-    borde y ademas esta conectado con el borde."""
-    pixels = np.asarray(image.convert("RGB")).astype(np.int16)
-    border = np.concatenate(
-        [pixels[:6].reshape(-1, 3), pixels[-6:].reshape(-1, 3), pixels[:, :6].reshape(-1, 3), pixels[:, -6:].reshape(-1, 3)]
-    )
-    background_color = np.median(border, axis=0)
-    similar = (np.abs(pixels - background_color).max(axis=2) < tolerance).astype(np.uint8)
-    _, labels = cv2.connectedComponents(similar, connectivity=4)
-    edge_labels = np.unique(np.concatenate([labels[0], labels[-1], labels[:, 0], labels[:, -1]]))
-    edge_labels = edge_labels[edge_labels != 0]
-    return ~np.isin(labels, edge_labels)
 
 
 def silhouette_match(image, mask):
@@ -97,6 +82,9 @@ def main():
         help="paleta del bloque inicial; por defecto la del elemento. El color final lo pide el prompt",
     )
     parser.add_argument("--shape-from", type=Path, help="imagen cuya silueta se usa como molde en vez del bloque")
+    parser.add_argument(
+        "--min-match", type=float, default=0.0, help="coincidencia minima con la silueta; por debajo va a descartes/"
+    )
     parser.add_argument("--fit", action="store_true", help="pieza agrandada al 80 %% del lienzo")
     parser.add_argument("--steps", type=int, default=style.STEPS)
     parser.add_argument("--offload", choices=sd.OFFLOAD_CHOICES, default="fp8")
@@ -148,11 +136,14 @@ def main():
             round(scale * 100),
             round(end * 100),
         )
-        image.save(out / name)
         iou, covered, outside = silhouette_match(image, mask)
+        # Lo que no se parece a la silueta pedida se aparta, no se borra.
+        folder = out if iou >= args.min_match else out / "descartes"
+        folder.mkdir(exist_ok=True)
+        image.save(folder / name)
         print(
-            "ok  %s  %.0f s  pico VRAM %.1f GB  silueta: IoU %.2f, cubierto %.2f, fuera %.2f"
-            % (name, time.time() - started, sd.peak_vram_gb(), iou, covered, outside),
+            "%s  %s  %.0f s  pico VRAM %.1f GB  silueta: IoU %.2f, cubierto %.2f, fuera %.2f"
+            % ("ok " if folder == out else "DESCARTE", name, time.time() - started, sd.peak_vram_gb(), iou, covered, outside),
             flush=True,
         )
     print("LISTO en", out)

@@ -9,7 +9,7 @@ func test_poder_por_tier_y_nivel() -> void:
 	assert_almost_eq(ItemScaling.power(r, T.COMMON, 0), 1.0, 0.0001)
 	assert_almost_eq(ItemScaling.power(r, T.COMMON, 10), 1.3, 0.0001)
 	assert_almost_eq(ItemScaling.power(r, T.RARE, 0), 1.35, 0.0001)
-	assert_almost_eq(ItemScaling.power(r, T.DIVINE, 40), 5.46, 0.0001)
+	assert_almost_eq(ItemScaling.power(r, T.DIVINE, r.tier_max_level[T.DIVINE]), 5.46, 0.0001)
 	assert_almost_eq(ItemScaling.top_power(r), 5.46, 0.0001)
 
 
@@ -30,12 +30,12 @@ func test_transformar_siempre_mejora_aunque_reinicie_el_nivel() -> void:
 func test_divino_al_maximo_devuelve_los_valores_del_catalogo() -> void:
 	var r := RulesConfig.new()
 	var gun := Fx.gun({"dmg_min": 205, "dmg_max": 255, "energy_cost": 25, "weight": 48})
-	var top := ItemScaling.resolve(gun, r, T.DIVINE, 40)
+	var top := ItemScaling.resolve(gun, r, T.DIVINE, r.tier_max_level[T.DIVINE])
 	assert_eq(top.dmg_min, 205)
 	assert_eq(top.dmg_max, 255)
 	assert_eq(top.energy_cost, 25)
 	assert_eq(top.tier, T.DIVINE)
-	assert_eq(top.level, 40)
+	assert_eq(top.level, r.tier_max_level[T.DIVINE])
 
 
 func test_comun_nivel_cero_baja_en_proporcion() -> void:
@@ -86,3 +86,11 @@ func test_alcanzable_segun_los_tiers_de_la_pieza() -> void:
 	assert_true(ItemScaling.is_reachable(gun, T.EPIC))
 	assert_true(ItemScaling.is_reachable(gun, T.MYTHIC))
 	assert_false(ItemScaling.is_reachable(gun, T.DIVINE))
+
+
+## Topes pedidos por el usuario (GDD 8): cada 6 niveles es una etapa tecnologica.
+func test_topes_de_nivel_por_clase() -> void:
+	var r := RulesConfig.new()
+	var expected: Array[int] = [6, 12, 18, 24, 30, 50]
+	for tier in expected.size():
+		assert_eq(r.tier_max_level[tier], expected[tier], "clase %d" % tier)

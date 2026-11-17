@@ -95,6 +95,10 @@ Si SDXL resulta demasiado lento en 6 GB, el plan B es un modelo SD 1.5 de anime 
 - Sonido de cada evento del combate (GDD §12.3) y música de combate.
 - Escenario de la arena en capas (GDD §12.1), al menos el de entrenamiento.
 
+**Revisión con el usuario (pedido el 2026-11-16):** igual que con el arte, cada grupo de animación se le enseña en movimiento antes de darlo por bueno, y se corrige con sus comentarios. Grupos: caminar; saltar o volar; disparar cada tipo de arma; golpe cuerpo a cuerpo; activar poderes (carga, teletransporte y gancho); escudo y resistencias; recibir daño; sobrecalentarse y apagarse; destrucción. Se entrega un clip corto por grupo, grabado del juego real con `tools/live.ps1`, no un montaje aparte.
+
+**Armas por familia y por etapa (pedido el 2026-11-16, GDD §12.2 y §8):** cada familia de arma tiene su forma de desplegarse, disparar e impactar, y cambia con la etapa tecnológica de la pieza (cada 6 niveles). Se empieza por un arma piloto llevada por todas sus etapas, para que el usuario la evalúe antes de repetirlo en las demás. El color personalizable se hace con un shader por zonas.
+
 **Puerta de presentación:** el test de cobertura pasa (ningún evento ni tipo de `fx` sin animación o sonido); la prueba en vivo deja capturas revisadas de cada tipo de acción sobre el escenario; el usuario da el visto bueno al sonido escuchándolo; 60 FPS medidos en la laptop.
 
 ### F6 — Taller de armado
@@ -109,6 +113,8 @@ Si SDXL resulta demasiado lento en 6 GB, el plan B es un modelo SD 1.5 de anime 
 - Simulador de economía: horas estimadas hasta llevar un build completo a Divino.
 
 **Puerta:** tests de economía y de guardado y carga de ida y vuelta en verde; el simulador da entre 8 y 12 horas hasta Divino.
+
+**Pendiente por la ampliación del 2026-11-16 (GDD §8):** topes de nivel 6/12/18/24/30/50 ya en `RulesConfig` (113 tests en verde). Falta: confirmar con el usuario si la clase de una pieza es fija o puede subir; limitar la clase Única a las piezas de jefe y repetir las puertas de balance en Mítica, que pasa a ser el techo de las piezas normales; arte por etapa tecnológica y shader de color.
 
 ### F8 — Campaña
 - Visión en el GDD §9: un jugador, se empieza con un robot sencillo y se avanza hasta un jefe que exige táctica, como en la versión antigua del juego.

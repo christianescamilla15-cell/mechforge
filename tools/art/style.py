@@ -51,7 +51,14 @@ SUBJECT_PARTS = {
 # Lo que hay que evitar en cada pieza suelta, ademas de NEGATIVE: sin esto
 # las armas salen como armas de mano, con empunadura y gatillo.
 WEAPON_NEGATIVE = "trigger, handgun, pistol grip, gun stock, holding, hands"
-PART_NEGATIVE = {"cannon": WEAPON_NEGATIVE, "sword": "holding, hands, sheath", "pod": "holding, hands"}
+# El cuerpo sin armas tiende a salir con alas, espadas o disparando.
+BODY_NEGATIVE = "wings, sword, energy blade, energy beam, laser, firing, holding weapon"
+PART_NEGATIVE = {
+    "body": BODY_NEGATIVE,
+    "cannon": WEAPON_NEGATIVE,
+    "sword": "holding, hands, sheath",
+    "pod": "holding, hands",
+}
 PART_COLORS = {
     "physical": "steel grey armor, white armor",
     "heat": "orange armor, red armor, glowing vents",

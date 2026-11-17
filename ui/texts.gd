@@ -65,7 +65,7 @@ const ES := {
 	"thinking": "El rival piensa…",
 }
 
-const TIER_NAMES: Array[String] = ["Común", "Raro", "Épico", "Legendario", "Mítico", "Divino"]
+const TIER_NAMES: Array[String] = ["Básica", "Intermedia", "Avanzada", "Legendaria", "Mítica", "Única"]
 const ELEMENT_NAMES: Array[String] = ["Físico", "Calor", "Energía", "Combinado"]
 
 
