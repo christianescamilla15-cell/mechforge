@@ -37,8 +37,8 @@ def piece(path, hip, keep_upper):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--torso", type=Path, required=True)
-    parser.add_argument("--legs", type=Path, required=True)
+    parser.add_argument("--torso", type=Path, help="imagen de la que sale el torso")
+    parser.add_argument("--legs", type=Path, help="imagen de la que salen las piernas")
     parser.add_argument("--hip", type=int, nargs=2, metavar=("FILA", "X"), required=True)
     parser.add_argument("--name", required=True)
     parser.add_argument("--out", type=Path, required=True)
@@ -49,6 +49,8 @@ def main():
     hip = tuple(args.hip)
     anchors = {"scale": args.scale}
     for kind, path, keep_upper in (("torso", args.torso, True), ("legs", args.legs, False)):
+        if path is None:
+            continue
         image, mask = piece(path, hip, keep_upper)
         for element, scheme in ELEMENTS.items():
             colored = recolor.recolor(image, scheme)

@@ -13,9 +13,8 @@ const ELEMENT_COLORS: Array[Color] = [
 const OUTLINE := Color("10151c")
 ## Escala del dibujo: un mech debe caber en su casilla con el rival al lado.
 const DRAW_SCALE := 0.72
-## Juego de sprites del chasis ligero (assets/mechs). De momento todos los
-## mechs usan el mismo, coloreado segun el elemento de cada pieza.
-const SPRITE_SET := "ligero_18"
+## Juego de sprites que tiene el canon de pecho (assets/mechs).
+const CHEST_SET := "ligero_18"
 ## Cuanto suben las armas provisionales para quedar sobre el torso nuevo.
 const SPRITE_WEAPON_LIFT := -44.0
 
@@ -32,7 +31,7 @@ var _sprites: MechSprites
 
 func setup(p_build: MechBuild, p_facing: int) -> void:
 	build = p_build
-	_sprites = MechSprites.load_set(SPRITE_SET)
+	_sprites = MechSprites.for_build(build)
 	set_facing(p_facing)
 
 
@@ -91,7 +90,7 @@ func _draw() -> void:
 		# Provisional: el canon de pecho hace de arma superior hasta que el
 		# motor tenga el hueco de pecho (docs/CATALOGO_ARMAS.md).
 		if not build.tops.is_empty():
-			_sprites.draw_piece(self, "chest", build.tops[0].element, _body_tint(dim))
+			_sprites.draw_piece(self, CHEST_SET, "chest", build.tops[0].element, _body_tint(dim))
 		# Las armas todavia no tienen arte: con el mech dibujado no se pintan
 		# sus bloques provisionales, que taparian el dibujo. Solo el dron.
 		draw_set_transform(Vector2(0.0, SPRITE_WEAPON_LIFT))

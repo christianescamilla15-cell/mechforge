@@ -1,86 +1,91 @@
 class_name MechSprites
 extends RefCounted
 ## Sprites de un mech por piezas (docs/CHASIS.md): torso y piernas unidos por
-## el aro de la cintura, en el color de su elemento. Los exporta
-## tools/art/export_parts.py junto con el JSON de anclas.
+## el aro de la cintura, en el color de su elemento. Cada juego de piezas lo
+## exporta tools/art/export_parts.py junto con su JSON de anclas. El torso y
+## las piernas pueden venir de juegos distintos: todos comparten el aro.
 
 const DIR := "res://assets/mechs/"
-## Altura en pantalla de un mech entero, en unidades de MechView.
-const TARGET_HEIGHT := 215.0
+## Unidades de MechView por pixel del PNG. Es fija porque todas las piezas se
+## exportan a la misma escala; si cada una tuviera la suya no casarian.
+const UNIT_SCALE := 0.54
+## Juegos exportados que tienen torso y los que tienen piernas, del chasis ligero.
+const TORSO_SETS: Array[String] = ["ligero_18", "ligero_13", "ligero_16"]
+const LEGS_SETS: Array[String] = ["ligero_18", "ligero_14", "ligero_17"]
 
-static var _cache: Dictionary[String, MechSprites] = {}
+static var _anchors: Dictionary[String, Dictionary] = {}
+static var _textures: Dictionary[String, Texture2D] = {}
 
-var set_name: String = ""
-## Ancla de la cintura y tamano de cada pieza, en pixeles del PNG.
-var anchors: Dictionary = {}
-## Unidades de MechView por pixel del PNG.
-var unit_scale: float = 1.0
-var _textures: Dictionary[String, Texture2D] = {}
+var torso_set: String = ""
+var legs_set: String = ""
 
 
-## Devuelve el juego de sprites con ese nombre, o null si no esta exportado.
-static func load_set(name: String) -> MechSprites:
-	if _cache.has(name):
-		return _cache[name]
-	var out: MechSprites = null
-	var path := DIR + name + ".json"
-	if FileAccess.file_exists(path):
-		var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
-		if (
-			parsed is Dictionary
-			and parsed.get("torso") is Dictionary
-			and parsed.get("legs") is Dictionary
-		):
-			out = MechSprites.new()
-			out.set_name = name
-			out.anchors = parsed
-			out.unit_scale = TARGET_HEIGHT / maxf(out.torso_height() + out.legs_height(), 1.0)
-	_cache[name] = out
+## Elige las piezas de un mech segun sus piezas del catalogo: la misma pieza
+## se ve siempre igual. Devuelve null si no hay arte exportado.
+static func for_build(build: MechBuild) -> MechSprites:
+	var torsos := _available(TORSO_SETS, "torso")
+	var legs := _available(LEGS_SETS, "legs")
+	if torsos.is_empty() or legs.is_empty():
+		return null
+	var out := MechSprites.new()
+	out.torso_set = torsos[absi(build.torso.id.hash()) % torsos.size()]
+	out.legs_set = legs[absi(build.legs.id.hash()) % legs.size()]
 	return out
-
-
-## Pixeles del torso por encima de la cintura.
-func torso_height() -> float:
-	return float(anchors["torso"]["hip"][1])
-
-
-## Pixeles de las piernas por debajo de la cintura.
-func legs_height() -> float:
-	return float(anchors["legs"]["size"][1]) - float(anchors["legs"]["hip"][1])
 
 
 ## Punto de la cintura respecto a los pies del mech, en unidades de MechView.
 func hip_point() -> Vector2:
-	return Vector2(0.0, -legs_height() * unit_scale)
+	var legs: Dictionary = _load_anchors(legs_set)["legs"]
+	return Vector2(0.0, -(float(legs["size"][1]) - float(legs["hip"][1])) * UNIT_SCALE)
 
 
 ## Dibuja piernas y torso con los pies en el origen del lienzo.
 func draw(canvas: CanvasItem, torso_element: int, legs_element: int, tint: Color) -> void:
-	draw_piece(canvas, "legs", legs_element, tint)
-	draw_piece(canvas, "torso", torso_element, tint)
+	draw_piece(canvas, legs_set, "legs", legs_element, tint)
+	draw_piece(canvas, torso_set, "torso", torso_element, tint)
 
 
-## Dibuja una pieza del juego (torso, piernas o un arma montada) en su sitio.
-func draw_piece(canvas: CanvasItem, kind: String, element: int, tint: Color) -> void:
+## Dibuja una pieza (torso, piernas o un arma montada) anclada a la cintura.
+func draw_piece(
+	canvas: CanvasItem, set_name: String, kind: String, element: int, tint: Color
+) -> void:
+	var anchors := _load_anchors(set_name)
 	if not anchors.get(kind) is Dictionary:
 		return
-	var texture := _texture(kind, element)
+	var texture := _texture(set_name, kind, element)
 	if texture == null:
 		return
 	var anchor := Vector2(anchors[kind]["hip"][0], anchors[kind]["hip"][1])
-	var top_left := hip_point() - anchor * unit_scale
-	canvas.draw_texture_rect(texture, Rect2(top_left, texture.get_size() * unit_scale), false, tint)
+	var top_left := hip_point() - anchor * UNIT_SCALE
+	canvas.draw_texture_rect(texture, Rect2(top_left, texture.get_size() * UNIT_SCALE), false, tint)
+
+
+static func _available(names: Array[String], kind: String) -> Array[String]:
+	var out: Array[String] = []
+	for set_name in names:
+		if _load_anchors(set_name).get(kind) is Dictionary:
+			out.append(set_name)
+	return out
+
+
+static func _load_anchors(set_name: String) -> Dictionary:
+	if not _anchors.has(set_name):
+		var parsed: Variant = null
+		var path := DIR + set_name + ".json"
+		if FileAccess.file_exists(path):
+			parsed = JSON.parse_string(FileAccess.get_file_as_string(path))
+		_anchors[set_name] = parsed if parsed is Dictionary else {}
+	return _anchors[set_name]
 
 
 ## Textura de la pieza en el color del elemento; si falta, la del fisico.
-func _texture(kind: String, element: int) -> Texture2D:
+static func _texture(set_name: String, kind: String, element: int) -> Texture2D:
 	var names: Array = ItemDef.Element.keys()
 	for element_name: String in [names[element], "PHYSICAL"]:
-		var key := "%s_%s" % [kind, element_name]
-		if _textures.has(key):
-			return _textures[key]
-		var path := "%s%s_%s.png" % [DIR, set_name, key]
+		var path := "%s%s_%s_%s.png" % [DIR, set_name, kind, element_name]
+		if _textures.has(path):
+			return _textures[path]
 		if ResourceLoader.exists(path):
-			_textures[key] = load(path)
-			return _textures[key]
+			_textures[path] = load(path)
+			return _textures[path]
 	return null
