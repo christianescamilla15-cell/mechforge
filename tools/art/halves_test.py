@@ -5,6 +5,7 @@ zona, dejando intacto el resto:
   ring   la cintura: le pone el aro de acople al maniqui
   torso  lo que hay por encima del aro
   legs   lo que hay por debajo
+  chest  el arma pesada, montada en el pecho
 Como el aro nunca se repinta al hacer torsos y piernas, todas las piezas
 nacen encajadas en la misma union.
 
@@ -41,10 +42,13 @@ ZONES = {
     # tamano para que el conjunto se vea estable sobre las piernas finas.
     "torso": (-405, -RING_BAND, -275, 290),
     "legs": (RING_BAND, 440, -300, 330),
+    # Arma del pecho: sale del frente del torso, bajo el casco.
+    "chest": (-165, -RING_BAND, 30, 340),
 }
 # El torso va sin brazos: los brazos los ponen las armas (docs/CHASIS.md).
 ZONE_NEGATIVE = {"torso": ", fingers, claws, mechanical arms, extra arms, gun, cannon, weapon"}
 ZONE_SUBJECT = {
+    "chest": "full body, standing, from side, profile, solo, armor, chest cannon, energy cannon, plasma cannon, gun barrel",
     "ring": "full body, standing, from side, profile, solo, armor, mechanical joint, waist",
 }
 

@@ -104,6 +104,13 @@ Como todas las piezas se dibujaron contra el mismo aro, cualquier torso casa con
 - **Sigue fallando:** un torso salió con brazos y manos; los torsos son grandes para las piernas más finas; cada torso tiene un lenguaje de formas algo distinto.
 - **Costo medido:** 50 segundos por pieza, pico de 4.3 GB de VRAM.
 
+**Lote del chasis ligero (2026-11-16):** 8 torsos y 8 pares de piernas, con tres ajustes: envolvente del torso más ajustada, negativos contra brazos y armas en el torso, y fuerza 0.9 para que cada pieza herede las formas del maniquí.
+- Torsos: los 8 salen sin brazos, de tamaño acotado y de la misma serie (casco en pico sobre un cuello).
+- Piernas: más desiguales; a ojo sirven 5 de 8.
+- Defecto: el fondo de la zona repintada queda de un tono algo distinto y se nota un rectángulo tenue. Hay que igualarlo antes del recorte definitivo.
+
+**Primer arma montada (zona chest):** cañón de plasma en el pecho, 4 intentos sin bloque de control. Solo 1 dibujó un cañón (pequeño); 2 dejaron la zona vacía y 1 dibujó una placa. Sin silueta el modelo tiende a no dibujar nada. Siguiente intento: darle la silueta del arma como control, dentro de la zona, y un tamaño mayor.
+
 ## 7. Qué cambia respecto a lo anterior
 
 - Los cuerpos elegidos por el usuario pasan a ser la referencia de estilo del chasis ligero, no piezas para cortar.
