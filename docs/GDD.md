@@ -204,6 +204,10 @@ Menú · Taller (armado con resumen de stats, barra de peso y avisos) · Inventa
 
 **Dirección de arte (del usuario, 2026-11-16): mecha japonés.** Se mantiene la base del juego original (mechs modulares vistos de lado, cada pieza es un sprite) con la estética de la ilustración de robots japonesa: blindaje anguloso, líneas de panel, propulsores, sensores luminosos y sombreado tipo cel. Los diseños son propios y genéricos dentro de ese estilo: no se reproduce ninguna franquicia concreta ni sus nombres.
 
+**Estilo aprobado (usuario, 2026-11-16):** la referencia es `docs/reference/art/estilo_aprobado.png`. El estilo final debe ser exactamente ese, no una aproximación: mecha de proporciones realistas, línea de tinta con trazo de boceto técnico, color plano con paleta contenida y fondo gris neutro. No debe perderse ni ese trazo ni ese realismo gráfico. El prompt y los ajustes con los que se generó están fijados en `tools/art/style.py`, y la misma semilla reproduce la imagen. Se probó una variante de línea limpia y sombreado cel y se descartó: sale más colorida y caricaturesca.
+
+**Cómo se vigila:** cada lote nuevo de piezas se revisa en una hoja junto a la referencia antes de aceptarlo.
+
 **Lo que lo hace propio:**
 1. **Generación guiada por silueta.** Para cada pieza definimos una silueta o blockout simple (forma, perspectiva lateral y escala). La IA la "pinta" con un estilo fijo (img2img o ControlNet). Así todas las piezas comparten perspectiva, escala y luz, que es el punto débil de generar a ciegas.
 2. **Iluminación 2D con mapas de relieve.** Cada sprite lleva su normal map (derivado de un mapa de profundidad generado, o con una herramienta como Laigter) para que las luces 2D de Godot le den volumen.
@@ -219,6 +223,14 @@ Menú · Taller (armado con resumen de stats, barra de peso y avisos) · Inventa
 
 ## 12. Presentación: entorno, animaciones, efectos y sonido
 **Requisito del usuario (2026-11-16):** el juego debe cubrir el entorno, las animaciones, los sonidos y el resto de la presentación al nivel del juego original. Todo el contenido es propio: no se usan sus escenarios, animaciones, sonidos ni música.
+
+### 12.0 Coherencia con el diseño
+Requisito del usuario (2026-11-16): las interacciones deben ir acordes al diseño. Todo lo que se mueve, suena o se pulsa sigue el lenguaje visual de la referencia de estilo (§11):
+- **Efectos:** fogonazos, explosiones, humo y chispas dibujados con el mismo trazo de tinta y color plano, no partículas brillantes genéricas.
+- **Movimiento:** peso mecánico creíble. Los mechs arrancan y frenan con inercia, las armas tienen retroceso y los golpes desplazan; nada de rebotes de caricatura.
+- **Interfaz:** paneles, botones y tipografía con aire de plano técnico, en la misma paleta contenida; los colores vivos se reservan para el elemento (acero, naranja, cian) y para los avisos.
+- **Escenarios:** mismo trazo y misma paleta, con menos contraste que los mechs para que no compitan con ellos.
+- **Sonido:** mecánico y con cuerpo (servos, metal, impactos secos), no efectos de dibujo animado.
 
 ### 12.1 Entorno
 - **Escenarios de arena:** uno por capítulo de la campaña más uno de entrenamiento (4 en total). Cada uno en capas para dar profundidad: fondo lejano, estructuras intermedias y suelo. El suelo queda alineado con las 10 casillas.

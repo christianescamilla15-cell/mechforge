@@ -2,7 +2,7 @@
 
 Investigado el 2026-11-16 para el objetivo del GDD §11: piezas de mech en estilo mecha japonés, vistas de lado, cada una en su sprite con fondo transparente, generadas en local con una RTX 4050 de 6 GB.
 
-**Estado:** es un plan sin probar. No se ha generado ninguna imagen todavía; la calidad, la velocidad y los valores de los ajustes están por verificar en el spike. Los identificadores de repositorio sí se comprobaron contra la API de Hugging Face y la de Civitai.
+**Estado (2026-11-16):** el modelo base ya genera en esta laptop y el usuario aprobó el estilo con la imagen `art/estilo_aprobado.png`. Siguen sin probar el control de silueta, el recorte del fondo y los mapas normales. Los identificadores de repositorio se comprobaron contra la API de Hugging Face y la de Civitai.
 
 ## Pipeline recomendado
 1. **Modelo base:** `OnomaAIResearch/Illustrious-XL-v1.0` (un archivo de 6.94 GB, se carga con `from_single_file`). Es un SDXL afinado para ilustración japonesa que entiende etiquetas de Danbooru. Licencia tipo SDXL OpenRAIL++-M. Con el VAE `madebyollin/sdxl-vae-fp16-fix` (MIT).
@@ -19,6 +19,12 @@ Investigado el 2026-11-16 para el objetivo del GDD §11: piezas de mech en estil
 - NijiMecha, versión "Noob/Illustrious", 112 MB: https://civitai.com/models/65423 (permite uso comercial de las imágenes).
 - Mechanism concept, 218 MB, palabra clave `mcnm`: https://civitai.com/models/539249 (permite uso comercial de las imágenes).
 - Super robot diffusion XL, 928 MB: https://civitai.com/models/124747. Es el más cercano al estilo, pero su licencia no concede uso comercial y tira hacia franquicias concretas. No usar.
+
+## Estilo aprobado
+- Referencia: `art/estilo_aprobado.png` (mech físico, semilla 101).
+- Prompt y ajustes exactos: `tools/art/style.py` (Euler a, 26 pasos, CFG 5.5, 1024×1024, UNet en 8 bits).
+- Lo que define el estilo en el prompt es `anime coloring, flat color` con las etiquetas de calidad básicas. Añadir `very aesthetic`, `clean lineart` o `cel shading` lo cambia a un acabado limpio y colorido que el usuario descartó.
+- La variación de diseño entre semillas es grande (de humanoide a bestia): para que las piezas formen una familia hará falta el control de silueta, no solo el prompt.
 
 ## Ajustes de partida
 - Muestreador Euler a, 25–28 pasos, CFG 5.5.
@@ -38,6 +44,13 @@ worst quality, bad quality, low quality, lowres, displeasing, scan artifacts, jp
 ```
 
 Etiquetas comprobadas en Danbooru: `mecha`, `no_humans`, `mecha_focus`, `non-humanoid_robot`, `from_side`, `thrusters`, `mechanical_legs`, `weapon_focus`. No existen como etiquetas: `panel_lines`, `side_view`, `cel_shading`, `mechanical_parts`.
+
+## Medido en esta laptop (2026-11-16)
+- De los 6 GB de VRAM, unos 2 GB ya los ocupan el escritorio y otros programas: quedan unos 4 GB.
+- **Con el UNet en 16 bits no cabe.** `enable_model_cpu_offload()` llenó la VRAM (5.9 de 6.1 GB), el controlador pasó a memoria compartida y la primera imagen no había terminado tras más de 10 minutos.
+- **Con los pesos del UNet guardados en 8 bits** (`enable_layerwise_casting` con `float8_e4m3fn`, calculando en 16 bits) más `enable_model_cpu_offload()`: **36 segundos por imagen** de 1024×1024 a 26 pasos, con un pico de 2.8 GB. Es el modo por defecto de `tools/art/style_test.py`.
+- Cargar el modelo tarda 13 segundos.
+- **Los 2 GB que faltaban los ocupaba el vigilante de transcripciones de NexusForge** (tarea programada `NexusForge-TranscriptionWatcher`), que mantiene Whisper cargado en la GPU aunque esté en reposo. `tools/art/run.ps1` lo pausa mientras un script usa la GPU y lo vuelve a arrancar al terminar.
 
 ## Límites de los 6 GB de VRAM
 - El UNet (5.14 GB) más el ControlNet (2.5 GB) no caben a la vez. `enable_model_cpu_offload()` no basta porque deja ambos en la GPU; hay que usar `enable_group_offload` o `enable_sequential_cpu_offload`, más VAE por teselas. Será lento.

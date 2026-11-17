@@ -1,12 +1,66 @@
 # Ejecuta un script de Python con el entorno de arte (tools\art\setup.ps1).
-#   tools\art\run.ps1 tools/art/download_models.py --stage 1
+#   tools\art\run.ps1 tools/art/style_test.py --only heat
+#
+# Los scripts que usan la GPU necesitan toda la VRAM. En esta laptop el
+# vigilante de transcripciones de NexusForge (tarea programada
+# "NexusForge-TranscriptionWatcher") mantiene Whisper cargado y ocupa 2 GB
+# aunque este en reposo. Por eso, para esos scripts, este lanzador:
+#   1. espera a que el vigilante termine si esta transcribiendo,
+#   2. detiene la tarea,
+#   3. ejecuta el script,
+#   4. vuelve a arrancar la tarea, pase lo que pase.
+# Con -KeepWatcher no toca la tarea.
+param(
+    [switch]$KeepWatcher,
+    [Parameter(ValueFromRemainingArguments = $true)]
+    [string[]]$Rest
+)
 $py = 'C:\Users\DANNY\dev\tools\mechforge-art\env\Scripts\python.exe'
 if (-not (Test-Path $py)) {
     Write-Output 'No existe el entorno de arte. Ejecuta primero tools\art\setup.ps1'
     exit 1
 }
+if (-not $Rest -or $Rest.Count -eq 0) {
+    Write-Output 'Uso: tools\art\run.ps1 [-KeepWatcher] <script.py> [argumentos]'
+    exit 1
+}
+
+$taskName = 'NexusForge-TranscriptionWatcher'
+$watcherLog = 'C:\Users\DANNY\Syncthing\watcher.log'
+# Scripts que no usan la GPU: no hace falta pausar nada.
+$cpuOnly = @('download_models.py', 'contact_sheet.py')
+$scriptName = Split-Path -Leaf $Rest[0]
+$pausedWatcher = $false
+
+if (-not $KeepWatcher -and ($cpuOnly -notcontains $scriptName)) {
+    $task = Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
+    if ($task -and $task.State -eq 'Running') {
+        # Si la ultima linea del log es un [start], esta transcribiendo: esperar.
+        $deadline = (Get-Date).AddMinutes(15)
+        while ((Get-Date) -lt $deadline) {
+            $last = Get-Content $watcherLog -Tail 1 -ErrorAction SilentlyContinue
+            if ($last -notmatch '\[start\]') { break }
+            Write-Output 'El vigilante de transcripciones esta trabajando; espero a que termine...'
+            Start-Sleep -Seconds 20
+        }
+        Stop-ScheduledTask -TaskName $taskName
+        Start-Sleep -Seconds 3
+        $pausedWatcher = $true
+        Write-Output 'Vigilante de transcripciones en pausa mientras se usa la GPU.'
+    }
+}
+
 # Sin esto Python escribe en cp1252 y los acentos rompen la salida.
 $env:PYTHONIOENCODING = 'utf-8'
 $env:PYTHONUNBUFFERED = '1'
-& $py @args
-exit $LASTEXITCODE
+$code = 1
+try {
+    & $py @Rest
+    $code = $LASTEXITCODE
+} finally {
+    if ($pausedWatcher) {
+        Start-ScheduledTask -TaskName $taskName
+        Write-Output 'Vigilante de transcripciones arrancado de nuevo.'
+    }
+}
+exit $code

@@ -9,7 +9,7 @@ Actualiza la tabla de estado al terminar cada tarea. Una fase se cierra solo cua
 | F1 | Motor de combate (core) | **cerrada** 2026-11-16 | 63 tests / 197 comprobaciones en verde (`test_battle_turns`, `test_battle_weapons`, `test_mech_build`). Prueba de mutación: quitar la rotura de energía hace fallar la suite. `gdlint` y `gdformat` limpios |
 | F2 | Datos y catálogo | **cerrada** 2026-11-16 | 58 piezas en `data/catalog.json`; el validador pasa con los 214 nombres del original prohibidos. 4 mechs de ejemplo (994, 985, 983 y 984 kg). 95 tests / 333 comprobaciones; 96 combates de estrés con acciones al azar sin romper el estado. Añadida la mejora M6 |
 | F3 | IA y simulador de balance | **cerrada** 2026-11-16 | Puertas en Divino máximo, 1600 combates: físico 51.5 %, calor 49.8 %, energía 48.8 %, híbrido 48.0 %; 12.3 turnos; sin apagados seguidos; IA normal 100 % contra IA al azar. 109 tests / 428 comprobaciones. Limitaciones en la sección F3 |
-| F4 | Spike de arte | en curso | Decidido: generación local en la RTX 4050 y estilo mecha japonés (GDD §11). Entorno en `C:\Users\DANNY\dev\tools\mechforge-art\venv` (`tools/art/setup.ps1`); falta instalarle torch con CUDA y elegir el modelo. Requiere aprobación del estilo por el usuario |
+| F4 | Spike de arte | en curso | Pasos 1 y 2 hechos el 2026-11-16. Entorno aislado en `C:\Users\DANNY\dev\tools\mechforge-art\env` (`tools/art/setup.ps1`). Illustrious-XL v1.0 genera 1024×1024 en unos 30 s con un pico de 2.8 GB (UNet guardado en 8 bits). **Estilo aprobado por el usuario**: `docs/reference/art/estilo_aprobado.png`, fijado en `tools/art/style.py`; la misma semilla lo regenera idéntico al píxel. El trazo y el color se mantienen en calor y energía, pero el diseño cambia mucho de una semilla a otra (de humanoide a bestia) y alguna composición sale rota. Falta: control de silueta, recorte, normales, 3 mechs por piezas y escenario |
 | F5 | Combate jugable (UI) | en curso | Parte jugable con arte provisional hecha el 2026-11-16: combate completo contra la IA con previsión, casillas resaltadas, registro y resultado. `tools/live.ps1 -Ui` lo juega en la ventana real a través de los controles y guarda capturas (revisadas). 112 tests / 445 comprobaciones. Falta: arte definitivo, animación por piezas, partículas y medir 60 FPS |
 | F6 | Taller de armado | pendiente | |
 | F7 | Progresión y guardado | pendiente | |
@@ -64,8 +64,8 @@ Orden: F0 → F1 → F2 → F3 en serie (cada una depende de la anterior). A pet
 ### F4 — Spike de arte (IA)
 Decidido con el usuario: generación local y estilo mecha japonés. El pipeline y sus alternativas están en `docs/reference/art-pipeline.md`. Pasos, cada uno con su comprobación:
 
-1. **Entorno** (`tools/art/setup.ps1`): entorno virtual aislado con torch para CUDA y diffusers. Comprobación: el script termina con "ENTORNO OK".
-2. **Prueba de estilo** (`tools/art/style_test.py`): mechs completos de referencia, uno por elemento, solo con el modelo base. Comprobación: mirar las imágenes; medir segundos por imagen y pico de VRAM. **Aquí el usuario aprueba o corrige el estilo** antes de seguir.
+1. **Entorno** (`tools/art/setup.ps1`): entorno virtual aislado con torch para CUDA y diffusers. Comprobación: el script termina con "ENTORNO OK". **Hecho.**
+2. **Prueba de estilo** (`tools/art/style_test.py`): mechs completos de referencia, uno por elemento, solo con el modelo base. Comprobación: mirar las imágenes; medir segundos por imagen y pico de VRAM. **Hecho: el usuario aprobó el estilo** con la imagen del mech físico de semilla 101 y pidió que el arte final sea exactamente ese. `tools/art/style.py` guarda el prompt y los ajustes, y todo script de arte los toma de ahí.
 3. **Control de silueta:** generar una pieza desde una silueta nuestra con el ControlNet. Comprobación: el contorno recortado coincide con la silueta.
 4. **Recorte y normales:** fondo transparente con BiRefNet y mapa normal con Marigold. Comprobación: bordes limpios; una esfera de prueba se ilumina en Godot desde el lado correcto.
 5. **3 mechs completos por piezas** (uno por elemento) con su JSON de anclas, y visor de montaje en Godot con luces 2D y un shader de calor de prueba.
@@ -129,9 +129,9 @@ Si SDXL resulta demasiado lento en 6 GB, el plan B es un modelo SD 1.5 de anime 
 | Godot 4.7.2 (estándar) | instalada en `C:\Users\DANNY\dev\tools\godot\4.7.2\` | motor y editor |
 | GUT | instalar en F0 | tests en headless |
 | gdtoolkit | instalar en F0 (`pip`) | formato y lint de GDScript |
-| Generación de imágenes | decidir en F4 | sprites (torch con CUDA 12.1 ya está; `diffusers` no) |
-| rembg o similar | instalar en F4 | quitar fondos |
-| Generador de normal maps (Laigter o mapa de profundidad) | decidir en F4 | relieve para la luz 2D |
+| Generación de imágenes | Illustrious-XL v1.0 con diffusers 0.43, en el entorno de arte | sprites (detalle en `docs/reference/art-pipeline.md`) |
+| BiRefNet | descargar en F4 (`tools/art/download_models.py`) | quitar fondos |
+| Marigold normals (y Laigter para el detalle de línea) | descargar en F4 | relieve para la luz 2D |
 | Bibliotecas de sonido CC0 | elegir en F5 | efectos y música (anotar cada archivo y su licencia) |
 | Plantillas de exportación de Godot 4.7.2 | instalar en F9 | exportar el `.exe` |
 
