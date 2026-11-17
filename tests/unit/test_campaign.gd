@@ -141,13 +141,49 @@ func test_el_mejor_resultado_sobrevive_al_final_de_la_partida() -> void:
 
 func test_el_rival_de_arena_es_un_mech_normal_y_depende_de_la_semilla() -> void:
 	var campaign := _campaign()
+	var rules := RulesConfig.new()
+	var power := ItemScaling.power(rules, ItemDef.Tier.COMMON, 0)
 	var seen := {}
 	for seed_value in 40:
-		var rival := campaign.arena_fight(0, _library, seed_value)
+		var rival := campaign.arena_fight(0, _library, seed_value, rules, power)
 		assert_false(_library.is_boss(rival["enemy"]))
 		seen[rival["enemy"]] = true
 	assert_eq(seen.size(), _library.ids().size(), "salen todos los mechs normales")
-	assert_eq(campaign.arena_fight(0, _library, 7), campaign.arena_fight(0, _library, 7))
+	assert_eq(
+		campaign.arena_fight(0, _library, 7, rules, power),
+		campaign.arena_fight(0, _library, 7, rules, power)
+	)
+
+
+func test_el_rival_de_arena_va_a_la_medida_del_jugador() -> void:
+	var campaign := _campaign()
+	var rules := RulesConfig.new()
+	for level in rules.tier_max_level[ItemDef.Tier.COMMON] + 1:
+		var power := ItemScaling.power(rules, ItemDef.Tier.COMMON, level)
+		var rival := campaign.arena_fight(0, _library, 1, rules, power)
+		assert_eq(rival["tier"], ItemDef.Tier.COMMON)
+		assert_eq(rival["level"], level)
+	# Sin pasar de la clase de la zona aunque el jugador vaya por delante.
+	var strong := ItemScaling.power(rules, ItemDef.Tier.EPIC, 5)
+	assert_eq(campaign.arena_fight(0, _library, 1, rules, strong)["tier"], campaign.tier_of(0))
+
+
+func test_el_poder_medio_cuenta_cada_pieza_del_mech() -> void:
+	var rules := RulesConfig.new()
+	var profile := PlayerProfile.new()
+	var ids: Array[String] = ["a", "b"]
+	assert_almost_eq(Campaign.mean_power(rules, profile, ids), 1.0, 0.0001)
+	profile.parts["a"] = {"tier": ItemDef.Tier.COMMON, "level": 6}
+	assert_almost_eq(Campaign.mean_power(rules, profile, ids), (1.0 + 1.3) / 2.0, 0.0001)
+
+
+func test_las_zonas_de_clase_alta_pagan_mas() -> void:
+	var campaign := _campaign()
+	for zone in range(1, campaign.zone_count()):
+		assert_gte(campaign.reward_mult(zone), campaign.reward_mult(zone - 1))
+	var profile := PlayerProfile.new()
+	var result := campaign.finish_fight(profile, _shop, "arena", true)
+	assert_eq(result["gold"], roundi(_shop.reward("arena_win") * campaign.reward_mult(0)))
 
 
 func test_una_zona_con_un_mech_que_no_existe_da_error() -> void:
@@ -165,7 +201,7 @@ func test_una_zona_con_un_mech_que_no_existe_da_error() -> void:
 							{
 								"id": "z",
 								"tier": "COMMON",
-								"player_level": 0,
+								"level_cap": 0,
 								"arena": {"level": 0, "difficulty": "NORMAL"},
 								"fights":
 								[{"enemy": "no_existe", "level": 0, "difficulty": "EASY"}],
@@ -192,7 +228,7 @@ func test_un_guardado_de_la_version_1_se_migra() -> void:
 	assert_eq(profile.wins, 9)
 	assert_eq(profile.zone, 0)
 	assert_eq(profile.fight, 0)
-	assert_eq(profile.to_dict()["schema_version"], 2)
+	assert_eq(profile.to_dict()["schema_version"], PlayerProfile.SCHEMA_VERSION)
 
 
 func test_el_avance_de_campana_se_guarda_y_se_recupera() -> void:
@@ -209,3 +245,35 @@ func test_el_avance_de_campana_se_guarda_y_se_recupera() -> void:
 	assert_eq(loaded.mech, "calor_horno")
 	assert_eq(loaded.runs_lost, 2)
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
+
+
+func test_el_mundo_tiene_10_zonas_y_cada_clase_ocupa_dos() -> void:
+	var campaign := _campaign()
+	assert_eq(campaign.zone_count(), 10)
+	var classes := []
+	for zone in campaign.zone_count():
+		classes.append(campaign.tier_of(zone))
+		assert_ne(campaign.stage_of(zone), "", "la zona %d tiene escenario" % (zone + 1))
+	var expected := [0, 0, 1, 1, 2, 2, 3, 3, 4, 4]
+	assert_eq(classes, expected)
+
+
+func test_los_tres_ultimos_jefes_sueltan_un_nucleo_unico() -> void:
+	var campaign := _campaign()
+	for zone in campaign.zone_count():
+		var profile := PlayerProfile.new()
+		profile.zone = zone
+		profile.fight = campaign.fights_in(zone)
+		var result := campaign.finish_fight(profile, _shop, "campaign", true)
+		assert_eq(result["unique"], zone >= 7, "zona %d" % (zone + 1))
+		assert_eq(profile.unique_cores, 1 if zone >= 7 else 0)
+
+
+func test_vencer_al_jefe_10_completa_la_campana() -> void:
+	var campaign := _campaign()
+	var profile := PlayerProfile.new()
+	profile.zone = 9
+	profile.fight = campaign.fights_in(9)
+	assert_false(campaign.is_complete(profile))
+	campaign.finish_fight(profile, _shop, "campaign", true)
+	assert_true(campaign.is_complete(profile))

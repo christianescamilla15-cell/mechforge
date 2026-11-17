@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "base_prices": {
+    "TORSO": 1200,
+    "LEGS": 900,
+    "SIDE": 700,
+    "TOP": 800,
+    "DRONE": 700,
+    "MODULE": 400,
+    "CHARGE": 500,
+    "TELEPORT": 600,
+    "HOOK": 500
+  },
+  "stock": {
+    "COMMON": "RARE",
+    "RARE": "EPIC",
+    "EPIC": "LEGENDARY",
+    "LEGENDARY": "LEGENDARY",
+    "MYTHIC": "LEGENDARY"
+  }
+}

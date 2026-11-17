@@ -7,9 +7,8 @@
       "id": "zona_1",
       "name": "Frontera de Chatarra",
       "tier": "COMMON",
-      "player_level": 6,
+      "level_cap": 3,
       "arena": {
-        "level": 6,
         "difficulty": "NORMAL"
       },
       "fights": [
@@ -30,12 +29,77 @@
         },
         {
           "enemy": "hibrido_quimera",
-          "level": 2,
+          "level": 1,
           "difficulty": "NORMAL"
         },
         {
           "enemy": "fisico_vanguardia",
+          "level": 1,
+          "difficulty": "NORMAL"
+        },
+        {
+          "enemy": "calor_horno",
+          "level": 2,
+          "difficulty": "NORMAL"
+        },
+        {
+          "enemy": "energia_tempestad",
+          "level": 2,
+          "difficulty": "NORMAL"
+        },
+        {
+          "enemy": "hibrido_quimera",
+          "level": 2,
+          "difficulty": "HARD"
+        },
+        {
+          "enemy": "calor_horno",
           "level": 3,
+          "difficulty": "HARD"
+        },
+        {
+          "enemy": "energia_tempestad",
+          "level": 3,
+          "difficulty": "HARD"
+        }
+      ],
+      "boss": {
+        "enemy": "jefe_zona_1",
+        "level": 3,
+        "difficulty": "HARD"
+      },
+      "reward_mult": 1.0,
+      "stage": "desierto"
+    },
+    {
+      "id": "zona_2",
+      "name": "Dunas de Óxido",
+      "tier": "COMMON",
+      "level_cap": 6,
+      "reward_mult": 1.0,
+      "stage": "desierto",
+      "arena": {
+        "difficulty": "NORMAL"
+      },
+      "fights": [
+        {
+          "enemy": "calor_horno",
+          "level": 3,
+          "difficulty": "EASY"
+        },
+        {
+          "enemy": "energia_tempestad",
+          "level": 3,
+          "difficulty": "NORMAL"
+        },
+        {
+          "enemy": "hibrido_quimera",
+          "level": 4,
+          "difficulty": "NORMAL"
+        },
+        {
+          "enemy": "fisico_vanguardia",
+          "level": 4,
           "difficulty": "NORMAL"
         },
         {
@@ -45,11 +109,16 @@
         },
         {
           "enemy": "energia_tempestad",
-          "level": 4,
-          "difficulty": "NORMAL"
+          "level": 5,
+          "difficulty": "HARD"
         },
         {
           "enemy": "hibrido_quimera",
+          "level": 5,
+          "difficulty": "HARD"
+        },
+        {
+          "enemy": "fisico_vanguardia",
           "level": 5,
           "difficulty": "HARD"
         },
@@ -65,10 +134,557 @@
         }
       ],
       "boss": {
-        "enemy": "jefe_zona_1",
+        "enemy": "jefe_zona_2",
         "level": 6,
         "difficulty": "HARD"
       }
+    },
+    {
+      "id": "zona_3",
+      "name": "Refinerías de Ceniza",
+      "tier": "RARE",
+      "level_cap": 6,
+      "reward_mult": 1.35,
+      "stage": "ciudad",
+      "arena": {
+        "difficulty": "NORMAL"
+      },
+      "fights": [
+        {
+          "enemy": "energia_tempestad",
+          "level": 0,
+          "difficulty": "EASY"
+        },
+        {
+          "enemy": "hibrido_quimera",
+          "level": 1,
+          "difficulty": "NORMAL"
+        },
+        {
+          "enemy": "fisico_vanguardia",
+          "level": 1,
+          "difficulty": "NORMAL"
+        },
+        {
+          "enemy": "calor_horno",
+          "level": 2,
+          "difficulty": "NORMAL"
+        },
+        {
+          "enemy": "energia_tempestad",
+          "level": 2,
+          "difficulty": "NORMAL"
+        },
+        {
+          "enemy": "hibrido_quimera",
+          "level": 3,
+          "difficulty": "HARD"
+        },
+        {
+          "enemy": "fisico_vanguardia",
+          "level": 4,
+          "difficulty": "HARD"
+        },
+        {
+          "enemy": "calor_horno",
+          "level": 4,
+          "difficulty": "HARD"
+        },
+        {
+          "enemy": "energia_tempestad",
+          "level": 5,
+          "difficulty": "HARD"
+        },
+        {
+          "enemy": "hibrido_quimera",
+          "level": 6,
+          "difficulty": "HARD"
+        }
+      ],
+      "boss": {
+        "enemy": "jefe_zona_3",
+        "level": 6,
+        "difficulty": "HARD"
+      }
+    },
+    {
+      "id": "zona_4",
+      "name": "Anillo Orbital",
+      "tier": "RARE",
+      "level_cap": 12,
+      "reward_mult": 1.35,
+      "stage": "orbital",
+      "arena": {
+        "difficulty": "NORMAL"
+      },
+      "fights": [
+        {
+          "enemy": "hibrido_quimera",
+          "level": 6,
+          "difficulty": "EASY"
+        },
+        {
+          "enemy": "fisico_vanguardia",
+          "level": 7,
+          "difficulty": "NORMAL"
+        },
+        {
+          "enemy": "calor_horno",
+          "level": 7,
+          "difficulty": "NORMAL"
+        },
+        {
+          "enemy": "energia_tempestad",
+          "level": 8,
+          "difficulty": "NORMAL"
+        },
+        {
+          "enemy": "hibrido_quimera",
+          "level": 8,
+          "difficulty": "NORMAL"
+        },
+        {
+          "enemy": "fisico_vanguardia",
+          "level": 9,
+          "difficulty": "HARD"
+        },
+        {
+          "enemy": "calor_horno",
+          "level": 10,
+          "difficulty": "HARD"
+        },
+        {
+          "enemy": "energia_tempestad",
+          "level": 10,
+          "difficulty": "HARD"
+        },
+        {
+          "enemy": "hibrido_quimera",
+          "level": 11,
+          "difficulty": "HARD"
+        },
+        {
+          "enemy": "fisico_vanguardia",
+          "level": 12,
+          "difficulty": "HARD"
+        }
+      ],
+      "boss": {
+        "enemy": "jefe_zona_4",
+        "level": 12,
+        "difficulty": "HARD"
+      }
+    },
+    {
+      "id": "zona_5",
+      "name": "Metrópolis Silente",
+      "tier": "EPIC",
+      "level_cap": 9,
+      "reward_mult": 1.8,
+      "stage": "ciudad",
+      "arena": {
+        "difficulty": "NORMAL"
+      },
+      "fights": [
+        {
+          "enemy": "fisico_vanguardia",
+          "level": 0,
+          "difficulty": "EASY"
+        },
+        {
+          "enemy": "calor_horno",
+          "level": 1,
+          "difficulty": "NORMAL"
+        },
+        {
+          "enemy": "energia_tempestad",
+          "level": 2,
+          "difficulty": "NORMAL"
+        },
+        {
+          "enemy": "hibrido_quimera",
+          "level": 3,
+          "difficulty": "NORMAL"
+        },
+        {
+          "enemy": "fisico_vanguardia",
+          "level": 4,
+          "difficulty": "NORMAL"
+        },
+        {
+          "enemy": "calor_horno",
+          "level": 4,
+          "difficulty": "HARD"
+        },
+        {
+          "enemy": "energia_tempestad",
+          "level": 5,
+          "difficulty": "HARD"
+        },
+        {
+          "enemy": "hibrido_quimera",
+          "level": 7,
+          "difficulty": "HARD"
+        },
+        {
+          "enemy": "fisico_vanguardia",
+          "level": 8,
+          "difficulty": "HARD"
+        },
+        {
+          "enemy": "calor_horno",
+          "level": 9,
+          "difficulty": "HARD"
+        }
+      ],
+      "boss": {
+        "enemy": "jefe_zona_5",
+        "level": 9,
+        "difficulty": "HARD"
+      }
+    },
+    {
+      "id": "zona_6",
+      "name": "Fosas de Plasma",
+      "tier": "EPIC",
+      "level_cap": 18,
+      "reward_mult": 1.8,
+      "stage": "desierto",
+      "arena": {
+        "difficulty": "NORMAL"
+      },
+      "fights": [
+        {
+          "enemy": "calor_horno",
+          "level": 9,
+          "difficulty": "EASY"
+        },
+        {
+          "enemy": "energia_tempestad",
+          "level": 10,
+          "difficulty": "NORMAL"
+        },
+        {
+          "enemy": "hibrido_quimera",
+          "level": 11,
+          "difficulty": "NORMAL"
+        },
+        {
+          "enemy": "fisico_vanguardia",
+          "level": 12,
+          "difficulty": "NORMAL"
+        },
+        {
+          "enemy": "calor_horno",
+          "level": 13,
+          "difficulty": "NORMAL"
+        },
+        {
+          "enemy": "energia_tempestad",
+          "level": 13,
+          "difficulty": "HARD"
+        },
+        {
+          "enemy": "hibrido_quimera",
+          "level": 14,
+          "difficulty": "HARD"
+        },
+        {
+          "enemy": "fisico_vanguardia",
+          "level": 16,
+          "difficulty": "HARD"
+        },
+        {
+          "enemy": "calor_horno",
+          "level": 17,
+          "difficulty": "HARD"
+        },
+        {
+          "enemy": "energia_tempestad",
+          "level": 18,
+          "difficulty": "HARD"
+        }
+      ],
+      "boss": {
+        "enemy": "jefe_zona_6",
+        "level": 18,
+        "difficulty": "HARD"
+      }
+    },
+    {
+      "id": "zona_7",
+      "name": "Nebulosa Espectral",
+      "tier": "LEGENDARY",
+      "level_cap": 12,
+      "reward_mult": 2.4,
+      "stage": "orbital",
+      "arena": {
+        "difficulty": "NORMAL"
+      },
+      "fights": [
+        {
+          "enemy": "energia_tempestad",
+          "level": 0,
+          "difficulty": "EASY"
+        },
+        {
+          "enemy": "hibrido_quimera",
+          "level": 1,
+          "difficulty": "NORMAL"
+        },
+        {
+          "enemy": "fisico_vanguardia",
+          "level": 2,
+          "difficulty": "NORMAL"
+        },
+        {
+          "enemy": "calor_horno",
+          "level": 4,
+          "difficulty": "NORMAL"
+        },
+        {
+          "enemy": "energia_tempestad",
+          "level": 5,
+          "difficulty": "NORMAL"
+        },
+        {
+          "enemy": "hibrido_quimera",
+          "level": 6,
+          "difficulty": "HARD"
+        },
+        {
+          "enemy": "fisico_vanguardia",
+          "level": 7,
+          "difficulty": "HARD"
+        },
+        {
+          "enemy": "calor_horno",
+          "level": 9,
+          "difficulty": "HARD"
+        },
+        {
+          "enemy": "energia_tempestad",
+          "level": 11,
+          "difficulty": "HARD"
+        },
+        {
+          "enemy": "hibrido_quimera",
+          "level": 12,
+          "difficulty": "HARD"
+        }
+      ],
+      "boss": {
+        "enemy": "jefe_zona_7",
+        "level": 12,
+        "difficulty": "HARD"
+      }
+    },
+    {
+      "id": "zona_8",
+      "name": "Forjas del Núcleo",
+      "tier": "LEGENDARY",
+      "level_cap": 24,
+      "reward_mult": 2.4,
+      "stage": "ciudad",
+      "arena": {
+        "difficulty": "NORMAL"
+      },
+      "fights": [
+        {
+          "enemy": "hibrido_quimera",
+          "level": 12,
+          "difficulty": "EASY"
+        },
+        {
+          "enemy": "fisico_vanguardia",
+          "level": 13,
+          "difficulty": "NORMAL"
+        },
+        {
+          "enemy": "calor_horno",
+          "level": 14,
+          "difficulty": "NORMAL"
+        },
+        {
+          "enemy": "energia_tempestad",
+          "level": 16,
+          "difficulty": "NORMAL"
+        },
+        {
+          "enemy": "hibrido_quimera",
+          "level": 17,
+          "difficulty": "NORMAL"
+        },
+        {
+          "enemy": "fisico_vanguardia",
+          "level": 18,
+          "difficulty": "HARD"
+        },
+        {
+          "enemy": "calor_horno",
+          "level": 19,
+          "difficulty": "HARD"
+        },
+        {
+          "enemy": "energia_tempestad",
+          "level": 21,
+          "difficulty": "HARD"
+        },
+        {
+          "enemy": "hibrido_quimera",
+          "level": 23,
+          "difficulty": "HARD"
+        },
+        {
+          "enemy": "fisico_vanguardia",
+          "level": 24,
+          "difficulty": "HARD"
+        }
+      ],
+      "boss": {
+        "enemy": "jefe_zona_8",
+        "level": 24,
+        "difficulty": "HARD"
+      },
+      "drops_unique": true
+    },
+    {
+      "id": "zona_9",
+      "name": "Bastión de Hierro",
+      "tier": "MYTHIC",
+      "level_cap": 15,
+      "reward_mult": 3.2,
+      "stage": "desierto",
+      "arena": {
+        "difficulty": "NORMAL"
+      },
+      "fights": [
+        {
+          "enemy": "fisico_vanguardia",
+          "level": 0,
+          "difficulty": "EASY"
+        },
+        {
+          "enemy": "calor_horno",
+          "level": 2,
+          "difficulty": "NORMAL"
+        },
+        {
+          "enemy": "energia_tempestad",
+          "level": 3,
+          "difficulty": "NORMAL"
+        },
+        {
+          "enemy": "hibrido_quimera",
+          "level": 4,
+          "difficulty": "NORMAL"
+        },
+        {
+          "enemy": "fisico_vanguardia",
+          "level": 6,
+          "difficulty": "NORMAL"
+        },
+        {
+          "enemy": "calor_horno",
+          "level": 8,
+          "difficulty": "HARD"
+        },
+        {
+          "enemy": "energia_tempestad",
+          "level": 9,
+          "difficulty": "HARD"
+        },
+        {
+          "enemy": "hibrido_quimera",
+          "level": 11,
+          "difficulty": "HARD"
+        },
+        {
+          "enemy": "fisico_vanguardia",
+          "level": 14,
+          "difficulty": "HARD"
+        },
+        {
+          "enemy": "calor_horno",
+          "level": 15,
+          "difficulty": "HARD"
+        }
+      ],
+      "boss": {
+        "enemy": "jefe_zona_9",
+        "level": 15,
+        "difficulty": "HARD"
+      },
+      "drops_unique": true
+    },
+    {
+      "id": "zona_10",
+      "name": "Trono del Orden",
+      "tier": "MYTHIC",
+      "level_cap": 30,
+      "reward_mult": 3.2,
+      "stage": "orbital",
+      "arena": {
+        "difficulty": "NORMAL"
+      },
+      "fights": [
+        {
+          "enemy": "calor_horno",
+          "level": 15,
+          "difficulty": "EASY"
+        },
+        {
+          "enemy": "energia_tempestad",
+          "level": 17,
+          "difficulty": "NORMAL"
+        },
+        {
+          "enemy": "hibrido_quimera",
+          "level": 18,
+          "difficulty": "NORMAL"
+        },
+        {
+          "enemy": "fisico_vanguardia",
+          "level": 19,
+          "difficulty": "NORMAL"
+        },
+        {
+          "enemy": "calor_horno",
+          "level": 21,
+          "difficulty": "NORMAL"
+        },
+        {
+          "enemy": "energia_tempestad",
+          "level": 23,
+          "difficulty": "HARD"
+        },
+        {
+          "enemy": "hibrido_quimera",
+          "level": 24,
+          "difficulty": "HARD"
+        },
+        {
+          "enemy": "fisico_vanguardia",
+          "level": 26,
+          "difficulty": "HARD"
+        },
+        {
+          "enemy": "calor_horno",
+          "level": 29,
+          "difficulty": "HARD"
+        },
+        {
+          "enemy": "energia_tempestad",
+          "level": 30,
+          "difficulty": "HARD"
+        }
+      ],
+      "boss": {
+        "enemy": "jefe_final",
+        "level": 30,
+        "difficulty": "HARD"
+      },
+      "drops_unique": true
     }
   ]
 }

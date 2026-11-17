@@ -1,17 +1,31 @@
 class_name PlayerProfile
 extends RefCounted
 ## Lo que el jugador conserva entre combates: sus celdas, las mejoras
-## compradas en la armeria, su avance en la campana y su historial. Se guarda
+## compradas en la armeria, la clase y el nivel de cada pieza, su avance en
+## la campana y su historial. Se guarda
 ## en JSON con version de esquema (CLAUDE.md, regla 6).
 ## La moneda se llama `gold` en el codigo y en el guardado; en pantalla se
 ## muestra con el nombre de la tabla de textos (GDD 8).
 
-const SCHEMA_VERSION := 2
+const SCHEMA_VERSION := 4
 
 var gold: int = 0
 ## Nivel comprado de cada mejora de la armeria: {id: nivel}.
 var shop_levels: Dictionary[String, int] = {}
-## Mech con el que pelea (id de data/builds.json); "" = el primero.
+## Clase y nivel de cada pieza, por id del catalogo: {id: {"tier", "level"}}.
+## Las que no estan van en clase Basica nivel 0. Dos piezas iguales del mech
+## suben juntas.
+var parts: Dictionary[String, Dictionary] = {}
+## Nucleos unicos: los sueltan los 3 ultimos jefes y cada uno transforma una
+## pieza Mitica al maximo en Unica (GDD 8).
+var unique_cores: int = 0
+## Piezas que tiene (ids del catalogo). Una pieza que se tiene se puede
+## montar en tantos huecos como quiera; las copias suben juntas.
+var owned: Array[String] = []
+## Su mech armado, con el formato de los "items" de data/builds.json
+## (Garage). Vacio hasta que elige su primer mech.
+var build: Dictionary = {}
+## Mech de ejemplo con el que empezo la partida (id de data/builds.json).
 var mech: String = ""
 ## Avance en la campana: zona en la que esta y combates ganados en ella.
 ## Cuando `fight` llega al numero de combates de la zona, toca el jefe.
@@ -29,7 +43,7 @@ var best_boss_wins: int = 0
 ## `kind` es una recompensa de la armeria: "arena_win", "arena_loss",
 ## "campaign_win", "campaign_loss", "boss_win" o "boss_loss".
 ## Devuelve lo cobrado.
-func earn(shop: ArenaShop, kind: String) -> int:
+func earn(shop: ArenaShop, kind: String, mult: float = 1.0) -> int:
 	if kind.ends_with("_win"):
 		wins += 1
 		if kind == "boss_win":
@@ -37,9 +51,23 @@ func earn(shop: ArenaShop, kind: String) -> int:
 			best_boss_wins = maxi(best_boss_wins, boss_wins)
 	else:
 		losses += 1
-	var amount := shop.reward(kind)
+	var amount := roundi(shop.reward(kind) * mult)
 	gold += amount
 	return amount
+
+
+## Empieza una partida con uno de los mechs de ejemplo: sus piezas pasan a
+## ser del jugador y quedan montadas.
+func start_run(library: BuildLibrary, mech_id: String) -> void:
+	mech = mech_id
+	build = library.specs[mech_id]["items"].duplicate(true)
+	owned.clear()
+	for id in library.item_ids(mech_id):
+		owned.append(id)
+
+
+func has_mech() -> bool:
+	return not build.is_empty()
 
 
 ## Termina la partida (GDD 9: perder contra un jefe): se pierde todo menos el
@@ -49,6 +77,11 @@ func end_run() -> void:
 	runs_lost += 1
 	gold = 0
 	shop_levels.clear()
+	parts.clear()
+	unique_cores = 0
+	owned.clear()
+	build = {}
+	mech = ""
 	zone = 0
 	fight = 0
 	wins = 0
@@ -73,6 +106,82 @@ func why_cant_buy(shop: ArenaShop, track: String) -> String:
 	return ""
 
 
+## Clase y nivel de una pieza: {"tier", "level"}.
+func part(id: String) -> Dictionary:
+	return parts.get(id, {"tier": 0, "level": 0}).duplicate()
+
+
+## Devuelve "" si se puede subir esa pieza un nivel; si no, el motivo.
+## La zona pone un tope a las piezas de su clase: `cap_tier` y `cap_level`
+## (Campaign.tier_of y level_cap). Sin tope, llegan al maximo de su clase.
+func why_cant_level(
+	workshop: Workshop,
+	rules: RulesConfig,
+	id: String,
+	cap_tier: int = ItemDef.Tier.DIVINE,
+	cap_level: int = 999
+) -> String:
+	var p := part(id)
+	if p["level"] >= rules.tier_max_level[p["tier"]]:
+		return "esta al nivel maximo de su clase"
+	if p["tier"] == cap_tier and p["level"] >= cap_level:
+		return "la zona no deja subirla mas"
+	if workshop.level_cost(rules, p["tier"], p["level"]) > gold:
+		return "faltan celdas"
+	return ""
+
+
+## Sube esa pieza un nivel. Devuelve "" o el motivo del fallo.
+func level_up(
+	workshop: Workshop,
+	rules: RulesConfig,
+	id: String,
+	cap_tier: int = ItemDef.Tier.DIVINE,
+	cap_level: int = 999
+) -> String:
+	var reason := why_cant_level(workshop, rules, id, cap_tier, cap_level)
+	if reason != "":
+		return reason
+	var p := part(id)
+	gold -= workshop.level_cost(rules, p["tier"], p["level"])
+	parts[id] = {"tier": p["tier"], "level": p["level"] + 1}
+	return ""
+
+
+## Devuelve "" si se puede transformar esa pieza a la clase siguiente; si
+## no, el motivo. `max_tier` es la clase mas alta que permite la zona.
+func why_cant_transform(
+	workshop: Workshop, rules: RulesConfig, id: String, max_tier: int
+) -> String:
+	var p := part(id)
+	if p["tier"] >= ItemDef.Tier.DIVINE:
+		return "ya es una pieza unica"
+	if p["level"] < rules.tier_max_level[p["tier"]]:
+		return "primero hay que llevarla al nivel maximo"
+	if p["tier"] + 1 == ItemDef.Tier.DIVINE:
+		# A Unica solo se llega con un nucleo unico, en cualquier zona.
+		return "" if unique_cores > 0 else "las piezas unicas solo las sueltan los jefes"
+	if p["tier"] + 1 > max_tier:
+		return "la clase siguiente se abre en otra zona"
+	if workshop.transform_cost(p["tier"]) > gold:
+		return "faltan celdas"
+	return ""
+
+
+## Transforma esa pieza a la clase siguiente, en el nivel 0.
+func transform(workshop: Workshop, rules: RulesConfig, id: String, max_tier: int) -> String:
+	var reason := why_cant_transform(workshop, rules, id, max_tier)
+	if reason != "":
+		return reason
+	var p := part(id)
+	if p["tier"] + 1 == ItemDef.Tier.DIVINE:
+		unique_cores -= 1
+	else:
+		gold -= workshop.transform_cost(p["tier"])
+	parts[id] = {"tier": p["tier"] + 1, "level": 0}
+	return ""
+
+
 ## Compra el siguiente nivel de una mejora. Devuelve "" o el motivo del fallo.
 func buy(shop: ArenaShop, track: String) -> String:
 	var reason := why_cant_buy(shop, track)
@@ -89,6 +198,10 @@ func to_dict() -> Dictionary:
 		"schema_version": SCHEMA_VERSION,
 		"gold": gold,
 		"shop_levels": shop_levels.duplicate(),
+		"parts": parts.duplicate(true),
+		"unique_cores": unique_cores,
+		"owned": owned.duplicate(),
+		"build": build.duplicate(true),
 		"mech": mech,
 		"zone": zone,
 		"fight": fight,
@@ -100,12 +213,19 @@ func to_dict() -> Dictionary:
 	}
 
 
-## Migraciones: la version 1 no tenia campana ni mech elegido; sus campos
-## nuevos empiezan en cero y lo demas se conserva.
+## Migraciones: la version 1 no tenia campana ni mech elegido, la 2 no tenia
+## piezas y la 3 no tenia mech armado; sus campos nuevos empiezan vacios y
+## lo demas se conserva. Sin mech armado, el menu pide elegir uno.
 static func from_dict(data: Dictionary) -> PlayerProfile:
 	var profile := PlayerProfile.new()
 	profile.gold = maxi(0, int(data.get("gold", 0)))
 	profile.mech = str(data.get("mech", ""))
+	profile.unique_cores = maxi(0, int(data.get("unique_cores", 0)))
+	for id: Variant in data.get("owned", []):
+		if not str(id) in profile.owned:
+			profile.owned.append(str(id))
+	if data.get("build") is Dictionary:
+		profile.build = data["build"]
 	profile.zone = maxi(0, int(data.get("zone", 0)))
 	profile.fight = maxi(0, int(data.get("fight", 0)))
 	profile.wins = int(data.get("wins", 0))
@@ -113,6 +233,13 @@ static func from_dict(data: Dictionary) -> PlayerProfile:
 	profile.boss_wins = int(data.get("boss_wins", 0))
 	profile.runs_lost = int(data.get("runs_lost", 0))
 	profile.best_boss_wins = maxi(int(data.get("best_boss_wins", 0)), profile.boss_wins)
+	var saved_parts: Variant = data.get("parts", {})
+	if saved_parts is Dictionary:
+		for id: String in saved_parts:
+			var raw: Variant = saved_parts[id]
+			if raw is Dictionary:
+				var tier := clampi(int(raw.get("tier", 0)), 0, ItemDef.Tier.DIVINE)
+				profile.parts[id] = {"tier": tier, "level": maxi(0, int(raw.get("level", 0)))}
 	var levels: Variant = data.get("shop_levels", {})
 	if levels is Dictionary:
 		for track: String in levels:

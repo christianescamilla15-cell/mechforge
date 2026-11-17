@@ -67,21 +67,44 @@ func chassis_of(id: String) -> String:
 	return str(specs[id].get("chassis", ""))
 
 
+## Piezas distintas de ese mech, en el orden en que se montan.
+func item_ids(id: String) -> Array[String]:
+	return items_of(specs[id]["items"])
+
+
+## Piezas distintas de un mech dado por sus "items" (formato de builds.json).
+static func items_of(items: Dictionary) -> Array[String]:
+	var out: Array[String] = []
+	for key: String in ["torso", "legs", "sides", "tops", "drone", "modules"]:
+		var value: Variant = items.get(key)
+		var list: Array = value if value is Array else [value]
+		for item: Variant in list:
+			if item != null and str(item) != "" and not str(item) in out:
+				out.append(str(item))
+	for key: String in ["charge", "teleport", "hook"]:
+		var item: Variant = items.get(key)
+		if item != null and str(item) != "" and not str(item) in out:
+			out.append(str(item))
+	return out
+
+
 func is_boss(id: String) -> bool:
 	return bool(specs[id].get("boss", false))
 
 
 ## Arma el mech con todas sus piezas al mismo tier y nivel. Si se pasa la
 ## biblioteca de chasis y el mech pide uno, lo monta a su nivel maximo.
+## `parts` da a cada pieza su propia clase y nivel (Catalog.make_build).
 func make(
 	id: String,
 	catalog: Catalog,
 	rules: RulesConfig,
 	tier: ItemDef.Tier,
 	level: int,
-	chassis: ChassisLibrary = null
+	chassis: ChassisLibrary = null,
+	parts: Dictionary = {}
 ) -> MechBuild:
-	var build := catalog.make_build(specs[id]["items"], rules, tier, level)
+	var build := catalog.make_build(specs[id]["items"], rules, tier, level, parts)
 	var chassis_id := chassis_of(id)
 	if chassis != null and chassis_id != "" and chassis.get_def(chassis_id) != null:
 		build.chassis = chassis.get_def(chassis_id).at_level(rules.chassis_max_level, rules)

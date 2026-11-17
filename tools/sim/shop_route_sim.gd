@@ -46,7 +46,7 @@ func _initialize() -> void:
 	var boss: Dictionary = campaign.fight_at(zone, campaign.fights_in(zone))
 	var boss_id: String = args.get("boss", boss["enemy"])
 	var tier := campaign.tier_of(zone)
-	var top := campaign.player_level(zone)
+	var top := campaign.level_cap(zone)
 	var boss_level: int = boss["level"]
 	if args.has("tier"):
 		tier = ItemDef.Tier[args["tier"]]

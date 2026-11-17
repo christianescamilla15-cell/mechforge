@@ -49,7 +49,7 @@ func _initialize() -> void:
 		_rivals.append(library.make(spec["enemy"], catalog, _rules, tier, spec["level"], chassis))
 		_difficulties.append(DIFFICULTY[spec["difficulty"]])
 	for id in library.ids():
-		_players[id] = library.make(id, catalog, _rules, tier, campaign.player_level(zone))
+		_players[id] = library.make(id, catalog, _rules, tier, campaign.level_cap(zone))
 		for fight in count:
 			for n in battles:
 				seed_value += 1

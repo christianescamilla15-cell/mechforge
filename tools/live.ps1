@@ -14,6 +14,8 @@ param(
     [string]$Stage = '',
     # Combate de la primera zona de la campana, desde 0; -1 = combate libre.
     [int]$Fight = -1,
+    # Con -Fight: nivel de las piezas del jugador en la clase Basica.
+    [int]$Level = 0,
     # El jugador actua a traves de los controles de la interfaz.
     [switch]$Ui,
     [string]$Shots = (Join-Path $env:TEMP 'mechforge-live')
@@ -23,7 +25,7 @@ New-Item -ItemType Directory -Force $Shots | Out-Null
 Get-ChildItem $Shots -Filter *.png | Remove-Item -Confirm:$false
 $env:MECHFORGE_SHOTS = $Shots.Replace('\', '/')
 & "$PSScriptRoot\godot.ps1" --headless --path $root --import *> $null
-& "$PSScriptRoot\godot.ps1" --path $root --resolution 1280x720 '++' --autoplay "--player=$Player" "--enemy=$Enemy" "--tier=$Tier" "--seed=$Seed" "--speed=$Speed" $(if ($Stage) { "--stage=$Stage" }) $(if ($Fight -ge 0) { "--fight=$Fight" }) $(if ($Ui) { '--ui' })
+& "$PSScriptRoot\godot.ps1" --path $root --resolution 1280x720 '++' --autoplay "--player=$Player" "--enemy=$Enemy" "--tier=$Tier" "--seed=$Seed" "--speed=$Speed" $(if ($Stage) { "--stage=$Stage" }) $(if ($Fight -ge 0) { "--fight=$Fight"; "--level=$Level" }) $(if ($Ui) { '--ui' })
 $code = $LASTEXITCODE
 Write-Output "capturas en: $Shots"
 Get-ChildItem $Shots -Filter *.png | ForEach-Object { $_.Name }

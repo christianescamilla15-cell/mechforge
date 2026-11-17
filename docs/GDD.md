@@ -220,8 +220,8 @@ Unas 58 piezas con nombres propios (nunca los del original).
 - **Huecos y nivel del jugador:** 2 brazos, 2 hombros, 1 pecho y robot de soporte, desbloqueados con el nivel del jugador (soporte al 3, pecho al 10, cinco armas al 20).
 - **Por confirmar con el usuario:** si una pieza puede subir de clase (hoy sí, con la transformación de más abajo, hasta Mítica) o si su clase es fija, y si las clases y las etapas valen igual para torsos, piernas y drones (hoy sí) o solo para armas.
 - **Poder y fusión:** el nivel sube con "poder", que se gana fusionando piezas sobrantes (su poder depende de su tier) o núcleos.
-- **Transformación:** al llegar al nivel máximo de su tier, la pieza puede transformarse al siguiente pagando oro y núcleos. Vuelve al nivel 0 del nuevo tier.
-- **Monedas:** **celdas de plasma** (salen de los combates) y **núcleos** (salen del botín y de desarmar piezas repetidas). No hay moneda de pago. El usuario pidió el 2026-11-17 que la moneda no fuera "oro" ni "monedas", que no pegan con un juego de robots; "celdas de plasma" es la propuesta: los robots funcionan con energía y se la quitan al rival vencido. En el código y en el guardado se sigue llamando `gold`; el nombre visible vive en la tabla de textos, así que cambiarlo es una línea. Donde este documento diga oro, léase celdas.
+- **Transformación:** al llegar al nivel máximo de su clase, la pieza puede transformarse a la siguiente pagando celdas, si la zona ya llega a esa clase. Vuelve al nivel 0 de la nueva clase. A Única solo con un núcleo único (§9.3).
+- **Monedas:** **celdas de plasma** (salen de los combates) y **núcleos únicos** (los sueltan los jefes 8, 9 y 10, §9). Los núcleos del botín y de desarmar piezas repetidas siguen por diseñar. No hay moneda de pago. El usuario pidió el 2026-11-17 que la moneda no fuera "oro" ni "monedas", que no pegan con un juego de robots; "celdas de plasma" es la propuesta: los robots funcionan con energía y se la quitan al rival vencido. En el código y en el guardado se sigue llamando `gold`; el nombre visible vive en la tabla de textos, así que cambiarlo es una línea. Donde este documento diga oro, léase celdas.
 - **Botín:** cada victoria da oro y una tirada de botín, con mejores tablas en los capítulos avanzados. Hay cajas que se ganan jugando, nunca con dinero.
 - **Tienda del taller** (recuerdo del usuario, 2026-11-16: en el juego antiguo había un taller donde comprabas piezas e ibas armando tu robot o tus robots). Vende por oro las piezas básicas de cada capítulo, con un surtido que cambia al avanzar; lo raro sigue saliendo del botín.
 - **Garaje:** se pueden guardar varios mechs armados y elegir con cuál pelear.
@@ -233,15 +233,32 @@ Unas 58 piezas con nombres propios (nunca los del original).
 
 - **Estructura de la partida** (usuario, 2026-11-17; modelo: Swords and Sandals, docs/reference/original-mechanics.md). El jugador tiene una base con tres sitios:
   - **Campaña:** los combates de la zona, en orden, y su jefe. Cada victoria avanza al siguiente.
-  - **Arena:** combates sueltos contra un rival al azar, repetibles, para juntar celdas. No avanzan la campaña.
-  - **Armería:** donde las celdas se cambian por puntos de mejora (§9.2) y, más adelante, por mejoras de armas y de blindaje pieza a pieza.
+  - **Arena:** combates sueltos, repetibles, para juntar celdas. No avanzan la campaña. El rival es un mech al azar con el poder más parecido al de las piezas del jugador, sin pasar de la clase de la zona: la arena siempre va a su medida.
+  - **Armería:** donde las celdas se cambian por mejoras, en dos pestañas: **Mejoras** (las seis permanentes, §9.2) y **Piezas** (cada arma y cada pieza de blindaje del mech sube de nivel por separado y se transforma de clase, §9.3).
 - **Cada zona son 10 combates y un jefe.** Se puede ir directo, los 10 combates seguidos y el jefe, o pasar antes por la arena.
 - **Perder contra un jefe termina la partida** y se empieza de cero: se pierden las celdas, las mejoras y el avance; solo queda el historial (partidas perdidas y mejor marca). El juego avisa antes de entrar al combate. Perder un combate normal o uno de arena no cuesta nada: se puede repetir. La regla está en data/campaign.json (`on_boss_loss`: `new_game` o `retry`).
 - **Ritmo que pidió el usuario:** unos 50 combates ganados para tener opciones reales contra el primer jefe, y unos 100 para ganarle con facilidad. Ir directo debe ser una apuesta difícil, de táctica.
-- El jugador empieza con un mech básico de clase Básica y lo va mejorando con lo que gana.
+- El jugador empieza con todas las piezas de su mech en clase Básica nivel 0 y las va mejorando con lo que gana.
 - **Mundo con 10 jefes** (pedido del usuario, 2026-11-16): el mundo se divide en 10 zonas, cada una con sus combates normales y un jefe al final. Los **3 últimos jefes** sueltan las piezas de clase Única. Sustituye a los 3 capítulos del plan anterior; donde este documento diga "capítulo" léase "zona". Más mundos quedan para el paso 2.
-- Los enemigos tienen builds predefinidos (en datos) que suben de tier por capítulo. Los jefes tienen piezas únicas y reglas especiales (por ejemplo, más capacidad de calor).
-- Para farmear está la arena; los combates de campaña se ganan una sola vez. Cada zona desbloqueará piezas en la armería.
+- **Las 10 zonas** (data/campaign.json). Cada clase de pieza ocupa dos zonas: en la primera los rivales van del nivel 0 a la mitad de la clase y en la segunda de la mitad al máximo. El jefe está al nivel más alto de su zona. La clase de la zona es también la más alta a la que el jugador puede transformar sus piezas mientras esté en ella. Las zonas de clase alta pagan más, porque sus mejoras cuestan más.
+
+  | Zona | Nombre | Clase | Rivales | Jefe | Escenario | Paga |
+  |---|---|---|---|---|---|---|
+  | 1 | Frontera de Chatarra | Básica | nivel 0 a 3 | Capataz, nivel 3 | desierto | ×1 |
+  | 2 | Dunas de Óxido | Básica | 3 a 6 | Verdugo, 6 | desierto | ×1 |
+  | 3 | Refinerías de Ceniza | Intermedia | 0 a 6 | Reactor, 6 | ciudad | ×1.35 |
+  | 4 | Anillo Orbital | Intermedia | 6 a 12 | Hidra, 12 | orbital | ×1.35 |
+  | 5 | Metrópolis Silente | Avanzada | 0 a 9 | Centella, 9 | ciudad | ×1.8 |
+  | 6 | Fosas de Plasma | Avanzada | 9 a 18 | Égida, 18 | desierto | ×1.8 |
+  | 7 | Nebulosa Espectral | Legendaria | 0 a 12 | Espectro, 12 | orbital | ×2.4 |
+  | 8 | Forjas del Núcleo | Legendaria | 12 a 24 | Caldera, 24 | ciudad | ×2.4 |
+  | 9 | Bastión de Hierro | Mítica | 0 a 15 | Colmena, 15 | desierto | ×3.2 |
+  | 10 | Trono del Orden | Mítica | 15 a 30 | Coloso, 30 | orbital | ×3.2 |
+
+  Los rivales normales son por ahora los cuatro mechs de ejemplo, por turnos; la dificultad de su IA sube a lo largo de la zona.
+- **Piezas Únicas:** los jefes 8, 9 y 10 sueltan un **núcleo único**. Con él, una pieza Mítica al nivel máximo se transforma en Única, en cualquier zona; es la única forma de conseguirlas.
+- Al vencer al jefe 10 la campaña queda completa.
+- Para farmear está la arena; los combates de campaña se ganan una sola vez.
 - La curva de dificultad se valida con el simulador: el build "esperado" del jugador en cada capítulo debe ganar entre el 55 % y el 70 % de las veces contra los enemigos normales.
 
 ### 9.1 Los jefes

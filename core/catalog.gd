@@ -45,7 +45,12 @@ func by_type(type: ItemDef.Type) -> Array[ItemDef]:
 ## Arma un mech a partir de ids, con todas sus piezas al mismo tier y nivel.
 ## spec: {"torso", "legs", "sides": [], "tops": [], "drone", "modules": [],
 ## "charge", "teleport", "hook"}. Los ids desconocidos se anotan en errors.
-func make_build(spec: Dictionary, rules: RulesConfig, tier: ItemDef.Tier, level: int) -> MechBuild:
+## Arma un mech con todas sus piezas en esa clase y nivel. `parts` puede dar
+## a cada pieza su propia clase y nivel: {id: {"tier", "level"}} (las piezas
+## del jugador, PlayerProfile.parts).
+func make_build(
+	spec: Dictionary, rules: RulesConfig, tier: ItemDef.Tier, level: int, parts: Dictionary = {}
+) -> MechBuild:
 	var build := MechBuild.new()
 	var resolve := func(id: Variant) -> ItemDef:
 		if id == null or id == "":
@@ -53,7 +58,9 @@ func make_build(spec: Dictionary, rules: RulesConfig, tier: ItemDef.Tier, level:
 		if not items.has(id):
 			errors.append("build: no existe la pieza '%s'" % id)
 			return null
-		return ItemScaling.resolve(items[id], rules, tier, level)
+		var own: Dictionary = parts.get(id, {})
+		var own_tier: ItemDef.Tier = own.get("tier", tier)
+		return ItemScaling.resolve(items[id], rules, own_tier, own.get("level", level))
 	build.torso = resolve.call(spec.get("torso"))
 	build.legs = resolve.call(spec.get("legs"))
 	build.drone = resolve.call(spec.get("drone"))

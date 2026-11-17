@@ -10,7 +10,8 @@ extends Control
 ## interfaz (prevision, botones y casillas), como lo haria una persona.
 ##   --player=<id> --enemy=<id> --tier=EPIC --seed=1 --speed=3
 ##   --fight=<n>  en vez de --enemy y --tier: el combate n de la primera zona,
-##                contando desde 0 (el ultimo es el jefe)
+##                contando desde 0 (el ultimo es el jefe); --level=<n> pone las
+##                piezas del jugador en ese nivel de la clase Basica
 ## Con `++ --menu-shot` guarda una captura del menu con un perfil de muestra
 ## (--menu-shot=jefe: delante del jefe) y sale.
 ## La carpeta de capturas se indica en la variable de entorno MECHFORGE_SHOTS.
@@ -29,6 +30,8 @@ var _rules := RulesConfig.new()
 var _stages := StageLibrary.load_file("res://data/stages.json")
 var _chassis := ChassisLibrary.load_file("res://data/chassis.json")
 var _shop := ArenaShop.load_file("res://data/arena_shop.json")
+var _workshop := Workshop.load_file("res://data/workshop.json")
+var _garage := Garage.load_file("res://data/part_shop.json")
 ## Celdas, mejoras, avance e historial del jugador.
 var _profile := PlayerProfile.new()
 ## Las pruebas automaticas no tocan el guardado del jugador.
@@ -45,8 +48,11 @@ var _battle: BattleScreen
 var _pickers: Dictionary = {}
 ## Lo elegido en el combate libre, para conservarlo al volver al menu.
 var _last: Dictionary = {}
-## Combate en curso: {"mode" ("campaign", "arena" o "free"), "player",
-## "enemy", "tier", "player_level", "enemy_level", "difficulty", "seed"}.
+## Combate en curso: {"mode" ("campaign", "arena" o "free"), "items" (el
+## mech del jugador, formato de builds.json), "name", "enemy", "enemy_tier",
+## "enemy_level", "difficulty", "seed"} y, en el combate libre, "player_tier"
+## y "player_level". En la campana y la arena el jugador pelea con la clase y
+## el nivel de sus piezas (PlayerProfile.parts).
 var _spec: Dictionary = {}
 var _args: Dictionary = {}
 var _shot_count: int = 0
@@ -67,10 +73,18 @@ func _ready() -> void:
 		_start_autoplay()
 	elif _args.has("menu-shot"):
 		# Prueba en vivo del menu: perfil de muestra, captura y salir.
+		_profile.start_run(_library, _library.ids()[0])
 		_profile.gold = 1500
 		_profile.shop_levels = {"damage": 3, "health": 10}
+		_profile.parts = {"torso_baluarte": {"tier": 0, "level": 3}}
+		_profile.parts["lat_mandoble"] = {"tier": 0, "level": 6}
+		_last["tab"] = 1
 		_profile.wins = 12
 		_profile.fight = 4
+		if _args["menu-shot"] == "nuevo":
+			_profile = PlayerProfile.new()
+		elif _args["menu-shot"] == "tienda":
+			_last["tab"] = 2
 		if _args["menu-shot"] == "jefe":
 			_profile.fight = _campaign.fights_in(0)
 		_show_menu()
@@ -107,14 +121,13 @@ func _show_menu() -> void:
 	var left := _column(columns, 560)
 	var title := _text(left, Txt.t("menu_title"), 40)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	var mech_names: Array[String] = []
-	for id in _library.ids():
-		mech_names.append(_library.display_name(id))
-	_add_picker(left, "player", Txt.t("menu_player"), mech_names, _library.ids().find(_player_id()))
-	(_pickers["player"] as OptionButton).item_selected.connect(_on_mech_picked)
-	_add_campaign(left)
-	_add_arena(left)
-	_add_free_fight(left)
+	if not _profile.has_mech():
+		_add_starters(left)
+	else:
+		var can_fight := _add_mech_status(left)
+		_add_campaign(left, can_fight)
+		_add_arena(left, can_fight)
+		_add_free_fight(left)
 	_add_shop(_column(columns, 520))
 
 
@@ -150,9 +163,40 @@ func _button(parent: Control, text: String, height: int, action: Callable) -> Bu
 
 ## Campana: el combate que toca en la zona, o su jefe cuando ya se ganaron
 ## todos los normales.
-func _add_campaign(box: VBoxContainer) -> void:
+## Partida nueva: el jugador elige su primer mech entre los de ejemplo.
+func _add_starters(box: VBoxContainer) -> void:
+	_text(box, Txt.t("starter_title"), 20)
+	_text(box, Txt.t("starter_info"), 16, COLOR_MUTED)
+	for id in _library.ids():
+		var label := Txt.t("starter_pick", [_library.display_name(id), _element_name(id)])
+		_button(box, label, 44, _on_starter_picked.bind(id))
+
+
+func _element_name(id: String) -> String:
+	var element := _library.element_of(id)
+	if element == "HYBRID":
+		return Txt.t("element_hybrid")
+	return Txt.ELEMENT_NAMES[ItemDef.Element[element]]
+
+
+## Mech armado del jugador, con su peso y lo que le impide pelear. Devuelve
+## si puede pelear.
+func _add_mech_status(box: VBoxContainer) -> bool:
+	var build := _player_build()
+	var problems := build.validate(_rules)
+	var line := Txt.t("mech_weight", [build.total_weight(), _rules.max_weight])
+	_text(box, "%s · %s" % [Txt.t("menu_player"), line], 16)
+	if not problems.is_empty():
+		_text(box, Txt.t("mech_problems", [", ".join(problems)]), 14, COLOR_WARNING)
+	return problems.is_empty()
+
+
+func _add_campaign(box: VBoxContainer, can_fight: bool) -> void:
 	_text(box, Txt.t("menu_campaign"), 20)
 	var zone := _profile.zone
+	if _campaign.is_complete(_profile):
+		_text(box, Txt.t("campaign_won", [_campaign.world_bosses]), 16, COLOR_CELLS)
+		return
 	if zone >= _campaign.zone_count():
 		_text(box, Txt.t("campaign_pending", [zone + 1, _campaign.world_bosses]), 16, COLOR_MUTED)
 		return
@@ -169,25 +213,37 @@ func _add_campaign(box: VBoxContainer) -> void:
 		var ability := _boss_ability(fight["enemy"])
 		if ability != "":
 			_text(box, ability, 14, COLOR_MUTED)
-		_button(box, Txt.t("campaign_boss_fight"), 46, _on_campaign_pressed)
+		_button(box, Txt.t("campaign_boss_fight"), 46, _on_campaign_pressed).disabled = not can_fight
 		if _campaign.on_boss_loss == "new_game":
 			_text(box, Txt.t("campaign_boss_warning"), 14, COLOR_WARNING)
 	else:
 		var count := _campaign.fights_in(zone)
 		_text(box, Txt.t("campaign_next", [_profile.fight + 1, count, rival]))
-		_button(box, Txt.t("campaign_fight", [_profile.fight + 1]), 46, _on_campaign_pressed)
+		var fight_button := _button(
+			box, Txt.t("campaign_fight", [_profile.fight + 1]), 46, _on_campaign_pressed
+		)
+		fight_button.disabled = not can_fight
 
 
 ## Arena: combates sueltos contra un rival al azar, para juntar celdas.
-func _add_arena(box: VBoxContainer) -> void:
+func _add_arena(box: VBoxContainer, can_fight: bool) -> void:
 	_text(box, Txt.t("menu_arena"), 20)
 	_text(
 		box,
-		Txt.t("arena_info", [_shop.reward("arena_win"), _shop.reward("arena_loss")]),
+		(
+			Txt
+			. t(
+				"arena_info",
+				[
+					roundi(_shop.reward("arena_win") * _campaign.reward_mult(_profile.zone)),
+					roundi(_shop.reward("arena_loss") * _campaign.reward_mult(_profile.zone)),
+				]
+			)
+		),
 		16,
 		COLOR_MUTED
 	)
-	_button(box, Txt.t("arena_fight"), 46, _on_arena_pressed)
+	_button(box, Txt.t("arena_fight"), 46, _on_arena_pressed).disabled = not can_fight
 
 
 ## Combate libre: cualquier rival, en cualquier clase. No da ni quita nada.
@@ -207,12 +263,15 @@ func _add_free_fight(box: VBoxContainer) -> void:
 	_button(box, Txt.t("menu_free_fight"), 36, _on_free_pressed)
 
 
-## Armeria (GDD 8): celdas, historial y mejoras permanentes que se compran
-## con lo que dan los combates.
+## Armeria (GDD 8): celdas, historial y, en dos pestanas, las mejoras
+## permanentes y las piezas del mech, que se suben de nivel y se transforman.
 func _add_shop(box: VBoxContainer) -> void:
 	_text(box, Txt.t("menu_shop"), 26).horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	var cells := _text(box, Txt.t("menu_gold", [_profile.gold]), 24, COLOR_CELLS)
 	cells.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	if _profile.unique_cores > 0:
+		var cores := _text(box, Txt.t("menu_cores", [_profile.unique_cores]), 18, COLOR_CELLS)
+		cores.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	var record := Txt.t(
 		"menu_record", [_profile.wins, _profile.losses, _profile.boss_wins, _campaign.world_bosses]
 	)
@@ -221,19 +280,41 @@ func _add_shop(box: VBoxContainer) -> void:
 	if _last_result != "":
 		record = "%s\n%s" % [_last_result, record]
 	_text(box, record, 15, COLOR_MUTED).horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	var tabs := TabContainer.new()
+	tabs.custom_minimum_size = Vector2(0, 400)
+	box.add_child(tabs)
+	var upgrades := VBoxContainer.new()
+	upgrades.name = Txt.t("shop_tab_upgrades")
+	tabs.add_child(upgrades)
+	_add_upgrades(upgrades)
+	if _profile.has_mech():
+		_add_parts(_scroll_tab(tabs, Txt.t("shop_tab_parts")))
+		_add_store(_scroll_tab(tabs, Txt.t("shop_tab_store")))
+	tabs.current_tab = _last.get("tab", 0)
+	tabs.tab_changed.connect(func(tab: int) -> void: _last["tab"] = tab)
+
+
+## Pestana con barra de desplazamiento; devuelve la caja donde van las filas.
+func _scroll_tab(tabs: TabContainer, title: String) -> VBoxContainer:
+	var scroll := ScrollContainer.new()
+	scroll.name = title
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	tabs.add_child(scroll)
+	var box := VBoxContainer.new()
+	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(box)
+	return box
+
+
+## Mejoras permanentes de la armeria: seis lineas en 10 niveles.
+func _add_upgrades(box: VBoxContainer) -> void:
 	for track in _shop.track_ids():
 		var level := _profile.level_of(track)
-		var row := HBoxContainer.new()
-		box.add_child(row)
-		var label := Label.new()
-		label.text = Txt.t(
+		var label := Txt.t(
 			"shop_row",
 			[_shop.display_name(track), level, _shop.max_level(), _shop_value(track, level)]
 		)
-		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		row.add_child(label)
-		var buy := Button.new()
-		buy.custom_minimum_size = Vector2(140, 0)
+		var buy := _shop_row(box, label)
 		if level >= _shop.max_level():
 			buy.text = Txt.t("shop_max")
 			buy.disabled = true
@@ -241,7 +322,120 @@ func _add_shop(box: VBoxContainer) -> void:
 			buy.text = Txt.t("shop_buy", [_shop.price(level + 1)])
 			buy.disabled = _profile.why_cant_buy(_shop, track) != ""
 		buy.pressed.connect(_on_buy_pressed.bind(track))
+
+
+## Taller (GDD 4 y 8): cada hueco del mech con la pieza montada, que se cambia
+## por otra que el jugador tenga, y su clase y nivel. Cada pieza sube de nivel
+## por separado y, al maximo de su clase, se transforma si la zona lo permite.
+func _add_parts(box: VBoxContainer) -> void:
+	var max_tier := _zone_tier()
+	var cap_level := _campaign.level_cap(_profile.zone)
+	for slot in Garage.SLOTS:
+		var row := HBoxContainer.new()
+		box.add_child(row)
+		var name_label := Label.new()
+		name_label.text = Txt.t("slot_" + slot.rstrip("0123456789")) + _slot_number(slot)
+		name_label.custom_minimum_size = Vector2(96, 0)
+		row.add_child(name_label)
+		var current := Garage.get_slot(_profile.build, slot)
+		var picker := OptionButton.new()
+		picker.custom_minimum_size = Vector2(190, 0)
+		picker.add_item(Txt.t("slot_empty"))
+		var options := Garage.owned_for(_profile, _catalog, slot)
+		for id in options:
+			picker.add_item(_catalog.get_item(id).display_name)
+		picker.select(options.find(current) + 1)
+		picker.item_selected.connect(_on_slot_picked.bind(slot, options))
+		row.add_child(picker)
+		var level_label := Label.new()
+		level_label.custom_minimum_size = Vector2(96, 0)
+		level_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		level_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		row.add_child(level_label)
+		var buy := Button.new()
+		buy.custom_minimum_size = Vector2(130, 0)
 		row.add_child(buy)
+		if current == "":
+			buy.text = "—"
+			buy.disabled = true
+			continue
+		var p := _profile.part(current)
+		var top := _rules.tier_max_level[p["tier"]]
+		level_label.text = Txt.t("part_level", [Txt.TIER_NAMES[p["tier"]], p["level"], top])
+		_set_part_button(buy, current, p, max_tier, cap_level)
+
+
+func _slot_number(slot: String) -> String:
+	var digits := slot.trim_prefix(slot.rstrip("0123456789"))
+	return " %d" % (int(digits) + 1) if digits != "" else ""
+
+
+## Boton de una pieza: subir de nivel, transformar o el tope que la para.
+func _set_part_button(
+	buy: Button, id: String, p: Dictionary, max_tier: int, cap_level: int
+) -> void:
+	if p["level"] < _rules.tier_max_level[p["tier"]]:
+		var level_reason := _profile.why_cant_level(_workshop, _rules, id, max_tier, cap_level)
+		if level_reason == "la zona no deja subirla mas":
+			buy.text = Txt.t("part_zone_max")
+			buy.disabled = true
+			return
+		buy.text = Txt.t("part_level_up", [_workshop.level_cost(_rules, p["tier"], p["level"])])
+		buy.disabled = level_reason != ""
+		buy.pressed.connect(_on_part_level.bind(id, max_tier, cap_level))
+		return
+	var reason := _profile.why_cant_transform(_workshop, _rules, id, max_tier)
+	if reason in ["", "faltan celdas"]:
+		buy.text = Txt.t("part_transform", [_workshop.transform_cost(p["tier"])])
+		if p["tier"] == ItemDef.Tier.MYTHIC:
+			buy.text = Txt.t("part_unique")
+		buy.disabled = reason != ""
+		buy.pressed.connect(_on_part_transform.bind(id, max_tier))
+		return
+	var zone_cap := reason == "la clase siguiente se abre en otra zona"
+	buy.text = Txt.t("part_zone_max" if zone_cap else "shop_max")
+	buy.disabled = true
+	buy.tooltip_text = reason
+
+
+## Tienda de piezas: lo que se vende en la clase de la zona. Una pieza nueva
+## llega en esa clase al nivel 0.
+func _add_store(box: VBoxContainer) -> void:
+	var zone_tier := _zone_tier()
+	_text(box, Txt.t("store_info", [Txt.TIER_NAMES[zone_tier]]), 14, COLOR_MUTED)
+	for id in _garage.stock_for(_catalog, zone_tier):
+		var def := _catalog.get_item(id)
+		var label := Txt.t(
+			"store_row", [def.display_name, Txt.t("type_" + ItemDef.Type.keys()[def.type])]
+		)
+		var buy := _shop_row(box, label)
+		if id in _profile.owned:
+			buy.text = Txt.t("store_owned")
+			buy.disabled = true
+			continue
+		buy.text = Txt.t("store_buy", [_garage.price(_catalog, _rules, _workshop, id, zone_tier)])
+		var reason := _garage.why_cant_buy(_profile, _catalog, _rules, _workshop, id, zone_tier)
+		buy.disabled = reason != ""
+		buy.pressed.connect(_on_store_buy.bind(id, zone_tier))
+
+
+## Clase de la zona en la que esta el jugador.
+func _zone_tier() -> int:
+	return _campaign.tier_of(mini(_profile.zone, _campaign.zone_count() - 1))
+
+
+## Una linea de la armeria: texto a la izquierda y boton de compra.
+func _shop_row(box: VBoxContainer, text: String) -> Button:
+	var row := HBoxContainer.new()
+	box.add_child(row)
+	var label := Label.new()
+	label.text = text
+	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(label)
+	var buy := Button.new()
+	buy.custom_minimum_size = Vector2(150, 0)
+	row.add_child(buy)
+	return buy
 
 
 ## Lo que da una mejora a ese nivel, como texto: "+5 %" o "+123".
@@ -278,11 +472,9 @@ func _boss_ability(id: String) -> String:
 	return Txt.t("campaign_boss_ability", [def.ability, def.ability_text])
 
 
-## Mech con el que pelea el jugador: el guardado en su perfil o, si no vale,
-## el primero.
-func _player_id() -> String:
-	var ids := _library.ids()
-	return _profile.mech if _profile.mech in ids else ids[0]
+## Nombre del mech del jugador: el del mech con el que empezo.
+func _player_name() -> String:
+	return _library.display_name(_profile.mech) if _library.specs.has(_profile.mech) else ""
 
 
 func _save() -> void:
@@ -296,13 +488,53 @@ func _remember_picks() -> void:
 			_last[key] = (_pickers[key] as OptionButton).selected
 
 
-func _on_mech_picked(index: int) -> void:
-	_profile.mech = _library.ids()[index]
+func _on_starter_picked(id: String) -> void:
+	_profile.start_run(_library, id)
 	_save()
+	_show_menu()
+
+
+func _on_slot_picked(index: int, slot: String, options: Array[String]) -> void:
+	var id := options[index - 1] if index > 0 else ""
+	if Garage.equip(_profile, _catalog, slot, id) == "":
+		_save()
+	_remember_picks()
+	_show_menu.call_deferred()
+
+
+func _on_store_buy(id: String, zone_tier: int) -> void:
+	if _garage.buy(_profile, _catalog, _rules, _workshop, id, zone_tier) == "":
+		_save()
+	_remember_picks()
+	_show_menu()
+
+
+## Mech armado del jugador con la clase y el nivel de cada pieza.
+func _player_build() -> MechBuild:
+	return _catalog.make_build(_profile.build, _rules, ItemDef.Tier.COMMON, 0, _profile.parts)
+
+
+## Piezas distintas del mech armado del jugador.
+func _player_items() -> Array[String]:
+	return BuildLibrary.items_of(_profile.build)
 
 
 func _on_buy_pressed(track: String) -> void:
 	if _profile.buy(_shop, track) == "":
+		_save()
+	_remember_picks()
+	_show_menu()
+
+
+func _on_part_level(id: String, cap_tier: int, cap_level: int) -> void:
+	if _profile.level_up(_workshop, _rules, id, cap_tier, cap_level) == "":
+		_save()
+	_remember_picks()
+	_show_menu()
+
+
+func _on_part_transform(id: String, max_tier: int) -> void:
+	if _profile.transform(_workshop, _rules, id, max_tier) == "":
 		_save()
 	_remember_picks()
 	_show_menu()
@@ -327,7 +559,9 @@ func _on_campaign_pressed() -> void:
 
 func _on_arena_pressed() -> void:
 	var zone := mini(_profile.zone, _campaign.zone_count() - 1)
-	_start_battle(_spec_for("arena", zone, _campaign.arena_fight(zone, _library, randi())))
+	var power := Campaign.mean_power(_rules, _profile, _player_items())
+	var fight := _campaign.arena_fight(zone, _library, randi(), _rules, power)
+	_start_battle(_spec_for("arena", zone, fight))
 
 
 func _on_free_pressed() -> void:
@@ -337,25 +571,29 @@ func _on_free_pressed() -> void:
 	_start_battle(
 		{
 			"mode": "free",
-			"player": _player_id(),
+			"items": _profile.build,
+			"name": _player_name(),
 			"enemy": _library.all_ids()[_last["enemy"]],
-			"tier": tier,
-			"player_level": level,
+			"enemy_tier": tier,
 			"enemy_level": level,
+			"player_tier": tier,
+			"player_level": level,
 			"difficulty": _last["difficulty"],
 			"seed": randi(),
 		}
 	)
 
 
-## Combate de la campana o de la arena: la zona pone la clase y los niveles.
+## Combate de la campana o de la arena: el rival va en la clase de la zona (o
+## en la que diga el combate) y el jugador con sus piezas.
 func _spec_for(mode: String, zone: int, fight: Dictionary) -> Dictionary:
 	return {
 		"mode": mode,
-		"player": _player_id(),
+		"zone": zone,
+		"items": _profile.build,
+		"name": _player_name(),
 		"enemy": fight["enemy"],
-		"tier": _campaign.tier_of(zone),
-		"player_level": _campaign.player_level(zone),
+		"enemy_tier": int(fight.get("tier", _campaign.tier_of(zone))),
 		"enemy_level": int(fight["level"]),
 		"difficulty": DIFFICULTY_IDS.find(fight["difficulty"]),
 		"seed": randi(),
@@ -373,16 +611,18 @@ func _start_battle(spec: Dictionary) -> void:
 		_menu = null
 	if _battle != null:
 		_battle.queue_free()
-	var tier: ItemDef.Tier = spec["tier"]
 	var rewarded: bool = spec["mode"] != "free"
 	_battle = BattleScreen.new()
-	# El escenario se puede pedir con --stage=<id>; si no, sale de la semilla.
+	# El escenario se puede pedir con --stage=<id>; en la campana y la arena es
+	# el de la zona; si no, sale de la semilla.
 	_battle.stage = _stages.get_stage(str(_args.get("stage", "")))
+	if _battle.stage.is_empty() and spec.has("zone"):
+		_battle.stage = _stages.get_stage(_campaign.stage_of(spec["zone"]))
 	if _battle.stage.is_empty():
 		_battle.stage = _stages.pick(_stage_seed)
 	_stage_seed += 1
 	_battle.names = [
-		"%s · %s" % [Txt.t("you"), _library.display_name(spec["player"])],
+		"%s · %s" % [Txt.t("you"), spec["name"]] if spec["name"] != "" else Txt.t("you"),
 		"%s · %s" % [Txt.t("rival"), _library.display_name(spec["enemy"])],
 	]
 	# En la campana no hay revancha: se vuelve a la base y se decide de nuevo.
@@ -394,16 +634,23 @@ func _start_battle(spec: Dictionary) -> void:
 	if rewarded:
 		_battle.finished.connect(_on_battle_finished)
 	add_child(_battle)
-	var player_build := _library.make(
-		spec["player"], _catalog, _rules, tier, spec["player_level"], _chassis
-	)
+	var player_build: MechBuild
+	if rewarded:
+		player_build = _catalog.make_build(
+			spec["items"], _rules, ItemDef.Tier.COMMON, 0, _profile.parts
+		)
+	else:
+		var player_tier: ItemDef.Tier = spec["player_tier"]
+		player_build = _catalog.make_build(spec["items"], _rules, player_tier, spec["player_level"])
 	# Las mejoras de la armeria solo cuentan para el mech del jugador.
 	if rewarded:
 		player_build.upgrades = _shop.upgrades_for(_profile.shop_levels)
 	_battle.start(
 		_rules,
 		player_build,
-		_library.make(spec["enemy"], _catalog, _rules, tier, spec["enemy_level"], _chassis),
+		_library.make(
+			spec["enemy"], _catalog, _rules, spec["enemy_tier"], spec["enemy_level"], _chassis
+		),
 		spec["seed"],
 		MENU_DIFFICULTIES[spec["difficulty"]]
 	)
@@ -424,6 +671,8 @@ func _on_battle_finished(player_won: bool) -> void:
 	_save()
 	if result["game_over"]:
 		_last_result = Txt.t("result_game_over")
+	elif result["unique"]:
+		_last_result = Txt.t("result_unique", [result["gold"]])
 	elif result["zone_cleared"]:
 		_last_result = Txt.t("result_zone_cleared", [result["gold"]])
 	else:
@@ -442,10 +691,13 @@ func _start_autoplay() -> void:
 	var spec := {
 		"mode": "free",
 		"player": _args.get("player", ids[0]),
+		"items": {},
+		"name": "",
 		"enemy": _args.get("enemy", ids[1]),
-		"tier": tier,
-		"player_level": level,
+		"enemy_tier": tier,
 		"enemy_level": level,
+		"player_tier": tier,
+		"player_level": level,
 		"difficulty": 1,
 		"seed": int(_args.get("seed", "1")),
 	}
@@ -455,14 +707,17 @@ func _start_autoplay() -> void:
 		_profile.fight = int(_args["fight"])
 		var fight := _campaign.fight_at(0, _profile.fight)
 		spec["mode"] = "campaign"
+		spec["zone"] = 0
+		_profile.parts = _uniform_parts(spec["player"], int(_args.get("level", "0")))
 		spec["enemy"] = fight["enemy"]
-		spec["tier"] = _campaign.tier_of(0)
-		spec["player_level"] = _campaign.player_level(0)
+		spec["enemy_tier"] = _campaign.tier_of(0)
 		spec["enemy_level"] = int(fight["level"])
 		spec["difficulty"] = DIFFICULTY_IDS.find(fight["difficulty"])
 	for side: String in ["player", "enemy"]:
 		if not spec[side] in ids:
 			spec[side] = ids[0]
+	spec["items"] = _library.specs[spec["player"]]["items"]
+	spec["name"] = _library.display_name(spec["player"])
 	_start_battle(spec)
 	var driver := BattleAI.new(BattleAI.Difficulty.NORMAL, int(spec["seed"]) + 7)
 	if _args.has("ui"):
@@ -476,6 +731,16 @@ func _start_autoplay() -> void:
 	_battle.finished.connect(_on_autoplay_finished)
 	get_tree().create_timer(0.8).timeout.connect(_shot.bind("inicio"))
 	get_tree().create_timer(AUTOPLAY_TIMEOUT_SECONDS).timeout.connect(_on_autoplay_timeout)
+
+
+## Piezas de un mech todas en clase Basica y ese nivel (para la prueba en vivo).
+func _uniform_parts(mech: String, level: int) -> Dictionary[String, Dictionary]:
+	var out: Dictionary[String, Dictionary] = {}
+	if not _library.specs.has(mech):
+		return out
+	for id in _library.item_ids(mech):
+		out[id] = {"tier": ItemDef.Tier.COMMON, "level": level}
+	return out
 
 
 func _on_autoplay_event(entry: Dictionary) -> void:

@@ -1,0 +1,5 @@
+{
+  "schema_version": 1,
+  "level_price": 60,
+  "transform_prices": [800, 1100, 1450, 1900]
+}
