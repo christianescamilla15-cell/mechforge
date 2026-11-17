@@ -50,12 +50,18 @@ var _floating: Dictionary = {}
 ## Capa del mundo: suelo, mechs y textos. La camara la mueve y la escala.
 var _world := Node2D.new()
 var _floor := Node2D.new()
+## Proyectiles, fogonazos y demas efectos, por delante de los mechs.
+var _fx := Node2D.new()
 ## Avisos que van por encima del mundo y no se mueven con la camara.
 var _overlay := Node2D.new()
 ## Punto del mundo que queda en el centro de la vista; negativo = sin fijar.
 var _camera_x := -1.0
 var _zoom := 1.0
 var _time := 0.0
+## Fuerza de la sacudida de camara en curso.
+var _shake := 0.0
+## Caida de la bonificacion desde la nave: 0 arriba, 1 en el suelo.
+var _drop_fall := 1.0
 
 
 func _ready() -> void:
@@ -70,6 +76,7 @@ func _ready() -> void:
 		var view := MechView.new()
 		_world.add_child(view)
 		mechs.append(view)
+	_world.add_child(_fx)
 	mouse_exited.connect(_on_mouse_exited)
 
 
@@ -78,6 +85,8 @@ func _process(delta: float) -> void:
 	_follow(delta)
 	queue_redraw()
 	_overlay.queue_redraw()
+	if _drop_fall < 1.0:
+		_floor.queue_redraw()
 
 
 func world_width() -> float:
@@ -136,6 +145,124 @@ func _on_float_done(label: Label, cell: int) -> void:
 	_floating[cell] = maxi(0, _floating.get(cell, 1) - 1)
 
 
+# --- Efectos (coordenadas del mundo) ---------------------------------------------
+
+
+## Disparo completo de un mech a otro: despliega el arma si hace falta,
+## retroceso, fogonazo, proyectil y chispas al llegar.
+func fire_between(actor: int, target: int, color: Color, seconds: float, from_drone: bool) -> void:
+	var shooter := mechs[actor]
+	if not from_drone:
+		var deploying := shooter.deploy(seconds * 0.9)
+		if deploying != null:
+			await deploying.finished
+		shooter.fire(seconds * 0.6)
+	var from := shooter.muzzle_point(from_drone)
+	var to := mechs[target].hit_point()
+	flash(from, color, 30.0, seconds * 0.4)
+	var travel := clampf(from.distance_to(to) / 2400.0, 0.07, 0.4) * clampf(seconds * 2.5, 0.2, 1.0)
+	await shoot(from, to, color, travel).finished
+	sparks(to, color, seconds * 0.6)
+
+
+## Proyectil luminoso que viaja de un punto a otro.
+func shoot(from: Vector2, to: Vector2, color: Color, seconds: float) -> Tween:
+	var bolt := Node2D.new()
+	var direction := (to - from).normalized()
+	for layer: Array in [[16.0, 0.3], [7.0, 1.0]]:
+		var line := Line2D.new()
+		line.width = layer[0]
+		line.default_color = Color(color.r, color.g, color.b, layer[1])
+		line.begin_cap_mode = Line2D.LINE_CAP_ROUND
+		line.end_cap_mode = Line2D.LINE_CAP_ROUND
+		line.points = PackedVector2Array([Vector2.ZERO, -direction * 54.0])
+		bolt.add_child(line)
+	bolt.position = from
+	_fx.add_child(bolt)
+	var tween := create_tween()
+	tween.tween_property(bolt, "position", to, seconds)
+	tween.tween_callback(bolt.queue_free)
+	return tween
+
+
+## Fogonazo: una estrella que se encoge y se apaga.
+func flash(at: Vector2, color: Color, radius: float, seconds: float) -> void:
+	var star := Polygon2D.new()
+	var points := PackedVector2Array()
+	for i in 16:
+		var reach := radius if i % 2 == 0 else radius * 0.42
+		points.append(Vector2.from_angle(TAU * i / 16.0) * reach)
+	star.polygon = points
+	star.color = color.lightened(0.5)
+	star.position = at
+	_fx.add_child(star)
+	var tween := create_tween()
+	tween.tween_property(star, "scale", Vector2(0.2, 0.2), seconds)
+	tween.parallel().tween_property(star, "modulate:a", 0.0, seconds)
+	tween.tween_callback(star.queue_free)
+
+
+## Chispas que saltan del punto de impacto.
+func sparks(at: Vector2, color: Color, seconds: float) -> void:
+	for i in 9:
+		var ray := Line2D.new()
+		ray.width = 3.0
+		ray.default_color = color.lightened(0.4)
+		var direction := Vector2.from_angle(TAU * (i + _noise(i, _time)) / 9.0)
+		ray.points = PackedVector2Array([direction * 8.0, direction * 22.0])
+		ray.position = at
+		_fx.add_child(ray)
+		var tween := create_tween()
+		tween.tween_property(
+			ray, "position", at + direction * (36.0 + 30.0 * _noise(i, 9.0)), seconds
+		)
+		tween.parallel().tween_property(ray, "modulate:a", 0.0, seconds)
+		tween.tween_callback(ray.queue_free)
+
+
+## Explosion: varios fogonazos escalonados y una sacudida fuerte.
+func explode(at: Vector2, seconds: float) -> void:
+	shake(14.0)
+	var colors := [Color("ffd27a"), Color("ff8a3d"), Color("fff3d6"), Color("ff5a3d")]
+	for i in colors.size():
+		var offset := Vector2(_noise(i, 21.0) - 0.5, _noise(i, 22.0) - 0.5) * 120.0
+		var delay := create_tween()
+		delay.tween_interval(seconds * 0.18 * i)
+		delay.tween_callback(flash.bind(at + offset, colors[i], 70.0 + 20.0 * i, seconds * 0.5))
+		delay.tween_callback(sparks.bind(at + offset, colors[i], seconds * 0.5))
+
+
+## Sacudida de camara; se apaga sola.
+func shake(strength: float) -> void:
+	_shake = maxf(_shake, strength)
+
+
+## La nave pasa sobre la arena y suelta la bonificacion, que cae a su casilla.
+func ship_drop(drop: Dictionary, seconds: float) -> void:
+	_drop = drop.duplicate()
+	_drop_fall = 0.0
+	var target := cell_point(drop["cell"])
+	var ship := Polygon2D.new()
+	ship.polygon = PackedVector2Array(
+		[Vector2(92, 0), Vector2(20, -22), Vector2(-70, -16), Vector2(-104, 6), Vector2(-30, 18)]
+	)
+	ship.color = Color("33456e")
+	ship.position = Vector2(target.x - 1100.0, -470.0)
+	_fx.add_child(ship)
+	var fly := create_tween()
+	fly.tween_property(ship, "position:x", target.x + 1100.0, seconds * 1.7)
+	fly.tween_callback(ship.queue_free)
+	var fall := create_tween()
+	fall.tween_interval(seconds * 0.8)
+	(
+		fall
+		. tween_property(self, "_drop_fall", 1.0, seconds * 0.7)
+		. set_trans(Tween.TRANS_BOUNCE)
+		. set_ease(Tween.EASE_OUT)
+	)
+	await fall.finished
+
+
 # --- Camara ------------------------------------------------------------------
 
 
@@ -162,6 +289,9 @@ func _follow(delta: float) -> void:
 		_camera_x = clampf(_camera_x, half, world_width() - half)
 	_world.scale = Vector2(_zoom, _zoom)
 	_world.position = Vector2(size.x / 2.0 - _camera_x * _zoom, size.y - FLOOR_MARGIN)
+	if _shake > 0.0:
+		_world.position += Vector2(sin(_time * 71.0), cos(_time * 53.0)) * _shake
+		_shake = maxf(0.0, _shake - delta * 36.0)
 
 
 ## Cuanto se ha desplazado la camara desde el centro del campo.
@@ -199,7 +329,7 @@ func _draw_floor() -> void:
 
 ## La bonificacion como una caja sobre su casilla, del color de su tipo.
 func _draw_drop(font: Font) -> void:
-	var center := Vector2(cell_point(_drop["cell"]).x, -44.0)
+	var center := Vector2(cell_point(_drop["cell"]).x, -44.0 - 430.0 * (1.0 - _drop_fall))
 	var color: Color = DROP_COLORS.get(_drop["kind"], Color.WHITE)
 	var box := Rect2(center - Vector2(34, 28), Vector2(68, 56))
 	_floor.draw_rect(box, color.darkened(0.55))

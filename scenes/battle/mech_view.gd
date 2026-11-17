@@ -17,6 +17,9 @@ const DRAW_SCALE := 1.05
 const CHEST_SET := "ligero_18"
 ## Cuanto suben las armas provisionales para quedar sobre el torso nuevo.
 const SPRITE_WEAPON_LIFT := -44.0
+## Cuanto retrocede el arma al disparar y cuanto queda metida al guardarse.
+const RECOIL := 16.0
+const RETRACT := 78.0
 
 var build: MechBuild
 ## 1 si mira a la derecha, -1 si mira a la izquierda.
@@ -27,6 +30,16 @@ var shut_down: bool = false
 var _base_position := Vector2.ZERO
 ## Arte por piezas del mech; null mientras no este exportado (se usan bloques).
 var _sprites: MechSprites
+var _time := 0.0
+var _walking := false
+## Retroceso del arma, en unidades hacia atras.
+var _recoil := 0.0
+## Cuanto ha salido el arma del torso: 0 guardada, 1 desplegada.
+var _deploy := 0.0
+var _deployed := false
+## Cuanto se ha desplomado por estar apagado, de 0 a 1.
+var _slump := 0.0
+var _dead := false
 
 
 func setup(p_build: MechBuild, p_facing: int) -> void:
@@ -43,6 +56,8 @@ func set_facing(p_facing: int) -> void:
 
 func set_heat(ratio: float, p_shut_down: bool = false) -> void:
 	heat_ratio = clampf(ratio, 0.0, 1.3)
+	if p_shut_down != shut_down:
+		create_tween().tween_property(self, "_slump", 1.0 if p_shut_down else 0.0, 0.35)
 	shut_down = p_shut_down
 	queue_redraw()
 
@@ -57,6 +72,8 @@ func move_to(at: Vector2, seconds: float) -> Tween:
 	_base_position = at
 	var tween := create_tween()
 	tween.tween_property(self, "position", at, seconds).set_trans(Tween.TRANS_SINE)
+	_walking = true
+	tween.finished.connect(func() -> void: _walking = false)
 	return tween
 
 
@@ -80,22 +97,100 @@ func hit(seconds: float) -> Tween:
 	return tween
 
 
+func _process(delta: float) -> void:
+	_time += delta
+	queue_redraw()
+
+
+## True si este mech lleva el canon que se despliega del pecho.
+func has_cannon() -> bool:
+	return _sprites != null and build != null and not build.tops.is_empty()
+
+
+## Saca el arma de dentro del torso la primera vez que se usa en el combate.
+## Devuelve null si ya estaba desplegada o no tiene.
+func deploy(seconds: float) -> Tween:
+	if _deployed or not has_cannon():
+		return null
+	_deployed = true
+	var tween := create_tween()
+	tween.tween_property(self, "_deploy", 1.0, seconds).set_trans(Tween.TRANS_BACK).set_ease(
+		Tween.EASE_OUT
+	)
+	return tween
+
+
+## Retroceso del arma al disparar.
+func fire(seconds: float) -> void:
+	var tween := create_tween()
+	tween.tween_property(self, "_recoil", RECOIL, seconds * 0.15)
+	tween.tween_property(self, "_recoil", 0.0, seconds * 0.85).set_trans(Tween.TRANS_SINE)
+
+
+## Punto del que sale el disparo, en las coordenadas del padre: la boca del
+## canon, o el dron si dispara el.
+func muzzle_point(from_drone: bool) -> Vector2:
+	var local := Vector2(-70.0, -206.0 + SPRITE_WEAPON_LIFT)
+	if not from_drone:
+		local = Vector2(60.0, -110.0)
+		if has_cannon():
+			local = _sprites.piece_tip(CHEST_SET, "chest")
+	return position + Vector2(local.x * facing, local.y) * DRAW_SCALE
+
+
+## Punto del cuerpo donde impactan los disparos, en las coordenadas del padre.
+func hit_point() -> Vector2:
+	return position + Vector2(0.0, -120.0) * DRAW_SCALE
+
+
+## El mech cae destruido: se inclina, se hunde y se oscurece.
+func destroy(seconds: float) -> Tween:
+	_dead = true
+	var tween := create_tween()
+	(
+		tween
+		. tween_property(self, "rotation", -0.38 * facing, seconds)
+		. set_trans(Tween.TRANS_QUAD)
+		. set_ease(Tween.EASE_IN)
+	)
+	tween.parallel().tween_property(self, "position:y", _base_position.y + 26.0, seconds)
+	tween.parallel().tween_property(self, "modulate", Color(0.35, 0.33, 0.36), seconds)
+	return tween
+
+
+func _draw_sprites(dim: float) -> void:
+	var tint := _body_tint(dim)
+	# Vivo: respira; andando: rebota; apagado: se desploma hacia delante.
+	var breath := 0.0 if (shut_down or _dead) else sin(_time * 2.2) * 1.6
+	var bounce := -absf(sin(_time * 11.0)) * 5.0 if _walking else 0.0
+	var body := Vector2(_slump * 9.0, breath + bounce + _slump * 13.0)
+	_sprites.draw_piece(
+		self, _sprites.legs_set, "legs", build.legs.element, tint, Vector2(0, bounce * 0.4)
+	)
+	# El canon de pecho hace de arma superior hasta que el motor tenga el
+	# hueco de pecho (docs/CATALOGO_ARMAS.md). Mientras sale va por detras del
+	# torso, para que parezca que viene de dentro.
+	var cannon_at := body + Vector2((1.0 - _deploy) * -RETRACT - _recoil, 0.0)
+	var cannon_tint := Color(tint.r, tint.g, tint.b, clampf(_deploy * 1.5, 0.0, 1.0))
+	if has_cannon() and _deploy > 0.0 and _deploy < 1.0:
+		_sprites.draw_piece(self, CHEST_SET, "chest", build.tops[0].element, cannon_tint, cannon_at)
+	_sprites.draw_piece(self, _sprites.torso_set, "torso", build.torso.element, tint, body)
+	if has_cannon() and _deploy >= 1.0:
+		_sprites.draw_piece(self, CHEST_SET, "chest", build.tops[0].element, tint, cannon_at)
+	# Las demas armas todavia no tienen arte y no se pintan; solo el dron.
+	var hover := Vector2(0.0, SPRITE_WEAPON_LIFT + sin(_time * 3.1) * 4.0)
+	draw_set_transform(hover)
+	_draw_drone(dim)
+	draw_set_transform(Vector2.ZERO)
+
+
 func _draw() -> void:
 	if build == null:
 		return
 	var dim := 0.45 if shut_down else 1.0
 
 	if _sprites != null:
-		_sprites.draw(self, build.torso.element, build.legs.element, _body_tint(dim))
-		# Provisional: el canon de pecho hace de arma superior hasta que el
-		# motor tenga el hueco de pecho (docs/CATALOGO_ARMAS.md).
-		if not build.tops.is_empty():
-			_sprites.draw_piece(self, CHEST_SET, "chest", build.tops[0].element, _body_tint(dim))
-		# Las armas todavia no tienen arte: con el mech dibujado no se pintan
-		# sus bloques provisionales, que taparian el dibujo. Solo el dron.
-		draw_set_transform(Vector2(0.0, SPRITE_WEAPON_LIFT))
-		_draw_drone(dim)
-		draw_set_transform(Vector2.ZERO)
+		_draw_sprites(dim)
 		return
 	_draw_block_body(dim)
 

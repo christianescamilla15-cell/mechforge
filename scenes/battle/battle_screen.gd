@@ -148,11 +148,17 @@ func _play_event(entry: Dictionary) -> void:
 			if attacker_cell != _state[actor]["pos"] and event != "weapon":
 				await _arena.mechs[actor].move_to(_arena.cell_point(attacker_cell), step).finished
 				_arena.update_facing()
-			if event != "drone":
+			var shot_color := _shot_color(entry, actor)
+			if event == "drone":
+				await _arena.fire_between(actor, target, shot_color, step, true)
+			elif _is_ranged(entry, actor):
+				await _arena.fire_between(actor, target, shot_color, step, false)
+			else:
 				_arena.mechs[actor].lunge(step)
 			var damage: int = entry.get("damage", 0)
 			if damage > 0:
 				_arena.mechs[target].hit(step)
+				_arena.shake(clampf(damage / 30.0, 2.0, 9.0))
 				_arena.float_text(_state[target]["pos"], "-%d" % damage, COLOR_DAMAGE)
 			var heat_gain: int = snapshot[target]["heat"] - _state[target]["heat"]
 			if heat_gain > 0:
@@ -177,21 +183,41 @@ func _play_event(entry: Dictionary) -> void:
 		"regen":
 			pass
 		"drop_spawn":
-			_arena.set_drop(entry["drop"])
-			await get_tree().create_timer(step).timeout
+			await _arena.ship_drop(entry["drop"], step * 1.6)
 		"drop_taken":
 			var percent := roundi(float(entry["amount"]) * 100.0)
 			var label := "+%d %% %s" % [percent, Txt.t("drop_%s_short" % entry["kind"])]
 			_arena.float_text(snapshot[entry["who"]]["pos"], label, COLOR_DROP)
 			await get_tree().create_timer(step).timeout
 		"win":
-			await get_tree().create_timer(step).timeout
+			var loser := 1 - int(entry["winner"])
+			_arena.explode(_arena.mechs[loser].hit_point(), step * 2.0)
+			await _arena.mechs[loser].destroy(step * 2.0).finished
 
 	_state = [snapshot[0], snapshot[1]]
 	# Cada evento trae la bonificacion que queda en la arena tras el.
 	_arena.set_drop(entry.get("drop", {}))
 	_arena.update_facing()
 	_show_state()
+
+
+## Pieza con la que se hizo la jugada de un evento, o null.
+func _event_def(entry: Dictionary, actor: int) -> ItemDef:
+	var slot: String = entry.get("slot", "")
+	if slot != "" and engine.mechs[actor].slots.has(slot):
+		return engine.mechs[actor].slots[slot].def
+	return null
+
+
+## Las armas que no son cuerpo a cuerpo disparan un proyectil.
+func _is_ranged(entry: Dictionary, actor: int) -> bool:
+	var def := _event_def(entry, actor)
+	return entry["event"] == "weapon" and def != null and not def.has_tag(ItemDef.TAG_MELEE)
+
+
+func _shot_color(entry: Dictionary, actor: int) -> Color:
+	var def := _event_def(entry, actor)
+	return MechView.ELEMENT_COLORS[def.element] if def != null else Color.WHITE
 
 
 ## Juega el turno del jugador usando los controles de la interfaz.

@@ -47,7 +47,12 @@ func draw(canvas: CanvasItem, torso_element: int, legs_element: int, tint: Color
 
 ## Dibuja una pieza (torso, piernas o un arma montada) anclada a la cintura.
 func draw_piece(
-	canvas: CanvasItem, set_name: String, kind: String, element: int, tint: Color
+	canvas: CanvasItem,
+	set_name: String,
+	kind: String,
+	element: int,
+	tint: Color,
+	offset := Vector2.ZERO
 ) -> void:
 	var anchors := _load_anchors(set_name)
 	if not anchors.get(kind) is Dictionary:
@@ -56,8 +61,18 @@ func draw_piece(
 	if texture == null:
 		return
 	var anchor := Vector2(anchors[kind]["hip"][0], anchors[kind]["hip"][1])
-	var top_left := hip_point() - anchor * UNIT_SCALE
+	var top_left := hip_point() - anchor * UNIT_SCALE + offset
 	canvas.draw_texture_rect(texture, Rect2(top_left, texture.get_size() * UNIT_SCALE), false, tint)
+
+
+## Punta delantera de una pieza (la boca de un arma), respecto a los pies.
+func piece_tip(set_name: String, kind: String) -> Vector2:
+	var piece: Variant = _load_anchors(set_name).get(kind)
+	if not piece is Dictionary:
+		return hip_point()
+	var forward := (float(piece["size"][0]) - float(piece["hip"][0])) * UNIT_SCALE
+	var middle := (float(piece["size"][1]) / 2.0 - float(piece["hip"][1])) * UNIT_SCALE
+	return hip_point() + Vector2(forward, middle)
 
 
 static func _available(names: Array[String], kind: String) -> Array[String]:
