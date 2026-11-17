@@ -305,6 +305,13 @@ Animación por piezas (cada pieza es un sprite que se mueve, gira o se desplaza)
 | Cuerpo a cuerpo (espada, hacha, martillo, taladro, sierra) | Desenvaine o arranque del motor y avance | Tajo con estela, golpe con sacudida, chispas continuas en taladro y sierra |
 | Escudos y defensas | Paneles que se despliegan o campo que se enciende | Destello al absorber el golpe; se agrieta o parpadea con poca vida |
 
+**Dirección de las armas** (pedido del usuario, 2026-11-16): el nivel de detalle que busca es el del juego original.
+- **Armamento galáctico.** El catálogo se orienta a tecnología de ciencia ficción: plasma, iones, partículas, antimateria, gravedad, haces y hojas de energía. Las armas convencionales (balas, obuses, cohetes) son las etapas bajas de esa misma línea, no un estilo aparte; nada de espadas ni armas de aspecto medieval.
+- **Despliegue.** Las armas van guardadas dentro del cuerpo del robot. La primera vez que se usa cada arma en un combate se despliega: se abren las compuertas, el arma sale del cuerpo y se extiende o se desdobla hasta quedar lista. Después queda desplegada el resto del combate y solo hace su gesto de disparo. Al apagarse el mech, las armas se recogen.
+- **Cómo se construye:** cada arma se dibuja en dos o tres tramos (base, cuerpo y boca o emisor) que se animan por separado: salen de detrás del torso, se deslizan como un telescopio o giran sobre su base. Las compuertas son piezas pequeñas del torso.
+- **Evolución del disparo.** Conforme el arma sube de nivel cambia su disparo, no solo su dibujo: dentro de una etapa crecen el tamaño, el brillo y las capas del efecto; al cambiar de etapa cambia el tipo de disparo (por ejemplo, de perno de plasma a ráfaga, y de ráfaga a haz sostenido).
+- Antes de repetirlo en todo el catálogo se hace un **arma piloto** completa (dibujo por etapas, despliegue y disparo por niveles) para que el usuario la evalúe.
+
 La etapa tecnológica cambia el dibujo del arma, el fogonazo, el proyectil, el impacto y el sonido. Para que el trabajo sea abarcable, cada familia define sus efectos una vez y cada etapa los varía (tamaño, color, número de proyectiles, capas de efecto).
 
 **Revisión por partes:** cada familia se le enseña al usuario en movimiento, en sus etapas, antes de darla por buena (ver `docs/PLAN.md`, fase F5).

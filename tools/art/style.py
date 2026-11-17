@@ -47,7 +47,17 @@ SUBJECT_PARTS = {
     "cannon": "arm cannon, cannon, weapon focus, from side, solo, gun barrel, still life",
     "sword": "sword, huge weapon, weapon focus, from side, solo, still life",
     "pod": "missile pod, weapon focus, from side, solo, still life",
+    "plasma": "energy cannon, plasma cannon, arm cannon, weapon focus, from side, solo, still life",
 }
+# Etapas tecnologicas de un arma (GDD 8 y 12.2): lo que se anade al sujeto
+# en cada etapa para que el dibujo gane complejidad. La etapa 1 es la base.
+WEAPON_STAGES = [
+    "simple, compact",
+    "glowing, energy core",
+    "glowing, energy core, cables, vents, long barrel",
+    "glowing, energy core, cables, vents, long barrel, multiple barrels, heavy weapon",
+    "glowing, energy core, cables, vents, long barrel, multiple barrels, heavy weapon, intricate, floating parts",
+]
 # Lo que hay que evitar en cada pieza suelta, ademas de NEGATIVE: sin esto
 # las armas salen como armas de mano, con empunadura y gatillo.
 WEAPON_NEGATIVE = "trigger, handgun, pistol grip, gun stock, holding, hands"
@@ -57,6 +67,7 @@ PART_NEGATIVE = {
     "body": BODY_NEGATIVE,
     "cannon": WEAPON_NEGATIVE,
     "sword": "holding, hands, sheath",
+    "plasma": WEAPON_NEGATIVE,
     "pod": "holding, hands",
 }
 PART_COLORS = {
