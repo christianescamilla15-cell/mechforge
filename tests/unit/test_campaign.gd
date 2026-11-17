@@ -279,3 +279,16 @@ func test_vencer_al_jefe_10_completa_la_campana() -> void:
 	assert_false(campaign.is_complete(profile))
 	campaign.finish_fight(profile, _shop, "campaign", true)
 	assert_true(campaign.is_complete(profile))
+
+
+func test_los_rivales_llevan_la_armeria_del_orden_de_su_zona() -> void:
+	var campaign := _campaign()
+	assert_eq(campaign.enemy_armory(0), 0, "en la primera zona el Orden no tiene mejoras")
+	for zone in range(1, campaign.zone_count()):
+		assert_gte(campaign.enemy_armory(zone), campaign.enemy_armory(zone - 1), "no baja")
+		assert_lte(campaign.enemy_armory(zone), _shop.max_level())
+	var last := campaign.zone_count() - 1
+	assert_gt(campaign.enemy_armory(last), 0)
+	var upgrades := campaign.enemy_upgrades(last, _shop)
+	assert_almost_eq(upgrades.damage, _shop.value("damage", campaign.enemy_armory(last)), 0.0001)
+	assert_almost_eq(campaign.enemy_upgrades(0, _shop).damage, 0.0, 0.0001)

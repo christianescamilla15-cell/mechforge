@@ -70,7 +70,8 @@
       },
       "reward_mult": 1.0,
       "stage": "desierto",
-      "band": "balas"
+      "band": "balas",
+      "enemy_armory": 0
     },
     {
       "id": "zona_2",
@@ -139,7 +140,8 @@
         "level": 6,
         "difficulty": "HARD"
       },
-      "band": "balas"
+      "band": "balas",
+      "enemy_armory": 0
     },
     {
       "id": "zona_3",
@@ -208,7 +210,8 @@
         "level": 6,
         "difficulty": "HARD"
       },
-      "band": "canon"
+      "band": "canon",
+      "enemy_armory": 3
     },
     {
       "id": "zona_4",
@@ -277,7 +280,8 @@
         "level": 12,
         "difficulty": "HARD"
       },
-      "band": "canon"
+      "band": "canon",
+      "enemy_armory": 5
     },
     {
       "id": "zona_5",
@@ -346,7 +350,8 @@
         "level": 9,
         "difficulty": "HARD"
       },
-      "band": "blaster"
+      "band": "blaster",
+      "enemy_armory": 5
     },
     {
       "id": "zona_6",
@@ -415,7 +420,8 @@
         "level": 18,
         "difficulty": "HARD"
       },
-      "band": "blaster"
+      "band": "blaster",
+      "enemy_armory": 6
     },
     {
       "id": "zona_7",
@@ -484,7 +490,8 @@
         "level": 12,
         "difficulty": "HARD"
       },
-      "band": "laser"
+      "band": "laser",
+      "enemy_armory": 6
     },
     {
       "id": "zona_8",
@@ -554,7 +561,8 @@
         "difficulty": "HARD"
       },
       "drops_unique": true,
-      "band": "laser"
+      "band": "laser",
+      "enemy_armory": 6
     },
     {
       "id": "zona_9",
@@ -624,7 +632,8 @@
         "difficulty": "HARD"
       },
       "drops_unique": true,
-      "band": "laser"
+      "band": "laser",
+      "enemy_armory": 6
     },
     {
       "id": "zona_10",
@@ -694,7 +703,8 @@
         "difficulty": "HARD"
       },
       "drops_unique": true,
-      "band": "laser"
+      "band": "laser",
+      "enemy_armory": 6
     }
   ]
 }

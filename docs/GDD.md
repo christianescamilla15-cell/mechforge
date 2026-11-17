@@ -376,6 +376,31 @@ Hecho el 2026-11-16 y ajustado el 2026-11-17 (core/arena_shop.gd, core/player_pr
 - Ganar los 10 seguidos y al jefe sin perder ni uno: 1 % de las veces.
 
 
+### 9.3 La campaña entera: la armería del Orden
+Medido el 2026-11-17 (tools/economy_sweep.ps1). Al pasar de la zona 1, la armería del jugador llega al máximo hacia la zona 4 y, sin nada que la compense, los jefes de la zona 3 en adelante caían con 25 victorias. Ahora **el Orden también tiene su armería**: cada zona fija el nivel de las mejoras de todos sus rivales, jefe incluido (data/campaign.json, `enemy_armory`; el menú lo enseña). Sube zona a zona: 0, 0, 3, 5, 5, 6, 6, 6, 6 y 6. Además se retocaron cinco jefes (data/chassis.json): Égida, Espectro y Colmena algo más débiles, Caldera más resistente y Coloso con resistencias ×1.5.
+
+Victorias contra el jefe tras gastar N victorias en la zona, empezando con lo que tendría quien pasó la anterior con unas 50 (16 combates por casilla, cifras con unos ±12 puntos de margen):
+
+| Zona | Jefe | Orden | 10 vict. | 25 vict. | 50 vict. | Mech que mejor lo vence a las 50 |
+|---|---|---|---|---|---|---|
+| 1 | Capataz (superblindaje) | 0 | 0 % | 20 % | 39–47 % | calor (95 %) |
+| 2 | Verdugo (poder de daño) | 0 | 19 % | 47 % | 84 % | calor (94 %) |
+| 3 | Reactor (energía infinita) | 3 | 0 % | 31 % | 81 % | calor (100 %) |
+| 4 | Hidra (regeneración) | 5 | 0 % | 28 % | 72 % | físico e híbrido (81 %) |
+| 5 | Centella (velocidad) | 5 | 0 % | 5 % | 53 % | calor (88 %) |
+| 6 | Égida (escudo) | 6 | 3 % | 17 % | 27 % | calor (94 %) |
+| 7 | Espectro (evasión) | 6 | 17 % | 47 % | 75 % | energía (100 %) |
+| 8 | Caldera (núcleo térmico) | 6 | 33 % | 72 % | 70 % | energía y físico (94 %) |
+| 9 | Colmena (enjambre) | 6 | 8 % | 16 % | 56 % | físico (94 %) |
+| 10 | Coloso (final) | 6 | 2 % | 8 % | 8 % | calor (19 %) |
+
+- La zona 1 sigue el ritmo del usuario: unas 50 victorias para tener opciones y unas 100 para ganar con facilidad (§9.2).
+- De la 2 a la 9, con unas 50 victorias en la zona se gana a menudo; el mech que ataca el punto débil del jefe gana casi siempre. En la 6, solo el de calor lo consigue: hay que cambiar de armas en el taller.
+- Las zonas que abren clase nueva (3, 5, 7 y 9) piden más victorias, porque hay que transformar las piezas.
+- El jefe final es extremadamente difícil, como pidió el usuario: 8 % de media con todo al tope de la zona, 19 % con el mech de calor; ganable con bonificaciones y táctica.
+- Pendiente: medir las zonas con más combates por casilla y con el arma de pecho, que se abre en el nivel 10 del jugador y no entra en estas cifras.
+
+
 ## 10. Pantallas
 Menú · Taller (armado con resumen de stats, barra de peso y avisos) · Inventario y fusión · Taller de mejoras · Mapa de campaña · Combate (arena, mechs, botones de acción, previsualización y registro) · Resultados y botín · Ajustes.
 

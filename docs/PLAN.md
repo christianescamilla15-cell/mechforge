@@ -134,7 +134,7 @@ El usuario amplió el diseño en una sesión (GDD §1.1, §8, §9 y §12.2; docs
 | 4 | 47 % | 100 % | 100 % |
 | 5 | 3 % | 67 % | 100 % |
 
-Causa: la armería llega al máximo hacia la zona 4 y los rivales no tienen nada equivalente. Propuesta: que el Orden también tenga su armería y la mejore zona a zona (un nivel de mejoras para los rivales de cada zona), y volver a medir. Se aparcó para hacer las animaciones de movimiento que pidió el usuario.
+Causa: la armería llega al máximo hacia la zona 4 y los rivales no tienen nada equivalente. **Resuelto el mismo día** (aprobado por el usuario): el Orden tiene su armería, que sube zona a zona, y se retocaron cinco jefes. La campaña entera queda en una curva coherente (GDD §9.3).
 
 ### F6 — Taller de armado
 - Equipar piezas por hueco, barra de peso con sobrecarga, resumen de stats, avisos (sin torso o piernas, resistencias repetidas, más de 1010 kg) y vista previa del mech montado.

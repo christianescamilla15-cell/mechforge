@@ -8,6 +8,8 @@ extends RefCounted
 ##   "tier", "level_cap", "reward_mult", "stage", "drops_unique",
 ##   "arena": {"difficulty"},
 ##   "fights": [{"enemy", "level", "difficulty"}], "boss": {...}}]}
+## "enemy_armory" es el nivel de la armeria del Orden en esa zona: todas las
+## mejoras de sus rivales (jefe incluido) estan a ese nivel.
 ## "tier" es la clase de los rivales de la zona y la mas alta a la que el
 ## jugador puede transformar sus piezas mientras este en ella.
 ## "level_cap" es el nivel mas alto al que el jugador puede subir sus piezas
@@ -91,6 +93,20 @@ func fight_at(zone: int, fight: int) -> Dictionary:
 	if is_boss_fight(zone, fight):
 		return zones[zone]["boss"]
 	return zones[zone]["fights"][fight]
+
+
+## Nivel de la armeria del Orden en esa zona (0 = sin mejoras).
+func enemy_armory(zone: int) -> int:
+	return int(zones[mini(zone, zone_count() - 1)].get("enemy_armory", 0))
+
+
+## Mejoras que llevan los rivales de esa zona: la armeria del Orden, con
+## todas sus lineas al nivel de la zona.
+func enemy_upgrades(zone: int, shop: ArenaShop) -> ArenaUpgrades:
+	var levels := {}
+	for track in shop.track_ids():
+		levels[track] = enemy_armory(zone)
+	return shop.upgrades_for(levels)
 
 
 ## Multiplicador de las recompensas en esa zona: las zonas de clase alta

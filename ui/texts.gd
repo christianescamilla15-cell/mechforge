@@ -71,6 +71,7 @@ const ES := {
 	"menu_shop": "Armería",
 	"menu_campaign": "Campaña",
 	"campaign_zone": "Zona %d de %d · %s",
+	"campaign_order_armory": " · armería del Orden: nivel %d",
 	"campaign_next": "Combate %d de %d · rival: %s",
 	"campaign_fight": "Pelear el combate %d",
 	"campaign_boss": "Jefe de la zona: %s",

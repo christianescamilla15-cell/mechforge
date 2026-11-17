@@ -215,12 +215,12 @@ func _add_campaign(box: VBoxContainer, can_fight: bool) -> void:
 	if zone >= _campaign.zone_count():
 		_text(box, Txt.t("campaign_pending", [zone + 1, _campaign.world_bosses]), 16, COLOR_MUTED)
 		return
-	_text(
-		box,
-		Txt.t("campaign_zone", [zone + 1, _campaign.world_bosses, _campaign.zone_name(zone)]),
-		16,
-		COLOR_MUTED
+	var zone_line := Txt.t(
+		"campaign_zone", [zone + 1, _campaign.world_bosses, _campaign.zone_name(zone)]
 	)
+	if _campaign.enemy_armory(zone) > 0:
+		zone_line += Txt.t("campaign_order_armory", [_campaign.enemy_armory(zone)])
+	_text(box, zone_line, 16, COLOR_MUTED)
 	var fight := _campaign.fight_at(zone, _profile.fight)
 	var rival := _library.display_name(fight["enemy"])
 	if _campaign.is_boss_fight(zone, _profile.fight):
@@ -679,14 +679,14 @@ func _start_battle(spec: Dictionary) -> void:
 	# Las mejoras de la armeria solo cuentan para el mech del jugador.
 	if rewarded:
 		player_build.upgrades = _shop.upgrades_for(_profile.shop_levels)
+	var enemy_build := _library.make(
+		spec["enemy"], _catalog, _rules, spec["enemy_tier"], spec["enemy_level"], _chassis
+	)
+	# En la campana y la arena los rivales llevan la armeria del Orden.
+	if spec.has("zone"):
+		enemy_build.upgrades = _campaign.enemy_upgrades(spec["zone"], _shop)
 	_battle.start(
-		_rules,
-		player_build,
-		_library.make(
-			spec["enemy"], _catalog, _rules, spec["enemy_tier"], spec["enemy_level"], _chassis
-		),
-		spec["seed"],
-		MENU_DIFFICULTIES[spec["difficulty"]]
+		_rules, player_build, enemy_build, spec["seed"], MENU_DIFFICULTIES[spec["difficulty"]]
 	)
 
 

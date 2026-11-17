@@ -66,6 +66,7 @@ func _initialize() -> void:
 	var tier := campaign.tier_of(zone)
 	var boss := campaign.fight_at(zone, campaign.fights_in(zone))
 	_builds["boss"] = library.make(boss["enemy"], catalog, _rules, tier, boss["level"], chassis)
+	_builds["boss"].upgrades = campaign.enemy_upgrades(zone, shop)
 	_boss_ai = DIFFICULTY[boss["difficulty"]]
 	var reward := shop.reward("arena_win") * campaign.reward_mult(zone)
 	for wins in wins_list:
@@ -92,13 +93,14 @@ func _initialize() -> void:
 				)
 	print(
 		(
-			"Zona %d (%s), jefe %s (%s nivel %d). Al llegar: piezas %s nivel %d, armeria %d."
+			"Zona %d (%s), jefe %s (%s nivel %d, Orden %d). Al llegar: %s %d, armeria %d."
 			% [
 				zone + 1,
 				campaign.zone_name(zone),
 				library.display_name(boss["enemy"]),
 				Txt.TIER_NAMES[tier],
 				boss["level"],
+				campaign.enemy_armory(zone),
 				Txt.TIER_NAMES[start_tier],
 				start_level,
 				start_armory,
