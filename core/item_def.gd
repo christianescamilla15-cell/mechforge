@@ -64,6 +64,11 @@ const FIXED_STATS: Array[String] = [
 @export var level: int = 0
 ## Datos de arte: ruta del sprite y anclas de montaje (los define la fase F4).
 @export var art: Dictionary = {}
+## Tipo de arma (docs/CATALOGO_ARMAS.md): "balas", "canon", "blaster" o
+## "laser"; vacio en lo que no es arma.
+@export var weapon_type: String = ""
+## Forma del arma: "hoja", "corto", "bateria"...; vacio en lo que no es arma.
+@export var form: String = ""
 
 @export_group("Cuerpo")
 @export var weight: int = 0

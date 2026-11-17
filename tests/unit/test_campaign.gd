@@ -148,7 +148,9 @@ func test_el_rival_de_arena_es_un_mech_normal_y_depende_de_la_semilla() -> void:
 		var rival := campaign.arena_fight(0, _library, seed_value, rules, power)
 		assert_false(_library.is_boss(rival["enemy"]))
 		seen[rival["enemy"]] = true
-	assert_eq(seen.size(), _library.ids().size(), "salen todos los mechs normales")
+	assert_eq(
+		seen.size(), _library.band_ids(campaign.band_of(0)).size(), "salen todos los de la banda"
+	)
 	assert_eq(
 		campaign.arena_fight(0, _library, 7, rules, power),
 		campaign.arena_fight(0, _library, 7, rules, power)

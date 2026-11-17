@@ -69,7 +69,8 @@
         "difficulty": "HARD"
       },
       "reward_mult": 1.0,
-      "stage": "desierto"
+      "stage": "desierto",
+      "band": "balas"
     },
     {
       "id": "zona_2",
@@ -137,7 +138,8 @@
         "enemy": "jefe_zona_2",
         "level": 6,
         "difficulty": "HARD"
-      }
+      },
+      "band": "balas"
     },
     {
       "id": "zona_3",
@@ -151,52 +153,52 @@
       },
       "fights": [
         {
-          "enemy": "energia_tempestad",
+          "enemy": "energia_tempestad_canon",
           "level": 0,
           "difficulty": "EASY"
         },
         {
-          "enemy": "hibrido_quimera",
+          "enemy": "hibrido_quimera_canon",
           "level": 1,
           "difficulty": "NORMAL"
         },
         {
-          "enemy": "fisico_vanguardia",
+          "enemy": "fisico_vanguardia_canon",
           "level": 1,
           "difficulty": "NORMAL"
         },
         {
-          "enemy": "calor_horno",
+          "enemy": "calor_horno_canon",
           "level": 2,
           "difficulty": "NORMAL"
         },
         {
-          "enemy": "energia_tempestad",
+          "enemy": "energia_tempestad_canon",
           "level": 2,
           "difficulty": "NORMAL"
         },
         {
-          "enemy": "hibrido_quimera",
+          "enemy": "hibrido_quimera_canon",
           "level": 3,
           "difficulty": "HARD"
         },
         {
-          "enemy": "fisico_vanguardia",
+          "enemy": "fisico_vanguardia_canon",
           "level": 4,
           "difficulty": "HARD"
         },
         {
-          "enemy": "calor_horno",
+          "enemy": "calor_horno_canon",
           "level": 4,
           "difficulty": "HARD"
         },
         {
-          "enemy": "energia_tempestad",
+          "enemy": "energia_tempestad_canon",
           "level": 5,
           "difficulty": "HARD"
         },
         {
-          "enemy": "hibrido_quimera",
+          "enemy": "hibrido_quimera_canon",
           "level": 6,
           "difficulty": "HARD"
         }
@@ -205,7 +207,8 @@
         "enemy": "jefe_zona_3",
         "level": 6,
         "difficulty": "HARD"
-      }
+      },
+      "band": "canon"
     },
     {
       "id": "zona_4",
@@ -219,52 +222,52 @@
       },
       "fights": [
         {
-          "enemy": "hibrido_quimera",
+          "enemy": "hibrido_quimera_canon",
           "level": 6,
           "difficulty": "EASY"
         },
         {
-          "enemy": "fisico_vanguardia",
+          "enemy": "fisico_vanguardia_canon",
           "level": 7,
           "difficulty": "NORMAL"
         },
         {
-          "enemy": "calor_horno",
+          "enemy": "calor_horno_canon",
           "level": 7,
           "difficulty": "NORMAL"
         },
         {
-          "enemy": "energia_tempestad",
+          "enemy": "energia_tempestad_canon",
           "level": 8,
           "difficulty": "NORMAL"
         },
         {
-          "enemy": "hibrido_quimera",
+          "enemy": "hibrido_quimera_canon",
           "level": 8,
           "difficulty": "NORMAL"
         },
         {
-          "enemy": "fisico_vanguardia",
+          "enemy": "fisico_vanguardia_canon",
           "level": 9,
           "difficulty": "HARD"
         },
         {
-          "enemy": "calor_horno",
+          "enemy": "calor_horno_canon",
           "level": 10,
           "difficulty": "HARD"
         },
         {
-          "enemy": "energia_tempestad",
+          "enemy": "energia_tempestad_canon",
           "level": 10,
           "difficulty": "HARD"
         },
         {
-          "enemy": "hibrido_quimera",
+          "enemy": "hibrido_quimera_canon",
           "level": 11,
           "difficulty": "HARD"
         },
         {
-          "enemy": "fisico_vanguardia",
+          "enemy": "fisico_vanguardia_canon",
           "level": 12,
           "difficulty": "HARD"
         }
@@ -273,7 +276,8 @@
         "enemy": "jefe_zona_4",
         "level": 12,
         "difficulty": "HARD"
-      }
+      },
+      "band": "canon"
     },
     {
       "id": "zona_5",
@@ -287,52 +291,52 @@
       },
       "fights": [
         {
-          "enemy": "fisico_vanguardia",
+          "enemy": "fisico_vanguardia_blaster",
           "level": 0,
           "difficulty": "EASY"
         },
         {
-          "enemy": "calor_horno",
+          "enemy": "calor_horno_blaster",
           "level": 1,
           "difficulty": "NORMAL"
         },
         {
-          "enemy": "energia_tempestad",
+          "enemy": "energia_tempestad_blaster",
           "level": 2,
           "difficulty": "NORMAL"
         },
         {
-          "enemy": "hibrido_quimera",
+          "enemy": "hibrido_quimera_blaster",
           "level": 3,
           "difficulty": "NORMAL"
         },
         {
-          "enemy": "fisico_vanguardia",
+          "enemy": "fisico_vanguardia_blaster",
           "level": 4,
           "difficulty": "NORMAL"
         },
         {
-          "enemy": "calor_horno",
+          "enemy": "calor_horno_blaster",
           "level": 4,
           "difficulty": "HARD"
         },
         {
-          "enemy": "energia_tempestad",
+          "enemy": "energia_tempestad_blaster",
           "level": 5,
           "difficulty": "HARD"
         },
         {
-          "enemy": "hibrido_quimera",
+          "enemy": "hibrido_quimera_blaster",
           "level": 7,
           "difficulty": "HARD"
         },
         {
-          "enemy": "fisico_vanguardia",
+          "enemy": "fisico_vanguardia_blaster",
           "level": 8,
           "difficulty": "HARD"
         },
         {
-          "enemy": "calor_horno",
+          "enemy": "calor_horno_blaster",
           "level": 9,
           "difficulty": "HARD"
         }
@@ -341,7 +345,8 @@
         "enemy": "jefe_zona_5",
         "level": 9,
         "difficulty": "HARD"
-      }
+      },
+      "band": "blaster"
     },
     {
       "id": "zona_6",
@@ -355,52 +360,52 @@
       },
       "fights": [
         {
-          "enemy": "calor_horno",
+          "enemy": "calor_horno_blaster",
           "level": 9,
           "difficulty": "EASY"
         },
         {
-          "enemy": "energia_tempestad",
+          "enemy": "energia_tempestad_blaster",
           "level": 10,
           "difficulty": "NORMAL"
         },
         {
-          "enemy": "hibrido_quimera",
+          "enemy": "hibrido_quimera_blaster",
           "level": 11,
           "difficulty": "NORMAL"
         },
         {
-          "enemy": "fisico_vanguardia",
+          "enemy": "fisico_vanguardia_blaster",
           "level": 12,
           "difficulty": "NORMAL"
         },
         {
-          "enemy": "calor_horno",
+          "enemy": "calor_horno_blaster",
           "level": 13,
           "difficulty": "NORMAL"
         },
         {
-          "enemy": "energia_tempestad",
+          "enemy": "energia_tempestad_blaster",
           "level": 13,
           "difficulty": "HARD"
         },
         {
-          "enemy": "hibrido_quimera",
+          "enemy": "hibrido_quimera_blaster",
           "level": 14,
           "difficulty": "HARD"
         },
         {
-          "enemy": "fisico_vanguardia",
+          "enemy": "fisico_vanguardia_blaster",
           "level": 16,
           "difficulty": "HARD"
         },
         {
-          "enemy": "calor_horno",
+          "enemy": "calor_horno_blaster",
           "level": 17,
           "difficulty": "HARD"
         },
         {
-          "enemy": "energia_tempestad",
+          "enemy": "energia_tempestad_blaster",
           "level": 18,
           "difficulty": "HARD"
         }
@@ -409,7 +414,8 @@
         "enemy": "jefe_zona_6",
         "level": 18,
         "difficulty": "HARD"
-      }
+      },
+      "band": "blaster"
     },
     {
       "id": "zona_7",
@@ -423,52 +429,52 @@
       },
       "fights": [
         {
-          "enemy": "energia_tempestad",
+          "enemy": "energia_tempestad_laser",
           "level": 0,
           "difficulty": "EASY"
         },
         {
-          "enemy": "hibrido_quimera",
+          "enemy": "hibrido_quimera_laser",
           "level": 1,
           "difficulty": "NORMAL"
         },
         {
-          "enemy": "fisico_vanguardia",
+          "enemy": "fisico_vanguardia_laser",
           "level": 2,
           "difficulty": "NORMAL"
         },
         {
-          "enemy": "calor_horno",
+          "enemy": "calor_horno_laser",
           "level": 4,
           "difficulty": "NORMAL"
         },
         {
-          "enemy": "energia_tempestad",
+          "enemy": "energia_tempestad_laser",
           "level": 5,
           "difficulty": "NORMAL"
         },
         {
-          "enemy": "hibrido_quimera",
+          "enemy": "hibrido_quimera_laser",
           "level": 6,
           "difficulty": "HARD"
         },
         {
-          "enemy": "fisico_vanguardia",
+          "enemy": "fisico_vanguardia_laser",
           "level": 7,
           "difficulty": "HARD"
         },
         {
-          "enemy": "calor_horno",
+          "enemy": "calor_horno_laser",
           "level": 9,
           "difficulty": "HARD"
         },
         {
-          "enemy": "energia_tempestad",
+          "enemy": "energia_tempestad_laser",
           "level": 11,
           "difficulty": "HARD"
         },
         {
-          "enemy": "hibrido_quimera",
+          "enemy": "hibrido_quimera_laser",
           "level": 12,
           "difficulty": "HARD"
         }
@@ -477,7 +483,8 @@
         "enemy": "jefe_zona_7",
         "level": 12,
         "difficulty": "HARD"
-      }
+      },
+      "band": "laser"
     },
     {
       "id": "zona_8",
@@ -491,52 +498,52 @@
       },
       "fights": [
         {
-          "enemy": "hibrido_quimera",
+          "enemy": "hibrido_quimera_laser",
           "level": 12,
           "difficulty": "EASY"
         },
         {
-          "enemy": "fisico_vanguardia",
+          "enemy": "fisico_vanguardia_laser",
           "level": 13,
           "difficulty": "NORMAL"
         },
         {
-          "enemy": "calor_horno",
+          "enemy": "calor_horno_laser",
           "level": 14,
           "difficulty": "NORMAL"
         },
         {
-          "enemy": "energia_tempestad",
+          "enemy": "energia_tempestad_laser",
           "level": 16,
           "difficulty": "NORMAL"
         },
         {
-          "enemy": "hibrido_quimera",
+          "enemy": "hibrido_quimera_laser",
           "level": 17,
           "difficulty": "NORMAL"
         },
         {
-          "enemy": "fisico_vanguardia",
+          "enemy": "fisico_vanguardia_laser",
           "level": 18,
           "difficulty": "HARD"
         },
         {
-          "enemy": "calor_horno",
+          "enemy": "calor_horno_laser",
           "level": 19,
           "difficulty": "HARD"
         },
         {
-          "enemy": "energia_tempestad",
+          "enemy": "energia_tempestad_laser",
           "level": 21,
           "difficulty": "HARD"
         },
         {
-          "enemy": "hibrido_quimera",
+          "enemy": "hibrido_quimera_laser",
           "level": 23,
           "difficulty": "HARD"
         },
         {
-          "enemy": "fisico_vanguardia",
+          "enemy": "fisico_vanguardia_laser",
           "level": 24,
           "difficulty": "HARD"
         }
@@ -546,7 +553,8 @@
         "level": 24,
         "difficulty": "HARD"
       },
-      "drops_unique": true
+      "drops_unique": true,
+      "band": "laser"
     },
     {
       "id": "zona_9",
@@ -560,52 +568,52 @@
       },
       "fights": [
         {
-          "enemy": "fisico_vanguardia",
+          "enemy": "fisico_vanguardia_laser",
           "level": 0,
           "difficulty": "EASY"
         },
         {
-          "enemy": "calor_horno",
+          "enemy": "calor_horno_laser",
           "level": 2,
           "difficulty": "NORMAL"
         },
         {
-          "enemy": "energia_tempestad",
+          "enemy": "energia_tempestad_laser",
           "level": 3,
           "difficulty": "NORMAL"
         },
         {
-          "enemy": "hibrido_quimera",
+          "enemy": "hibrido_quimera_laser",
           "level": 4,
           "difficulty": "NORMAL"
         },
         {
-          "enemy": "fisico_vanguardia",
+          "enemy": "fisico_vanguardia_laser",
           "level": 6,
           "difficulty": "NORMAL"
         },
         {
-          "enemy": "calor_horno",
+          "enemy": "calor_horno_laser",
           "level": 8,
           "difficulty": "HARD"
         },
         {
-          "enemy": "energia_tempestad",
+          "enemy": "energia_tempestad_laser",
           "level": 9,
           "difficulty": "HARD"
         },
         {
-          "enemy": "hibrido_quimera",
+          "enemy": "hibrido_quimera_laser",
           "level": 11,
           "difficulty": "HARD"
         },
         {
-          "enemy": "fisico_vanguardia",
+          "enemy": "fisico_vanguardia_laser",
           "level": 14,
           "difficulty": "HARD"
         },
         {
-          "enemy": "calor_horno",
+          "enemy": "calor_horno_laser",
           "level": 15,
           "difficulty": "HARD"
         }
@@ -615,7 +623,8 @@
         "level": 15,
         "difficulty": "HARD"
       },
-      "drops_unique": true
+      "drops_unique": true,
+      "band": "laser"
     },
     {
       "id": "zona_10",
@@ -629,52 +638,52 @@
       },
       "fights": [
         {
-          "enemy": "calor_horno",
+          "enemy": "calor_horno_laser",
           "level": 15,
           "difficulty": "EASY"
         },
         {
-          "enemy": "energia_tempestad",
+          "enemy": "energia_tempestad_laser",
           "level": 17,
           "difficulty": "NORMAL"
         },
         {
-          "enemy": "hibrido_quimera",
+          "enemy": "hibrido_quimera_laser",
           "level": 18,
           "difficulty": "NORMAL"
         },
         {
-          "enemy": "fisico_vanguardia",
+          "enemy": "fisico_vanguardia_laser",
           "level": 19,
           "difficulty": "NORMAL"
         },
         {
-          "enemy": "calor_horno",
+          "enemy": "calor_horno_laser",
           "level": 21,
           "difficulty": "NORMAL"
         },
         {
-          "enemy": "energia_tempestad",
+          "enemy": "energia_tempestad_laser",
           "level": 23,
           "difficulty": "HARD"
         },
         {
-          "enemy": "hibrido_quimera",
+          "enemy": "hibrido_quimera_laser",
           "level": 24,
           "difficulty": "HARD"
         },
         {
-          "enemy": "fisico_vanguardia",
+          "enemy": "fisico_vanguardia_laser",
           "level": 26,
           "difficulty": "HARD"
         },
         {
-          "enemy": "calor_horno",
+          "enemy": "calor_horno_laser",
           "level": 29,
           "difficulty": "HARD"
         },
         {
-          "enemy": "energia_tempestad",
+          "enemy": "energia_tempestad_laser",
           "level": 30,
           "difficulty": "HARD"
         }
@@ -684,7 +693,8 @@
         "level": 30,
         "difficulty": "HARD"
       },
-      "drops_unique": true
+      "drops_unique": true,
+      "band": "laser"
     }
   ]
 }

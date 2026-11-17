@@ -52,6 +52,11 @@ func zone_name(zone: int) -> String:
 	return str(zones[zone].get("name", zones[zone]["id"]))
 
 
+## Tipo de arma de los rivales de la zona (BuildLibrary.band_of).
+func band_of(zone: int) -> String:
+	return str(zones[mini(zone, zone_count() - 1)].get("band", ""))
+
+
 ## Escenario de la zona (data/stages.json); "" si no dice ninguno.
 func stage_of(zone: int) -> String:
 	return str(zones[mini(zone, zone_count() - 1)].get("stage", ""))
@@ -101,7 +106,9 @@ func reward_mult(zone: int) -> float:
 func arena_fight(
 	zone: int, library: BuildLibrary, seed_value: int, rules: RulesConfig, power: float
 ) -> Dictionary:
-	var ids := library.ids()
+	var ids := library.band_ids(band_of(zone))
+	if ids.is_empty():
+		ids = library.ids()
 	var best := {"tier": 0, "level": 0}
 	var best_gap := INF
 	for tier in tier_of(zone) + 1:

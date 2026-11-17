@@ -99,6 +99,24 @@ func test_transformar_siempre_mejora_la_pieza() -> void:
 		assert_gt(ItemScaling.power(_rules, tier, 0), below)
 
 
+func test_un_arma_no_pasa_del_rango_de_su_tipo() -> void:
+	# Las balas existen en Basica e Intermedia: para ir mas alla hay que
+	# conseguir un arma de otro tipo (docs/CATALOGO_ARMAS.md).
+	var catalog := Catalog.load_file("res://data/catalog.json")
+	var id := "corto_balas_cin"
+	var item_max := catalog.get_item(id).tier_max
+	assert_eq(item_max, T.RARE)
+	var profile := PlayerProfile.new()
+	profile.gold = 1000000
+	profile.parts[id] = {"tier": T.RARE, "level": _rules.tier_max_level[T.RARE]}
+	assert_eq(
+		profile.transform(_workshop, _rules, id, T.MYTHIC, item_max),
+		"esta pieza no pasa de su clase"
+	)
+	profile.parts[id] = {"tier": T.COMMON, "level": _rules.tier_max_level[T.COMMON]}
+	assert_eq(profile.transform(_workshop, _rules, id, T.MYTHIC, item_max), "")
+
+
 func test_las_piezas_unicas_no_salen_del_taller() -> void:
 	var profile := PlayerProfile.new()
 	profile.gold = 1000000

@@ -150,8 +150,14 @@ func level_up(
 
 ## Devuelve "" si se puede transformar esa pieza a la clase siguiente; si
 ## no, el motivo. `max_tier` es la clase mas alta que permite la zona.
+## `item_max` es la clase mas alta de esa pieza (ItemDef.tier_max): un arma
+## no pasa del rango de su tipo; para ir mas alla hay que conseguir otra.
 func why_cant_transform(
-	workshop: Workshop, rules: RulesConfig, id: String, max_tier: int
+	workshop: Workshop,
+	rules: RulesConfig,
+	id: String,
+	max_tier: int,
+	item_max: int = ItemDef.Tier.MYTHIC
 ) -> String:
 	var p := part(id)
 	if p["tier"] >= ItemDef.Tier.DIVINE:
@@ -161,6 +167,8 @@ func why_cant_transform(
 	if p["tier"] + 1 == ItemDef.Tier.DIVINE:
 		# A Unica solo se llega con un nucleo unico, en cualquier zona.
 		return "" if unique_cores > 0 else "las piezas unicas solo las sueltan los jefes"
+	if p["tier"] + 1 > item_max:
+		return "esta pieza no pasa de su clase"
 	if p["tier"] + 1 > max_tier:
 		return "la clase siguiente se abre en otra zona"
 	if workshop.transform_cost(p["tier"]) > gold:
@@ -169,8 +177,14 @@ func why_cant_transform(
 
 
 ## Transforma esa pieza a la clase siguiente, en el nivel 0.
-func transform(workshop: Workshop, rules: RulesConfig, id: String, max_tier: int) -> String:
-	var reason := why_cant_transform(workshop, rules, id, max_tier)
+func transform(
+	workshop: Workshop,
+	rules: RulesConfig,
+	id: String,
+	max_tier: int,
+	item_max: int = ItemDef.Tier.MYTHIC
+) -> String:
+	var reason := why_cant_transform(workshop, rules, id, max_tier, item_max)
 	if reason != "":
 		return reason
 	var p := part(id)

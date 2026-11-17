@@ -77,7 +77,7 @@ func _ready() -> void:
 		_profile.gold = 1500
 		_profile.shop_levels = {"damage": 3, "health": 10}
 		_profile.parts = {"torso_baluarte": {"tier": 0, "level": 3}}
-		_profile.parts["lat_mandoble"] = {"tier": 0, "level": 6}
+		_profile.parts["hoja_balas_cin"] = {"tier": 0, "level": 3}
 		_last["tab"] = 1
 		_profile.wins = 12
 		_profile.fight = 4
@@ -167,7 +167,7 @@ func _button(parent: Control, text: String, height: int, action: Callable) -> Bu
 func _add_starters(box: VBoxContainer) -> void:
 	_text(box, Txt.t("starter_title"), 20)
 	_text(box, Txt.t("starter_info"), 16, COLOR_MUTED)
-	for id in _library.ids():
+	for id in _library.starter_ids():
 		var label := Txt.t("starter_pick", [_library.display_name(id), _element_name(id)])
 		_button(box, label, 44, _on_starter_picked.bind(id))
 
@@ -340,6 +340,9 @@ func _add_parts(box: VBoxContainer) -> void:
 		var current := Garage.get_slot(_profile.build, slot)
 		var picker := OptionButton.new()
 		picker.custom_minimum_size = Vector2(190, 0)
+		# Ancho fijo: los nombres largos se recortan en vez de empujar la fila.
+		picker.fit_to_longest_item = false
+		picker.clip_text = true
 		picker.add_item(Txt.t("slot_empty"))
 		var options := Garage.owned_for(_profile, _catalog, slot)
 		for id in options:
@@ -384,13 +387,14 @@ func _set_part_button(
 		buy.disabled = level_reason != ""
 		buy.pressed.connect(_on_part_level.bind(id, max_tier, cap_level))
 		return
-	var reason := _profile.why_cant_transform(_workshop, _rules, id, max_tier)
+	var item_max := _catalog.get_item(id).tier_max
+	var reason := _profile.why_cant_transform(_workshop, _rules, id, max_tier, item_max)
 	if reason in ["", "faltan celdas"]:
 		buy.text = Txt.t("part_transform", [_workshop.transform_cost(p["tier"])])
 		if p["tier"] == ItemDef.Tier.MYTHIC:
 			buy.text = Txt.t("part_unique")
 		buy.disabled = reason != ""
-		buy.pressed.connect(_on_part_transform.bind(id, max_tier))
+		buy.pressed.connect(_on_part_transform.bind(id, max_tier, item_max))
 		return
 	var zone_cap := reason == "la clase siguiente se abre en otra zona"
 	buy.text = Txt.t("part_zone_max" if zone_cap else "shop_max")
@@ -533,8 +537,8 @@ func _on_part_level(id: String, cap_tier: int, cap_level: int) -> void:
 	_show_menu()
 
 
-func _on_part_transform(id: String, max_tier: int) -> void:
-	if _profile.transform(_workshop, _rules, id, max_tier) == "":
+func _on_part_transform(id: String, max_tier: int, item_max: int) -> void:
+	if _profile.transform(_workshop, _rules, id, max_tier, item_max) == "":
 		_save()
 	_remember_picks()
 	_show_menu()

@@ -49,6 +49,30 @@ func boss_ids() -> Array[String]:
 	return out
 
 
+## Banda de un mech: el tipo de arma que lleva ("balas", "canon", "blaster"
+## o "laser").
+func band_of(id: String) -> String:
+	return str(specs[id].get("band", ""))
+
+
+## Mechs normales de una banda.
+func band_ids(band: String) -> Array[String]:
+	var out: Array[String] = []
+	for id in ids():
+		if band_of(id) == band:
+			out.append(id)
+	return out
+
+
+## Mechs con los que se puede empezar una partida.
+func starter_ids() -> Array[String]:
+	var out: Array[String] = []
+	for id in ids():
+		if bool(specs[id].get("starter", false)):
+			out.append(id)
+	return out
+
+
 ## Todos, jefes incluidos: para los menus.
 func all_ids() -> Array[String]:
 	return specs.keys()

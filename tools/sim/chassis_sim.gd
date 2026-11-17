@@ -33,7 +33,7 @@ func _initialize() -> void:
 
 	var level := _rules.tier_max_level[tier]
 	var chassis_level := int(args.get("chassis-level", str(_rules.chassis_max_level)))
-	for id in library.ids():
+	for id in library.starter_ids():
 		for chassis_id in chassis.ids():
 			for s in HP_SCALES.size():
 				var build := library.make(id, catalog, _rules, tier, level)
@@ -46,7 +46,7 @@ func _initialize() -> void:
 	var seed_value := base_seed
 	for i in ids.size():
 		for j in range(i + 1, ids.size()):
-			for build_id in library.ids():
+			for build_id in library.starter_ids():
 				for s in HP_SCALES.size():
 					for n in battles:
 						seed_value += 1

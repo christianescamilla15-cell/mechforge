@@ -18,6 +18,7 @@ extends SceneTree
 ##                        depende de la paridad de las acciones que hacen falta
 ##                        para matar; promediar varias escalas mide el balance
 ##                        real y no ese artefacto. Usa --hp-scales=1 para una sola.
+##   --band=balas         mechs de ese tipo de arma: balas, canon, blaster o laser
 ##   --json=ruta          guarda el resumen en JSON
 ## Sale con codigo 1 si no se cumple alguna puerta de la fase F3.
 
@@ -35,6 +36,7 @@ var _library: BuildLibrary
 var _tasks: Array[Dictionary] = []
 var _results: Array[Dictionary] = []
 var _difficulty: BattleAI.Difficulty
+var _band := "balas"
 
 
 func _initialize() -> void:
@@ -52,6 +54,7 @@ func _initialize() -> void:
 	var battles := int(args.get("battles", "100"))
 	var base_seed := int(args.get("seed", "1"))
 	var mode: String = args.get("mode", "round_robin")
+	_band = args.get("band", "balas")
 
 	var catalog := Catalog.load_file("res://data/catalog.json")
 	_library = BuildLibrary.load_file("res://data/builds.json")
@@ -61,7 +64,7 @@ func _initialize() -> void:
 	for scale in _hp_scales:
 		for level in levels:
 			_variants.append({"scale": scale, "level": level})
-	for id in _library.ids():
+	for id in _library.band_ids(_band):
 		for v in _variants.size():
 			var build := _library.make(id, catalog, _rules, tier, _variants[v]["level"])
 			for item in build.all_items():
@@ -72,7 +75,7 @@ func _initialize() -> void:
 		quit(2)
 		return
 
-	var ids := _library.ids()
+	var ids := _library.band_ids(_band)
 	# `battles` es el total por emparejamiento, repartido entre las variantes.
 	for i in battles:
 		var variant := i % _variants.size()

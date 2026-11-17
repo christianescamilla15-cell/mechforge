@@ -1,6 +1,27 @@
 # Catálogo de armas
 
-**Estado (2026-11-16):** estructura aprobada por el usuario. Falta generar la lista de armas con sus números, cambiar los huecos del robot en el motor y repetir el balance. Hasta entonces el juego sigue con el catálogo anterior (`data/catalog.json`: 4 laterales y 2 superiores).
+**Estado (2026-11-17):** generadas las armas de brazo, hombro y robot de soporte: 32 diseños × 3 municiones = **96 armas** en `data/catalog.json` (tools/catalog_gen.py). Faltan las 15 de pecho, hasta que el usuario decida si el arma de pecho es una de las seis o va aparte. Los brazos van en los 4 huecos laterales y los hombros en los 2 superiores.
+
+**Cómo se generan** (tools/catalog_gen.py, armas base en tools/weapon_bases.json):
+- Cada forma toma sus números de un arma ya equilibrada del catálogo anterior, una por munición (por ejemplo, Corto = trabuco, lanzallamas y descargador).
+- El tipo le da su rango de clases (tabla 2) y su forma de disparar, **no su potencia**: a igual clase, las armas de una forma pegan lo mismo de media y gastan lo mismo en los cuatro tipos. El daño de las balas varía un 20 % más que el de la forma, el del cañón un 10 % más, el del bláster igual y el del láser la mitad; el cañón pesa un 5 % más y las balas y el láser un 5 % menos. Lo que hace mejor a un arma de tipo superior es que llega a clases más altas.
+- Se probó primero que cada tipo cambiara el daño y los costos (las balas gastaban menos, el cañón pegaba más, el plasma térmico quemaba más). Aunque el cambio fuera igual para las tres municiones, rompía el equilibrio entre elementos: con costos más bajos el drenaje de energía valía menos y con más altos el calor dominaba (el mech de calor llegó a ganar el 96–100 % de sus combates con cañón y bláster).
+- La artillería tiene alcance fijo, 8 (7 el mortero de plasma), como en el original.
+- Un arma solo se transforma dentro del rango de clases de su tipo; para ir más allá hay que comprar un arma de un tipo superior. La tienda vende en cada zona las piezas cuyo rango incluye la clase de la zona.
+- Torsos, piernas, módulos y especiales existen de Básica a Mítica.
+
+**Mechs de ejemplo** (tools/builds_gen.py): cada elemento tiene un mech por tipo de arma, con las mismas formas que antes. Los de balas son los mechs con los que se empieza; las zonas 1–2 usan rivales de balas, la 3–4 de cañón, la 5–6 de bláster y la 7–10 de láser. Los jefes llevan las armas del tipo de su zona.
+
+**Balance por tipo** (tools/sim/balance_sim.gd --band, clase Única al máximo, 1 600 combates por tipo, semilla 4242; puerta de F3: ningún elemento por encima del 55 % y el híbrido entre el 45 y el 55 %):
+
+| Tipo | Físico | Calor | Energía | Híbrido | Duración media |
+|---|---|---|---|---|---|
+| Balas | 51.0 % | 49.3 % | 49.8 % | 47.8 % | 12.3 turnos |
+| Cañón | 50.8 % | 49.3 % | 50.0 % | 47.5 % | 12.3 turnos |
+| Bláster | 51.5 % | 49.8 % | 48.8 % | 48.0 % | 12.3 turnos |
+| Láser | 49.3 % | 49.8 % | 51.0 % | 47.8 % | 12.3 turnos |
+
+Las cuatro pasan todas las puertas, igual que el catálogo anterior (51.5 / 49.8 / 48.8 / 48.0).
 
 Lo que fijó el usuario: armas galácticas que se despliegan desde el cuerpo del robot; cuatro categorías según dónde van montadas; dentro de cada categoría, división por tipo de arma (balas, cañón, bláster, láser); al menos 100 armas; y la materia oscura como habilidad del arma del pecho.
 

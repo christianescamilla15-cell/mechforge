@@ -16,11 +16,15 @@ func before_all() -> void:
 
 func test_la_biblioteca_carga_sin_errores() -> void:
 	assert_eq(_library.errors, [] as Array[String])
-	assert_eq(_library.ids().size(), 4)
+	assert_eq(_library.starter_ids().size(), 4, "cuatro mechs para empezar")
+	for band: String in ["balas", "canon", "blaster", "laser"]:
+		assert_eq(_library.band_ids(band).size(), 4, "cuatro mechs de %s" % band)
 
 
 func test_hay_un_mech_de_ejemplo_por_elemento_y_un_hibrido() -> void:
-	var elements := _library.ids().map(func(id: String) -> String: return _library.element_of(id))
+	var elements := _library.starter_ids().map(
+		func(id: String) -> String: return _library.element_of(id)
+	)
 	for expected: String in ["PHYSICAL", "HEAT", "ENERGY", "HYBRID"]:
 		assert_has(elements, expected)
 

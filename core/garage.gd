@@ -5,8 +5,8 @@ extends RefCounted
 ## se guarda en PlayerProfile.build con el formato de los "items" de
 ## data/builds.json.
 ## Datos de la tienda en data/part_shop.json: {"schema_version",
-## "base_prices": {tipo: celdas}, "stock": {clase de la zona: clase minima mas
-## alta de las piezas que vende}}.
+## "base_prices": {tipo: celdas}}. Se vende lo que existe en la clase de la
+## zona: las piezas cuyo rango de clases (tier_min a tier_max) la incluye.
 
 ## Huecos del mech, en el orden en que se muestran.
 const SLOTS: Array[String] = [
@@ -36,8 +36,6 @@ const LISTS := {"side": "sides", "top": "tops", "module": "modules"}
 
 ## Precio base de una pieza nueva por tipo (nombre de ItemDef.Type).
 var base_prices: Dictionary = {}
-## Para cada clase de zona, la clase minima mas alta de las piezas a la venta.
-var stock: Dictionary = {}
 var errors: Array[String] = []
 
 
@@ -52,14 +50,9 @@ static func load_file(path: String) -> Garage:
 		return garage
 	if parsed.get("base_prices") is Dictionary:
 		garage.base_prices = parsed["base_prices"]
-	if parsed.get("stock") is Dictionary:
-		garage.stock = parsed["stock"]
 	for type: String in ItemDef.Type.keys():
 		if int(garage.base_prices.get(type, 0)) <= 0:
 			garage.errors.append("falta el precio base de %s" % type)
-	for tier: String in ItemDef.Tier.keys().slice(0, ItemDef.Tier.DIVINE):
-		if not ItemDef.Tier.has(str(garage.stock.get(tier, ""))):
-			garage.errors.append("falta el surtido de las zonas de clase %s" % tier)
 	return garage
 
 
@@ -138,12 +131,11 @@ static func owned_for(profile: PlayerProfile, catalog: Catalog, slot: String) ->
 
 ## Piezas que vende la tienda en una zona de esa clase, por tipo y por id.
 func stock_for(catalog: Catalog, zone_tier: int) -> Array[String]:
-	var top: int = ItemDef.Tier[stock.get(ItemDef.Tier.keys()[zone_tier], "COMMON")]
 	var out: Array[String] = []
 	for type in ItemDef.Type.values():
 		var ids: Array[String] = []
 		for def in catalog.by_type(type):
-			if def.tier_min <= top:
+			if def.tier_min <= zone_tier and zone_tier <= def.tier_max:
 				ids.append(def.id)
 		ids.sort()
 		out.append_array(ids)

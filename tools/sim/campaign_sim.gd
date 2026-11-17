@@ -48,7 +48,7 @@ func _initialize() -> void:
 		var spec := campaign.fight_at(zone, fight)
 		_rivals.append(library.make(spec["enemy"], catalog, _rules, tier, spec["level"], chassis))
 		_difficulties.append(DIFFICULTY[spec["difficulty"]])
-	for id in library.ids():
+	for id in library.band_ids(campaign.band_of(zone)):
 		_players[id] = library.make(id, catalog, _rules, tier, campaign.level_cap(zone))
 		for fight in count:
 			for n in battles:
@@ -83,7 +83,7 @@ func _report(campaign: Campaign, zone: int, library: BuildLibrary, battles: int)
 		var key := "%s@%d" % [task["id"], task["fight"]]
 		wins[key] = wins.get(key, 0) + (1 if _results[index]["winner"] == 0 else 0)
 		turns += int(_results[index].get("turns", 0))
-	var ids := library.ids()
+	var ids := library.band_ids(campaign.band_of(zone))
 	var header := "  combate  rival                 nivel  dificultad"
 	for id in ids:
 		header += "  %10s" % id.split("_")[0]

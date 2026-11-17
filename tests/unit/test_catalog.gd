@@ -11,7 +11,7 @@ const FORBIDDEN_PATH := "res://docs/reference/original-item-names.txt"
 func test_el_catalogo_real_carga_sin_errores() -> void:
 	var catalog := Catalog.load_file(CATALOG_PATH)
 	assert_eq(catalog.errors, [] as Array[String])
-	assert_eq(catalog.items.size(), 58)
+	assert_eq(catalog.items.size(), 121)
 
 
 func test_el_catalogo_real_pasa_el_validador() -> void:
@@ -26,10 +26,57 @@ func test_composicion_del_catalogo_real() -> void:
 	var catalog := Catalog.load_file(CATALOG_PATH)
 	assert_eq(catalog.by_type(ItemDef.Type.TORSO).size(), 6)
 	assert_eq(catalog.by_type(ItemDef.Type.LEGS).size(), 6)
-	assert_eq(catalog.by_type(ItemDef.Type.SIDE).size(), 18)
-	assert_eq(catalog.by_type(ItemDef.Type.TOP).size(), 9)
-	assert_eq(catalog.by_type(ItemDef.Type.DRONE).size(), 6)
+	assert_eq(catalog.by_type(ItemDef.Type.SIDE).size(), 51, "17 disenos de brazo x 3 municiones")
+	assert_eq(catalog.by_type(ItemDef.Type.TOP).size(), 27, "9 disenos de hombro x 3")
+	assert_eq(catalog.by_type(ItemDef.Type.DRONE).size(), 18, "6 robots de soporte x 3")
 	assert_eq(catalog.by_type(ItemDef.Type.MODULE).size(), 10)
+
+
+func test_cada_tipo_de_arma_existe_en_sus_clases() -> void:
+	# docs/CATALOGO_ARMAS.md, tabla 2.
+	var ranges := {
+		"balas": [ItemDef.Tier.COMMON, ItemDef.Tier.RARE],
+		"canon": [ItemDef.Tier.RARE, ItemDef.Tier.EPIC],
+		"blaster": [ItemDef.Tier.RARE, ItemDef.Tier.LEGENDARY],
+		"laser": [ItemDef.Tier.EPIC, ItemDef.Tier.MYTHIC],
+	}
+	var catalog := Catalog.load_file(CATALOG_PATH)
+	for def: ItemDef in catalog.items.values():
+		if def.type in [ItemDef.Type.SIDE, ItemDef.Type.TOP, ItemDef.Type.DRONE]:
+			assert_true(ranges.has(def.weapon_type), def.id)
+			assert_eq([def.tier_min, def.tier_max], ranges[def.weapon_type], def.id)
+			assert_ne(def.form, "", def.id)
+
+
+func test_cada_diseno_existe_en_las_tres_municiones() -> void:
+	var catalog := Catalog.load_file(CATALOG_PATH)
+	var designs := {}
+	for def: ItemDef in catalog.items.values():
+		if def.form != "":
+			var key := "%s_%s" % [def.form, def.weapon_type]
+			designs[key] = designs.get(key, []) + [def.element]
+	assert_eq(designs.size(), 32, "37 disenos menos los 5 de pecho, que faltan")
+	for key: String in designs:
+		assert_eq(designs[key].size(), 3, key)
+
+
+func test_la_artilleria_tiene_alcance_fijo() -> void:
+	# Como en el original: solo acierta a esa distancia exacta.
+	var catalog := Catalog.load_file(CATALOG_PATH)
+	for def: ItemDef in catalog.items.values():
+		if def.form == "artilleria":
+			assert_eq(def.range_min, def.range_max, def.id)
+			assert_between(def.range_min, 7, 8, def.id)
+
+
+func test_las_balas_llegan_a_la_clase_basica_y_el_laser_no() -> void:
+	var catalog := Catalog.load_file(CATALOG_PATH)
+	var basic := 0
+	for def: ItemDef in catalog.items.values():
+		if def.type == ItemDef.Type.SIDE and ItemScaling.is_reachable(def, ItemDef.Tier.COMMON):
+			basic += 1
+			assert_eq(def.weapon_type, "balas", def.id)
+	assert_gt(basic, 0, "hay armas de brazo para empezar")
 
 
 # --- Carga ---

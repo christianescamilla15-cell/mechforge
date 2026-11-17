@@ -112,6 +112,8 @@ func _parse_item(raw: Dictionary) -> ItemDef:
 	ok = _parse_enum(raw, "tier_max", ItemDef.Tier, def, false) and ok
 	def.tags = PackedStringArray(raw.get("tags", []))
 	def.art = raw.get("art", {})
+	def.weapon_type = str(raw.get("weapon_type", ""))
+	def.form = str(raw.get("form", ""))
 	var top: Variant = raw.get("top")
 	if not top is Dictionary:
 		errors.append("%s: falta el bloque 'top'" % id)
@@ -129,7 +131,20 @@ func _parse_item(raw: Dictionary) -> ItemDef:
 		def.set(key, int(value))
 	for extra: String in raw:
 		if not (
-			extra in ["id", "name", "type", "element", "tier_min", "tier_max", "tags", "art", "top"]
+			extra
+			in [
+				"id",
+				"name",
+				"type",
+				"element",
+				"tier_min",
+				"tier_max",
+				"tags",
+				"art",
+				"top",
+				"weapon_type",
+				"form",
+			]
 		):
 			errors.append("%s: campo desconocido '%s'" % [id, extra])
 			ok = false

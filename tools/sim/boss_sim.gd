@@ -46,7 +46,7 @@ func _initialize() -> void:
 	var seed_value := base_seed
 	for tier_name in tier_names:
 		var tier: ItemDef.Tier = ItemDef.Tier[tier_name]
-		for id in library.ids():
+		for id in library.starter_ids():
 			var key := "%s@%s" % [id, tier_name]
 			_builds[key] = library.make(
 				id, catalog, _rules_plain, tier, _rules_plain.tier_max_level[tier]
@@ -110,7 +110,7 @@ func _report(
 			totals[key][1] += 1
 		totals[key][2] += _results[index]["turns"]
 	for tier_name in tier_names:
-		for id in library.ids():
+		for id in library.starter_ids():
 			var plain: Array = totals["%s|%s|%s" % [id, tier_name, false]]
 			var drops: Array = totals["%s|%s|%s" % [id, tier_name, true]]
 			print(

@@ -69,7 +69,7 @@ func _initialize() -> void:
 	_boss_ai = DIFFICULTY[boss["difficulty"]]
 	var reward := shop.reward("arena_win") * campaign.reward_mult(zone)
 	for wins in wins_list:
-		for id in library.ids():
+		for id in library.band_ids(campaign.band_of(zone)):
 			var profile := PlayerProfile.new()
 			for item in library.item_ids(id):
 				profile.parts[item] = {"tier": start_tier, "level": start_level}
@@ -108,7 +108,7 @@ func _initialize() -> void:
 	_results.resize(_tasks.size())
 	var group := WorkerThreadPool.add_group_task(_run_task, _tasks.size())
 	WorkerThreadPool.wait_for_group_task_completion(group)
-	_report(wins_list, library, shop, battles, reward)
+	_report(wins_list, library, library.band_ids(campaign.band_of(zone)), shop, battles, reward)
 	quit(0)
 
 
@@ -168,14 +168,18 @@ func _run_task(index: int) -> void:
 
 
 func _report(
-	wins_list: Array[int], library: BuildLibrary, shop: ArenaShop, battles: int, reward: float
+	wins_list: Array[int],
+	library: BuildLibrary,
+	ids: Array[String],
+	shop: ArenaShop,
+	battles: int,
+	reward: float
 ) -> void:
 	var won := {}
 	for index in _tasks.size():
 		var task := _tasks[index]
 		var key := "%s@%d" % [task["id"], task["wins"]]
 		won[key] = won.get(key, 0) + (1 if _results[index]["winner"] == 0 else 0)
-	var ids := library.ids()
 	print("Victorias contra el jefe tras gastar N victorias (%d combates por casilla):" % battles)
 	var header := "  victorias   celdas  piezas (media)  armeria (media)"
 	for id in ids:

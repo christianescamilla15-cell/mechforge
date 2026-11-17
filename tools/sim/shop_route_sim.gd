@@ -72,7 +72,7 @@ func _initialize() -> void:
 		var bought := {}
 		for track in shop.track_ids():
 			bought[track] = level
-		for id in library.ids():
+		for id in library.band_ids(campaign.band_of(zone)):
 			var build := library.make(id, catalog, _rules, tier, top)
 			build.upgrades = shop.upgrades_for(bought)
 			var key := "%s@%d" % [id, level]
@@ -85,7 +85,7 @@ func _initialize() -> void:
 	_results.resize(_tasks.size())
 	var group := WorkerThreadPool.add_group_task(_run_task, _tasks.size())
 	WorkerThreadPool.wait_for_group_task_completion(group)
-	_report(levels, library, shop, battles)
+	_report(levels, library.band_ids(campaign.band_of(zone)), shop, battles)
 	quit(0)
 
 
@@ -102,13 +102,12 @@ func _run_task(index: int) -> void:
 	)
 
 
-func _report(levels: Array[int], library: BuildLibrary, shop: ArenaShop, battles: int) -> void:
+func _report(levels: Array[int], ids: Array[String], shop: ArenaShop, battles: int) -> void:
 	var wins := {}
 	for index in _tasks.size():
 		var task := _tasks[index]
 		var key := "%s@%d" % [task["id"], task["level"]]
 		wins[key] = wins.get(key, 0) + (1 if _results[index]["winner"] == 0 else 0)
-	var ids := library.ids()
 	var header := "  nivel      celdas  combates ganados"
 	for id in ids:
 		header += "  %10s" % id.split("_")[0]

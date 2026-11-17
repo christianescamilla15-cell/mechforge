@@ -137,7 +137,7 @@ func test_la_ia_normal_gana_a_la_ia_al_azar_con_mechs_reales() -> void:
 	var library := BuildLibrary.load_file("res://data/builds.json")
 	var wins := 0
 	var battles := 0
-	for id in library.ids():
+	for id in library.starter_ids():
 		var build := library.make(id, catalog, rules, ItemDef.Tier.EPIC, 0)
 		for seed_value in 2:
 			var result := BattleRunner.run(

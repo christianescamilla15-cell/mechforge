@@ -142,6 +142,8 @@ Pedido por el usuario el 2026-11-16, como en el juego antiguo. **En el motor des
 - Paleta por elemento para la UI y el arte: **físico** acero y gris, **calor** naranja y rojo, **energía** cian y azul.
 
 ## 6. Catálogo del paso 1
+**Actualizado el 2026-11-17:** las armas laterales, superiores y los drones se sustituyeron por las 96 armas generadas del catálogo de armas (docs/CATALOGO_ARMAS.md): 17 diseños de brazo, 9 de hombro y 6 robots de soporte, cada uno en tres municiones, con su tipo (balas, cañón, bláster o láser) y su rango de clases. Las tablas de abajo describen el catálogo anterior, del que salen los números de cada forma (tools/weapon_bases.json). Torsos, piernas, módulos y especiales siguen igual y existen de Básica a Mítica.
+
 Unas 58 piezas con nombres propios (nunca los del original).
 
 | Tipo | Por elemento | Total |

@@ -10,12 +10,5 @@
     "CHARGE": 500,
     "TELEPORT": 600,
     "HOOK": 500
-  },
-  "stock": {
-    "COMMON": "RARE",
-    "RARE": "EPIC",
-    "EPIC": "LEGENDARY",
-    "LEGENDARY": "LEGENDARY",
-    "MYTHIC": "LEGENDARY"
   }
 }

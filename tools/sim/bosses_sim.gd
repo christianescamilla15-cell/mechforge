@@ -50,11 +50,12 @@ func _initialize() -> void:
 		var bought := {}
 		for track in shop.track_ids():
 			bought[track] = level
-		for id in library.ids():
-			var key := "%s@%d" % [id, level]
-			_builds[key] = library.make(id, catalog, _rules, tier, top)
-			_builds[key].upgrades = shop.upgrades_for(bought)
-			for boss_id in bosses:
+		for boss_id in bosses:
+			for id in library.band_ids(library.band_of(boss_id)):
+				var key := "%s@%d" % [id, level]
+				if not _builds.has(key):
+					_builds[key] = library.make(id, catalog, _rules, tier, top)
+					_builds[key].upgrades = shop.upgrades_for(bought)
 				for n in battles:
 					seed_value += 1
 					(
@@ -107,7 +108,7 @@ func _report(
 		wins[key] = wins.get(key, 0) + (1 if winner == 0 else 0)
 		if winner < 0:
 			draws += 1
-	var ids := library.ids()
+	var ids := library.starter_ids()
 	print(
 		(
 			"Victorias del jugador contra cada jefe (clase %s al maximo, %d combates por casilla)"
@@ -123,7 +124,7 @@ func _report(
 		for level in levels:
 			var line := "  %-20s %-26s %7d" % [library.display_name(boss_id), ability, level]
 			var total := 0.0
-			for id in ids:
+			for id in library.band_ids(library.band_of(boss_id)):
 				var rate: float = 100.0 * int(wins["%s|%s@%d" % [boss_id, id, level]]) / battles
 				total += rate
 				line += "  %6.1f %%" % rate

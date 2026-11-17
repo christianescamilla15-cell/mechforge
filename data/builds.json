@@ -5,19 +5,105 @@
       "id": "fisico_vanguardia",
       "name": "Vanguardia de Acero",
       "element": "PHYSICAL",
+      "band": "balas",
+      "starter": true,
       "items": {
         "torso": "torso_baluarte",
         "legs": "piernas_zancos",
         "sides": [
-          "lat_mandoble",
-          "lat_trabuco",
-          "lat_remachadora",
-          "lat_rifle_riel"
+          "hoja_balas_cin",
+          "corto_balas_cin",
+          "medio_balas_cin",
+          "largo_balas_cin"
         ],
         "tops": [
-          "sup_canon_yunque"
+          "bateria_balas_cin"
         ],
-        "drone": "dron_avispa",
+        "drone": "artillero_balas_cin",
+        "modules": [
+          "mod_blindaje",
+          "mod_matriz",
+          "mod_generador",
+          "mod_disipador"
+        ],
+        "charge": "esp_embestida",
+        "hook": "esp_garfio"
+      }
+    },
+    {
+      "id": "fisico_vanguardia_canon",
+      "name": "Vanguardia de Asalto",
+      "element": "PHYSICAL",
+      "band": "canon",
+      "items": {
+        "torso": "torso_baluarte",
+        "legs": "piernas_zancos",
+        "sides": [
+          "hoja_blaster_cin",
+          "corto_canon_cin",
+          "medio_canon_cin",
+          "largo_canon_cin"
+        ],
+        "tops": [
+          "bateria_canon_cin"
+        ],
+        "drone": "artillero_canon_cin",
+        "modules": [
+          "mod_blindaje",
+          "mod_matriz",
+          "mod_generador",
+          "mod_disipador"
+        ],
+        "charge": "esp_embestida",
+        "hook": "esp_garfio"
+      }
+    },
+    {
+      "id": "fisico_vanguardia_blaster",
+      "name": "Vanguardia de Plasma",
+      "element": "PHYSICAL",
+      "band": "blaster",
+      "items": {
+        "torso": "torso_baluarte",
+        "legs": "piernas_zancos",
+        "sides": [
+          "hoja_blaster_cin",
+          "corto_blaster_cin",
+          "medio_blaster_cin",
+          "largo_blaster_cin"
+        ],
+        "tops": [
+          "bateria_blaster_cin"
+        ],
+        "drone": "artillero_blaster_cin",
+        "modules": [
+          "mod_blindaje",
+          "mod_matriz",
+          "mod_generador",
+          "mod_disipador"
+        ],
+        "charge": "esp_embestida",
+        "hook": "esp_garfio"
+      }
+    },
+    {
+      "id": "fisico_vanguardia_laser",
+      "name": "Vanguardia Láser",
+      "element": "PHYSICAL",
+      "band": "laser",
+      "items": {
+        "torso": "torso_baluarte",
+        "legs": "piernas_zancos",
+        "sides": [
+          "hoja_laser_cin",
+          "corto_laser_cin",
+          "medio_laser_cin",
+          "largo_laser_cin"
+        ],
+        "tops": [
+          "bateria_laser_cin"
+        ],
+        "drone": "artillero_laser_cin",
         "modules": [
           "mod_blindaje",
           "mod_matriz",
@@ -32,19 +118,108 @@
       "id": "calor_horno",
       "name": "Horno Andante",
       "element": "HEAT",
+      "band": "balas",
+      "starter": true,
       "items": {
         "torso": "torso_fragua",
         "legs": "piernas_pisabrasas",
         "sides": [
-          "lat_hoja_ignea",
-          "lat_lanzallamas",
-          "lat_mortero",
-          "lat_lanza_termica"
+          "hoja_balas_ter",
+          "corto_balas_ter",
+          "medio_balas_ter",
+          "largo_balas_ter"
         ],
         "tops": [
-          "sup_cohetes"
+          "bateria_balas_ter"
         ],
-        "drone": "dron_ascua",
+        "drone": "artillero_balas_ter",
+        "modules": [
+          "mod_blindaje",
+          "mod_blindaje",
+          "mod_matriz",
+          "mod_generador",
+          "mod_disipador"
+        ],
+        "charge": "esp_embestida",
+        "hook": "esp_garfio"
+      }
+    },
+    {
+      "id": "calor_horno_canon",
+      "name": "Horno de Asalto",
+      "element": "HEAT",
+      "band": "canon",
+      "items": {
+        "torso": "torso_fragua",
+        "legs": "piernas_pisabrasas",
+        "sides": [
+          "hoja_blaster_ter",
+          "corto_canon_ter",
+          "medio_canon_ter",
+          "largo_canon_ter"
+        ],
+        "tops": [
+          "bateria_canon_ter"
+        ],
+        "drone": "artillero_canon_ter",
+        "modules": [
+          "mod_blindaje",
+          "mod_blindaje",
+          "mod_matriz",
+          "mod_generador",
+          "mod_disipador"
+        ],
+        "charge": "esp_embestida",
+        "hook": "esp_garfio"
+      }
+    },
+    {
+      "id": "calor_horno_blaster",
+      "name": "Horno de Plasma",
+      "element": "HEAT",
+      "band": "blaster",
+      "items": {
+        "torso": "torso_fragua",
+        "legs": "piernas_pisabrasas",
+        "sides": [
+          "hoja_blaster_ter",
+          "corto_blaster_ter",
+          "medio_blaster_ter",
+          "largo_blaster_ter"
+        ],
+        "tops": [
+          "bateria_blaster_ter"
+        ],
+        "drone": "artillero_blaster_ter",
+        "modules": [
+          "mod_blindaje",
+          "mod_blindaje",
+          "mod_matriz",
+          "mod_generador",
+          "mod_disipador"
+        ],
+        "charge": "esp_embestida",
+        "hook": "esp_garfio"
+      }
+    },
+    {
+      "id": "calor_horno_laser",
+      "name": "Horno Láser",
+      "element": "HEAT",
+      "band": "laser",
+      "items": {
+        "torso": "torso_fragua",
+        "legs": "piernas_pisabrasas",
+        "sides": [
+          "hoja_laser_ter",
+          "corto_laser_ter",
+          "medio_laser_ter",
+          "largo_laser_ter"
+        ],
+        "tops": [
+          "bateria_laser_ter"
+        ],
+        "drone": "artillero_laser_ter",
         "modules": [
           "mod_blindaje",
           "mod_blindaje",
@@ -60,19 +235,111 @@
       "id": "energia_tempestad",
       "name": "Tempestad",
       "element": "ENERGY",
+      "band": "balas",
+      "starter": true,
       "items": {
         "torso": "torso_dinamo",
         "legs": "piernas_zancas_arco",
         "sides": [
-          "lat_sable_arco",
-          "lat_descargador",
-          "lat_bobina",
-          "lat_canon_iones"
+          "hoja_balas_ion",
+          "corto_balas_ion",
+          "medio_balas_ion",
+          "largo_balas_ion"
         ],
         "tops": [
-          "sup_proyector"
+          "bateria_balas_ion"
         ],
-        "drone": "dron_chispa",
+        "drone": "artillero_balas_ion",
+        "modules": [
+          "mod_blindaje",
+          "mod_blindaje",
+          "mod_matriz",
+          "mod_generador",
+          "mod_disipador"
+        ],
+        "charge": "esp_embestida",
+        "teleport": "esp_baliza",
+        "hook": "esp_garfio"
+      }
+    },
+    {
+      "id": "energia_tempestad_canon",
+      "name": "Tempestad de Asalto",
+      "element": "ENERGY",
+      "band": "canon",
+      "items": {
+        "torso": "torso_dinamo",
+        "legs": "piernas_zancas_arco",
+        "sides": [
+          "hoja_blaster_ion",
+          "corto_canon_ion",
+          "medio_canon_ion",
+          "largo_canon_ion"
+        ],
+        "tops": [
+          "bateria_canon_ion"
+        ],
+        "drone": "artillero_canon_ion",
+        "modules": [
+          "mod_blindaje",
+          "mod_blindaje",
+          "mod_matriz",
+          "mod_generador",
+          "mod_disipador"
+        ],
+        "charge": "esp_embestida",
+        "teleport": "esp_baliza",
+        "hook": "esp_garfio"
+      }
+    },
+    {
+      "id": "energia_tempestad_blaster",
+      "name": "Tempestad de Plasma",
+      "element": "ENERGY",
+      "band": "blaster",
+      "items": {
+        "torso": "torso_dinamo",
+        "legs": "piernas_zancas_arco",
+        "sides": [
+          "hoja_blaster_ion",
+          "corto_blaster_ion",
+          "medio_blaster_ion",
+          "largo_blaster_ion"
+        ],
+        "tops": [
+          "bateria_blaster_ion"
+        ],
+        "drone": "artillero_blaster_ion",
+        "modules": [
+          "mod_blindaje",
+          "mod_blindaje",
+          "mod_matriz",
+          "mod_generador",
+          "mod_disipador"
+        ],
+        "charge": "esp_embestida",
+        "teleport": "esp_baliza",
+        "hook": "esp_garfio"
+      }
+    },
+    {
+      "id": "energia_tempestad_laser",
+      "name": "Tempestad Láser",
+      "element": "ENERGY",
+      "band": "laser",
+      "items": {
+        "torso": "torso_dinamo",
+        "legs": "piernas_zancas_arco",
+        "sides": [
+          "hoja_laser_ion",
+          "corto_laser_ion",
+          "medio_laser_ion",
+          "largo_laser_ion"
+        ],
+        "tops": [
+          "bateria_laser_ion"
+        ],
+        "drone": "artillero_laser_ion",
         "modules": [
           "mod_blindaje",
           "mod_blindaje",
@@ -89,20 +356,109 @@
       "id": "hibrido_quimera",
       "name": "Quimera",
       "element": "HYBRID",
+      "band": "balas",
+      "starter": true,
       "items": {
         "torso": "torso_centinela",
         "legs": "piernas_zancos",
         "sides": [
-          "lat_trabuco",
-          "lat_lanzallamas",
-          "lat_bobina",
-          "lat_rifle_riel"
+          "corto_balas_cin",
+          "corto_balas_ter",
+          "medio_balas_ion",
+          "largo_balas_cin"
         ],
         "tops": [
-          "sup_lluvia_ceniza",
-          "sup_arco_galvanico"
+          "ancla_canon_ter",
+          "ancla_canon_ion"
         ],
-        "drone": "dron_avispa",
+        "drone": "artillero_balas_cin",
+        "modules": [
+          "mod_blindaje",
+          "mod_blindaje",
+          "mod_matriz",
+          "mod_generador",
+          "mod_disipador"
+        ],
+        "charge": "esp_embestida"
+      }
+    },
+    {
+      "id": "hibrido_quimera_canon",
+      "name": "Quimera de Asalto",
+      "element": "HYBRID",
+      "band": "canon",
+      "items": {
+        "torso": "torso_centinela",
+        "legs": "piernas_zancos",
+        "sides": [
+          "corto_canon_cin",
+          "corto_canon_ter",
+          "medio_canon_ion",
+          "largo_canon_cin"
+        ],
+        "tops": [
+          "ancla_canon_ter",
+          "ancla_canon_ion"
+        ],
+        "drone": "artillero_canon_cin",
+        "modules": [
+          "mod_blindaje",
+          "mod_blindaje",
+          "mod_matriz",
+          "mod_generador",
+          "mod_disipador"
+        ],
+        "charge": "esp_embestida"
+      }
+    },
+    {
+      "id": "hibrido_quimera_blaster",
+      "name": "Quimera de Plasma",
+      "element": "HYBRID",
+      "band": "blaster",
+      "items": {
+        "torso": "torso_centinela",
+        "legs": "piernas_zancos",
+        "sides": [
+          "corto_blaster_cin",
+          "corto_blaster_ter",
+          "medio_blaster_ion",
+          "largo_blaster_cin"
+        ],
+        "tops": [
+          "ancla_canon_ter",
+          "ancla_canon_ion"
+        ],
+        "drone": "artillero_blaster_cin",
+        "modules": [
+          "mod_blindaje",
+          "mod_blindaje",
+          "mod_matriz",
+          "mod_generador",
+          "mod_disipador"
+        ],
+        "charge": "esp_embestida"
+      }
+    },
+    {
+      "id": "hibrido_quimera_laser",
+      "name": "Quimera Láser",
+      "element": "HYBRID",
+      "band": "laser",
+      "items": {
+        "torso": "torso_centinela",
+        "legs": "piernas_zancos",
+        "sides": [
+          "corto_laser_cin",
+          "corto_laser_ter",
+          "medio_laser_ion",
+          "largo_laser_cin"
+        ],
+        "tops": [
+          "ancla_laser_ter",
+          "ancla_laser_ion"
+        ],
+        "drone": "artillero_laser_cin",
         "modules": [
           "mod_blindaje",
           "mod_blindaje",
@@ -117,21 +473,22 @@
       "id": "jefe_zona_1",
       "name": "Capataz del Orden",
       "element": "PHYSICAL",
+      "band": "balas",
       "boss": true,
       "chassis": "jefe_blindado",
       "items": {
         "torso": "torso_baluarte",
         "legs": "piernas_zancos",
         "sides": [
-          "lat_mandoble",
-          "lat_trabuco",
-          "lat_remachadora",
-          "lat_rifle_riel"
+          "hoja_balas_cin",
+          "corto_balas_cin",
+          "medio_balas_cin",
+          "largo_balas_cin"
         ],
         "tops": [
-          "sup_canon_yunque"
+          "bateria_balas_cin"
         ],
-        "drone": "dron_avispa",
+        "drone": "artillero_balas_cin",
         "modules": [
           "mod_blindaje",
           "mod_matriz",
@@ -146,21 +503,22 @@
       "id": "jefe_zona_2",
       "name": "Verdugo del Orden",
       "element": "PHYSICAL",
+      "band": "balas",
       "boss": true,
       "chassis": "jefe_potencia",
       "items": {
         "torso": "torso_baluarte",
         "legs": "piernas_zancos",
         "sides": [
-          "lat_mandoble",
-          "lat_trabuco",
-          "lat_remachadora",
-          "lat_rifle_riel"
+          "hoja_balas_cin",
+          "corto_balas_cin",
+          "medio_balas_cin",
+          "largo_balas_cin"
         ],
         "tops": [
-          "sup_canon_yunque"
+          "bateria_balas_cin"
         ],
-        "drone": "dron_avispa",
+        "drone": "artillero_balas_cin",
         "modules": [
           "mod_blindaje",
           "mod_matriz",
@@ -175,21 +533,22 @@
       "id": "jefe_zona_3",
       "name": "Reactor del Orden",
       "element": "ENERGY",
+      "band": "canon",
       "boss": true,
       "chassis": "jefe_reactor",
       "items": {
         "torso": "torso_dinamo",
         "legs": "piernas_zancas_arco",
         "sides": [
-          "lat_sable_arco",
-          "lat_descargador",
-          "lat_bobina",
-          "lat_canon_iones"
+          "hoja_blaster_ion",
+          "corto_canon_ion",
+          "medio_canon_ion",
+          "largo_canon_ion"
         ],
         "tops": [
-          "sup_proyector"
+          "bateria_canon_ion"
         ],
-        "drone": "dron_chispa",
+        "drone": "artillero_canon_ion",
         "modules": [
           "mod_blindaje",
           "mod_blindaje",
@@ -206,21 +565,22 @@
       "id": "jefe_zona_4",
       "name": "Hidra del Orden",
       "element": "HEAT",
+      "band": "canon",
       "boss": true,
       "chassis": "jefe_hidra",
       "items": {
         "torso": "torso_fragua",
         "legs": "piernas_pisabrasas",
         "sides": [
-          "lat_hoja_ignea",
-          "lat_lanzallamas",
-          "lat_mortero",
-          "lat_lanza_termica"
+          "hoja_blaster_ter",
+          "corto_canon_ter",
+          "medio_canon_ter",
+          "largo_canon_ter"
         ],
         "tops": [
-          "sup_cohetes"
+          "bateria_canon_ter"
         ],
-        "drone": "dron_ascua",
+        "drone": "artillero_canon_ter",
         "modules": [
           "mod_blindaje",
           "mod_blindaje",
@@ -236,22 +596,23 @@
       "id": "jefe_zona_5",
       "name": "Centella del Orden",
       "element": "HYBRID",
+      "band": "blaster",
       "boss": true,
       "chassis": "jefe_veloz",
       "items": {
         "torso": "torso_centinela",
         "legs": "piernas_zancos",
         "sides": [
-          "lat_trabuco",
-          "lat_lanzallamas",
-          "lat_bobina",
-          "lat_rifle_riel"
+          "corto_blaster_cin",
+          "corto_blaster_ter",
+          "medio_blaster_ion",
+          "largo_blaster_cin"
         ],
         "tops": [
-          "sup_lluvia_ceniza",
-          "sup_arco_galvanico"
+          "ancla_canon_ter",
+          "ancla_canon_ion"
         ],
-        "drone": "dron_avispa",
+        "drone": "artillero_blaster_cin",
         "modules": [
           "mod_blindaje",
           "mod_blindaje",
@@ -266,21 +627,22 @@
       "id": "jefe_zona_6",
       "name": "Égida del Orden",
       "element": "HEAT",
+      "band": "blaster",
       "boss": true,
       "chassis": "jefe_egida",
       "items": {
         "torso": "torso_fragua",
         "legs": "piernas_pisabrasas",
         "sides": [
-          "lat_hoja_ignea",
-          "lat_lanzallamas",
-          "lat_mortero",
-          "lat_lanza_termica"
+          "hoja_blaster_ter",
+          "corto_blaster_ter",
+          "medio_blaster_ter",
+          "largo_blaster_ter"
         ],
         "tops": [
-          "sup_cohetes"
+          "bateria_blaster_ter"
         ],
-        "drone": "dron_ascua",
+        "drone": "artillero_blaster_ter",
         "modules": [
           "mod_blindaje",
           "mod_blindaje",
@@ -296,21 +658,22 @@
       "id": "jefe_zona_7",
       "name": "Espectro del Orden",
       "element": "ENERGY",
+      "band": "laser",
       "boss": true,
       "chassis": "jefe_espectro",
       "items": {
         "torso": "torso_dinamo",
         "legs": "piernas_zancas_arco",
         "sides": [
-          "lat_sable_arco",
-          "lat_descargador",
-          "lat_bobina",
-          "lat_canon_iones"
+          "hoja_laser_ion",
+          "corto_laser_ion",
+          "medio_laser_ion",
+          "largo_laser_ion"
         ],
         "tops": [
-          "sup_proyector"
+          "bateria_laser_ion"
         ],
-        "drone": "dron_chispa",
+        "drone": "artillero_laser_ion",
         "modules": [
           "mod_blindaje",
           "mod_blindaje",
@@ -327,21 +690,22 @@
       "id": "jefe_zona_8",
       "name": "Caldera del Orden",
       "element": "HEAT",
+      "band": "laser",
       "boss": true,
       "chassis": "jefe_caldera",
       "items": {
         "torso": "torso_fragua",
         "legs": "piernas_pisabrasas",
         "sides": [
-          "lat_hoja_ignea",
-          "lat_lanzallamas",
-          "lat_mortero",
-          "lat_lanza_termica"
+          "hoja_laser_ter",
+          "corto_laser_ter",
+          "medio_laser_ter",
+          "largo_laser_ter"
         ],
         "tops": [
-          "sup_cohetes"
+          "bateria_laser_ter"
         ],
-        "drone": "dron_ascua",
+        "drone": "artillero_laser_ter",
         "modules": [
           "mod_blindaje",
           "mod_blindaje",
@@ -357,21 +721,22 @@
       "id": "jefe_zona_9",
       "name": "Colmena del Orden",
       "element": "PHYSICAL",
+      "band": "laser",
       "boss": true,
       "chassis": "jefe_colmena",
       "items": {
         "torso": "torso_baluarte",
         "legs": "piernas_zancos",
         "sides": [
-          "lat_mandoble",
-          "lat_trabuco",
-          "lat_remachadora",
-          "lat_rifle_riel"
+          "hoja_laser_cin",
+          "corto_laser_cin",
+          "medio_laser_cin",
+          "largo_laser_cin"
         ],
         "tops": [
-          "sup_canon_yunque"
+          "bateria_laser_cin"
         ],
-        "drone": "dron_avispa",
+        "drone": "artillero_laser_cin",
         "modules": [
           "mod_blindaje",
           "mod_matriz",
@@ -386,22 +751,23 @@
       "id": "jefe_final",
       "name": "Coloso del Orden",
       "element": "HYBRID",
+      "band": "laser",
       "boss": true,
       "chassis": "jefe_coloso",
       "items": {
         "torso": "torso_centinela",
         "legs": "piernas_zancos",
         "sides": [
-          "lat_trabuco",
-          "lat_lanzallamas",
-          "lat_bobina",
-          "lat_rifle_riel"
+          "corto_laser_cin",
+          "corto_laser_ter",
+          "medio_laser_ion",
+          "largo_laser_cin"
         ],
         "tops": [
-          "sup_lluvia_ceniza",
-          "sup_arco_galvanico"
+          "ancla_laser_ter",
+          "ancla_laser_ion"
         ],
-        "drone": "dron_avispa",
+        "drone": "artillero_laser_cin",
         "modules": [
           "mod_blindaje",
           "mod_blindaje",
