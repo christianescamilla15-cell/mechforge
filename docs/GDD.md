@@ -237,6 +237,30 @@ Unas 58 piezas con nombres propios (nunca los del original).
 - Los combates se pueden repetir para farmear. Cada capítulo desbloquea piezas y niveles del taller de mejoras.
 - La curva de dificultad se valida con el simulador: el build "esperado" del jugador en cada capítulo debe ganar entre el 55 % y el 70 % de las veces contra los enemigos normales.
 
+### 9.1 El jefe final
+Pedido por el usuario el 2026-11-16: vencerlo debe ser extremadamente difícil, **no por la cantidad de vida**; usando las bonificaciones y los ataques con táctica, en teoría se puede ganar. La otra vía es reunir monedas en la arena para comprar mejor armamento.
+
+**Cómo está hecho** (data/chassis.json, chasis "jefe"; data/builds.json, mech "jefe_final"):
+- Tiene la misma vida que un mech normal de su clase.
+- Juega **3 acciones por turno** en vez de 2, con las armas de los tres elementos.
+- Resiste un 20 % más.
+- **Punto débil:** se enfría un 30 % peor. Si se le sobrecalienta tiene que gastar acciones en enfriar, y al enfriar a la fuerza se queda con una sola.
+- Usa la línea de diseño robusta y se dibuja más grande.
+
+**Medido con tools/sim/boss_sim.gd** (jefe en clase Mítica; el jugador con la IA difícil; dos tandas de 30 y 70 combates por casilla, de ahí los rangos):
+
+| Mech del jugador | Equipo una clase por debajo | Misma clase, sin bonificaciones | Misma clase, con bonificaciones | Una clase por encima |
+|---|---|---|---|---|
+| Calor (lo sobrecalienta) | 0 % | 3–6 % | 13–23 % | 100 % |
+| Energía | 0 % | 0 % | 4–10 % | 100 % |
+| Físico | 0 % | 0 % | 0 % | 100 % |
+| Híbrido | 0 % | 0 % | 0–3 % | 100 % |
+
+- En pelea directa es casi imposible. La táctica que funciona es la que ataca su punto débil (calor), y las bonificaciones multiplican por tres o cuatro las opciones.
+- La vía del equipo también funciona, pero el salto es demasiado brusco: con una clase menos no se gana nunca y con una más se gana siempre. Hay que suavizarlo cuando exista la tienda, para que comprar armas mejores acerque la victoria poco a poco.
+- La IA que hace de jugador no busca las bonificaciones tan bien como una persona; un jugador atento debería sacar más partido.
+
+
 ## 10. Pantallas
 Menú · Taller (armado con resumen de stats, barra de peso y avisos) · Inventario y fusión · Taller de mejoras · Mapa de campaña · Combate (arena, mechs, botones de acción, previsualización y registro) · Resultados y botín · Ajustes.
 

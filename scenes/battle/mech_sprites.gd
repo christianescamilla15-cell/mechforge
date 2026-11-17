@@ -12,11 +12,15 @@ const UNIT_SCALE := 0.54
 ## Juegos exportados que tienen torso y los que tienen piernas, del chasis ligero.
 const TORSO_SETS: Array[String] = ["ligero_18", "ligero_13", "ligero_16"]
 const LEGS_SETS: Array[String] = ["ligero_18", "ligero_14", "ligero_17"]
+## Cuerpo de los jefes (linea robusta), entero y sin mezclar.
+const BOSS_SET := "jefe_103"
 
 static var _anchors: Dictionary[String, Dictionary] = {}
 static var _textures: Dictionary[String, Texture2D] = {}
 
 var torso_set: String = ""
+## True si es un jefe: usa su propio cuerpo entero, de la linea robusta.
+var is_boss: bool = false
 var legs_set: String = ""
 
 
@@ -28,6 +32,12 @@ static func for_build(build: MechBuild) -> MechSprites:
 	if torsos.is_empty() or legs.is_empty():
 		return null
 	var out := MechSprites.new()
+	var boss := build.chassis != null and build.chassis.extra_actions > 0
+	if boss and _load_anchors(BOSS_SET).get("torso") is Dictionary:
+		out.torso_set = BOSS_SET
+		out.legs_set = BOSS_SET
+		out.is_boss = true
+		return out
 	out.torso_set = torsos[absi(build.torso.id.hash()) % torsos.size()]
 	out.legs_set = legs[absi(build.legs.id.hash()) % legs.size()]
 	return out

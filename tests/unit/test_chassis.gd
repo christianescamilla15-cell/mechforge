@@ -121,7 +121,8 @@ func test_mejorar_el_chasis_potencia_su_bonificacion() -> void:
 func test_los_tres_chasis_del_juego_cargan_sin_errores() -> void:
 	var library := ChassisLibrary.load_file("res://data/chassis.json")
 	assert_eq(library.errors, [] as Array[String])
-	assert_eq(library.ids(), ["ligero", "medio", "pesado"] as Array[String])
+	for id: String in ["ligero", "medio", "pesado"]:
+		assert_true(id in library.ids(), id)
 	assert_lt(library.get_def("ligero").energy_cost_mult, 1.0, "el ligero gasta menos energia")
 	assert_gt(library.get_def("pesado").health_mult, 1.0, "el pesado tiene mas vida")
 	assert_gt(library.get_def("pesado").resistance_mult, 1.0, "y mas resistencias")
@@ -138,6 +139,34 @@ func test_el_pesado_se_consigue_despues_del_nivel_10() -> void:
 		at_11.append(def.id)
 	assert_true("pesado" in at_11)
 	assert_true("ligero" in at_10, "el ligero esta desde el principio")
+
+
+func test_el_chasis_de_jefe_da_una_accion_mas_y_no_mas_vida() -> void:
+	var library := ChassisLibrary.load_file("res://data/chassis.json")
+	var boss := library.get_def("jefe")
+	assert_eq(boss.extra_actions, 1)
+	assert_almost_eq(boss.health_mult, 1.0, 0.0001, "dificil por como juega, no por vida")
+	var ids: Array[String] = []
+	for def in library.unlocked_at(50):
+		ids.append(def.id)
+	assert_false("jefe" in ids, "el jugador no puede conseguirlo")
+
+
+func test_un_jefe_tiene_3_acciones_y_al_enfriar_a_la_fuerza_solo_1() -> void:
+	var r := Fx.rules()
+	var boss := _build(_chassis({"extra_actions": 1}))
+	var engine := BattleEngine.new(r, boss, _build(null), 1, 0, 0)
+	assert_eq(engine.actions_left, 3)
+	for i in 3:
+		engine.apply(BattleAction.cool())
+	assert_eq(engine.turn, 1, "tras 3 acciones pasa el turno")
+	assert_eq(engine.actions_left, 2, "el rival sigue con 2")
+	# Sobrecalentado: el enfriado forzado le deja una sola accion, como a todos.
+	engine.mechs[0].heat = engine.mechs[0].heat_cap + 1
+	engine.apply(BattleAction.cool())
+	engine.apply(BattleAction.cool())
+	assert_eq(engine.turn, 0)
+	assert_eq(engine.actions_left, 1)
 
 
 func test_los_datos_malos_se_avisan() -> void:

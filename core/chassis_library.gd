@@ -40,6 +40,11 @@ func add(raw: Variant) -> void:
 	for key: String in raw:
 		if key in ["id", "name", "unlock_level"]:
 			continue
+		if key == "extra_actions":
+			def.extra_actions = int(raw[key])
+			if def.extra_actions < 0 or def.extra_actions > 2:
+				errors.append("%s: extra_actions debe estar entre 0 y 2" % id)
+			continue
 		if not key in ChassisDef.MULTIPLIERS:
 			errors.append("%s: campo desconocido '%s'" % [id, key])
 			continue

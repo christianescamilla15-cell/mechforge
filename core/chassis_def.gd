@@ -31,6 +31,9 @@ const MAX_MULT := 3.0
 @export var energy_cost_mult: float = 1.0
 ## Potencia de disparo: multiplica el dano de sus armas antes de resistencias.
 @export var damage_mult: float = 1.0
+## Acciones de mas por turno. Solo para jefes: es lo que los hace dificiles
+## sin darles mas vida. No crece con el nivel.
+@export var extra_actions: int = 0
 
 
 ## Devuelve el chasis tal como rinde a ese nivel. Los multiplicadores de los

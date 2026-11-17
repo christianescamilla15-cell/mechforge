@@ -32,7 +32,25 @@ static func load_file(path: String) -> BuildLibrary:
 	return library
 
 
+## Mechs normales, sin jefes: los que usan el simulador de balance y los tests.
 func ids() -> Array[String]:
+	var out: Array[String] = []
+	for id: String in specs:
+		if not is_boss(id):
+			out.append(id)
+	return out
+
+
+func boss_ids() -> Array[String]:
+	var out: Array[String] = []
+	for id: String in specs:
+		if is_boss(id):
+			out.append(id)
+	return out
+
+
+## Todos, jefes incluidos: para los menus.
+func all_ids() -> Array[String]:
 	return specs.keys()
 
 
@@ -44,8 +62,27 @@ func display_name(id: String) -> String:
 	return str(specs[id].get("name", id))
 
 
-## Arma el mech con todas sus piezas al mismo tier y nivel.
+## Chasis que pide ese mech en los datos, o "" si no pide ninguno.
+func chassis_of(id: String) -> String:
+	return str(specs[id].get("chassis", ""))
+
+
+func is_boss(id: String) -> bool:
+	return bool(specs[id].get("boss", false))
+
+
+## Arma el mech con todas sus piezas al mismo tier y nivel. Si se pasa la
+## biblioteca de chasis y el mech pide uno, lo monta a su nivel maximo.
 func make(
-	id: String, catalog: Catalog, rules: RulesConfig, tier: ItemDef.Tier, level: int
+	id: String,
+	catalog: Catalog,
+	rules: RulesConfig,
+	tier: ItemDef.Tier,
+	level: int,
+	chassis: ChassisLibrary = null
 ) -> MechBuild:
-	return catalog.make_build(specs[id]["items"], rules, tier, level)
+	var build := catalog.make_build(specs[id]["items"], rules, tier, level)
+	var chassis_id := chassis_of(id)
+	if chassis != null and chassis_id != "" and chassis.get_def(chassis_id) != null:
+		build.chassis = chassis.get_def(chassis_id).at_level(rules.chassis_max_level, rules)
+	return build

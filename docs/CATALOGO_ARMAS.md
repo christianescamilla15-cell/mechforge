@@ -15,7 +15,7 @@ Lo que fijó el usuario: armas galácticas que se despliegan desde el cuerpo del
 | Hombro derecho | 1 | Torreta | Nivel 15 |
 | Hombro izquierdo | 1 | Torreta | **Nivel 20** |
 
-- Al nivel 20 el robot lleva **5 armas** (2 brazos, 2 hombros y 1 pecho) más el robot de soporte.
+- **Corrección del usuario (2026-11-16): seis armas, como en el original.** Son 4 laterales (dos por brazo) y 2 superiores (una por hombro), que es lo que el motor ya tiene. La tabla de arriba y el arma de pecho hay que rehacerlos con eso: queda por decidir si el arma de pecho es una de esas seis o va aparte.
 - En negrita, los niveles que fijó el usuario; los otros se aprobaron con la propuesta.
 - El nivel es el del jugador, no el de las piezas: sube con la experiencia de los combates.
 - El robot de soporte es una pieza más: se consigue, sube de nivel y evoluciona igual que un arma, y lleva un arma integrada.

@@ -301,7 +301,7 @@ func _begin_turn() -> void:
 	_maybe_spawn_drop()
 	for slot: BattleMech.Slot in me.slots.values():
 		slot.used_this_turn = false
-	var actions := rules.actions_per_turn
+	var actions := rules.actions_per_turn + me.extra_actions()
 	var shutdown := false
 	if me.heat > me.heat_cap:
 		shutdown = me.heat - me.cooling > me.heat_cap

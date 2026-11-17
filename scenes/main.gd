@@ -19,6 +19,7 @@ const AUTOPLAY_TIMEOUT_SECONDS := 180.0
 
 var _rules := RulesConfig.new()
 var _stages := StageLibrary.load_file("res://data/stages.json")
+var _chassis := ChassisLibrary.load_file("res://data/chassis.json")
 ## Para ir cambiando de escenario de un combate al siguiente.
 var _stage_seed: int = 0
 var _catalog: Catalog
@@ -72,7 +73,7 @@ func _show_menu() -> void:
 	box.add_child(subtitle)
 
 	var build_names: Array[String] = []
-	for id in _library.ids():
+	for id in _library.all_ids():
 		build_names.append(_library.display_name(id))
 	var tier_names: Array[String] = []
 	for tier in MENU_TIERS:
@@ -127,7 +128,7 @@ func _on_fight_pressed() -> void:
 func _start_battle() -> void:
 	if _battle != null:
 		_battle.queue_free()
-	var ids := _library.ids()
+	var ids := _library.all_ids()
 	var tier: ItemDef.Tier = MENU_TIERS[_last["tier"]]
 	var level := _rules.tier_max_level[tier]
 	var player_id := ids[_last["player"]]
@@ -147,8 +148,8 @@ func _start_battle() -> void:
 	add_child(_battle)
 	_battle.start(
 		_rules,
-		_library.make(player_id, _catalog, _rules, tier, level),
-		_library.make(enemy_id, _catalog, _rules, tier, level),
+		_library.make(player_id, _catalog, _rules, tier, level, _chassis),
+		_library.make(enemy_id, _catalog, _rules, tier, level, _chassis),
 		_last["seed"],
 		MENU_DIFFICULTIES[_last["difficulty"]]
 	)
@@ -164,7 +165,7 @@ func _on_rematch() -> void:
 
 func _start_autoplay() -> void:
 	print("AUTOPLAY argumentos: %s" % _args)
-	var ids := _library.ids()
+	var ids := _library.all_ids()
 	var tier_name: String = _args.get("tier", "EPIC")
 	_last = {
 		"player": maxi(ids.find(_args.get("player", ids[0])), 0),

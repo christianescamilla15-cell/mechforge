@@ -112,6 +112,36 @@
         ],
         "charge": "esp_embestida"
       }
+    },
+    {
+      "id": "jefe_final",
+      "name": "Coloso del Orden",
+      "element": "HYBRID",
+      "boss": true,
+      "chassis": "jefe",
+      "items": {
+        "torso": "torso_centinela",
+        "legs": "piernas_zancos",
+        "sides": [
+          "lat_trabuco",
+          "lat_lanzallamas",
+          "lat_bobina",
+          "lat_rifle_riel"
+        ],
+        "tops": [
+          "sup_lluvia_ceniza",
+          "sup_arco_galvanico"
+        ],
+        "drone": "dron_avispa",
+        "modules": [
+          "mod_blindaje",
+          "mod_blindaje",
+          "mod_matriz",
+          "mod_generador",
+          "mod_disipador"
+        ],
+        "charge": "esp_embestida"
+      }
     }
   ]
 }

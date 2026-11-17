@@ -93,6 +93,13 @@ func energy_cost(def: ItemDef) -> int:
 	return build.chassis.energy_cost(def)
 
 
+## Acciones de mas que tiene este mech en cada turno (los jefes).
+func extra_actions() -> int:
+	if build == null or build.chassis == null:
+		return 0
+	return build.chassis.extra_actions
+
+
 ## Potencia de disparo de este mech: su chasis y las bonificaciones en vigor.
 func damage_mult() -> float:
 	var base := 1.0

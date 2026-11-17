@@ -19,6 +19,8 @@ const CHEST_SET := "ligero_18"
 const SPRITE_WEAPON_LIFT := -44.0
 ## Cuanto retrocede el arma al disparar y cuanto queda metida al guardarse.
 const RECOIL := 16.0
+## Los jefes se dibujan mas grandes.
+const BOSS_SCALE := 1.15
 const RETRACT := 78.0
 
 var build: MechBuild
@@ -50,7 +52,8 @@ func setup(p_build: MechBuild, p_facing: int) -> void:
 
 func set_facing(p_facing: int) -> void:
 	facing = p_facing
-	scale = Vector2(DRAW_SCALE * facing, DRAW_SCALE)
+	var size := DRAW_SCALE * (BOSS_SCALE if _sprites != null and _sprites.is_boss else 1.0)
+	scale = Vector2(size * facing, size)
 	queue_redraw()
 
 
@@ -139,7 +142,9 @@ func _process(delta: float) -> void:
 
 ## True si este mech lleva el canon que se despliega del pecho.
 func has_cannon() -> bool:
-	return _sprites != null and build != null and not build.tops.is_empty()
+	if _sprites == null or build == null or _sprites.is_boss:
+		return false
+	return not build.tops.is_empty()
 
 
 ## Saca el arma de dentro del torso la primera vez que se usa en el combate.
@@ -170,12 +175,12 @@ func muzzle_point(from_drone: bool) -> Vector2:
 		local = Vector2(60.0, -110.0)
 		if has_cannon():
 			local = _sprites.piece_tip(CHEST_SET, "chest")
-	return position + Vector2(local.x * facing, local.y) * DRAW_SCALE
+	return position + Vector2(local.x * facing, local.y) * scale.y
 
 
 ## Punto del cuerpo donde impactan los disparos, en las coordenadas del padre.
 func hit_point() -> Vector2:
-	return position + Vector2(0.0, -120.0) * DRAW_SCALE
+	return position + Vector2(0.0, -120.0) * scale.y
 
 
 ## El mech cae destruido: se inclina, se hunde y se oscurece.
