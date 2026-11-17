@@ -81,6 +81,12 @@ Segunda tanda (2026-11-16, 16 imágenes más), ya con la línea de diseño elegi
 
 Receta que funciona hoy para cuerpos: bloque inicial con paleta `physical`, todas las líneas del bloque como control, escala 0.55, final 0.4, fuerza 1.0, color por prompt. Hay que generar varias semillas y curar.
 
+Tercera tanda (2026-11-16): lote de 24 cuerpos, 8 cuerpos de energía repetidos, arma piloto y prueba de color.
+- **Lote de cuerpos:** 15 de 24 pasan el filtro de coincidencia, pero a ojo solo sirven unos 4 de la línea esbelta (físico 101 y 105, calor 101 y 109) y 2 de la robusta (físico 103, calor 103). El filtro quita lo que se sale de la silueta, no lo que queda plano.
+- **Energía:** con negativos contra rayos, alas y disparos desaparecen casi todos los efectos pintados, pero los cuerpos azules salen más simples y caricaturescos que los blancos. El estilo aprobado sale mejor con blindaje blanco.
+- **Color por zonas (tools/art/recolor.py):** repintar el cuerpo elegido por zonas (blindaje claro, estructura oscura y luces) conserva la línea y el detalle en cualquier color. Sirve para el color personalizable (GDD §8) y permite **dibujar todas las piezas en blanco y dar el color del elemento después**, que es la vía recomendada.
+- **Arma piloto (tools/art/evolve_test.py):** cañón de plasma en 5 etapas, cada una generada desde la anterior con fuerza 0.6. Mantiene la identidad del arma, pero la evolución casi no se nota y los efectos (rayos, chorro de energía) salen pintados dentro del dibujo. Corrección prevista: un bloque por etapa, cada uno más grande y con más módulos; negativos contra rayos y chispas; base blanca y color por zonas.
+
 Siguiente paso (sin hacer): generar varias semillas del cuerpo con el bloque neutro, descartar las de coincidencia menor de 0.5, elegir a ojo, y cortar torso y piernas por la cadera con el recorte de fondo. Las armas y los drones se generan sueltos y se curan igual. El inpainting queda de reserva.
 
 ## Límites de los 6 GB de VRAM
