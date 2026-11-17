@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "steps": [0, 1, 3, 5, 7, 9, 11, 13, 15, 17, 20],
+  "tracks": [
+    {"id": "damage", "name": "Potencia de las armas", "kind": "percent", "max": 20},
+    {"id": "energy", "name": "Energía y regeneración", "kind": "percent", "max": 20},
+    {"id": "heat", "name": "Calor y enfriamiento", "kind": "percent", "max": 20},
+    {"id": "resistance", "name": "Resistencias", "kind": "percent", "max": 40},
+    {"id": "health", "name": "Blindaje", "kind": "flat", "max": 350},
+    {"id": "backfire", "name": "Amortiguación del retroceso", "kind": "percent", "max": 20}
+  ],
+  "prices": [0, 300, 500, 800, 1200, 1700, 2300, 3000, 3800, 4700, 6000],
+  "rewards": {"win": 250, "loss": 60, "boss_win": 2500}
+}

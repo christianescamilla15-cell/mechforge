@@ -119,6 +119,8 @@ El usuario amplió el diseño en una sesión (GDD §1.1, §8, §9 y §12.2; docs
 
 **Jefe final (2026-11-16):** hecho y medido (GDD §9.1, tools/sim/boss_sim.gd, 144 tests): 3 acciones por turno, misma vida, punto débil en el calor. En pelea directa el jugador gana del 0 al 6 %; con el mech de calor y las bonificaciones, del 13 al 23 %. Pendiente: suavizar el salto entre clases de equipo y la economía de monedas de la arena (fase F7).
 
+**Oro de la arena y tienda (2026-11-16):** hecho y medido (GDD §9.2, 157 tests): perfil del jugador con guardado, oro por combate, tienda de arena con seis mejoras en 10 niveles como en el original, y botones de compra en el menú. La medición contra el jefe pasa del 3.8 % sin mejoras al 98.8 % con todo al máximo, de forma gradual. Pendiente de F7: tienda de piezas, niveles y transformación de piezas, nivel del jugador, y ajustar precios.
+
 ### F6 — Taller de armado
 - Equipar piezas por hueco, barra de peso con sobrecarga, resumen de stats, avisos (sin torso o piernas, resistencias repetidas, más de 1010 kg) y vista previa del mech montado.
 - Tienda dentro del taller y garaje con varios mechs guardados (GDD §8): es lo que el usuario recuerda del juego antiguo.

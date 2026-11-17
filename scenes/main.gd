@@ -9,6 +9,7 @@ extends Control
 ##   --player=<id> --enemy=<id> --tier=EPIC --seed=1 --speed=3
 ## La carpeta de capturas se indica en la variable de entorno MECHFORGE_SHOTS.
 
+const SAVE_PATH := "user://save.json"
 const MENU_TIERS: Array[ItemDef.Tier] = [
 	ItemDef.Tier.COMMON, ItemDef.Tier.EPIC, ItemDef.Tier.DIVINE
 ]
@@ -20,6 +21,11 @@ const AUTOPLAY_TIMEOUT_SECONDS := 180.0
 var _rules := RulesConfig.new()
 var _stages := StageLibrary.load_file("res://data/stages.json")
 var _chassis := ChassisLibrary.load_file("res://data/chassis.json")
+var _shop := ArenaShop.load_file("res://data/arena_shop.json")
+## Oro, mejoras e historial del jugador. Las pruebas automaticas usan uno
+## vacio y no tocan el guardado.
+var _profile := PlayerProfile.new()
+var _last_reward := ""
 ## Para ir cambiando de escenario de un combate al siguiente.
 var _stage_seed: int = 0
 var _catalog: Catalog
@@ -44,7 +50,18 @@ func _ready() -> void:
 	_library = BuildLibrary.load_file("res://data/builds.json")
 	if _args.has("autoplay"):
 		_start_autoplay()
+	elif _args.has("menu-shot"):
+		# Prueba en vivo del menu: perfil de muestra, captura y salir. No toca
+		# el guardado del jugador.
+		_profile.gold = 1500
+		_profile.shop_levels = {"damage": 3, "health": 10}
+		_profile.wins = 12
+		_show_menu()
+		await get_tree().create_timer(0.6).timeout
+		await _shot("menu")
+		get_tree().quit(0)
 	else:
+		_profile = PlayerProfile.load_or_new(SAVE_PATH)
 		_show_menu()
 
 
@@ -55,6 +72,9 @@ func _show_menu() -> void:
 	if _battle != null:
 		_battle.queue_free()
 		_battle = null
+	if _menu != null:
+		_menu.queue_free()
+	_pickers.clear()
 	_menu = CenterContainer.new()
 	_menu.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(_menu)
@@ -93,6 +113,72 @@ func _show_menu() -> void:
 	fight.add_theme_font_size_override("font_size", 20)
 	fight.pressed.connect(_on_fight_pressed)
 	box.add_child(fight)
+	_add_shop(box)
+
+
+## Oro, historial y tienda de arena (GDD 8): mejoras permanentes que se
+## compran con lo que dan los combates.
+func _add_shop(box: VBoxContainer) -> void:
+	var gold := Label.new()
+	gold.text = Txt.t("menu_gold", [_profile.gold])
+	gold.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	gold.add_theme_font_size_override("font_size", 22)
+	gold.add_theme_color_override("font_color", Color("ffd86b"))
+	box.add_child(gold)
+	var record := Label.new()
+	record.text = Txt.t("menu_record", [_profile.wins, _profile.losses, _profile.boss_wins])
+	if _last_reward != "":
+		record.text = "%s\n%s" % [_last_reward, record.text]
+	record.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	box.add_child(record)
+	var title := Label.new()
+	title.text = Txt.t("menu_shop")
+	title.add_theme_font_size_override("font_size", 18)
+	box.add_child(title)
+	for track in _shop.track_ids():
+		var level := _profile.level_of(track)
+		var row := HBoxContainer.new()
+		box.add_child(row)
+		var label := Label.new()
+		label.text = Txt.t(
+			"shop_row",
+			[_shop.display_name(track), level, _shop.max_level(), _shop_value(track, level)]
+		)
+		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(label)
+		var buy := Button.new()
+		buy.custom_minimum_size = Vector2(130, 0)
+		if level >= _shop.max_level():
+			buy.text = Txt.t("shop_max")
+			buy.disabled = true
+		else:
+			buy.text = Txt.t("shop_buy", [_shop.price(level + 1)])
+			buy.disabled = _profile.why_cant_buy(_shop, track) != ""
+		buy.pressed.connect(_on_buy_pressed.bind(track))
+		row.add_child(buy)
+
+
+## Lo que da una mejora a ese nivel, como texto: "+5 %" o "+123".
+func _shop_value(track: String, level: int) -> String:
+	var amount := _shop.value(track, level)
+	if _shop.tracks[track]["kind"] == "percent":
+		return "+%d %%" % roundi(amount * 100.0)
+	return "+%d" % roundi(amount)
+
+
+func _on_buy_pressed(track: String) -> void:
+	if _profile.buy(_shop, track) == "":
+		_profile.save(SAVE_PATH)
+	for key: String in _pickers:
+		_last[key] = (_pickers[key] as OptionButton).selected
+	_show_menu()
+
+
+## Al terminar un combate el jugador cobra su oro y se guarda el progreso.
+func _on_battle_finished(player_won: bool, against_boss: bool) -> void:
+	var amount := _profile.earn(_shop, player_won, against_boss)
+	_profile.save(SAVE_PATH)
+	_last_reward = Txt.t("reward_line", [amount])
 
 
 func _add_picker(
@@ -145,10 +231,15 @@ func _start_battle() -> void:
 	]
 	_battle.rematch_requested.connect(_on_rematch)
 	_battle.menu_requested.connect(_show_menu)
+	if not _args.has("autoplay"):
+		_battle.finished.connect(_on_battle_finished.bind(_library.is_boss(enemy_id)))
 	add_child(_battle)
+	# Las mejoras de la tienda solo cuentan para el mech del jugador.
+	var player_build := _library.make(player_id, _catalog, _rules, tier, level, _chassis)
+	player_build.upgrades = _shop.upgrades_for(_profile.shop_levels)
 	_battle.start(
 		_rules,
-		_library.make(player_id, _catalog, _rules, tier, level, _chassis),
+		player_build,
 		_library.make(enemy_id, _catalog, _rules, tier, level, _chassis),
 		_last["seed"],
 		MENU_DIFFICULTIES[_last["difficulty"]]

@@ -99,7 +99,7 @@ func why_cant_use(user: BattleMech, target: BattleMech, key: String) -> String:
 	var def := slot.def
 	if user.energy_cost(def) > user.energy:
 		return "falta energia"
-	if def.backfire > 0 and def.backfire >= user.health:
+	if def.backfire > 0 and user.backfire_of(def) >= user.health:
 		return "falta vida"
 	if slot.uses_left == 0:
 		return "sin usos"
@@ -232,7 +232,7 @@ func preview(action: BattleAction) -> Dictionary:
 			out["dmg_max"] = _damage(def, me, foe, 1.0)
 			out["target_heat"] = foe.heat + def.heat_dmg
 			out["target_energy"] = maxi(0, foe.energy - def.energy_dmg)
-			out["self_health"] = me.health - def.backfire
+			out["self_health"] = me.health - me.backfire_of(def)
 		out["self_heat"] = me.heat + def.heat_cost
 		out["self_energy"] = me.energy - me.energy_cost(def)
 	out["self_overheats"] = out["self_heat"] > me.heat_cap
@@ -360,7 +360,7 @@ func _use(
 		roll = fixed_roll if fixed_roll >= 0.0 else _rng.randf()
 	var damage := _damage(def, user, target, roll)
 
-	user.health -= def.backfire
+	user.health -= user.backfire_of(def)
 	user.heat += def.heat_cost
 	user.energy -= user.energy_cost(def)
 

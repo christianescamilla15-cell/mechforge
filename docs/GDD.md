@@ -261,6 +261,38 @@ Pedido por el usuario el 2026-11-16: vencerlo debe ser extremadamente difícil, 
 - La IA que hace de jugador no busca las bonificaciones tan bien como una persona; un jugador atento debería sacar más partido.
 
 
+### 9.2 La segunda vía: oro de la arena y tienda
+Hecho el 2026-11-16 (core/arena_shop.gd, core/player_profile.gd, data/arena_shop.json; 13 tests). Sigue la tienda de arena del original: seis mejoras permanentes en 10 niveles pequeños, con su misma tabla de pasos (0, 1, 3, 5, 7, 9, 11, 13, 15, 17 y 20 sobre 20).
+
+| Mejora | Tope |
+|---|---|
+| Potencia de las armas | +20 % |
+| Energía y regeneración | +20 % |
+| Calor y enfriamiento | +20 % |
+| Resistencias | +40 % |
+| Blindaje (vida) | +350 |
+| Amortiguación del retroceso propio | −20 % |
+
+- Cada combate da oro: 250 por ganar, 60 por perder y 2500 por vencer a un jefe. El progreso se guarda en user://save.json.
+- Las mejoras solo cuentan para el mech del jugador. Se compran desde el menú.
+- **Los precios y las recompensas son propuesta nuestra**: el análisis del original da la estructura y los topes, no cuánto costaba cada nivel.
+
+**Medido con tools/sim/shop_route_sim.gd** (jefe y jugador en clase Mítica, bonificaciones encendidas, IA difícil, 40 combates por casilla; todas las mejoras al mismo nivel):
+
+| Nivel de tienda | Oro total | Combates de arena ganados | Físico | Calor | Energía | Híbrido | Media |
+|---|---|---|---|---|---|---|---|
+| 0 | 0 | 0 | 0 % | 7.5 % | 7.5 % | 0 % | 3.8 % |
+| 2 | 4 800 | 20 | 10 % | 47.5 % | 10 % | 2.5 % | 17.5 % |
+| 4 | 16 800 | 68 | 35 % | 72.5 % | 37.5 % | 40 % | 46.3 % |
+| 6 | 40 800 | 164 | 47.5 % | 92.5 % | 72.5 % | 60 % | 68.1 % |
+| 8 | 81 600 | 327 | 90 % | 100 % | 82.5 % | 87.5 % | 90 % |
+| 10 | 145 800 | 584 | 100 % | 100 % | 97.5 % | 97.5 % | 98.8 % |
+
+- La subida es gradual: cada dos niveles acercan la victoria, sin el salto brusco que había entre clases de equipo.
+- Las dos vías se suman: con el mech de calor (el que ataca el punto débil del jefe) basta el nivel 2 para ganar casi la mitad de las veces; con el físico hace falta el nivel 6.
+- Con estos precios, llevar todo al máximo son 584 combates ganados. Es demasiado para un solo jefe; hay que ajustar precios y recompensas cuando exista la campaña entera.
+
+
 ## 10. Pantallas
 Menú · Taller (armado con resumen de stats, barra de peso y avisos) · Inventario y fusión · Taller de mejoras · Mapa de campaña · Combate (arena, mechs, botones de acción, previsualización y registro) · Resultados y botín · Ajustes.
 

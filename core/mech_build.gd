@@ -8,6 +8,8 @@ const MODULE_SLOTS := 8
 
 ## Chasis sobre el que va montado (docs/CHASIS.md); null = sin bonificaciones.
 @export var chassis: ChassisDef
+## Mejoras de la tienda de arena del jugador (GDD 8); null = ninguna.
+@export var upgrades: ArenaUpgrades
 @export var torso: ItemDef
 @export var legs: ItemDef
 @export var sides: Array[ItemDef] = []
@@ -85,6 +87,8 @@ func summary(rules: RulesConfig) -> Dictionary:
 			s[key] += item.get(key)
 	if chassis != null:
 		chassis.apply(s)
+	if upgrades != null:
+		upgrades.apply(s)
 	var over: int = s["weight"] - rules.max_weight
 	if over > 0:
 		s["health"] = maxi(1, s["health"] - over * rules.overload_hp_penalty_per_kg)

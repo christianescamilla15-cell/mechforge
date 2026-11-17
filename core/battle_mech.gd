@@ -93,6 +93,13 @@ func energy_cost(def: ItemDef) -> int:
 	return build.chassis.energy_cost(def)
 
 
+## Dano que un arma le hace a este mech al dispararla.
+func backfire_of(def: ItemDef) -> int:
+	if build == null or build.upgrades == null:
+		return def.backfire
+	return build.upgrades.backfire_of(def)
+
+
 ## Acciones de mas que tiene este mech en cada turno (los jefes).
 func extra_actions() -> int:
 	if build == null or build.chassis == null:
@@ -100,11 +107,14 @@ func extra_actions() -> int:
 	return build.chassis.extra_actions
 
 
-## Potencia de disparo de este mech: su chasis y las bonificaciones en vigor.
+## Potencia de disparo de este mech: su chasis, las mejoras de la tienda y
+## las bonificaciones en vigor.
 func damage_mult() -> float:
 	var base := 1.0
 	if build != null and build.chassis != null:
 		base = build.chassis.damage_mult
+	if build != null and build.upgrades != null:
+		base *= build.upgrades.damage_mult()
 	return base * (1.0 + buff_amount("firepower"))
 
 
