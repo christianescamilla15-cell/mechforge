@@ -202,6 +202,9 @@ Unas 58 piezas con nombres propios (nunca los del original).
 - **Etapas tecnológicas:** cada 6 niveles la pieza pasa a una etapa más avanzada y cambia de dibujo: el arma se ve y dispara como una tecnología superior (§12.2). Dentro de una etapa, cada nivel añade detalle sobre ese dibujo (líneas de luz, brillo, piezas añadidas e intensidad de los efectos).
 - **Color personalizable:** el jugador puede cambiar los colores de cada pieza. Se hace con un shader sobre zonas de color del sprite (principal, secundario y luces), sin generar arte nuevo.
 - **Piezas únicas:** solo las sueltan los 3 últimos jefes de los 10 de cada mundo (§9). No se compran ni se consiguen transformando otra pieza.
+- **Tipos de arma y clases** (usuario, 2026-11-16): balas en las clases Básica e Intermedia, cañón y bláster (plasma) en las medias, láser de Avanzada en adelante. El detalle está en docs/CATALOGO_ARMAS.md: 4 categorías por hueco, 37 diseños y 111 armas.
+- **Materia oscura:** el disparo más poderoso del juego; prácticamente aniquila al enemigo. No es un arma sino una habilidad del **árbol de habilidades** que elija el jugador, y solo se aplica al arma del pecho. El árbol de habilidades es un sistema nuevo, por diseñar.
+- **Huecos y nivel del jugador:** 2 brazos, 2 hombros, 1 pecho y robot de soporte, desbloqueados con el nivel del jugador (soporte al 3, pecho al 10, cinco armas al 20).
 - **Por confirmar con el usuario:** si una pieza puede subir de clase (hoy sí, con la transformación de más abajo, hasta Mítica) o si su clase es fija, y si las clases y las etapas valen igual para torsos, piernas y drones (hoy sí) o solo para armas.
 - **Poder y fusión:** el nivel sube con "poder", que se gana fusionando piezas sobrantes (su poder depende de su tier) o núcleos.
 - **Transformación:** al llegar al nivel máximo de su tier, la pieza puede transformarse al siguiente pagando oro y núcleos. Vuelve al nivel 0 del nuevo tier.

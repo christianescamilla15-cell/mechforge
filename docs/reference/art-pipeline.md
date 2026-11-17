@@ -87,6 +87,10 @@ Tercera tanda (2026-11-16): lote de 24 cuerpos, 8 cuerpos de energía repetidos,
 - **Color por zonas (tools/art/recolor.py):** repintar el cuerpo elegido por zonas (blindaje claro, estructura oscura y luces) conserva la línea y el detalle en cualquier color. Sirve para el color personalizable (GDD §8) y permite **dibujar todas las piezas en blanco y dar el color del elemento después**, que es la vía recomendada.
 - **Arma piloto (tools/art/evolve_test.py):** cañón de plasma en 5 etapas, cada una generada desde la anterior con fuerza 0.6. Mantiene la identidad del arma, pero la evolución casi no se nota y los efectos (rayos, chorro de energía) salen pintados dentro del dibujo. Corrección prevista: un bloque por etapa, cada uno más grande y con más módulos; negativos contra rayos y chispas; base blanca y color por zonas.
 
+Elecciones del usuario (2026-11-16), guardadas en art/elegidos/: cuerpos del jugador físico 101 y 105 y calor 101 y 109; jefes físico 103 y calor 103; cañón de plasma base, la versión 102. Aprobó también dibujar en blanco y colorear por zonas.
+
+**Prueba de mezcla de los 4 cuerpos del jugador (tools/art/cut_body.py --mix):** el recorte y el montaje funcionan, pero las piezas todavía no son intercambiables. Cada cuerpo se corta por su punto más estrecho, que en unos es el cuello y en otros la cintura, así que al mezclar aparecen dos pechos apilados o proporciones que no casan, y la unión se ve como una línea recta. Corrección prevista: que el bloque marque una cintura estrecha con una junta redonda siempre a la misma altura, cortar por esa altura fija y no por la fila más estrecha, y tapar la unión con una pieza de acople común.
+
 Siguiente paso (sin hacer): generar varias semillas del cuerpo con el bloque neutro, descartar las de coincidencia menor de 0.5, elegir a ojo, y cortar torso y piernas por la cadera con el recorte de fondo. Las armas y los drones se generan sueltos y se curan igual. El inpainting queda de reserva.
 
 ## Límites de los 6 GB de VRAM
