@@ -19,6 +19,7 @@ const COLOR_DAMAGE := Color("ffe9e0")
 const COLOR_HEAT := Color("ff8a3d")
 const COLOR_COOL := Color("9fd8ff")
 const COLOR_DROP := Color("ffe27a")
+const COLOR_REPAIR := Color("7dff9b")
 
 var rules: RulesConfig
 var engine: BattleEngine
@@ -145,6 +146,8 @@ func _play_event(entry: Dictionary) -> void:
 	var event: String = entry["event"]
 	var step := STEP_SECONDS / speed
 	var line := _log_line(entry)
+	if entry.get("shielded", false):
+		line += " · %s" % Txt.t("log_shielded")
 	if line != "":
 		_log.append_text(line + "\n")
 
@@ -165,6 +168,8 @@ func _play_event(entry: Dictionary) -> void:
 			else:
 				_arena.mechs[actor].lunge(step)
 			var damage: int = entry.get("damage", 0)
+			if entry.get("shielded", false):
+				_arena.float_text(_state[target]["pos"], Txt.t("shield_hit"), COLOR_COOL)
 			if damage > 0:
 				_arena.mechs[target].hit(step)
 				_arena.shake(clampf(damage / 30.0, 2.0, 9.0))
@@ -196,6 +201,12 @@ func _play_event(entry: Dictionary) -> void:
 				await get_tree().create_timer(step).timeout
 		"regen":
 			pass
+		"repair":
+			_arena.float_text(_state[actor]["pos"], "+%d" % entry["amount"], COLOR_REPAIR)
+			await get_tree().create_timer(step).timeout
+		"evade":
+			var who: int = entry["who"]
+			await _arena.mechs[who].blink_to(_arena.cell_point(entry["to"]), step).finished
 		"drop_spawn":
 			await _arena.ship_drop(entry["drop"], step * 1.6)
 		"drop_taken":
@@ -467,6 +478,14 @@ func _preview_text(action: BattleAction) -> String:
 	return "\n".join(lines)
 
 
+## Lineas del registro de las habilidades de jefe (GDD 9.1).
+func _ability_line(entry: Dictionary) -> String:
+	if entry["event"] == "repair":
+		var repair_args := [names[entry["actor"]], entry["amount"]]
+		return "[color=#7dff9b]%s[/color]" % Txt.t("log_repair", repair_args)
+	return Txt.t("log_evade", [names[entry["who"]], entry["to"]])
+
+
 func _log_line(entry: Dictionary) -> String:
 	var actor: int = entry["actor"]
 	var who := names[actor]
@@ -475,6 +494,8 @@ func _log_line(entry: Dictionary) -> String:
 	if slot != "" and engine.mechs[actor].slots.has(slot):
 		item = engine.mechs[actor].slots[slot].def.display_name
 	var damage: int = entry.get("damage", 0)
+	if entry["event"] in ["repair", "evade"]:
+		return _ability_line(entry)
 	match entry["event"]:
 		"weapon":
 			return Txt.t("log_weapon", [who, item, damage])

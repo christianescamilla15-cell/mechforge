@@ -481,6 +481,9 @@ func _start_autoplay() -> void:
 func _on_autoplay_event(entry: Dictionary) -> void:
 	# Una captura la primera vez que pasa cada cosa interesante.
 	var event: String = entry["event"]
+	if entry.get("shielded", false) and not _shot_events.has("shielded"):
+		_shot_events["shielded"] = true
+		_shot("escudo")
 	if (
 		event
 		in [
@@ -492,7 +495,9 @@ func _on_autoplay_event(entry: Dictionary) -> void:
 			"hook",
 			"teleport",
 			"drop_spawn",
-			"drop_taken"
+			"drop_taken",
+			"repair",
+			"evade"
 		]
 	):
 		if not _shot_events.has(event):

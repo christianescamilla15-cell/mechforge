@@ -50,6 +50,19 @@ func add(raw: Variant) -> void:
 		if key in ["ability", "ability_text"]:
 			def.set(key, str(raw[key]))
 			continue
+		if key in ChassisDef.ABILITY_FLAGS:
+			def.set(key, bool(raw[key]))
+			continue
+		if key in ChassisDef.ABILITY_COUNTS:
+			def.set(key, int(raw[key]))
+			if int(raw[key]) < 0 or int(raw[key]) > 2:
+				errors.append("%s: %s debe estar entre 0 y 2" % [id, key])
+			continue
+		if key == "regen_share":
+			def.regen_share = float(raw[key])
+			if def.regen_share < 0.0 or def.regen_share > ChassisDef.MAX_REGEN_SHARE:
+				errors.append("%s: regen_share fuera de rango" % id)
+			continue
 		if not key in ChassisDef.MULTIPLIERS:
 			errors.append("%s: campo desconocido '%s'" % [id, key])
 			continue

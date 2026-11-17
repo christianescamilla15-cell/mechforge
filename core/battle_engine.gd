@@ -231,7 +231,8 @@ func preview(action: BattleAction) -> Dictionary:
 			out["dmg_min"] = _damage(def, me, foe, 0.0)
 			out["dmg_max"] = _damage(def, me, foe, 1.0)
 			out["target_heat"] = foe.heat + def.heat_dmg
-			out["target_energy"] = maxi(0, foe.energy - def.energy_dmg)
+			if not foe.free_energy():
+				out["target_energy"] = maxi(0, foe.energy - def.energy_dmg)
 			out["self_health"] = me.health - me.backfire_of(def)
 		out["self_heat"] = me.heat + def.heat_cost
 		out["self_energy"] = me.energy - me.energy_cost(def)
@@ -250,6 +251,7 @@ func apply(action: BattleAction) -> String:
 		return reason
 	var me := attacker()
 	var foe := defender()
+	var foe_health := foe.health
 	match action.type:
 		BattleAction.Type.COOL:
 			var amount := mini(me.cooling, me.heat)
@@ -286,6 +288,7 @@ func apply(action: BattleAction) -> String:
 			if logging:
 				events[-1]["from"] = from
 				events[-1]["to"] = me.position
+	_evade_if_hit(foe, me, foe_health)
 	_check_pickup()
 	actions_left -= 1
 	if _check_winner():
@@ -297,10 +300,21 @@ func apply(action: BattleAction) -> String:
 
 func _begin_turn() -> void:
 	var me := attacker()
+	var foe := defender()
 	turn_number += 1
 	_maybe_spawn_drop()
 	for slot: BattleMech.Slot in me.slots.values():
 		slot.used_this_turn = false
+	# El escudo y la evasion del rival se recargan en cada turno de quien ataca.
+	foe.shield_left = foe.shield_hits()
+	foe.evade_left = 1 if foe.evades() else 0
+	if me.regen_share() > 0.0 and me.health < me.max_health:
+		var repair := maxi(1, roundi(me.max_health * me.regen_share()))
+		repair = mini(repair, me.max_health - me.health)
+		me.health += repair
+		_log("repair", {"amount": repair})
+	if me.no_overheat():
+		me.heat = mini(me.heat, me.heat_cap)
 	var actions := rules.actions_per_turn + me.extra_actions()
 	var shutdown := false
 	if me.heat > me.heat_cap:
@@ -331,9 +345,23 @@ func _end_turn(fire_drone: bool) -> void:
 	var me := attacker()
 	var foe := defender()
 	if fire_drone and why_cant_use(me, foe, "drone") == "":
+		var before := foe.health
 		_use(me, foe, "drone", "drone")
 		if _check_winner():
 			return
+		_evade_if_hit(foe, me, before)
+		for i in me.extra_drone_shots():
+			# El enjambre no dispara con el rival pegado.
+			if absi(me.position - foe.position) <= 1:
+				break
+			me.slots["drone"].used_this_turn = false
+			if why_cant_use(me, foe, "drone") != "":
+				break
+			before = foe.health
+			_use(me, foe, "drone", "drone")
+			if _check_winner():
+				return
+			_evade_if_hit(foe, me, before)
 	if not rules.m6_regen_at_turn_start:
 		_regen(me)
 	_check_pickup()
@@ -358,7 +386,10 @@ func _use(
 	var roll := 0.0
 	if def.deals_damage():
 		roll = fixed_roll if fixed_roll >= 0.0 else _rng.randf()
+	var shielded := def.deals_damage() and target.shield_left > 0
 	var damage := _damage(def, user, target, roll)
+	if shielded:
+		target.shield_left -= 1
 
 	user.health -= user.backfire_of(def)
 	user.heat += def.heat_cost
@@ -366,23 +397,27 @@ func _use(
 
 	target.health -= damage
 	target.heat += def.heat_dmg
-	target.energy = maxi(0, target.energy - def.energy_dmg)
+	if not target.free_energy():
+		target.energy = maxi(0, target.energy - def.energy_dmg)
 	if def.element != ItemDef.Element.COMBINED:
 		target.res[def.element] = maxi(0, target.res[def.element] - def.res_dmg)
 	if def.heat_cap_dmg > 0:
 		target.heat_cap = maxi(1, target.heat_cap - def.heat_cap_dmg)
 	if def.cooling_dmg > 0:
 		target.cooling = maxi(1, target.cooling - def.cooling_dmg)
-	if def.energy_cap_dmg > 0:
+	if def.energy_cap_dmg > 0 and not target.free_energy():
 		target.energy_cap = maxi(1, target.energy_cap - def.energy_cap_dmg)
 		target.energy = mini(target.energy, target.energy_cap)
-	if def.energy_regen_dmg > 0:
+	if def.energy_regen_dmg > 0 and not target.free_energy():
 		target.energy_regen = maxi(1, target.energy_regen - def.energy_regen_dmg)
 
 	if move:
 		_apply_movement(user, target, def)
 	_spend_use(slot)
-	_log(event, {"slot": key, "item": def.id, "damage": damage})
+	var data := {"slot": key, "item": def.id, "damage": damage}
+	if shielded:
+		data["shielded"] = true
+	_log(event, data)
 
 
 func _spend_use(slot: BattleMech.Slot) -> void:
@@ -393,6 +428,8 @@ func _spend_use(slot: BattleMech.Slot) -> void:
 
 ## Dano final (GDD 2.4). roll en [0, 1].
 func _damage(def: ItemDef, attacker: BattleMech, target: BattleMech, roll: float) -> int:
+	if def.deals_damage() and target.shield_left > 0:
+		return 0
 	var damage := 0
 	if def.deals_damage():
 		damage = def.dmg_min + roundi(roll * (def.dmg_max - def.dmg_min))
@@ -405,7 +442,23 @@ func _damage(def: ItemDef, attacker: BattleMech, target: BattleMech, roll: float
 		if armor > 0.0:
 			damage = maxi(1, roundi(damage * (1.0 - armor)))
 	# Rotura de energia: lo que el arma drena de mas se vuelve dano.
+	if target.free_energy():
+		return damage
 	return damage + maxi(0, def.energy_dmg - target.energy)
+
+
+## Evasion (GDD 9.1): si el golpe le hizo dano, salta al extremo de la
+## arena de su lado, lejos de quien le pego.
+func _evade_if_hit(target: BattleMech, user: BattleMech, health_before: int) -> void:
+	if target.evade_left <= 0 or target.health <= 0 or target.health >= health_before:
+		return
+	var to := 0 if target.position < user.position else rules.arena_size - 1
+	if to == target.position:
+		return
+	var from := target.position
+	target.position = to
+	target.evade_left -= 1
+	_log("evade", {"who": mechs.find(target), "from": from, "to": to})
 
 
 func _apply_movement(user: BattleMech, target: BattleMech, def: ItemDef) -> void:

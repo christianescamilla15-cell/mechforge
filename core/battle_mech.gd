@@ -33,6 +33,10 @@ var cooling: int = 0
 ## Resistencias indexadas por ItemDef.Element (fisico, calor, energia).
 var res: Array[int] = [0, 0, 0]
 var shutdown_last_turn: bool = false
+## Habilidades de jefe (GDD 9.1): golpes que su escudo todavia puede anular
+## y esquivas que le quedan en el turno del rival.
+var shield_left: int = 0
+var evade_left: int = 0
 ## Bonificaciones en vigor (GDD 2.8): {"kind", "amount", "turns"}.
 var buffs: Array[Dictionary] = []
 ## Huecos que actuan en combate: "legs", "side0".."side3", "top0", "top1",
@@ -80,6 +84,8 @@ func clone() -> BattleMech:
 	copy.cooling = cooling
 	copy.res = res.duplicate()
 	copy.shutdown_last_turn = shutdown_last_turn
+	copy.shield_left = shield_left
+	copy.evade_left = evade_left
 	copy.buffs = buffs.duplicate(true)
 	for key in slots:
 		copy.slots[key] = slots[key].clone()
@@ -105,6 +111,35 @@ func extra_actions() -> int:
 	if build == null or build.chassis == null:
 		return 0
 	return build.chassis.extra_actions
+
+
+## Habilidades de jefe: lo que dice su chasis, o nada si no tiene.
+func free_energy() -> bool:
+	return _chassis() != null and _chassis().free_energy
+
+
+func regen_share() -> float:
+	return _chassis().regen_share if _chassis() != null else 0.0
+
+
+func shield_hits() -> int:
+	return _chassis().shield_hits if _chassis() != null else 0
+
+
+func evades() -> bool:
+	return _chassis() != null and _chassis().evade
+
+
+func no_overheat() -> bool:
+	return _chassis() != null and _chassis().no_overheat
+
+
+func extra_drone_shots() -> int:
+	return _chassis().extra_drone_shots if _chassis() != null else 0
+
+
+func _chassis() -> ChassisDef:
+	return build.chassis if build != null else null
 
 
 ## Potencia de disparo de este mech: su chasis, las mejoras de la tienda y

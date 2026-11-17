@@ -143,13 +143,13 @@ func test_el_pesado_se_consigue_despues_del_nivel_10() -> void:
 
 func test_el_chasis_de_jefe_da_una_accion_mas_y_no_mas_vida() -> void:
 	var library := ChassisLibrary.load_file("res://data/chassis.json")
-	var boss := library.get_def("jefe")
+	var boss := library.get_def("jefe_veloz")
 	assert_eq(boss.extra_actions, 1)
 	assert_almost_eq(boss.health_mult, 1.0, 0.0001, "dificil por como juega, no por vida")
 	var ids: Array[String] = []
 	for def in library.unlocked_at(50):
 		ids.append(def.id)
-	assert_false("jefe" in ids, "el jugador no puede conseguirlo")
+	assert_false("jefe_veloz" in ids, "el jugador no puede conseguirlo")
 
 
 func test_un_jefe_tiene_3_acciones_y_al_enfriar_a_la_fuerza_solo_1() -> void:

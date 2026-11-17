@@ -251,15 +251,43 @@ Unas 58 piezas con nombres propios (nunca los del original).
 
 **Cómo se hace:** la habilidad es el chasis del jefe (data/chassis.json: `ability`, `ability_text` y los números que cambia). Todos los jefes tienen la vida de un mech normal de su clase. El menú enseña la habilidad antes del combate. Cada habilidad deja un punto débil, que es la vía táctica.
 
-| Jefe | Habilidad | Qué hace | Punto débil | Estado |
-|---|---|---|---|---|
-| 1 · Capataz del Orden | Superblindaje | Sus resistencias valen el doble | Se enfría un 30 % peor; el drenaje de energía le hace daño que la coraza no para | Hecho y medido (§9.2) |
-| por asignar | Velocidad | Hace 3 acciones por turno en vez de 2 | Se enfría un 30 % peor | Hecho y medido (abajo); hoy lo usa el jefe final |
-| por asignar | Poder de daño | Sus armas pegan mucho más | por definir | El motor ya lo permite; falta medirlo |
-| por asignar | Energía infinita | Sus armas no gastan energía y no se le puede drenar | por definir | Falta en el motor |
-| 10 · Coloso del Orden | por decidir | | | Hoy usa Velocidad |
+**Los 10 jefes** (lista aprobada por el usuario el 2026-11-17, "de momento"). Los tres últimos sueltan las piezas Únicas.
 
-Faltan seis habilidades y el reparto por zona: se deciden con el usuario. Por ahora los dos jefes construidos montan piezas de los mechs de ejemplo; su diseño y sus armas propias llegan con el catálogo nuevo.
+| Zona | Jefe | Habilidad | Qué hace | Punto débil |
+|---|---|---|---|---|
+| 1 | Capataz del Orden | Superblindaje | Sus resistencias valen el doble | Se enfría un 30 % peor |
+| 2 | Verdugo del Orden | Poder de daño | Sus armas pegan un 30 % más | Resistencias al 60 % |
+| 3 | Reactor del Orden | Energía infinita | Sus armas no gastan energía y no se le puede drenar (ni romper su energía) | Se enfría un 15 % peor |
+| 4 | Hidra del Orden | Regeneración | Repara el 5 % de su vida al empezar cada turno | Daño concentrado en pocos turnos |
+| 5 | Centella del Orden | Velocidad | 3 acciones por turno en vez de 2 | Se enfría un 30 % peor |
+| 6 | Égida del Orden | Escudo | Anula el primer golpe de cada turno del jugador | Armas de varios disparos y dron; resistencias al 60 %; se enfría peor |
+| 7 | Espectro del Orden | Evasión | Al recibir daño salta al extremo de la arena de su lado, una vez por turno | Armas de alcance largo |
+| 8 | Caldera del Orden | Núcleo térmico | Nunca se sobrecalienta | Resiste la energía a la mitad |
+| 9 | Colmena del Orden | Enjambre | Su dron dispara dos veces | Si el jugador se le pega, solo dispara una |
+| 10 | Coloso del Orden | Velocidad y superblindaje | 3 acciones por turno y resistencias ×1.7 | Se enfría un 30 % peor |
+
+Algunos jefes llevan además algo de resistencia o de potencia de más (data/chassis.json) para que todos queden en la misma franja de dificultad. Por ahora montan las piezas de los mechs de ejemplo; su diseño y sus armas propias llegan con el catálogo nuevo. Las habilidades se prueban una a una en tests/unit/test_boss_abilities.gd.
+
+**Medido el 2026-11-17 con la misma vara para todos** (tools/sim/bosses_sim.gd: todo en clase Básica nivel 6, bonificaciones encendidas, IA difícil en los dos lados, 20 combates por casilla, así que cada cifra tiene unos ±10 puntos de margen; "50 combates" = armería al nivel 6):
+
+| Jefe | Directo: media | Directo: mejor mech | Con 50 combates: media | Con 50 combates: mejor mech |
+|---|---|---|---|---|
+| 1 Superblindaje | 1 % | 5 % (físico) | 51 % | 80 % (calor) |
+| 2 Poder de daño | 5 % | 15 % (energía) | 69 % | 70 % |
+| 3 Energía infinita | 15 % | 30 % (calor) | 88 % | 100 % (calor) |
+| 4 Regeneración | 0 % | 0 % | 75 % | 90 % (energía) |
+| 5 Velocidad | 6 % | 20 % (energía) | 76 % | 90 % (híbrido) |
+| 6 Escudo | 0 % | 0 % | 26 % | 70 % (calor) |
+| 7 Evasión | 3 % | 5 % | 38 % | 60 % (energía) |
+| 8 Núcleo térmico | 20 % | 75 % (energía) | 84 % | 100 % (energía) |
+| 9 Enjambre | 5 % | 20 % (energía) | 65 % | 90 % (energía) |
+| 10 Velocidad y superblindaje | 0 % | 0 % | 16 % | 25 % (calor) |
+
+- Ningún jefe se vence de entrada salvo por su punto débil (la Caldera, con el mech de energía).
+- Con unos 50 combates de armería todos se vuelven ganables, y el mech que ataca el punto débil gana mucho más que los otros.
+- El jefe final: 0 % de entrada, 16 % con 50 combates y 94 % con la armería al máximo.
+- Ninguna habilidad deja combates atascados: 0 empates por límite de turnos en 2 960 combates.
+- **Falta:** ajustarlos de nuevo cuando exista cada zona, con la clase y el equipo que tenga el jugador al llegar.
 
 **El jefe de velocidad, medido el 2026-11-16** (data/chassis.json, chasis "jefe"; data/builds.json, mech "jefe_final"):
 - Tiene la misma vida que un mech normal de su clase.

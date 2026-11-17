@@ -4,7 +4,15 @@
     {"id": "ligero", "name": "Ligero", "unlock_level": 1, "health_mult": 0.9, "energy_cost_mult": 0.6, "damage_mult": 1.2},
     {"id": "medio", "name": "Medio", "unlock_level": 5, "health_mult": 1.03, "damage_mult": 1.1, "heat_cap_mult": 1.15, "cooling_mult": 1.15},
     {"id": "pesado", "name": "Pesado", "unlock_level": 11, "health_mult": 1.25, "resistance_mult": 1.25, "energy_cost_mult": 1.15, "damage_mult": 0.9},
-    {"id": "jefe", "name": "Jefe", "unlock_level": 999, "resistance_mult": 1.2, "cooling_mult": 0.7, "extra_actions": 1, "ability": "Velocidad", "ability_text": "Hace tres acciones por turno en vez de dos."},
-    {"id": "jefe_blindado", "name": "Jefe blindado", "unlock_level": 999, "resistance_mult": 2.0, "cooling_mult": 0.7, "ability": "Superblindaje", "ability_text": "Su coraza resiste el doble que la de cualquier mech de esta zona."}
+    {"id": "jefe_blindado", "name": "Jefe blindado", "unlock_level": 999, "resistance_mult": 2.0, "cooling_mult": 0.7, "ability": "Superblindaje", "ability_text": "Resiste el doble que cualquier mech de su zona, pero se enfría peor."},
+    {"id": "jefe_potencia", "name": "Jefe de potencia", "unlock_level": 999, "damage_mult": 1.3, "resistance_mult": 0.6, "ability": "Poder de daño", "ability_text": "Sus armas pegan un 30 % más, pero su coraza es más fina."},
+    {"id": "jefe_reactor", "name": "Jefe reactor", "unlock_level": 999, "free_energy": true, "resistance_mult": 1.3, "cooling_mult": 0.85, "ability": "Energía infinita", "ability_text": "Sus armas no gastan energía y no se le puede drenar, pero se enfría peor."},
+    {"id": "jefe_hidra", "name": "Jefe hidra", "unlock_level": 999, "regen_share": 0.05, "ability": "Regeneración", "ability_text": "Repara un 5 % de su vida al empezar cada turno: hay que tumbarlo rápido."},
+    {"id": "jefe_veloz", "name": "Jefe veloz", "unlock_level": 999, "resistance_mult": 1.2, "cooling_mult": 0.7, "extra_actions": 1, "ability": "Velocidad", "ability_text": "Hace tres acciones por turno en vez de dos, pero se enfría peor."},
+    {"id": "jefe_egida", "name": "Jefe égida", "unlock_level": 999, "shield_hits": 1, "resistance_mult": 0.6, "cooling_mult": 0.7, "ability": "Escudo", "ability_text": "Anula el primer golpe de cada turno tuyo, pero su coraza es fina y se enfría peor."},
+    {"id": "jefe_espectro", "name": "Jefe espectro", "unlock_level": 999, "evade": true, "resistance_mult": 1.3, "damage_mult": 1.2, "ability": "Evasión", "ability_text": "Cuando le haces daño salta al extremo de la arena; las armas de largo alcance lo siguen."},
+    {"id": "jefe_caldera", "name": "Jefe caldera", "unlock_level": 999, "no_overheat": true, "resistance_mult": 1.3, "res_energy_mult": 0.5, "ability": "Núcleo térmico", "ability_text": "Nunca se sobrecalienta y resiste más que nadie, salvo las armas de energía."},
+    {"id": "jefe_colmena", "name": "Jefe colmena", "unlock_level": 999, "extra_drone_shots": 1, "resistance_mult": 1.2, "ability": "Enjambre", "ability_text": "Lleva dos drones; si te pegas a él solo dispara uno."},
+    {"id": "jefe_coloso", "name": "Jefe coloso", "unlock_level": 999, "resistance_mult": 1.7, "cooling_mult": 0.7, "extra_actions": 1, "ability": "Velocidad y superblindaje", "ability_text": "Hace tres acciones por turno y resiste mucho más; su punto débil es el calor."}
   ]
 }
