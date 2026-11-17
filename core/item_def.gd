@@ -12,7 +12,11 @@ enum Tier { COMMON, RARE, EPIC, LEGENDARY, MYTHIC, DIVINE }
 
 const TAG_MELEE := "melee"
 const TAG_SWORD := "espada"
-const KNOWN_TAGS: Array[String] = [TAG_MELEE, TAG_SWORD]
+## Como se mueven unas piernas que no andan (la animacion, no las reglas).
+const TAG_TRACKS := "orugas"
+const TAG_WHEELS := "ruedas"
+const TAG_HOVER := "levita"
+const KNOWN_TAGS: Array[String] = [TAG_MELEE, TAG_SWORD, TAG_TRACKS, TAG_WHEELS, TAG_HOVER]
 
 ## Estadisticas que crecen con el tier y el nivel (GDD 8).
 const SCALED_STATS: Array[String] = [

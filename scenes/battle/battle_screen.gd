@@ -182,8 +182,12 @@ func _play_event(entry: Dictionary) -> void:
 			for i in 2:
 				var cell: int = snapshot[i]["pos"]
 				if cell != _state[i]["pos"] or _arena.mechs[i].position != _arena.cell_point(cell):
-					_arena.mechs[i].move_to(_arena.cell_point(cell), step * 0.7)
-			await get_tree().create_timer(step * 0.7).timeout
+					# Al rival lo empujan o lo arrastran; quien dispara retrocede.
+					if i == target:
+						_arena.mechs[i].knockback_to(_arena.cell_point(cell), step * 0.9)
+					else:
+						_arena.mechs[i].hop_back(_arena.cell_point(cell), step * 0.9)
+			await get_tree().create_timer(step * 0.9).timeout
 		"walk":
 			var destination := _arena.cell_point(entry["to"])
 			if _is_jump(entry, actor):

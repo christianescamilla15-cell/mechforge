@@ -75,6 +75,26 @@ func draw_piece(
 	canvas.draw_texture_rect(texture, Rect2(top_left, texture.get_size() * UNIT_SCALE), false, tint)
 
 
+## Esqueleto de las piernas en el color de su elemento (null sin arte).
+func leg_rig(element: int) -> LegRig:
+	var texture := legs_texture(element)
+	if texture == null:
+		return null
+	var legs: Dictionary = _load_anchors(legs_set)["legs"]
+	return LegRig.for_texture(texture, Vector2(legs["hip"][0], legs["hip"][1]))
+
+
+func legs_texture(element: int) -> Texture2D:
+	return _texture(legs_set, "legs", element)
+
+
+## Esquina de arriba a la izquierda del dibujo de las piernas, respecto a
+## los pies, en unidades de MechView.
+func legs_origin() -> Vector2:
+	var legs: Dictionary = _load_anchors(legs_set)["legs"]
+	return hip_point() - Vector2(legs["hip"][0], legs["hip"][1]) * UNIT_SCALE
+
+
 ## Punta delantera de una pieza (la boca de un arma), respecto a los pies.
 func piece_tip(set_name: String, kind: String) -> Vector2:
 	var piece: Variant = _load_anchors(set_name).get(kind)

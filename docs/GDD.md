@@ -452,6 +452,15 @@ Animación por piezas (cada pieza es un sprite que se mueve, gira o se desplaza)
 | Final | Explosión y piezas que saltan al ser destruido; pose de victoria |
 | Interfaz | Números flotantes, barras que se mueven con suavidad, cartel de turno, respuesta de los botones y transiciones entre pantallas |
 
+**Movimiento, hecho el 2026-11-17** (pedido del usuario: andar, volar, levitar y retroceder como en el original). Las piernas, que el arte dibuja de una pieza y de lado, llevan un esqueleto 2D (scenes/battle/leg_rig.gd): muslo, espinilla y pie giran sobre cadera, rodilla y tobillo, y el dibujo se dobla como una malla sin cortes. Se dibuja una segunda pierna más oscura detrás, en fase opuesta. El pie de apoyo se queda en el suelo.
+- **Andar:** zancada con las dos piernas, polvo en cada paso; hacia atrás anda de espaldas mirando al rival y se echa hacia atrás.
+- **Volar:** las piernas que saltan se agachan, despegan con propulsores en los pies, recogen las piernas en el arco y aterrizan flexionando; también de espaldas.
+- **Levitar** (piernas con la etiqueta `levita`): flotan con un brillo debajo y se deslizan inclinándose. **Rodar** (`orugas` o `ruedas`): se deslizan sin pasos, con una vibración leve.
+- **Empujones y jalones:** el rival resbala sin girarse, con las piernas clavadas y el cuerpo echado hacia el golpe. **Retroceso al disparar** (armas que retroceden): salto corto hacia atrás con propulsores.
+- **Embestida:** propulsores y cuerpo echado hacia delante.
+- Para revisarlas: `tools/clip.ps1 -Showcase` (muestra en la arena) y `tools/clip.ps1 -Cycle` (ciclos de cerca); `tools/rig_frames.gd` saca una hoja de poses.
+- Falta: arte propio para orugas, ruedas y piernas que levitan (hoy usan los dibujos de piernas que andan) y que las armas tengan dibujo propio.
+
 **Armas: cómo se empuñan y cómo disparan** (pedido del usuario, 2026-11-16). Cada familia de arma tiene su propia forma de desplegarse, apuntar, disparar e impactar, y evoluciona con las etapas tecnológicas de la pieza (§8): el mismo cañón no se ve ni dispara igual en la etapa 1 que en la 5.
 
 | Familia | Despliegue y disparo | Proyectil e impacto |

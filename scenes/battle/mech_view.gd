@@ -1,5 +1,8 @@
 class_name MechView
 extends Node2D
+
+## Un pie toca el suelo (pasos y aterrizajes), en las coordenadas del padre.
+signal footstep(at: Vector2)
 ## Dibuja un mech en la arena. De momento con figuras provisionales por pieza
 ## (bloques de color segun el elemento); el arte definitivo de la fase F4
 ## sustituira a _draw sin tocar el resto.
@@ -22,6 +25,16 @@ const RECOIL := 16.0
 ## Los jefes se dibujan mas grandes.
 const BOSS_SCALE := 1.15
 const RETRACT := 78.0
+## Zancada: radianes de fase por segundo al andar.
+const GAIT_SPEED := 10.0
+## Cuanto se separa la pierna de detras y cuanto se oscurece.
+const FAR_LEG_OFFSET := Vector2(-14.0, -2.0)
+const FAR_LEG_DIM := 0.65
+## Altura a la que flotan las piernas que levitan.
+const HOVER_HEIGHT := 16.0
+const FLAME_CORE := Color(1.0, 0.95, 0.75)
+const FLAME_EDGE := Color(1.0, 0.45, 0.12)
+const HOVER_GLOW := Color(0.45, 0.9, 1.0)
 
 var build: MechBuild
 ## 1 si mira a la derecha, -1 si mira a la izquierda.
@@ -42,12 +55,39 @@ var _deployed := false
 ## Cuanto se ha desplomado por estar apagado, de 0 a 1.
 var _slump := 0.0
 var _dead := false
+## Como se mueve segun sus piernas: "walk" (anda y salta), "roll" (orugas o
+## ruedas) o "hover" (levita).
+var _locomotion := "walk"
+## Fase de la zancada y sentido: 1 hacia delante, -1 marcha atras.
+var _gait := 0.0
+var _gait_dir := 1.0
+## Propulsores (0 apagados, 1 a tope), agachado, inclinacion del cuerpo
+## (+ hacia delante), pose de aguantar un empujon, y si va por el aire.
+var _thrust := 0.0
+var _crouch := 0.0
+var _lean := 0.0
+var _brace := 0.0
+var _airborne := false
+## Esqueleto de las piernas (null sin arte).
+var _rig: LegRig
 
 
 func setup(p_build: MechBuild, p_facing: int) -> void:
 	build = p_build
 	_sprites = MechSprites.for_build(build)
+	_rig = _sprites.leg_rig(build.legs.element) if _sprites != null else null
+	_locomotion = locomotion_of(build.legs)
 	set_facing(p_facing)
+
+
+## Como se mueven unas piernas: las que levitan, las de orugas o ruedas, y
+## las demas andan (y saltan si pueden).
+static func locomotion_of(legs: ItemDef) -> String:
+	if legs.has_tag(ItemDef.TAG_HOVER):
+		return "hover"
+	if legs.has_tag(ItemDef.TAG_TRACKS) or legs.has_tag(ItemDef.TAG_WHEELS):
+		return "roll"
+	return "walk"
 
 
 func set_facing(p_facing: int) -> void:
@@ -71,23 +111,85 @@ func place(at: Vector2) -> void:
 	position = at
 
 
+## Anda (o rueda, o se desliza) hasta otra casilla. Si va hacia atras sigue
+## mirando al rival: anda de espaldas y se echa un poco hacia atras.
 func move_to(at: Vector2, seconds: float) -> Tween:
+	var backwards := (at.x - position.x) * facing < 0.0
+	_gait_dir = -1.0 if backwards else 1.0
 	_base_position = at
 	var tween := create_tween()
 	tween.tween_property(self, "position", at, seconds).set_trans(Tween.TRANS_SINE)
 	_walking = true
-	tween.finished.connect(func() -> void: _walking = false)
+	var lean := -0.07 if backwards else 0.05
+	if _locomotion == "hover":
+		lean *= 2.0
+	create_tween().tween_property(self, "_lean", lean, seconds * 0.3)
+	tween.finished.connect(_stop_walking)
 	return tween
+
+
+func _stop_walking() -> void:
+	_walking = false
+	create_tween().tween_property(self, "_lean", 0.0, 0.2)
 
 
 ## Salto en arco hasta otra casilla: asi se mueve cuando pasa por encima del
 ## rival o va mas lejos de lo que anda, y asi atacan las espadas.
-func jump_to(at: Vector2, seconds: float) -> Tween:
+## Vuela con los propulsores: se agacha, despega, recoge las piernas en el
+## aire y aterriza flexionando. Si va hacia atras, vuela de espaldas.
+func jump_to(at: Vector2, seconds: float, height_scale: float = 1.0) -> Tween:
 	var from := position
 	_base_position = at
-	var height := clampf(absf(at.x - from.x) * 0.3, 60.0, 190.0)
+	var height := clampf(absf(at.x - from.x) * 0.3, 60.0, 190.0) * height_scale
+	var backwards := (at.x - from.x) * facing < 0.0
 	var tween := create_tween()
-	tween.tween_method(_arc_step.bind(from, at, height), 0.0, 1.0, seconds)
+	tween.tween_property(self, "_crouch", 1.0, seconds * 0.15).set_trans(Tween.TRANS_SINE)
+	tween.tween_callback(_launch.bind(backwards))
+	tween.parallel().tween_property(self, "_crouch", 0.0, seconds * 0.1)
+	tween.tween_method(_arc_step.bind(from, at, height), 0.0, 1.0, seconds * 0.7)
+	tween.tween_callback(_land)
+	tween.tween_property(self, "_crouch", 0.8, seconds * 0.06)
+	tween.tween_property(self, "_crouch", 0.0, seconds * 0.12).set_trans(Tween.TRANS_SINE)
+	return tween
+
+
+func _launch(backwards: bool) -> void:
+	_airborne = true
+	_thrust = 1.0
+	create_tween().tween_property(self, "_lean", -0.18 if backwards else 0.14, 0.15)
+	footstep.emit(position)
+
+
+func _land() -> void:
+	_airborne = false
+	create_tween().tween_property(self, "_thrust", 0.0, 0.12)
+	create_tween().tween_property(self, "_lean", 0.0, 0.2)
+	footstep.emit(position)
+
+
+## Salto corto hacia atras con los propulsores (armas que retroceden). Las
+## piernas que no saltan se deslizan hacia atras sin girarse.
+func hop_back(at: Vector2, seconds: float) -> Tween:
+	if _locomotion == "walk" and build.legs.jump > 0:
+		return jump_to(at, seconds, 0.45)
+	return knockback_to(at, seconds)
+
+
+## Lo empujan o lo arrastran: resbala sin girarse, con las piernas
+## clavadas y el cuerpo echado hacia el golpe, levantando polvo.
+func knockback_to(at: Vector2, seconds: float) -> Tween:
+	var pushed_back := (at.x - position.x) * facing < 0.0
+	_base_position = at
+	var tween := create_tween()
+	tween.tween_property(self, "_brace", 1.0, seconds * 0.15)
+	tween.parallel().tween_property(self, "_lean", -0.16 if pushed_back else 0.16, seconds * 0.15)
+	tween.tween_callback(func() -> void: footstep.emit(position))
+	tween.tween_property(self, "position", at, seconds * 0.6).set_trans(Tween.TRANS_QUAD).set_ease(
+		Tween.EASE_OUT
+	)
+	tween.tween_callback(func() -> void: footstep.emit(position))
+	tween.tween_property(self, "_brace", 0.0, seconds * 0.25)
+	tween.parallel().tween_property(self, "_lean", 0.0, seconds * 0.25)
 	return tween
 
 
@@ -108,11 +210,23 @@ func blink_to(at: Vector2, seconds: float) -> Tween:
 ## Embestida: arranca despacio y llega de golpe.
 func dash_to(at: Vector2, seconds: float) -> Tween:
 	_base_position = at
+	_thrust = 1.0
+	_lean = 0.2
+	_crouch = 0.35
 	var tween := create_tween()
 	tween.tween_property(self, "position", at, seconds).set_trans(Tween.TRANS_EXPO).set_ease(
 		Tween.EASE_IN
 	)
+	tween.tween_callback(_end_dash)
 	return tween
+
+
+func _end_dash() -> void:
+	footstep.emit(position)
+	var tween := create_tween().set_parallel()
+	tween.tween_property(self, "_thrust", 0.0, 0.15)
+	tween.tween_property(self, "_lean", 0.0, 0.2)
+	tween.tween_property(self, "_crouch", 0.0, 0.2)
 
 
 ## Pequeno avance hacia el rival y vuelta, al atacar.
@@ -137,6 +251,12 @@ func hit(seconds: float) -> Tween:
 
 func _process(delta: float) -> void:
 	_time += delta
+	if _walking and _locomotion == "walk":
+		var before := floorf(_gait / PI)
+		_gait += delta * GAIT_SPEED * _gait_dir
+		# Cada media zancada un pie toca el suelo.
+		if floorf(_gait / PI) != before:
+			footstep.emit(position)
 	queue_redraw()
 
 
@@ -208,11 +328,11 @@ func _draw_sprites(dim: float) -> void:
 	var tint := _body_tint(dim)
 	# Vivo: respira; andando: rebota; apagado: se desploma hacia delante.
 	var breath := 0.0 if (shut_down or _dead) else sin(_time * 2.2) * 1.6
-	var bounce := -absf(sin(_time * 11.0)) * 5.0 if _walking else 0.0
-	var body := Vector2(_slump * 9.0, breath + bounce + _slump * 13.0)
-	_sprites.draw_piece(
-		self, _sprites.legs_set, "legs", build.legs.element, tint, Vector2(0, bounce * 0.4)
-	)
+	var lift := _draw_legs(tint)
+	var body := Vector2(_slump * 9.0, breath + lift + _slump * 13.0)
+	# El cuerpo se inclina sobre la cintura.
+	var hip := _sprites.hip_point() + Vector2(0.0, lift)
+	draw_set_transform_matrix(LegRig._about(hip, _lean))
 	# El canon de pecho: mientras sale va por detras del torso, para que
 	# parezca que viene de dentro.
 	var cannon_at := body + Vector2((1.0 - _deploy) * -RETRACT - _recoil, 0.0)
@@ -229,6 +349,105 @@ func _draw_sprites(dim: float) -> void:
 	draw_set_transform(hover)
 	_draw_drone(dim)
 	draw_set_transform(Vector2.ZERO)
+
+
+## Dibuja las dos piernas con su pose y los propulsores o el brillo de
+## levitar. Devuelve cuanto sube o baja el cuerpo para que el pie de apoyo
+## toque el suelo (o para flotar).
+func _draw_legs(tint: Color) -> float:
+	var texture := _sprites.legs_texture(build.legs.element)
+	if _rig == null or texture == null:
+		_sprites.draw_piece(self, _sprites.legs_set, "legs", build.legs.element, tint)
+		return 0.0
+	var origin := _sprites.legs_origin()
+	var unit := MechSprites.UNIT_SCALE
+	var near := _leg_pose(0.0)
+	var far := _leg_pose(PI)
+	# El pie mas bajo se apoya en el suelo; al levitar, todo flota.
+	var lowest := maxf(
+		_rig.sole_point(origin, unit, near).y, _rig.sole_point(origin + FAR_LEG_OFFSET, unit, far).y
+	)
+	var lift := -lowest
+	if _locomotion == "hover":
+		lift -= HOVER_HEIGHT + sin(_time * 2.6) * 3.0
+	elif _locomotion == "roll" and _walking:
+		lift += sin(_time * 47.0) * 0.8
+	var far_tint := Color(tint.r * FAR_LEG_DIM, tint.g * FAR_LEG_DIM, tint.b * FAR_LEG_DIM, tint.a)
+	var shift := Vector2(0.0, lift)
+	_draw_jets(origin + FAR_LEG_OFFSET + shift, unit, far, 0.7)
+	_rig.draw(self, texture, origin + FAR_LEG_OFFSET + shift, unit, far, far_tint)
+	_draw_jets(origin + shift, unit, near, 1.0)
+	_rig.draw(self, texture, origin + shift, unit, near, tint)
+	return lift
+
+
+## Pose de una pierna (muslo, espinilla, pie) segun lo que este haciendo.
+## `phase` separa las dos piernas media zancada.
+func _leg_pose(phase: float) -> Vector3:
+	var thigh := 0.0
+	var shin := 0.0
+	if _airborne:
+		# En el aire recoge las piernas, una un poco mas que la otra.
+		thigh = -0.42 - 0.12 * cos(phase)
+		shin = 0.75
+	elif _walking and _locomotion == "walk":
+		var step := _gait + phase
+		thigh = -0.34 * sin(step)
+		# La rodilla se dobla cuando la pierna pasa por delante en el aire.
+		shin = 0.6 * maxf(0.0, cos(step))
+	elif _locomotion == "hover":
+		# Colgando, con un vaiven suave.
+		thigh = -0.1 + 0.07 * sin(_time * 1.9 + phase)
+		shin = 0.22
+	# Agacharse (despegue y aterrizaje) y clavarse ante un empujon.
+	thigh += -0.45 * _crouch + 0.3 * _brace * (1.0 if phase == 0.0 else -0.6)
+	shin += 0.9 * _crouch + 0.15 * _brace
+	# El pie queda plano respecto al suelo.
+	return Vector3(thigh, shin, -(thigh + shin) * 0.9)
+
+
+## Llamas de los propulsores bajo un pie, o el brillo de levitar.
+func _draw_jets(origin: Vector2, unit: float, pose: Vector3, strength: float) -> void:
+	var sole := _rig.sole_point(origin, unit, pose)
+	if _locomotion == "hover":
+		var glow := HOVER_GLOW
+		for i in 3:
+			glow.a = (0.22 - 0.06 * i) * strength
+			var radius := Vector2(30.0 + 10.0 * i, 6.0 + 2.0 * i)
+			_ellipse(sole + Vector2(0.0, HOVER_HEIGHT * 0.6), radius, glow)
+	if _thrust <= 0.01:
+		return
+	var flicker := 0.8 + 0.2 * sin(_time * 53.0 + strength * 7.0)
+	var length := 46.0 * _thrust * flicker * strength
+	var width := 10.0 * strength
+	var edge := FLAME_EDGE
+	edge.a = 0.85 * _thrust
+	draw_colored_polygon(
+		PackedVector2Array(
+			[sole + Vector2(-width, -4.0), sole + Vector2(width, -4.0), sole + Vector2(0.0, length)]
+		),
+		edge
+	)
+	var core := FLAME_CORE
+	core.a = _thrust
+	draw_colored_polygon(
+		PackedVector2Array(
+			[
+				sole + Vector2(-width * 0.45, -4.0),
+				sole + Vector2(width * 0.45, -4.0),
+				sole + Vector2(0.0, length * 0.55)
+			]
+		),
+		core
+	)
+
+
+func _ellipse(center: Vector2, radius: Vector2, color: Color) -> void:
+	var points := PackedVector2Array()
+	for i in 20:
+		var angle := TAU * i / 20.0
+		points.append(center + Vector2(cos(angle) * radius.x, sin(angle) * radius.y))
+	draw_colored_polygon(points, color)
 
 
 func _draw() -> void:

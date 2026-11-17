@@ -70,7 +70,16 @@ func _ready() -> void:
 	_catalog = Catalog.load_file("res://data/catalog.json")
 	_library = BuildLibrary.load_file("res://data/builds.json")
 	_campaign = Campaign.load_file("res://data/campaign.json", _library)
-	if _args.has("autoplay"):
+	if _args.has("showcase"):
+		# Muestra de movimientos para revisar animaciones (tools/clip.ps1 -Showcase).
+		var showcase := MovesShowcase.new()
+		showcase.rules = _rules
+		showcase.catalog = _catalog
+		showcase.library = _library
+		showcase.stages = _stages
+		showcase.finished.connect(func() -> void: get_tree().quit(0))
+		add_child(showcase)
+	elif _args.has("autoplay"):
 		_start_autoplay()
 	elif _args.has("menu-shot"):
 		# Prueba en vivo del menu: perfil de muestra, captura y salir.

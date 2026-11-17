@@ -87,6 +87,7 @@ func _ready() -> void:
 		var view := MechView.new()
 		_world.add_child(view)
 		mechs.append(view)
+		view.footstep.connect(_on_footstep)
 	_world.add_child(_fx)
 	mouse_exited.connect(_on_mouse_exited)
 
@@ -258,6 +259,10 @@ func cable(from_index: int, to_index: int, seconds: float) -> void:
 ## Polvo que levanta un mech al caer de un salto.
 func dust(at: Vector2, seconds: float) -> void:
 	sparks(at + Vector2(0.0, -6.0), Color("b9aa90"), seconds)
+
+
+func _on_footstep(at: Vector2) -> void:
+	dust(at, 0.35)
 
 
 ## Sacudida de camara; se apaga sola.
