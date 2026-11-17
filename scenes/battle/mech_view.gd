@@ -12,7 +12,7 @@ const ELEMENT_COLORS: Array[Color] = [
 ]
 const OUTLINE := Color("10151c")
 ## Escala del dibujo: un mech debe caber en su casilla con el rival al lado.
-const DRAW_SCALE := 0.72
+const DRAW_SCALE := 1.05
 ## Juego de sprites que tiene el canon de pecho (assets/mechs).
 const CHEST_SET := "ligero_18"
 ## Cuanto suben las armas provisionales para quedar sobre el torso nuevo.

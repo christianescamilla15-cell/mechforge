@@ -474,7 +474,7 @@ func _build_ui() -> void:
 
 	# Centro: la arena.
 	_arena = ArenaView.new()
-	_arena.custom_minimum_size = Vector2(0, 310)
+	_arena.custom_minimum_size = Vector2(0, 340)
 	_arena.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_arena.cell_clicked.connect(_on_cell_clicked)
 	_arena.cell_hovered.connect(_on_cell_hovered)
