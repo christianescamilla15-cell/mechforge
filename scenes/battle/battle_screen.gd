@@ -21,6 +21,7 @@ const COLOR_COOL := Color("9fd8ff")
 const COLOR_DROP := Color("ffe27a")
 const COLOR_REPAIR := Color("7dff9b")
 const COLOR_DARK_MATTER := Color("b07bff")
+const COLOR_CRIT := Color("ffd23d")
 
 var rules: RulesConfig
 var engine: BattleEngine
@@ -149,6 +150,9 @@ func _play_event(entry: Dictionary) -> void:
 	var line := _log_line(entry)
 	if entry.get("shielded", false):
 		line += " · %s" % Txt.t("log_shielded")
+	if entry.get("crit", false):
+		var effect := Txt.t("crit_effect_" + str(entry["crit_effect"]))
+		line += " · [color=#ffd23d]%s[/color]" % Txt.t("log_crit", [effect])
 	if line != "":
 		_log.append_text(line + "\n")
 
@@ -179,6 +183,12 @@ func _play_event(entry: Dictionary) -> void:
 				_arena.mechs[target].hit(step)
 				_arena.shake(clampf(damage / 30.0, 2.0, 9.0))
 				_arena.float_text(_state[target]["pos"], "-%d" % damage, COLOR_DAMAGE)
+			if entry.get("crit", false):
+				# Critico (GDD 2.9): aviso y lo que le hace al rival.
+				_arena.shake(12.0)
+				var cell: int = _state[target]["pos"]
+				_arena.float_text(cell, Txt.t("crit_hit"), COLOR_CRIT)
+				_arena.float_text(cell, Txt.t("crit_" + str(entry["crit_effect"])), COLOR_CRIT)
 			var heat_gain: int = snapshot[target]["heat"] - _state[target]["heat"]
 			if heat_gain > 0:
 				_arena.float_text(_state[target]["pos"], "+%d" % heat_gain, COLOR_HEAT)
@@ -404,6 +414,11 @@ func _show_state() -> void:
 	for i in 2:
 		var state := _state[i]
 		_panels[i].show_state(state, engine.mechs[i].max_health)
+		var health := float(state["health"]) / float(maxi(engine.mechs[i].max_health, 1))
+		var energy := float(state["energy"]) / float(maxi(state["energy_cap"], 1))
+		var stuck: bool = state.get("immobilized", false)
+		var disabled: String = state.get("disabled", "")
+		_arena.mechs[i].set_condition(health, energy, stuck, disabled, state.get("stunned", false))
 		var ratio := float(state["heat"]) / float(maxi(state["heat_cap"], 1))
 		_arena.mechs[i].set_heat(ratio)
 
@@ -508,6 +523,11 @@ func _preview_text(action: BattleAction) -> String:
 			"preview_target", [p["target_heat"], foe.heat_cap, p["target_energy"], foe.energy_cap]
 		)
 	)
+	var chance: float = p.get("crit_chance", 0.0)
+	if chance > 0.0:
+		var effect := Txt.t("crit_effect_" + str(p["crit_effect"]))
+		var crit_line := Txt.t("preview_crit", [roundi(chance * 100.0), effect])
+		lines.append("[color=#ffd23d]%s[/color]" % crit_line)
 	if p["self_overheats"]:
 		lines.append("[color=#ff6b5a]%s[/color]" % Txt.t("preview_self_overheat"))
 	if p["target_overheats"]:
@@ -525,6 +545,8 @@ func _ability_line(entry: Dictionary) -> String:
 			return "[color=#7fe3ff]%s[/color]" % Txt.t("log_barrier", [who])
 		"repair_kit":
 			return "[color=#7dff9b]%s[/color]" % Txt.t("log_repair_kit", [who, entry["amount"]])
+		"stunned":
+			return "[color=#ffd23d]%s[/color]" % Txt.t("log_stunned", [who])
 		"dark_matter":
 			return (
 				"[b][color=#c79bff]%s[/color][/b]"
@@ -541,7 +563,7 @@ func _log_line(entry: Dictionary) -> String:
 	if slot != "" and engine.mechs[actor].slots.has(slot):
 		item = engine.mechs[actor].slots[slot].def.display_name
 	var damage: int = entry.get("damage", 0)
-	if entry["event"] in ["repair", "evade", "barrier", "repair_kit", "dark_matter"]:
+	if entry["event"] in ["repair", "evade", "barrier", "repair_kit", "dark_matter", "stunned"]:
 		return _ability_line(entry)
 	match entry["event"]:
 		"weapon":

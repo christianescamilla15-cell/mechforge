@@ -5,6 +5,7 @@
 # Sin -From/-To sale el combate entero. -Full no recorta la zona de la arena.
 # -Showcase graba la muestra de movimientos (scenes/battle/moves_showcase.gd).
 # -Shots graba solo los disparos de las armas, uno por uno (data/shots.json).
+# -Wear graba el estado a la vista: desgaste, poca energia y efectos de criticos.
 # -Cycle graba los ciclos de movimiento de cerca (tools/rig_cycle.gd).
 param(
     [Parameter(Mandatory = $true)][string]$Out,
@@ -20,6 +21,7 @@ param(
     [switch]$Full,
     [switch]$Showcase,
     [switch]$Shots,
+    [switch]$Wear,
     [switch]$Cycle
 )
 $root = Split-Path -Parent $PSScriptRoot
@@ -36,6 +38,7 @@ New-Item -ItemType Directory -Force $env:MECHFORGE_SHOTS | Out-Null
 $run = @('--autoplay', "--player=$Player", "--enemy=$Enemy", "--tier=$Tier", "--seed=$Seed", "--speed=$Speed")
 if ($Showcase) { $run = @('--showcase') }
 if ($Shots) { $run = @('--showcase', '--shots') }
+if ($Wear) { $run = @('--showcase', '--wear') }
 if ($Cycle) {
     & "$PSScriptRoot\godot.ps1" --path $root --resolution 1280x720 --write-movie $movie --fixed-fps 30 -s tools/rig_cycle.gd *> $null
 } else {
@@ -43,7 +46,7 @@ if ($Cycle) {
 }
 if (-not (Get-ChildItem $frames -Filter *.png)) { Write-Output 'no se grabo el combate'; exit 1 }
 $crop = @('--crop', '0', '138', '1280', '350')
-if ($Showcase -or $Shots) { $crop = @('--crop', '0', '0', '1280', '660') }
+if ($Showcase -or $Shots -or $Wear) { $crop = @('--crop', '0', '0', '1280', '660') }
 if ($Cycle) { $crop = @('--crop', '240', '0', '800', '700') }
 if ($Full) { $crop = @() }
 & $py "$root\tools\art\movie_to_gif.py" $frames $Out --start $From --end $To --width $Width --fps $Fps @crop

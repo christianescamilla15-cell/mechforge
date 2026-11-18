@@ -63,8 +63,10 @@ var _shot_events: Dictionary = {}
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	# En el juego la nave deja bonificaciones en la arena (GDD 2.8).
+	# En el juego la nave deja bonificaciones en la arena (GDD 2.8) y hay
+	# golpes criticos (GDD 2.9).
 	_rules.drops_enabled = true
+	_rules.crits_enabled = true
 	for arg in OS.get_cmdline_user_args():
 		var parts := arg.trim_prefix("--").split("=", true, 1)
 		_args[parts[0]] = parts[1] if parts.size() > 1 else "true"
@@ -79,6 +81,7 @@ func _ready() -> void:
 		showcase.library = _library
 		showcase.stages = _stages
 		showcase.only_shots = _args.has("shots")
+		showcase.only_wear = _args.has("wear")
 		showcase.finished.connect(func() -> void: get_tree().quit(0))
 		add_child(showcase)
 	elif _args.has("autoplay"):
@@ -883,6 +886,9 @@ func _on_autoplay_event(entry: Dictionary) -> void:
 	if entry.get("shielded", false) and not _shot_events.has("shielded"):
 		_shot_events["shielded"] = true
 		_shot("escudo")
+	if entry.get("crit", false) and not _shot_events.has("crit"):
+		_shot_events["crit"] = true
+		_shot("critico")
 	if (
 		event
 		in [

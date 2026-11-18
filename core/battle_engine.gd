@@ -23,6 +23,12 @@ var fixed_roll: float = -1.0
 ## vacio si no hay ninguna.
 var drop: Dictionary = {}
 
+## Si >= 0, la tirada de critico usa este valor (para tests): hay critico
+## si es menor que la probabilidad.
+var fixed_crit: float = -1.0
+## Las copias de busqueda de la IA no tiran criticos: suman su dano esperado
+## y no aplican sus efectos.
+var expected_crits: bool = false
 var _rng := RandomNumberGenerator.new()
 var _first_turn := true
 ## Las copias que usa la IA para probar jugadas no hacen caer bonificaciones.
@@ -76,12 +82,15 @@ func clone(for_search: bool = true) -> BattleEngine:
 	copy._first_turn = _first_turn
 	copy.drop = drop.duplicate()
 	copy._spawns_drops = _spawns_drops and not for_search
+	copy.fixed_crit = fixed_crit
 	if for_search:
 		copy.logging = false
 		copy.fixed_roll = 0.5
+		copy.expected_crits = true
 	else:
 		copy.logging = logging
 		copy.fixed_roll = fixed_roll
+		copy.expected_crits = expected_crits
 		copy.events = events.duplicate(true)
 		copy._rng.seed = _rng.seed
 		copy._rng.state = _rng.state
@@ -105,6 +114,10 @@ func why_cant_use(user: BattleMech, target: BattleMech, key: String) -> String:
 		return "sin usos"
 	if slot.used_this_turn:
 		return "ya se uso este turno"
+	if key == user.disabled_slot:
+		return "arma inutilizada"
+	if user.immobilized and _moves_user(user, target, key):
+		return "inmovilizado"
 	if def.range_max > 0:
 		var distance := absi(user.position - target.position)
 		if distance < def.range_min or distance > def.range_max:
@@ -119,7 +132,21 @@ func why_cant_use(user: BattleMech, target: BattleMech, key: String) -> String:
 	return ""
 
 
+## Si usar esa pieza mueve a quien la usa: lo que no puede hacer un mech
+## inmovilizado por un critico (embestir, saltar, la espada que salta junto
+## al rival y las armas que avanzan o retroceden).
+func _moves_user(user: BattleMech, target: BattleMech, key: String) -> bool:
+	if key in ["charge", "teleport"]:
+		return true
+	var def := user.slots[key].def
+	if def.has_tag(ItemDef.TAG_SWORD) and absi(user.position - target.position) > 1:
+		return true
+	return def.advance > 0 or def.retreat > 0
+
+
 func walkable_positions() -> Array[int]:
+	if attacker().immobilized:
+		return []
 	var me := attacker()
 	var foe := defender()
 	var reach := me.move_range()
@@ -272,6 +299,8 @@ func preview(action: BattleAction) -> Dictionary:
 		if hits:
 			out["dmg_min"] = _damage(def, me, foe, 0.0)
 			out["dmg_max"] = _damage(def, me, foe, 1.0)
+			out["crit_chance"] = crit_chance(def, foe)
+			out["crit_effect"] = def.crit_effect
 			out["target_heat"] = foe.heat + def.heat_dmg
 			if not foe.free_energy():
 				out["target_energy"] = maxi(0, foe.energy - def.energy_dmg)
@@ -392,6 +421,12 @@ func _begin_turn() -> void:
 		_regen(me)
 	if _first_turn and rules.m5_first_turn_single_action:
 		actions = mini(actions, 1)
+	if me.stunned:
+		# Critico de blaster (GDD 2.9): pierde una accion, pero le queda una.
+		me.stunned = false
+		if actions > 1:
+			actions -= 1
+			_log("stunned")
 	_first_turn = false
 	if shutdown:
 		actions_left = 0
@@ -409,6 +444,9 @@ func _end_turn(fire_drone: bool) -> void:
 		_regen(me)
 	_check_pickup()
 	_tick_buffs(me)
+	# Los efectos de un critico duran el turno del mech que los sufrio.
+	me.disabled_slot = ""
+	me.immobilized = false
 	turn = 1 - turn
 	_begin_turn()
 
@@ -460,7 +498,15 @@ func _use(
 	if def.deals_damage():
 		roll = fixed_roll if fixed_roll >= 0.0 else _rng.randf()
 	var shielded := def.deals_damage() and (target.shield_left > 0 or target.barrier > 0)
-	var damage := _damage(def, user, target, roll)
+	var crit := 0.0
+	var chance := crit_chance(def, target)
+	if chance > 0.0:
+		if expected_crits:
+			crit = chance
+		else:
+			var draw := fixed_crit if fixed_crit >= 0.0 else _rng.randf()
+			crit = 1.0 if draw < chance else 0.0
+	var damage := _damage(def, user, target, roll, crit)
 	if shielded:
 		if target.shield_left > 0:
 			target.shield_left -= 1
@@ -474,9 +520,11 @@ func _use(
 	user.energy -= user.energy_cost(def)
 
 	target.health -= damage
-	target.heat += def.heat_dmg
+	# Un critico tambien calienta y drena mas: si no, solo lo aprovechaban las
+	# armas de dano directo (medido el 2026-11-18: el fisico laser gano el 67 %).
+	target.heat += roundi(def.heat_dmg * _crit_factor(crit))
 	if not target.free_energy():
-		target.energy = maxi(0, target.energy - def.energy_dmg)
+		target.energy = maxi(0, target.energy - roundi(def.energy_dmg * _crit_factor(crit)))
 	if def.element != ItemDef.Element.COMBINED:
 		target.res[def.element] = maxi(0, target.res[def.element] - def.res_dmg)
 	if def.heat_cap_dmg > 0:
@@ -489,13 +537,67 @@ func _use(
 	if def.energy_regen_dmg > 0 and not target.free_energy():
 		target.energy_regen = maxi(1, target.energy_regen - def.energy_regen_dmg)
 
+	var data := {"slot": key, "item": def.id, "damage": damage}
+	if crit >= 1.0:
+		data.merge(_apply_crit(def, target))
 	if move:
 		_apply_movement(user, target, def)
 	_spend_use(slot)
-	var data := {"slot": key, "item": def.id, "damage": damage}
 	if shielded:
 		data["shielded"] = true
 	_log(event, data)
+
+
+## Probabilidad de que un golpe de esa arma sea critico (GDD 2.9): la del
+## arma, por su poder frente al blindaje del rival, menos lo que paran su
+## armadura gruesa (resistencia frente al dano del arma) y su escudo. 0 si
+## los criticos estan apagados o un escudo para el golpe.
+func crit_chance(def: ItemDef, target: BattleMech) -> float:
+	if not rules.crits_enabled or def.crit <= 0 or not def.deals_damage():
+		return 0.0
+	if target.shield_left > 0 or target.barrier > 0:
+		return 0.0
+	var chance := def.crit / 100.0
+	var level := ItemScaling.power(rules, def.tier, def.level) / target.armor_power(rules)
+	chance *= clampf(level, rules.crit_level_min, rules.crit_level_max)
+	if def.element != ItemDef.Element.COMBINED:
+		var mean := maxf(1.0, (def.dmg_min + def.dmg_max) / 2.0)
+		var armor := float(target.res[def.element]) / mean
+		chance *= maxf(0.0, 1.0 - rules.crit_armor_weight * armor)
+	chance *= maxf(0.0, 1.0 - rules.crit_shield_cut * target.shield_level())
+	chance *= 1.0 - target.buff_amount("armor")
+	return clampf(chance, 0.0, rules.crit_cap)
+
+
+## Efectos de un critico ademas del dano (el de "pierce" ya va en el dano).
+## Devuelve lo que hay que anadir al registro.
+func _apply_crit(def: ItemDef, target: BattleMech) -> Dictionary:
+	var out := {"crit": true, "crit_effect": def.crit_effect}
+	match def.crit_effect:
+		"immobilize":
+			target.immobilized = true
+		"disable":
+			var key := _hit_weapon(target)
+			if key != "":
+				target.disabled_slot = key
+				out["disabled"] = key
+		"stun":
+			target.stunned = true
+	return out
+
+
+## El arma que inutiliza un critico de laser: una al azar de las que al mech
+## le quedan, la que alcanza el haz. Medido el 2026-11-18: si era siempre la
+## mas fuerte, al mech de calor o de energia le quitaba la pieza de su
+## presion y el fisico laser ganaba el 57-67 %.
+func _hit_weapon(mech: BattleMech) -> String:
+	var ready: Array[String] = []
+	for key in mech.weapon_keys():
+		if mech.slots[key].uses_left != 0:
+			ready.append(key)
+	if ready.is_empty():
+		return ""
+	return ready[_rng.randi_range(0, ready.size() - 1)]
 
 
 func _spend_use(slot: BattleMech.Slot) -> void:
@@ -504,8 +606,11 @@ func _spend_use(slot: BattleMech.Slot) -> void:
 		slot.uses_left -= 1
 
 
-## Dano final (GDD 2.4). roll en [0, 1].
-func _damage(def: ItemDef, attacker: BattleMech, target: BattleMech, roll: float) -> int:
+## Dano final (GDD 2.4). roll en [0, 1]. crit: 1 si es critico, 0 si no, y
+## entre medias el dano esperado (GDD 2.9).
+func _damage(
+	def: ItemDef, attacker: BattleMech, target: BattleMech, roll: float, crit: float = 0.0
+) -> int:
 	if def.deals_damage() and (target.shield_left > 0 or target.barrier > 0):
 		return 0
 	var damage := 0
@@ -517,8 +622,14 @@ func _damage(def: ItemDef, attacker: BattleMech, target: BattleMech, roll: float
 			damage = roundi(damage * attacker.chest_damage_mult())
 		if attacker.build != null and def in [attacker.build.drone, attacker.build.drone_low]:
 			damage = roundi(damage * attacker.assist_power())
+		if crit > 0.0:
+			damage = roundi(damage * _crit_factor(crit))
 		if def.element != ItemDef.Element.COMBINED:
-			damage = maxi(1, damage - target.res[def.element])
+			var resistance: int = target.res[def.element]
+			# El critico de balas atraviesa la resistencia.
+			if def.crit_effect == "pierce":
+				resistance = roundi(resistance * (1.0 - crit))
+			damage = maxi(1, damage - resistance)
 		# Bonificacion de armadura del rival (GDD 2.8); sin ella no cambia nada.
 		var armor := target.buff_amount("armor")
 		if armor > 0.0:
@@ -526,7 +637,13 @@ func _damage(def: ItemDef, attacker: BattleMech, target: BattleMech, roll: float
 	# Rotura de energia: lo que el arma drena de mas se vuelve dano.
 	if target.free_energy():
 		return damage
-	return damage + maxi(0, def.energy_dmg - target.energy)
+	return damage + maxi(0, roundi(def.energy_dmg * _crit_factor(crit)) - target.energy)
+
+
+## Cuanto multiplica un critico: 1 sin critico, el multiplicador entero con
+## critico y entre medias el valor esperado.
+func _crit_factor(crit: float) -> float:
+	return 1.0 + crit * (rules.crit_damage_mult - 1.0)
 
 
 ## Materia oscura: una parte de la vida maxima del rival, sin resistencias
@@ -680,4 +797,7 @@ func _snapshot(mech: BattleMech) -> Dictionary:
 		"regen": mech.energy_regen,
 		"res": mech.res.duplicate(),
 		"buffs": mech.buffs.duplicate(true),
+		"immobilized": mech.immobilized,
+		"disabled": mech.disabled_slot,
+		"stunned": mech.stunned,
 	}

@@ -106,6 +106,23 @@ SABOTEUR_FX = {
 }
 SABOTEUR_PUSH_NAMES = {"blaster": ("Repulsor de plasma", "m"), "laser": ("Haz repulsor", "m")}
 
+# Golpes criticos (GDD 2.9). Probabilidad base, en por ciento, segun la forma:
+# las armas pesadas y las de precision encuentran mas puntos debiles, y el
+# pecho es casi seguro (decision del usuario, 2026-11-18). El motor la ajusta
+# por el nivel del arma y la baja con la armadura y el escudo del rival.
+# Medido el 2026-11-18: con el doble en las armas normales, el fisico laser
+# ganaba el 60-67 % y el calor de balas el 58 %.
+CRIT_BY_FORM = {
+    "hoja": 10, "corto": 8, "medio": 5, "largo": 10, "saboteador": 3,
+    "bateria": 5, "ancla": 5, "artilleria": 18,
+    "canon_pesado": 80, "nova": 70,
+    "artillero": 3, "zapador": 3,
+}
+# Lo que hace el critico, segun el tipo de disparo: las balas atraviesan la
+# resistencia, el canon inmoviliza, el plasma sobrecarga los sistemas (pierde
+# una accion) y el laser inutiliza un arma del rival durante su turno.
+CRIT_EFFECT_BY_TYPE = {"balas": "pierce", "canon": "immobilize", "blaster": "stun", "laser": "disable"}
+
 # Ajustes propios de una forma sobre su arma base.
 FORM_EXTRA = {
     # La nova pega mas que un arma corta, empuja dos casillas y tiene 3 usos.
@@ -158,6 +175,7 @@ def make(form, slot, base, fixed, type_id, name, gender, element):
     rng = FIXED_RANGE.get((form, type_id), fixed)
     if rng is not None:
         top["range_min"], top["range_max"] = rng
+    top["crit"] = CRIT_BY_FORM[form]
     if form == "saboteador":
         fx = SABOTEUR_FX[type_id][element]
         if element == "PHYSICAL":
@@ -175,6 +193,7 @@ def make(form, slot, base, fixed, type_id, name, gender, element):
         "weapon_type": type_id,
         "form": form,
         "fx": fx,
+        "crit_effect": CRIT_EFFECT_BY_TYPE[type_id],
     }
     if base.get("tags"):
         item["tags"] = base["tags"]

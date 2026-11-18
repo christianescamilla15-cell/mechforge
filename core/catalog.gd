@@ -140,6 +140,10 @@ func _parse_item(raw: Dictionary) -> ItemDef:
 	def.weapon_type = str(raw.get("weapon_type", ""))
 	def.form = str(raw.get("form", ""))
 	def.fx = str(raw.get("fx", ""))
+	def.crit_effect = str(raw.get("crit_effect", ""))
+	if def.crit_effect != "" and not def.crit_effect in ItemDef.CRIT_EFFECTS:
+		errors.append("%s: efecto de critico desconocido '%s'" % [id, def.crit_effect])
+		return null
 	var top: Variant = raw.get("top")
 	if not top is Dictionary:
 		errors.append("%s: falta el bloque 'top'" % id)
@@ -171,6 +175,7 @@ func _parse_item(raw: Dictionary) -> ItemDef:
 				"weapon_type",
 				"form",
 				"fx",
+				"crit_effect",
 			]
 		):
 			errors.append("%s: campo desconocido '%s'" % [id, extra])

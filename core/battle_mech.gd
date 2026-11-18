@@ -48,6 +48,12 @@ var barrier: int = 0
 var kits: Dictionary = {}
 ## Si el arma de pecho ya disparo en este combate (esta desplegada).
 var chest_fired: bool = false
+## Efectos de un critico que duran el siguiente turno del mech (GDD 2.9): el
+## hueco del arma inutilizada y si no puede moverse.
+var disabled_slot: String = ""
+var immobilized: bool = false
+## Sobrecargado por un critico de blaster: pierde una accion en su turno.
+var stunned: bool = false
 ## Bonificaciones en vigor (GDD 2.8): {"kind", "amount", "turns"}.
 var buffs: Array[Dictionary] = []
 ## Huecos que actuan en combate: "legs", "side0".."side3", "top0", "top1",
@@ -111,6 +117,9 @@ func clone() -> BattleMech:
 	copy.barrier = barrier
 	copy.kits = kits.duplicate()
 	copy.chest_fired = chest_fired
+	copy.disabled_slot = disabled_slot
+	copy.immobilized = immobilized
+	copy.stunned = stunned
 	copy.buffs = buffs.duplicate(true)
 	for key in slots:
 		copy.slots[key] = slots[key].clone()
@@ -170,6 +179,23 @@ func regen_share() -> float:
 
 func shield_hits() -> int:
 	return _chassis().shield_hits if _chassis() != null else 0
+
+
+## Nivel de escudo para los criticos (GDD 2.9): los escudos de energia del
+## arbol de habilidades y el escudo de jefe.
+func shield_level() -> int:
+	var level := shield_hits()
+	if build != null and build.skills != null:
+		level += build.skills.shield_uses
+	return level
+
+
+## Poder del blindaje del mech (la clase y el nivel de su torso), para los
+## criticos: un arma de mas clase encuentra mas puntos debiles.
+func armor_power(rules: RulesConfig) -> float:
+	if build == null or build.torso == null:
+		return 1.0
+	return ItemScaling.power(rules, build.torso.tier, build.torso.level)
 
 
 func evades() -> bool:

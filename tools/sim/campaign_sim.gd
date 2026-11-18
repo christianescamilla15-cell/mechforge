@@ -31,6 +31,7 @@ func _initialize() -> void:
 	var seed_value := int(args.get("seed", "1"))
 	var zone := int(args.get("zone", "0"))
 	_rules.drops_enabled = true
+	_rules.crits_enabled = not OS.get_cmdline_user_args().has("--no-crits")
 
 	var catalog := Catalog.load_file("res://data/catalog.json")
 	var library := BuildLibrary.load_file("res://data/builds.json")

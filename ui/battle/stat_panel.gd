@@ -44,6 +44,13 @@ func show_state(state: Dictionary, max_health: int) -> void:
 		var percent := roundi(float(buff["amount"]) * 100.0)
 		var short := Txt.t("drop_%s_short" % buff["kind"])
 		detail += "  ·  +%d %% %s (%d)" % [percent, short, buff["turns"]]
+	# Efectos de un critico que sufre en su turno (GDD 2.9).
+	if state.get("immobilized", false):
+		detail += "  ·  %s" % Txt.t("status_immobilized")
+	if str(state.get("disabled", "")) != "":
+		detail += "  ·  %s" % Txt.t("status_disabled")
+	if state.get("stunned", false):
+		detail += "  ·  %s" % Txt.t("status_stunned")
 	_detail_label.text = detail
 
 

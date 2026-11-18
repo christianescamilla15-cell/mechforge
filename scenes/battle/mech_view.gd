@@ -59,6 +59,13 @@ const FLAME_EDGE := Color(1.0, 0.45, 0.12)
 const HOVER_GLOW := Color(0.45, 0.9, 1.0)
 
 var build: MechBuild
+## Estado a la vista (MechWear): vida y energia como parte de su maximo, y
+## los efectos de un critico que sufre en su turno.
+var health_ratio := 1.0
+var energy_ratio := 1.0
+var immobilized := false
+var disabled_slot := ""
+var stunned := false
 ## 1 si mira a la derecha, -1 si mira a la izquierda.
 var facing: int = 1
 var heat_ratio: float = 0.0
@@ -129,6 +136,22 @@ func set_heat(ratio: float, p_shut_down: bool = false) -> void:
 		create_tween().tween_property(self, "_slump", 1.0 if p_shut_down else 0.0, 0.35)
 	shut_down = p_shut_down
 	queue_redraw()
+
+
+## Lo que el mech ensena de su estado: desgaste por la vida, fallos por la
+## energia y los efectos de un critico (GDD 2.9).
+func set_condition(
+	p_health: float,
+	p_energy: float,
+	p_immobilized: bool = false,
+	p_disabled: String = "",
+	p_stunned: bool = false
+) -> void:
+	health_ratio = clampf(p_health, 0.0, 1.0)
+	energy_ratio = clampf(p_energy, 0.0, 1.0)
+	immobilized = p_immobilized
+	disabled_slot = p_disabled
+	stunned = p_stunned
 
 
 ## Fija la posicion de reposo (los efectos de golpe vuelven a ella).
@@ -390,9 +413,12 @@ func _draw_sprites(dim: float) -> void:
 	# El brazo y el hombro del lado lejano van detras del torso.
 	_draw_weapons(tint, body, true)
 	_sprites.draw_piece(self, _sprites.torso_set, "torso", build.torso.element, tint, body)
+	var torso := _sprites.piece_rect(_sprites.torso_set, "torso", body)
+	MechWear.draw_marks(self, torso, health_ratio, _wear_salt())
 	if has_cannon() and _deploy >= 1.0:
 		_sprites.draw_piece(self, CHEST_SET, "chest", _cannon_item().element, tint, cannon_at)
 	_draw_weapons(tint, body, false)
+	_draw_condition(torso)
 	# El dron flota aparte, sin inclinarse con el cuerpo.
 	var bob := Vector2(0.0, sin(_time * 3.1) * 4.0)
 	if _assist_kind() != "":
@@ -423,6 +449,23 @@ func _draw_sprites(dim: float) -> void:
 
 
 ## Pieza con la que se dibuja el dron; "" si no tiene arte (va el provisional).
+## Humo, fuego, arcos y chispas del estado del mech, sobre su cuerpo.
+func _draw_condition(torso: Rect2) -> void:
+	if _dead:
+		return
+	MechWear.draw_smoke_and_fire(self, torso, health_ratio, _time, _wear_salt())
+	# Sobrecargado por un critico: los mismos arcos que con poca energia.
+	var sparking := 0.0 if stunned else energy_ratio
+	MechWear.draw_low_energy(self, torso, sparking, _time, _wear_salt())
+	if immobilized:
+		MechWear.draw_stuck(self, _sprites.hip_point() * 0.45, _time, _wear_salt())
+
+
+## Semilla del desgaste: el mismo mech tiene siempre las mismas marcas.
+func _wear_salt() -> int:
+	return absi(build.torso.id.hash()) % 100000 if build != null and build.torso != null else 0
+
+
 ## Forma dibujada del robot de asistencia; "" si no lleva o no hay arte.
 func _assist_kind() -> String:
 	if build.assist == null or _sprites == null or _sprites.is_boss:
@@ -485,7 +528,14 @@ func _draw_weapons(tint: Color, body: Vector2, far: bool) -> void:
 		var kick := Vector2(-_recoil, 0.0) if slot == _fired_slot else Vector2.ZERO
 		var at: Vector2 = body + mounted["at"] + kick
 		var element: int = mounted["item"].element
-		_sprites.draw_piece(self, MechSprites.WEAPON_SET, mounted["kind"], element, weapon_tint, at)
+		var shade := weapon_tint
+		if slot == disabled_slot:
+			# Inutilizada por un critico: apagada y echando humo.
+			shade = Color(weapon_tint.r * 0.45, weapon_tint.g * 0.45, weapon_tint.b * 0.45, tint.a)
+		_sprites.draw_piece(self, MechSprites.WEAPON_SET, mounted["kind"], element, shade, at)
+		if slot == disabled_slot:
+			var joint := _sprites.piece_tip(MechSprites.WEAPON_SET, mounted["kind"]) + at
+			MechWear.draw_broken_weapon(self, joint.lerp(_sprites.hip_point() + at, 0.5), _time)
 
 
 func _weapon_slots() -> Array[String]:
@@ -715,6 +765,8 @@ func _draw_block_body(dim: float) -> void:
 
 ## Tinte del arte: se oscurece apagado y enrojece con el calor.
 func _body_tint(dim: float) -> Color:
+	if build != null and not shut_down:
+		dim *= MechWear.energy_flicker(energy_ratio, _time, _wear_salt())
 	var tint := Color(dim, dim, dim)
 	if not shut_down:
 		# Solo se nota a partir de media barra de calor.

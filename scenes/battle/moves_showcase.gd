@@ -43,6 +43,9 @@ var catalog: Catalog
 ## Solo los disparos: cada uno de data/shots.json con un arma que lo lleve
 ## (tools/clip.ps1 -Shots).
 var only_shots := false
+## Solo el estado a la vista: desgaste por la vida, fallos por la energia y
+## efectos de los criticos (tools/clip.ps1 -Wear).
+var only_wear := false
 var library: BuildLibrary
 var stages: StageLibrary
 
@@ -91,6 +94,10 @@ func _run() -> void:
 	await _pause(BEAT * 2)
 	if only_shots:
 		await _show_shots()
+		finished.emit()
+		return
+	if only_wear:
+		await _show_wear()
 		finished.emit()
 		return
 
@@ -225,6 +232,38 @@ func _show_shots() -> void:
 		await _pause(BEAT * 1.2)
 		await _fire_slot(slot)
 		await _pause(BEAT * 1.6)
+
+
+## Etapas del estado a la vista (MechWear) y efectos de los criticos.
+func _show_wear() -> void:
+	var hero := _arena.mechs[0]
+	var foe := _arena.mechs[1]
+	_arm(["medio_laser_cin", "largo_canon_cin"], ["bateria_balas_cin"])
+	hero.place(_cell(3))
+	foe.place(_cell(6))
+	_arena.update_facing()
+	var stages: Array[Array] = [
+		["Intacto", 1.0, 1.0, false, ""],
+		["Vida al 70 %: arañazos", 0.7, 1.0, false, ""],
+		["Vida al 45 %: hollín y humo", 0.45, 1.0, false, ""],
+		["Vida al 20 %: humo negro, chispas y llamas", 0.2, 1.0, false, ""],
+		["Energía al 15 %: arcos eléctricos y luces que fallan", 0.2, 0.15, false, ""],
+		["Crítico de cañón: inmovilizado un turno", 0.6, 0.8, true, ""],
+		["Crítico de láser: un arma inutilizada", 0.6, 0.8, false, "side0"],
+		["Crítico de bláster: sistemas sobrecargados", 0.6, 0.8, false, "", true],
+	]
+	for stage in stages:
+		_caption.text = stage[0]
+		var stun: bool = stage.size() > 5
+		hero.set_condition(stage[1], stage[2], stage[3], stage[4], stun)
+		if stage[3] or stage[4] != "" or stun:
+			var effect := "crit_immobilize" if stage[3] else "crit_disable"
+			if stun:
+				effect = "crit_stun"
+			_arena.float_text(3, Txt.t("crit_hit"), Color("ffd23d"))
+			_arena.float_text(3, Txt.t(effect), Color("ffd23d"))
+		await _pause(BEAT * 6)
+	hero.set_condition(1.0, 1.0)
 
 
 ## Monta el arma en el mech de muestra y devuelve el hueco desde el que

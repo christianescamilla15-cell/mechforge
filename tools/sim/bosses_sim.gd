@@ -29,6 +29,7 @@ func _initialize() -> void:
 	for text: String in str(args.get("levels", "0;6")).split(";"):
 		levels.append(int(text))
 	_rules.drops_enabled = true
+	_rules.crits_enabled = not OS.get_cmdline_user_args().has("--no-crits")
 
 	var catalog := Catalog.load_file("res://data/catalog.json")
 	var library := BuildLibrary.load_file("res://data/builds.json")

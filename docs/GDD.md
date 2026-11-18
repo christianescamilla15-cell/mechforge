@@ -106,6 +106,50 @@ Pedido por el usuario el 2026-11-16, como en el juego antiguo. **En el motor des
 - Todos los números están en RulesConfig (grupo Bonificaciones). En las reglas vienen apagadas, para no alterar las pruebas ni el simulador; el juego las enciende al arrancar.
 - **Sin medir todavía:** cómo cambian el balance. Falta añadirlas al simulador. Más tipos (energía, enfriamiento, reparación) quedan por decidir con el usuario.
 
+### 2.9 Golpes críticos
+Pedido por el usuario el 2026-11-18. **No está en el original**, donde cada golpe es una sola tirada de daño (docs/reference/original-mechanics.md). En el motor desde ese día (tests/unit/test_crits.gd, 18 tests). Como las bonificaciones, viene apagado en `RulesConfig` (`crits_enabled`) para no alterar las pruebas, y el juego lo enciende.
+
+**Probabilidad de un golpe:**
+```
+p = crítico_del_arma × clamp(poder_del_arma / poder_del_blindaje, 0.5, 1.5)
+      × max(0, 1 − 2 × resistencia_del_rival / daño_medio_del_arma)
+      × max(0, 1 − 0.25 × nivel_de_escudo_del_rival)
+      × (1 − bonificación_de_armadura_del_rival)
+p = min(p, 0.9)
+```
+- **El arma** (`crit` en el catálogo, por su forma): pecho casi seguro (cañón pesado 80 %, nova 70 %); artillería 18 %; hoja y largo 10 %; corto 8 %; medio, batería y ancla 5 %; saboteador y robot de asistencia 3 %.
+- **El nivel:** el poder del arma (su clase y su nivel) frente al del blindaje del rival (su torso). A igual clase no cambia nada; un arma de más clase encuentra más puntos débiles, hasta ×1.5.
+- **Armadura gruesa:** la resistencia del rival a ese elemento, comparada con el daño del arma. Con resistencia igual a la cuarta parte del daño, la probabilidad baja a la mitad.
+- **Escudo de alto nivel:** cada escudo de energía del árbol de habilidades (o el escudo de jefe) quita un 25 %. Un escudo activo para el golpe entero, y entonces no hay crítico.
+- Ejemplo del usuario: el cañón pesado acierta casi siempre (80 %), pero contra un escudo doble y una armadura de 30 sobre 100 de daño baja al 16 %.
+
+**Qué hace un crítico:** multiplica por 1.25 el daño, el calor y el drenaje del arma, y además, según el tipo de disparo (`crit_effect` en el catálogo):
+
+| Tipo | Efecto | Qué hace |
+|---|---|---|
+| Balas | Blindaje perforado | Ese golpe atraviesa la resistencia del rival |
+| Cañón | Inmovilizado | En su siguiente turno no puede andar, saltar, embestir, teletransportarse ni usar la espada que salta |
+| Bláster | Sobrecarga | En su siguiente turno pierde una acción (le queda al menos una) |
+| Láser | Arma inutilizada | En su siguiente turno no puede usar un arma, elegida al azar entre las que le quedan |
+
+- La previsión (M3) enseña la probabilidad y el efecto. La IA cuenta el daño esperado del crítico, pero no planea con sus efectos.
+- En pantalla: aviso "¡CRÍTICO!" y el efecto sobre el rival, línea en el registro y el estado en su panel.
+
+**Ajuste medido** (tools/sim/balance_sim.gd `--crits`, clase Única, robot de asistencia con Blindaje, 1 600 combates por tipo, semilla 4242). Lo que se probó, en orden:
+1. *Crítico ×1.5 solo al daño, armas normales con el doble de probabilidad, el láser inutilizando siempre el arma más fuerte y el bláster sumando calor:* el físico láser ganó el 67 %. El crítico solo multiplicaba el daño directo, que es donde el físico es más fuerte.
+2. *El crítico también multiplica el calor y el drenaje:* el calor de balas subió al 58.5 % y el físico láser se quedó en el 60 %.
+3. *La mitad de probabilidad en las armas normales y ×1.25:* el calor del bláster quedó en 58 % y el físico láser en 57.5 %. Quedaba un sesgo por efecto: inutilizar el arma más fuerte le quita al mech de calor o de energía la pieza de su presión, y sumar calor ayuda justo al mech de calor.
+4. *El láser inutiliza un arma al azar y el bláster quita una acción:* **es lo que queda.**
+
+| Tipo | Físico | Calor | Energía | Híbrido | Duración media |
+|---|---|---|---|---|---|
+| Balas | 49.3 % | 48.8 % | 52.0 % | 53.2 % | 12.3 turnos |
+| Cañón | 49.5 % | 51.0 % | 49.5 % | 47.3 % | 12.6 turnos |
+| Bláster | 50.5 % | 50.2 % | 49.3 % | 50.7 % | 12.6 turnos |
+| Láser | 49.3 % | 49.3 % | 51.5 % | 48.3 % | 12.5 turnos |
+
+Pasan todas las puertas, más cerca del 50 % que sin críticos (balas sin críticos: 49.0, 54.5, 46.5 y 52.3 %).
+
 ## 3. Estadísticas
 | Clave | Significado | Viene de |
 |---|---|---|
@@ -421,6 +465,7 @@ Victorias contra el jefe tras gastar N victorias en la zona, empezando con lo qu
 - De la 2 a la 9, con unas 50 victorias en la zona se gana a menudo, y el mech que ataca el punto débil del jefe gana casi siempre. En las zonas 6, 8 y 9 la media baja porque hay que llevar el mech adecuado: cambiar de armas en el taller es parte de la táctica. La zona 7 quedó fácil (el Espectro cae con 50 victorias con cualquier mech).
 - Las zonas que abren clase nueva (3, 5, 7 y 9) piden más victorias: hay que transformar las piezas (y en la 3, comprar el arma de pecho).
 - El jefe final es extremadamente difícil, como pidió el usuario: 32 % de media con 50 victorias y 34 % con 100. Repartir los puntos por igual no llega a la materia oscura (nivel 25 en la rama Asalto); quien la persiga la tiene para el Coloso.
+- **Los golpes críticos (§2.9) movieron poco el ritmo.** Medido el 2026-11-18, con 50 victorias: 58, 81, 87, 91, 70, 24, 98, 54, 63 y 41 % (antes 46, 88, 88, 79, 66, 26, 96, 57, 63 y 32). Fuera del margen de ±10 puntos solo las zonas 1 y 4 (+12). Con 25 victorias, la zona 3 sube de 17 a 46 %: es donde se compra el cañón pesado, casi seguro de crítico, y en la campaña solo lo lleva el jugador. Pendiente de que el usuario diga si se endurecen las zonas 3 y 4.
 - **El robot de asistencia no movió el ritmo.** La misma medición sin él (2026-11-17) daba, con 50 victorias: 46, 83, 89, 70, 66, 24, 99, 52, 56 y 21 %. Con él: 46, 88, 88, 79, 66, 26, 96, 57, 63 y 32 %. Todas las diferencias caben en el margen de ±10 puntos salvo la del Coloso (+11), que con 100 victorias queda igual (37 % → 34 %). El jugador sube y transforma su asistente con las celdas de la zona y compra la batería; el Orden lleva el suyo a la clase de la zona.
 
 ## 10. Pantallas
@@ -495,7 +540,7 @@ Animación por piezas (cada pieza es un sprite que se mueve, gira o se desplaza)
 | Especiales | Embestida con estela e impacto; salto con destello al desaparecer y aparecer; gancho con cable que sale y recoge |
 | Dron | Disparo desde su posición |
 | Impactos | Destello, sacudida y chispas; en los golpes fuertes, sacudida de cámara y una pausa breve |
-| Estados | Brillo de calor creciente; vapor al enfriar; apagado (luces fuera, postura caída y humo); sin energía (parpadeo y arcos); daños visibles con poca vida |
+| Estados | Brillo de calor creciente; vapor al enfriar; apagado (luces fuera, postura caída y humo); sin energía (parpadeo y arcos); daños visibles con poca vida. **Hecho el 2026-11-18** (pedido del usuario; scenes/battle/mech_wear.gd): con la vida por debajo del 75 % salen arañazos, del 50 % hollín y humo gris, y del 25 % humo negro, chispas y llamas; con la energía por debajo del 25 % saltan arcos eléctricos y las luces fallan. Los críticos también se ven: chispas en las piernas si está inmovilizado, el arma inutilizada apagada y echando humo, y arcos si está sobrecargado. Para revisarlo: `tools/clip.ps1 -Wear` |
 | Final | Explosión y piezas que saltan al ser destruido; pose de victoria |
 | Interfaz | Números flotantes, barras que se mueven con suavidad, cartel de turno, respuesta de los botones y transiciones entre pantallas |
 

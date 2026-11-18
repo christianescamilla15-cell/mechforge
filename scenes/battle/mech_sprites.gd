@@ -202,6 +202,17 @@ func legs_origin() -> Vector2:
 	return hip_point() - Vector2(legs["hip"][0], legs["hip"][1]) * UNIT_SCALE
 
 
+## Rectangulo que ocupa el dibujo de una pieza anclada a la cintura, con su
+## desplazamiento, respecto a los pies; vacio si no hay esa pieza.
+func piece_rect(set_name: String, kind: String, offset := Vector2.ZERO) -> Rect2:
+	var piece: Variant = _load_anchors(set_name).get(kind)
+	if not piece is Dictionary or not piece.has("size"):
+		return Rect2()
+	var anchor := Vector2(piece["hip"][0], piece["hip"][1])
+	var size := Vector2(piece["size"][0], piece["size"][1]) * UNIT_SCALE
+	return Rect2(hip_point() - anchor * UNIT_SCALE + offset, size)
+
+
 ## Borde de arriba del dibujo de una pieza anclada a la cintura (torso o
 ## arma montada) con su desplazamiento, respecto a los pies (hacia arriba es
 ## negativo).

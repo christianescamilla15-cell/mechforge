@@ -57,7 +57,14 @@ const FIXED_STATS: Array[String] = [
 	"advance",
 	"retreat",
 	"uses",
+	"crit",
 ]
+## Lo que hace un golpe critico ademas de pegar mas (GDD 2.9), segun el tipo
+## de arma: "pierce" (balas) atraviesa la resistencia; "immobilize" (canon)
+## deja al rival sin moverse en su turno; "stun" (blaster) le sobrecarga los
+## sistemas y pierde una accion en su turno; "disable" (laser) le inutiliza un
+## arma durante su turno.
+const CRIT_EFFECTS: Array[String] = ["pierce", "immobilize", "stun", "disable"]
 
 @export var id: String = ""
 @export var display_name: String = ""
@@ -82,6 +89,8 @@ const FIXED_STATS: Array[String] = [
 ## data/shots.json): "rafaga", "granada", "haz_fino"... Solo es presentacion:
 ## el motor no lo lee. Vacio en lo que no dispara.
 @export var fx: String = ""
+## Lo que hace un critico de esta arma (CRIT_EFFECTS); vacio si no tiene.
+@export var crit_effect: String = ""
 
 @export_group("Cuerpo")
 @export var weight: int = 0
@@ -118,6 +127,8 @@ const FIXED_STATS: Array[String] = [
 
 @export_group("Costos")
 @export var uses: int = 0
+## Probabilidad base de critico, en por ciento (GDD 2.9).
+@export var crit: int = 0
 @export var backfire: int = 0
 @export var heat_cost: int = 0
 @export var energy_cost: int = 0

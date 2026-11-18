@@ -42,6 +42,26 @@ extends Resource
 ## inferior): la primera transformacion, Intermedia (GDD 4).
 @export var assist_second_weapon_tier: int = 1
 
+@export_group("Criticos")
+## Golpes criticos (GDD 2.9). Apagados por defecto, como las bonificaciones,
+## para no alterar las pruebas ni el simulador; el juego los enciende.
+@export var crits_enabled: bool = false
+## Cuanto multiplica un critico el dano, el calor y el drenaje del arma.
+## Medido el 2026-11-18: con 1.5 el balance entre elementos se salia.
+@export var crit_damage_mult: float = 1.25
+## Probabilidad maxima de un critico.
+@export var crit_cap: float = 0.9
+## Nivel: la probabilidad se multiplica por el poder del arma (clase y
+## nivel) entre el del blindaje del rival (su torso), dentro de estos topes.
+@export var crit_level_min: float = 0.5
+@export var crit_level_max: float = 1.5
+## Armadura gruesa: la probabilidad se multiplica por
+## 1 - esto x (resistencia del rival / dano medio del arma).
+@export var crit_armor_weight: float = 2.0
+## Escudo: cada nivel de escudo del rival (los escudos de energia del arbol
+## y el escudo de jefe) quita esta parte de la probabilidad.
+@export var crit_shield_cut: float = 0.25
+
 @export_group("Bonificaciones")
 ## Bonificaciones que deja caer una nave en la arena (GDD 2.8). Apagadas por
 ## defecto para no alterar los combates de prueba; el juego las enciende.
