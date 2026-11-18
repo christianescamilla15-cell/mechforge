@@ -536,7 +536,7 @@ La etapa tecnológica cambia el dibujo del arma, el fogonazo, el proyectil, el i
 
 **Revisión por partes:** cada familia se le enseña al usuario en movimiento, en sus etapas, antes de darla por buena (ver `docs/PLAN.md`, fase F5).
 
-Cada pieza del catálogo llevará un campo `fx` con su tipo de presentación (por ejemplo `espada`, `bala`, `cohete`, `llama`, `rayo`), del que salen su animación de ataque, su proyectil y su sonido.
+Cada arma del catálogo lleva un campo `fx` con su disparo (hecho el 2026-11-18; la ficha de cada una está en docs/CATALOGO_ARMAS.md, sección 9). `data/shots.json` define los 35 disparos y el de la materia oscura: camino (recto, parábola, curva de misil, haz instantáneo, rayo desde el cielo, cable, onda, tajo), cuerpo, número de proyectiles, velocidad e impacto (chispas, explosión, salpicadura de plasma, quemadura o absorción). `scenes/battle/shot_fx.gd` los dibuja; las luces van del color de la munición. Falta el sonido de cada uno y que el disparo crezca con las etapas del arma.
 
 ### 12.3 Sonido y música
 - **Efectos**, por categoría:

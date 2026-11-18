@@ -139,6 +139,7 @@ func _parse_item(raw: Dictionary) -> ItemDef:
 	def.art = raw.get("art", {})
 	def.weapon_type = str(raw.get("weapon_type", ""))
 	def.form = str(raw.get("form", ""))
+	def.fx = str(raw.get("fx", ""))
 	var top: Variant = raw.get("top")
 	if not top is Dictionary:
 		errors.append("%s: falta el bloque 'top'" % id)
@@ -169,6 +170,7 @@ func _parse_item(raw: Dictionary) -> ItemDef:
 				"top",
 				"weapon_type",
 				"form",
+				"fx",
 			]
 		):
 			errors.append("%s: campo desconocido '%s'" % [id, extra])

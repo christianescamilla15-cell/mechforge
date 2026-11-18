@@ -40,6 +40,9 @@ const LOADOUTS: Array[Array] = [
 
 var rules: RulesConfig
 var catalog: Catalog
+## Solo los disparos: cada uno de data/shots.json con un arma que lo lleve
+## (tools/clip.ps1 -Shots).
+var only_shots := false
 var library: BuildLibrary
 var stages: StageLibrary
 
@@ -86,6 +89,10 @@ func _run() -> void:
 	foe.place(_cell(7))
 	_arena.update_facing()
 	await _pause(BEAT * 2)
+	if only_shots:
+		await _show_shots()
+		finished.emit()
+		return
 
 	await _show("Caminar", hero.move_to(_cell(4), 1.5))
 	await _show("Retroceder (de espaldas)", hero.move_to(_cell(2), 1.3))
@@ -134,9 +141,9 @@ func _run() -> void:
 		)
 		await _pause(BEAT * 2.4)
 		if form in [2, 5]:
-			await _arena.fire_between(0, 1, Color("ffb347"), 0.7, true, "drone")
+			await _fire_slot("drone")
 			await _pause(BEAT * 0.6)
-			await _arena.fire_between(0, 1, Color("ffb347"), 0.7, true, "drone_low")
+			await _fire_slot("drone_low")
 			await _pause(BEAT)
 	await _show("Salto con baliza (teletransporte)", hero.blink_to(_cell(5), 0.8))
 	await _pause(BEAT * 2)
@@ -153,9 +160,94 @@ func _show(text: String, tween: Tween) -> void:
 func _fire(text: String, slots: Array[String]) -> void:
 	_caption.text = text
 	for slot in slots:
-		await _arena.fire_between(0, 1, Color("ffb347"), 0.7, false, slot)
+		await _fire_slot(slot)
 		await _pause(BEAT * 0.6)
 	await _pause(BEAT)
+
+
+## Dispara el arma de ese hueco del mech de muestra con su disparo y su color.
+func _fire_slot(slot: String) -> void:
+	var item := _slot_item(slot)
+	var fx := item.fx if item != null else ""
+	var color := ShotFx.ammo_color(item.element) if item != null else Color.WHITE
+	var drone := slot.begins_with("drone")
+	if item != null and item.has_tag(ItemDef.TAG_MELEE):
+		_arena.strike(0, 1, fx, color, 0.7)
+		await _pause(0.7)
+		return
+	await _arena.fire_between(0, 1, fx, color, 0.7, drone, slot)
+
+
+func _slot_item(slot: String) -> ItemDef:
+	var index := int(slot.right(1)) if slot.right(1).is_valid_int() else 0
+	if slot.begins_with("side") and index < _hero.sides.size():
+		return _hero.sides[index]
+	if slot.begins_with("top") and index < _hero.tops.size():
+		return _hero.tops[index]
+	match slot:
+		"chest":
+			return _hero.chest
+		"drone":
+			return _hero.drone
+		"drone_low":
+			return _hero.drone_low
+	return null
+
+
+## Cada disparo de data/shots.json con un arma del catalogo que lo lleve, a
+## una distancia dentro de su alcance; el rotulo dice que dispara. Las
+## municiones se van turnando para ver los tres colores.
+func _show_shots() -> void:
+	var hero := _arena.mechs[0]
+	var foe := _arena.mechs[1]
+	var by_fx: Dictionary[String, Array] = {}
+	for type: ItemDef.Type in [
+		ItemDef.Type.SIDE, ItemDef.Type.TOP, ItemDef.Type.CHEST, ItemDef.Type.DRONE
+	]:
+		for def in catalog.by_type(type):
+			if def.fx != "":
+				if not by_fx.has(def.fx):
+					by_fx[def.fx] = []
+				by_fx[def.fx].append(def.id)
+	var shown := 0
+	for fx: String in by_fx:
+		var ids: Array = by_fx[fx]
+		var item := _item(ids[shown % ids.size()])
+		shown += 1
+		var slot := _mount_for_shot(item)
+		var distance := item.range_max if item.range_max > 0 else 6
+		if item.has_tag(ItemDef.TAG_MELEE):
+			distance = 1
+		foe.place(_cell(9))
+		hero.place(_cell(9 - clampi(distance, 1, 8)))
+		_arena.update_facing()
+		_caption.text = ShotFx.shot(fx)["desc"]
+		await _pause(BEAT * 1.2)
+		await _fire_slot(slot)
+		await _pause(BEAT * 1.6)
+
+
+## Monta el arma en el mech de muestra y devuelve el hueco desde el que
+## dispara.
+func _mount_for_shot(item: ItemDef) -> String:
+	var base := "medio_balas_cin"
+	match item.type:
+		ItemDef.Type.SIDE:
+			_arm([item.id], [])
+			return "side0"
+		ItemDef.Type.TOP:
+			_arm([base], [item.id])
+			return "top0"
+		ItemDef.Type.CHEST:
+			_hero.chest = item
+			_arm([base], [])
+			return "chest"
+	if _hero.assist == null:
+		_set_assist(2)
+	_hero.drone = item
+	_hero.drone_low = item
+	_arm([base], [])
+	return "drone"
 
 
 func _pause(seconds: float) -> void:

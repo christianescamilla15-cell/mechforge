@@ -160,7 +160,7 @@ Las armas van guardadas dentro del cuerpo. La primera vez que se usa cada una en
 
 ## 9. Ficha de cada arma: qué es, qué daño hace y cómo dispara
 
-**Propuesta del 2026-11-18, pendiente del visto bueno del usuario.** La pidió el usuario al ver las armas nuevas: no es realista que todas disparen igual; primero hay que definir qué tipo de arma es cada una y qué daño puede hacer, y después su disparo. Hoy todas disparan el mismo proyectil luminoso, del color de su elemento (`ArenaView.shoot`).
+**Aprobada por el usuario el 2026-11-18 con la opción A** (sección 9.5): el tipo cambia cómo llega el daño, no cuánto. Hecho el mismo día: cada arma lleva su disparo en `data/catalog.json` (campo `fx`), `data/shots.json` dice cómo se ve cada uno y `scenes/battle/shot_fx.gd` los dibuja; para verlos todos, `tools/clip.ps1 -Shots`. La pidió el usuario al ver las armas nuevas: no es realista que todas disparen igual; primero hay que definir qué tipo de arma es cada una y qué daño puede hacer, y después su disparo. Hoy todas disparan el mismo proyectil luminoso, del color de su elemento (`ArenaView.shoot`).
 
 ### 9.1 Qué decide cada capa
 - **La forma** decide el papel: alcance, usos y si empuja o jala.
@@ -223,8 +223,8 @@ Daño por disparo con munición cinética, antes de resistencias: en su primera 
 
 | Arma | Qué dispara | Daño cinético por disparo | Térmica: calor que causa | Iónica: energía que drena |
 |---|---|---|---|---|
-| Sifón de plasma | Plasma a presión. Cinética: golpe que empuja 4 casillas. Térmica: chorro que funde. Iónica: arco que absorbe energía. | 29–37 → **68–86** | 7 → 17 | 12 → 29 |
-| Haz de drenaje | Haz. Cinética: empuja 4 casillas. Térmica: funde. Iónica: absorbe energía. | 42–47 → **97–109** | 10 → 23 | 16 → 38 |
+| Sifón de plasma (Repulsor de plasma en munición cinética) | Plasma a presión. Cinética: golpe que empuja 4 casillas. Térmica: chorro que funde. Iónica: arco que absorbe energía. | 29–37 → **68–86** | 7 → 17 | 12 → 29 |
+| Haz de drenaje (Haz repulsor en munición cinética) | Haz. Cinética: empuja 4 casillas. Térmica: funde. Iónica: absorbe energía. | 42–47 → **97–109** | 10 → 23 | 16 → 38 |
 
 #### Hombros
 
@@ -289,9 +289,11 @@ Daño por disparo con munición cinética, antes de resistencias: en su primera 
 
 ### 9.4 Lo que no cuadra hoy
 1. **Todas disparan igual.** La columna "Qué dispara" es lo que se programa después.
-2. **El saboteador de munición cinética no drena.** Se llama "Sifón de plasma" y "Haz de drenaje", pero es un golpe que empuja 4 casillas, con 2 usos. Propuesta: llamarlos "Repulsor de plasma" y "Haz repulsor".
+2. **El saboteador de munición cinética no drena.** Se llamaba "Sifón de plasma" y "Haz de drenaje", pero es un golpe que empuja 4 casillas, con 2 usos. Corregido el 2026-11-18: ahora son "Repulsor de plasma" y "Haz repulsor", y disparan ondas de presión.
 3. **Las armas de pecho tienen los números de la artillería** (decisión del 2026-11-17), pero con alcance 3–8 en vez de una sola distancia: son una artillería sin su pega. No se propone cambiarlo ahora; queda anotado.
 
-### 9.5 Por decidir (usuario)
+### 9.5 Lo que se decidió
+**Elegida la A** (usuario, 2026-11-18).
+
 - **A (recomendada): el tipo cambia cómo llega el daño, no cuánto.** Como en el original. A igual clase, la ametralladora y el lanzagranadas pegan lo mismo de media; el lanzagranadas llega a más porque sube a clases más altas. No toca el balance medido ni la campaña. Se programa el disparo de cada arma; los impactos de una ráfaga se ven por separado y el daño sale en un solo número.
 - **B: además, un rasgo de combate por tipo** (propuesta nuestra; el original no tiene nada así). Balas: un escudo solo para el primer impacto de la ráfaga. Cañón: la onda expansiva empuja 1 casilla. Bláster: una parte del daño quema en el turno siguiente. Láser: ignora la mitad de la resistencia. Cada rasgo se paga con menos daño base, y hay que volver a medir los cuatro tipos y la campaña. Un cambio por tipo ya rompió una vez el equilibrio entre elementos (el calor llegó a ganar el 96–100 % de sus combates).

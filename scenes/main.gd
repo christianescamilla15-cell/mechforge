@@ -78,6 +78,7 @@ func _ready() -> void:
 		showcase.catalog = _catalog
 		showcase.library = _library
 		showcase.stages = _stages
+		showcase.only_shots = _args.has("shots")
 		showcase.finished.connect(func() -> void: get_tree().quit(0))
 		add_child(showcase)
 	elif _args.has("autoplay"):

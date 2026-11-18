@@ -78,6 +78,10 @@ const FIXED_STATS: Array[String] = [
 @export var weapon_type: String = ""
 ## Forma del arma: "hoja", "corto", "bateria"...; vacio en lo que no es arma.
 @export var form: String = ""
+## Disparo con el que se presenta el arma (docs/CATALOGO_ARMAS.md seccion 9,
+## data/shots.json): "rafaga", "granada", "haz_fino"... Solo es presentacion:
+## el motor no lo lee. Vacio en lo que no dispara.
+@export var fx: String = ""
 
 @export_group("Cuerpo")
 @export var weight: int = 0

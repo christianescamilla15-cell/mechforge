@@ -162,14 +162,16 @@ func _play_event(entry: Dictionary) -> void:
 			if event == "hook":
 				_arena.cable(actor, target, step * 1.6)
 			var shot_color := _shot_color(entry, actor)
+			var def := _event_def(entry, actor)
+			var fx := def.fx if def != null else ""
 			if event == "drone":
 				var drone_slot: String = entry.get("slot", "drone")
-				await _arena.fire_between(actor, target, shot_color, step, true, drone_slot)
+				await _arena.fire_between(actor, target, fx, shot_color, step, true, drone_slot)
 			elif _is_ranged(entry, actor):
 				var slot: String = entry.get("slot", "")
-				await _arena.fire_between(actor, target, shot_color, step, false, slot)
+				await _arena.fire_between(actor, target, fx, shot_color, step, false, slot)
 			else:
-				_arena.mechs[actor].lunge(step)
+				_arena.strike(actor, target, fx, shot_color, step)
 			var damage: int = entry.get("damage", 0)
 			if entry.get("shielded", false):
 				_arena.float_text(_state[target]["pos"], Txt.t("shield_hit"), COLOR_COOL)
@@ -227,7 +229,10 @@ func _play_event(entry: Dictionary) -> void:
 		"dark_matter":
 			# El arma de pecho dispara materia oscura: un rayo violeta y una
 			# explosion que sacude la arena.
-			await _arena.fire_between(actor, target, COLOR_DARK_MATTER, step * 1.5, false, "chest")
+			var dark := COLOR_DARK_MATTER
+			await _arena.fire_between(
+				actor, target, "materia_oscura", dark, step * 1.5, false, "chest"
+			)
 			_arena.explode(_arena.mechs[target].hit_point(), step * 2.0)
 			_arena.mechs[target].hit(step)
 			_arena.shake(14.0)
@@ -296,7 +301,7 @@ func _is_ranged(entry: Dictionary, actor: int) -> bool:
 
 func _shot_color(entry: Dictionary, actor: int) -> Color:
 	var def := _event_def(entry, actor)
-	return MechView.ELEMENT_COLORS[def.element] if def != null else Color.WHITE
+	return ShotFx.ammo_color(def.element) if def != null else Color.WHITE
 
 
 ## Juega el turno del jugador usando los controles de la interfaz.

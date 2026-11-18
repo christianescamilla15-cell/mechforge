@@ -62,8 +62,10 @@ var _floating: Dictionary = {}
 ## Capa del mundo: suelo, mechs y textos. La camara la mueve y la escala.
 var _world := Node2D.new()
 var _floor := Node2D.new()
-## Proyectiles, fogonazos y demas efectos, por delante de los mechs.
+## Fogonazos, chispas y demas efectos, por delante de los mechs.
 var _fx := Node2D.new()
+## Disparos de las armas, cada uno el suyo (data/shots.json).
+var _shots := ShotFx.new()
 ## Avisos que van por encima del mundo y no se mueven con la camara.
 var _overlay := Node2D.new()
 ## Punto del mundo que queda en el centro de la vista; negativo = sin fijar.
@@ -92,6 +94,8 @@ func _ready() -> void:
 		mechs.append(view)
 		view.footstep.connect(_on_footstep)
 	_world.add_child(_fx)
+	_world.add_child(_shots)
+	_shots.shake_requested.connect(shake)
 	mouse_exited.connect(_on_mouse_exited)
 
 
@@ -164,11 +168,18 @@ func _on_float_done(label: Label, cell: int) -> void:
 
 
 ## Disparo completo de un mech a otro: despliega el arma si hace falta,
-## retroceso, fogonazo, proyectil y chispas al llegar.
+## retroceso y el disparo del arma (`fx`, de data/shots.json) con el color
+## de su municion. Vuelve cuando llega el ultimo impacto.
 ## `slot` es el hueco del arma ("side0", "top1", "chest"...): el canon de
 ## pecho solo se despliega cuando dispara el.
 func fire_between(
-	actor: int, target: int, color: Color, seconds: float, from_drone: bool, slot: String = ""
+	actor: int,
+	target: int,
+	fx: String,
+	color: Color,
+	seconds: float,
+	from_drone: bool,
+	slot: String = ""
 ) -> void:
 	var shooter := mechs[actor]
 	if not from_drone:
@@ -182,30 +193,17 @@ func fire_between(
 		shooter.fire(seconds * 0.6, slot)
 	var from := shooter.muzzle_point(from_drone, slot)
 	var to := mechs[target].hit_point()
-	flash(from, color, 30.0, seconds * 0.4)
-	var travel := clampf(from.distance_to(to) / 2400.0, 0.07, 0.4) * clampf(seconds * 2.5, 0.2, 1.0)
-	await shoot(from, to, color, travel).finished
-	sparks(to, color, seconds * 0.6)
+	await _shots.play(fx, from, to, color, seconds)
 
 
-## Proyectil luminoso que viaja de un punto a otro.
-func shoot(from: Vector2, to: Vector2, color: Color, seconds: float) -> Tween:
-	var bolt := Node2D.new()
-	var direction := (to - from).normalized()
-	for layer: Array in [[16.0, 0.3], [7.0, 1.0]]:
-		var line := Line2D.new()
-		line.width = layer[0]
-		line.default_color = Color(color.r, color.g, color.b, layer[1])
-		line.begin_cap_mode = Line2D.LINE_CAP_ROUND
-		line.end_cap_mode = Line2D.LINE_CAP_ROUND
-		line.points = PackedVector2Array([Vector2.ZERO, -direction * 54.0])
-		bolt.add_child(line)
-	bolt.position = from
-	_fx.add_child(bolt)
-	var tween := create_tween()
-	tween.tween_property(bolt, "position", to, seconds)
-	tween.tween_callback(bolt.queue_free)
-	return tween
+## Golpe cuerpo a cuerpo: el mech se lanza y, si su arma tiene tajo (las
+## hojas), lo dibuja sobre el rival. No espera a que termine.
+func strike(actor: int, target: int, fx: String, color: Color, seconds: float) -> void:
+	mechs[actor].lunge(seconds)
+	if fx == "" or ShotFx.shot(fx)["path"] != "melee":
+		return
+	var from := mechs[actor].hit_point()
+	_shots.play(fx, from, mechs[target].hit_point(), color, seconds)
 
 
 ## Fogonazo: una estrella que se encoge y se apaga.

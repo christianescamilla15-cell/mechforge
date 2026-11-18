@@ -77,6 +77,35 @@ FORMS = [
 # La lanza orbital y el mortero de plasma alcanzan a 7: dos distancias fijas,
 # como el original ([8,8] y [7,7]).
 FIXED_RANGE = {("artilleria", "blaster"): (7, 7)}
+# Disparo de cada arma: como se ve y como llega su dano (docs/CATALOGO_ARMAS.md,
+# seccion 9). Cada id esta en data/shots.json, que lo dibuja.
+SHOT_FX = {
+    ("hoja", "balas"): "tajo_vibrante", ("hoja", "blaster"): "tajo_plasma", ("hoja", "laser"): "tajo_luz",
+    ("corto", "balas"): "perdigones", ("corto", "canon"): "obus_corto",
+    ("corto", "blaster"): "chorro_plasma", ("corto", "laser"): "soplete",
+    ("medio", "balas"): "rafaga", ("medio", "canon"): "granada",
+    ("medio", "blaster"): "pernos", ("medio", "laser"): "pulsos",
+    ("largo", "balas"): "bala_rifle", ("largo", "canon"): "proyectil",
+    ("largo", "blaster"): "lanza_plasma", ("largo", "laser"): "haz_fino",
+    ("bateria", "balas"): "rotativa", ("bateria", "canon"): "misiles",
+    ("bateria", "blaster"): "bolas_plasma", ("bateria", "laser"): "haces_dobles",
+    ("ancla", "canon"): "arpon", ("ancla", "laser"): "tractor",
+    ("artilleria", "canon"): "obus", ("artilleria", "blaster"): "mortero_plasma", ("artilleria", "laser"): "orbital",
+    ("canon_pesado", "canon"): "asedio", ("canon_pesado", "blaster"): "esfera_plasma",
+    ("canon_pesado", "laser"): "haz_grueso",
+    ("nova", "blaster"): "nova_plasma", ("nova", "laser"): "nova_luz",
+    ("artillero", "balas"): "rafaga_corta", ("artillero", "canon"): "bomba",
+    ("artillero", "blaster"): "perno", ("artillero", "laser"): "haz_dron",
+    ("zapador", "blaster"): "sifon", ("zapador", "laser"): "sifon",
+}
+# El saboteador hace algo distinto con cada municion: la cinetica empuja 4
+# casillas (un repulsor), la termica funde y la ionica drena.
+SABOTEUR_FX = {
+    "blaster": {"PHYSICAL": "repulsor", "HEAT": "chorro_plasma", "ENERGY": "sifon"},
+    "laser": {"PHYSICAL": "repulsor", "HEAT": "soplete", "ENERGY": "sifon"},
+}
+SABOTEUR_PUSH_NAMES = {"blaster": ("Repulsor de plasma", "m"), "laser": ("Haz repulsor", "m")}
+
 # Ajustes propios de una forma sobre su arma base.
 FORM_EXTRA = {
     # La nova pega mas que un arma corta, empuja dos casillas y tiene 3 usos.
@@ -129,6 +158,12 @@ def make(form, slot, base, fixed, type_id, name, gender, element):
     rng = FIXED_RANGE.get((form, type_id), fixed)
     if rng is not None:
         top["range_min"], top["range_max"] = rng
+    if form == "saboteador":
+        fx = SABOTEUR_FX[type_id][element]
+        if element == "PHYSICAL":
+            name, gender = SABOTEUR_PUSH_NAMES[type_id]
+    else:
+        fx = SHOT_FX[(form, type_id)]
     ammo = AMMO[element] if gender == "f" else AMMO_MASC[element]
     item = {
         "id": "%s_%s_%s" % (form, type_id, AMMO_ID[element]),
@@ -139,6 +174,7 @@ def make(form, slot, base, fixed, type_id, name, gender, element):
         "tier_max": t["tiers"][1],
         "weapon_type": type_id,
         "form": form,
+        "fx": fx,
     }
     if base.get("tags"):
         item["tags"] = base["tags"]
