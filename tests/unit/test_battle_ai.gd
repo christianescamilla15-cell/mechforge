@@ -193,3 +193,33 @@ func test_el_resumen_detecta_apagados_seguidos_del_mismo_mech() -> void:
 	assert_false(
 		BattleRunner.summarize(e, 0)["chained_shutdown"], "con un turno jugado en medio no cuenta"
 	)
+
+
+# --- La IA en un hilo aparte (BattleScreen._think) ---
+
+
+## La pantalla deja pensar a la IA sobre una copia exacta del combate, en otro
+## hilo. Con piezas reales, criticos, impacto y bonificaciones, la copia tiene
+## que dar siempre la misma accion que el original.
+func test_pensar_sobre_una_copia_exacta_da_la_misma_accion() -> void:
+	var catalog := Catalog.load_file("res://data/catalog.json")
+	var library := BuildLibrary.load_file("res://data/builds.json")
+	var rules := Fx.rules({"crits_enabled": true, "impact_enabled": true, "drops_enabled": true})
+	var a := library.make("fisico_vanguardia", catalog, rules, ItemDef.Tier.EPIC, 9)
+	var b := library.make("calor_horno_canon", catalog, rules, ItemDef.Tier.EPIC, 9)
+	for difficulty: D in [D.EASY, D.HARD]:
+		var e := BattleEngine.new(rules, a, b, 5)
+		var on_original := BattleAI.new(difficulty, 11)
+		var on_copy := BattleAI.new(difficulty, 11)
+		var steps := 0
+		while not e.is_over() and steps < 80:
+			var expected := on_original.choose_action(e)
+			var got := on_copy.choose_action(e.clone(false))
+			assert_eq(
+				[got.type, got.slot, got.position],
+				[expected.type, expected.slot, expected.position],
+				"paso %d" % steps
+			)
+			e.apply(expected)
+			steps += 1
+		assert_gt(steps, 10, "un combate entero")

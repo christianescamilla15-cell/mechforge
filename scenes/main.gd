@@ -58,6 +58,8 @@ var _last: Dictionary = {}
 var _spec: Dictionary = {}
 var _args: Dictionary = {}
 var _shot_count: int = 0
+## Con `++ --autoplay --fps`, mide los cuadros del combate (tools/fps.ps1).
+var _probe: FrameProbe
 var _shot_events: Dictionary = {}
 
 
@@ -866,8 +868,13 @@ func _start_autoplay() -> void:
 	_battle.speed = float(_args.get("speed", "3"))
 	_battle.event_played.connect(_on_autoplay_event)
 	_battle.finished.connect(_on_autoplay_finished)
+	if _args.has("fps"):
+		_probe = FrameProbe.new()
+		add_child(_probe)
 	get_tree().create_timer(0.8).timeout.connect(_shot.bind("inicio"))
-	get_tree().create_timer(AUTOPLAY_TIMEOUT_SECONDS).timeout.connect(_on_autoplay_timeout)
+	# A menos velocidad el combate dura mas.
+	var timeout := AUTOPLAY_TIMEOUT_SECONDS * maxf(1.0, 3.0 / _battle.speed)
+	get_tree().create_timer(timeout).timeout.connect(_on_autoplay_timeout)
 
 
 ## Piezas de un mech todas en clase Basica y ese nivel (para la prueba en vivo).
@@ -931,6 +938,20 @@ func _on_autoplay_finished(player_won: bool) -> void:
 			% ["el jugador" if player_won else "el rival", _battle.engine.turn_number]
 		)
 	)
+	if _probe != null:
+		print("FPS %s" % _probe.summary())
+		var think := _battle.ai_think_ms
+		var worst := 0.0
+		var total := 0.0
+		for ms in think:
+			worst = maxf(worst, ms)
+			total += ms
+		print(
+			(
+				"FPS la IA decidio %d veces: media %.1f ms, la mas lenta %.1f ms"
+				% [think.size(), total / maxf(1.0, think.size()), worst]
+			)
+		)
 	await get_tree().create_timer(0.4).timeout
 	await _shot("final")
 	get_tree().quit(0)

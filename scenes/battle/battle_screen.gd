@@ -45,6 +45,10 @@ var names: Array[String] = [Txt.t("you"), Txt.t("rival")]
 ## Si al terminar se ofrece repetir el combate, y con que texto ("" = revancha).
 var allow_rematch: bool = true
 var rematch_text: String = ""
+## Cuanto tardo la IA en decidir cada accion, en ms (para tools/fps.ps1).
+var ai_think_ms: PackedFloat32Array = []
+## Tarea del WorkerThreadPool en la que piensa la IA; -1 si no hay ninguna.
+var _ai_task: int = -1
 
 var _arena: ArenaView
 var _panels: Array[StatPanel] = []
@@ -119,10 +123,38 @@ func _advance() -> void:
 		return  # Turno del jugador: espera a que pulse algo.
 	_busy = true
 	_refresh()
-	await get_tree().create_timer(0.3 / speed).timeout
-	var action := ai.choose_action(engine)
+	var action := await _think(ai)
 	if action != null:
 		_perform(action)
+
+
+## La IA piensa en un hilo aparte, sobre su propia copia del combate, para
+## que la imagen no se congele: contra un jefe una decision tarda hasta unos
+## 150 ms. Empieza a pensar durante la pausa de siempre antes de actuar, asi
+## que casi nunca se espera de mas. Da la misma accion que pensar aqui.
+func _think(ai: BattleAI) -> BattleAction:
+	var copy := engine.clone(false)
+	var result: Array = [null, 0.0]
+	_ai_task = WorkerThreadPool.add_task(
+		func() -> void:
+			var started := Time.get_ticks_usec()
+			result[0] = ai.choose_action(copy)
+			result[1] = (Time.get_ticks_usec() - started) / 1000.0
+	)
+	await get_tree().create_timer(0.3 / speed).timeout
+	while not WorkerThreadPool.is_task_completed(_ai_task):
+		await get_tree().process_frame
+	WorkerThreadPool.wait_for_task_completion(_ai_task)
+	_ai_task = -1
+	ai_think_ms.append(result[1])
+	return result[0]
+
+
+## Si se cierra la pantalla mientras la IA piensa, se espera a que acabe.
+func _exit_tree() -> void:
+	if _ai_task >= 0:
+		WorkerThreadPool.wait_for_task_completion(_ai_task)
+		_ai_task = -1
 
 
 func _perform(action: BattleAction) -> void:
