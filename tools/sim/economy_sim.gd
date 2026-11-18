@@ -19,6 +19,8 @@ extends SceneTree
 ##                             repartidos por igual entre las ramas. -1 = sin
 ##                             habilidades
 ##   --boss-skills=N           puntos del jefe (por defecto, los de la campana)
+##   --enemy-armory=N          armeria del Orden en la zona (por defecto, la
+##                             de la campana)
 ##   --chest=bought|owned|none arma de pecho del jugador (canon pesado de su
 ##                             elemento): comprada en esta zona (se paga
 ##                             con las celdas), traida de antes, o ninguna
@@ -83,7 +85,11 @@ func _initialize() -> void:
 	var tier := campaign.tier_of(zone)
 	var boss := campaign.fight_at(zone, campaign.fights_in(zone))
 	_builds["boss"] = library.make(boss["enemy"], catalog, _rules, tier, boss["level"], chassis)
-	_builds["boss"].upgrades = campaign.enemy_upgrades(zone, shop)
+	var enemy_armory := int(args.get("enemy-armory", str(campaign.enemy_armory(zone))))
+	var enemy_levels := {}
+	for track in shop.track_ids():
+		enemy_levels[track] = enemy_armory
+	_builds["boss"].upgrades = shop.upgrades_for(enemy_levels)
 	var boss_skills := int(args.get("boss-skills", str(campaign.boss_skills(zone))))
 	_builds["boss"].skills = tree.effects_for(tree.spread(boss_skills))
 	var points_line: Array[String] = []
@@ -141,7 +147,7 @@ func _initialize() -> void:
 				library.display_name(boss["enemy"]),
 				Txt.TIER_NAMES[tier],
 				boss["level"],
-				campaign.enemy_armory(zone),
+				enemy_armory,
 				boss_skills,
 				Txt.TIER_NAMES[start_tier],
 				start_level,

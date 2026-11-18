@@ -353,7 +353,7 @@
         "enemy": "jefe_zona_5",
         "level": 9,
         "difficulty": "HARD",
-        "skills": 18
+        "skills": 19
       },
       "band": "blaster",
       "enemy_armory": 5
@@ -566,7 +566,7 @@
         "enemy": "jefe_zona_8",
         "level": 24,
         "difficulty": "HARD",
-        "skills": 22
+        "skills": 24
       },
       "drops_unique": true,
       "band": "laser",
@@ -710,7 +710,7 @@
         "enemy": "jefe_final",
         "level": 30,
         "difficulty": "HARD",
-        "skills": 25
+        "skills": 30
       },
       "drops_unique": true,
       "band": "laser",

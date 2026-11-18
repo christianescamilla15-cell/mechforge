@@ -10,7 +10,11 @@ param(
     # Mide sin arma de pecho, como antes de abrirse.
     [switch]$NoChest,
     # Mide sin arbol de habilidades.
-    [switch]$NoSkills
+    [switch]$NoSkills,
+    # Puntos de habilidad del jefe; -1 = los de la campana (data/campaign.json).
+    [int]$BossSkills = -1,
+    # Armeria del Orden en la zona; -1 = la de la campana.
+    [int]$EnemyArmory = -1
 )
 $root = Split-Path -Parent $PSScriptRoot
 # Estado al llegar a cada zona: clase y nivel de las piezas, y nivel de la armeria.
@@ -36,7 +40,11 @@ $list = if ($Zones) { $Zones.Split(',') | ForEach-Object { [int]$_ } } else { 1.
 & "$PSScriptRoot\godot.ps1" --headless --path $root --import *> $null
 foreach ($zone in $list) {
     $e = $entry[$zone - 1]
-    & "$PSScriptRoot\godot.ps1" --headless --path $root -s tools/sim/economy_sim.gd '++' "--zone=$($zone - 1)" "--start-tier=$($e.Tier)" "--start-level=$($e.Level)" "--start-armory=$($e.Armory)" "--chest=$(if ($NoChest) { 'none' } else { $e.Chest })" "--start-xp=$(if ($NoSkills) { -1 } else { ($zone - 1) * 6500 })" "--battles=$Battles" "--wins=$Wins" 2>&1 |
+    & "$PSScriptRoot\godot.ps1" --headless --path $root -s tools/sim/economy_sim.gd '++' "--zone=$($zone - 1)" "--start-tier=$($e.Tier)" "--start-level=$($e.Level)" "--start-armory=$($e.Armory)" "--chest=$(if ($NoChest) { 'none' } else { $e.Chest })" "--start-xp=$(if ($NoSkills) { -1 } else { ($zone - 1) * 6500 })" "--battles=$Battles" "--wins=$Wins" $(if ($BossSkills -ge 0) { "--boss-skills=$BossSkills" }) $(if ($EnemyArmory -ge 0) { "--enemy-armory=$EnemyArmory" }) 2>&1 |
         Select-String -NotMatch '^Godot|^$'
+    # Una caida del motor no deja error escrito: se avisa aqui.
+    if ($LASTEXITCODE -ne 0) {
+        Write-Output "ERROR: la zona $zone termino con el codigo $LASTEXITCODE (sin resultados)"
+    }
     ''
 }
