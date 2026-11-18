@@ -157,3 +157,141 @@ Las armas van guardadas dentro del cuerpo. La primera vez que se usa cada una en
 3. Si faltan tipos de arma (por ejemplo eléctricas, de gravedad o escudos como arma) o formas.
 4. Los huecos de escudo y de perk, que el original tiene y aquí faltan (docs/reference/original-mechanics.md, "Contraste con lo construido").
 5. La proporción de alcances de las armas de brazo debe seguir la del original: la mayoría de alcance medio.
+
+## 9. Ficha de cada arma: qué es, qué daño hace y cómo dispara
+
+**Propuesta del 2026-11-18, pendiente del visto bueno del usuario.** La pidió el usuario al ver las armas nuevas: no es realista que todas disparen igual; primero hay que definir qué tipo de arma es cada una y qué daño puede hacer, y después su disparo. Hoy todas disparan el mismo proyectil luminoso, del color de su elemento (`ArenaView.shoot`).
+
+### 9.1 Qué decide cada capa
+- **La forma** decide el papel: alcance, usos y si empuja o jala.
+- **El tipo** es la tecnología. Decide en qué clases existe el arma, y por eso hasta dónde llega su daño: el láser pega más que las balas porque llega a clases más altas. También decide cómo llega ese daño: cuántos impactos, por qué camino y cuánto varía de un disparo a otro.
+- **La munición** es el elemento. La cinética pega alrededor de un 10 % más y desgasta la resistencia del rival; la térmica lo calienta; la iónica le drena energía. La cinética es también la que más empuja y jala (en el corto, el ancla y el saboteador).
+
+En el original cada arma es una sola tirada de daño (`mín + azar × (máx − mín)`) y no hay reglas por familia: lo que distingue un arma de otra son sus números y su animación (docs/reference/original-mechanics.md).
+
+### 9.2 Los cuatro tipos
+| Tipo | Qué es | Clases | Cómo llega el daño | Cuánto varía de un disparo a otro | Ejemplo: forma media al máximo |
+|---|---|---|---|---|---|
+| Balas | Armas de fuego: proyectiles sólidos | Básica e Intermedia | Varios impactos pequeños que suman el daño (ráfaga o perdigones); el rifle, uno solo. Trazadoras rápidas en línea recta | La que más: ±15 % | Ametralladora, 56–75 |
+| Cañón | Proyectil pesado: obús, granada, misil o arpón | Intermedia y Avanzada | Un impacto grande que estalla. La granada y el obús van en arco; los misiles, en curva con humo | ±13 % | Lanzagranadas, 75–98 |
+| Bláster | Plasma: energía caliente confinada | Intermedia a Legendaria | De 1 a 4 pernos o bolas luminosas que salpican al llegar | ±12 % | Repetidor de plasma, 102–130 |
+| Láser | Haz de luz | Avanzada a Mítica | Instantáneo: no viaja, llega y quema una línea | La que menos: ±6 % | Láser de pulso, 145–164 |
+
+Las etapas de cada tipo (2 de balas, 3 de cañón, 4 de bláster y 5 de láser, sección 2) hacen crecer el disparo que se describe aquí: más proyectiles, más grandes y con más brillo.
+
+### 9.3 Las armas, una por una
+Daño por disparo con munición cinética, antes de resistencias: en su primera clase a nivel 0 → **en su última clase al nivel máximo**. Con munición térmica o iónica el daño es alrededor de un 10 % menor y se suma el calor o el drenaje de sus columnas, con la misma escala. Los números salen de `data/catalog.json`.
+
+#### Brazos
+
+**Hoja.** Cuerpo a cuerpo, alcance 1–3: salta junto al rival antes de golpear.
+
+| Arma | Qué dispara | Daño cinético por disparo | Térmica: calor que causa | Iónica: energía que drena |
+|---|---|---|---|---|
+| Cuchilla vibratoria | Hoja de motor que vibra. Salta junto al rival y da un tajo con chispas de metal. | 40–51 → **69–90** | 7 → 13 | 13 → 22 |
+| Hoja de plasma | Filo de plasma. Salta y da un tajo con estela caliente que salpica. | 55–68 → **126–157** | 10 → 22 | 17 → 40 |
+| Hoja láser | Filo de luz. Salta y corta; deja una línea quemada en el blindaje. | 77–86 → **178–200** | 13 → 30 | 23 → 53 |
+
+**Corto.** Alcance 1–2. La munición cinética empuja 1 casilla.
+
+| Arma | Qué dispara | Daño cinético por disparo | Térmica: calor que causa | Iónica: energía que drena |
+|---|---|---|---|---|
+| Escopeta | Abanico de 6 perdigones a quemarropa. | 36–46 → **63–81** | 9 → 15 | 15 → 26 |
+| Obús corto | Un obús corto y gordo que estalla al tocar. | 49–62 → **85–107** | 12 → 21 | 20 → 34 |
+| Proyector de plasma | Chorro de plasma en cono, como un lanzallamas. | 49–61 → **114–142** | 12 → 27 | 20 → 46 |
+| Láser de corte | Haz ancho y corto que corta como un soplete. | 70–78 → **162–180** | 16 → 37 | 26 → 61 |
+
+**Medio.** Alcance 2–4, el más común (en el original, 32 de 79 armas laterales).
+
+| Arma | Qué dispara | Daño cinético por disparo | Térmica: calor que causa | Iónica: energía que drena |
+|---|---|---|---|---|
+| Ametralladora | Ráfaga de 5 balas trazadoras. | 32–42 → **56–75** | 8 → 14 | 14 → 24 |
+| Lanzagranadas | Una granada en parábola que estalla al caer. | 44–57 → **75–98** | 11 → 19 | 19 → 32 |
+| Repetidor de plasma | Tres pernos de plasma seguidos. | 44–56 → **102–130** | 11 → 25 | 19 → 43 |
+| Láser de pulso | Tres pulsos de luz que llegan al instante. | 63–71 → **145–164** | 15 → 34 | 25 → 57 |
+
+**Largo.** Alcance 3–6.
+
+| Arma | Qué dispara | Daño cinético por disparo | Térmica: calor que causa | Iónica: energía que drena |
+|---|---|---|---|---|
+| Rifle | Una bala de alta velocidad, recta, con estela fina. | 31–40 → **54–71** | 7 → 13 | 13 → 22 |
+| Cañón de brazo | Un proyectil pesado en línea recta que estalla. | 42–54 → **73–93** | 10 → 17 | 17 → 30 |
+| Lanza de plasma | Un perno de plasma largo que salpica al llegar. | 43–53 → **99–123** | 10 → 22 | 17 → 40 |
+| Láser de precisión | Un haz fino que llega al instante y se sostiene un momento. | 61–68 → **140–156** | 13 → 30 | 23 → 53 |
+
+**Saboteador.** Alcance 1–3 (1–2 la térmica), pocos usos, poco daño: su papel es el efecto. Cada munición hace algo distinto.
+
+| Arma | Qué dispara | Daño cinético por disparo | Térmica: calor que causa | Iónica: energía que drena |
+|---|---|---|---|---|
+| Sifón de plasma | Plasma a presión. Cinética: golpe que empuja 4 casillas. Térmica: chorro que funde. Iónica: arco que absorbe energía. | 29–37 → **68–86** | 7 → 17 | 12 → 29 |
+| Haz de drenaje | Haz. Cinética: empuja 4 casillas. Térmica: funde. Iónica: absorbe energía. | 42–47 → **97–109** | 10 → 23 | 16 → 38 |
+
+#### Hombros
+
+**Batería.** Alcance 4–8.
+
+| Arma | Qué dispara | Daño cinético por disparo | Térmica: calor que causa | Iónica: energía que drena |
+|---|---|---|---|---|
+| Rotativa | Ráfaga larga de 8 balas desde la torreta. | 40–51 → **69–90** | 10 → 17 | 16 → 27 |
+| Lanzamisiles | Salva de 4 misiles que suben y caen sobre el rival, con estela de humo. | 54–69 → **93–119** | 13 → 22 | 21 → 36 |
+| Batería de plasma | Cuatro bolas de plasma escalonadas. | 55–68 → **126–157** | 13 → 30 | 21 → 49 |
+| Batería láser | Dos haces paralelos que llegan al instante. | 77–86 → **178–200** | 17 → 40 | 28 → 65 |
+
+**Ancla.** Alcance 3–6. Jala al rival: 2 casillas con munición cinética, 1 con las otras.
+
+| Arma | Qué dispara | Daño cinético por disparo | Térmica: calor que causa | Iónica: energía que drena |
+|---|---|---|---|---|
+| Arpón | Arpón con cable: se clava y arrastra al rival. | 45–58 → **78–100** | 12 → 21 | 20 → 34 |
+| Haz tractor | Haz tractor que atrae al rival. | 65–73 → **149–168** | 16 → 37 | 26 → 61 |
+
+**Artillería.** Alcance fijo: 8 (7 el mortero de plasma), como en el original. 2 usos.
+
+| Arma | Qué dispara | Daño cinético por disparo | Térmica: calor que causa | Iónica: energía que drena |
+|---|---|---|---|---|
+| Obús | Obús en arco alto; explosión grande. | 71–92 → **123–159** | 21 → 36 | 32 → 56 |
+| Mortero de plasma | Bola de plasma en arco alto; salpicadura grande. | 72–91 → **167–210** | 21 → 47 | 32 → 74 |
+| Lanza orbital | Un rayo que cae del cielo sobre el rival. | 103–115 → **237–265** | 27 → 63 | 43 → 99 |
+
+#### Pecho
+
+**Cañón pesado.** Alcance 3–8, 2 usos.
+
+| Arma | Qué dispara | Daño cinético por disparo | Térmica: calor que causa | Iónica: energía que drena |
+|---|---|---|---|---|
+| Cañón de asedio | Obús enorme en línea recta, con culatazo y humo. | 71–92 → **123–159** | 21 → 36 | 32 → 56 |
+| Cañón de plasma | Esfera de plasma grande y lenta. | 72–91 → **167–210** | 21 → 47 | 32 → 74 |
+| Cañón láser | Haz grueso y sostenido. | 103–115 → **237–265** | 27 → 63 | 43 → 99 |
+
+**Nova.** Alcance 1–2, empuja 2 casillas, 3 usos.
+
+| Arma | Qué dispara | Daño cinético por disparo | Térmica: calor que causa | Iónica: energía que drena |
+|---|---|---|---|---|
+| Nova de plasma | Onda de plasma en anillo alrededor del mech. | 64–80 → **149–184** | 15 → 35 | 26 → 59 |
+| Nova láser | Destello que sale en todas direcciones. | 91–101 → **210–234** | 20 → 47 | 34 → 79 |
+
+#### Robot de asistencia
+
+**Artillero.** Alcance: toda la arena.
+
+| Arma | Qué dispara | Daño cinético por disparo | Térmica: calor que causa | Iónica: energía que drena |
+|---|---|---|---|---|
+| Dron artillero | Ráfaga corta desde el robot de asistencia. | 18–24 → **32–43** | 4 → 7 | 7 → 13 |
+| Dron bombardero | Bomba que suelta desde arriba. | 25–32 → **44–56** | 5 → 9 | 10 → 17 |
+| Dron de plasma | Perno de plasma. | 25–32 → **59–74** | 5 → 13 | 10 → 23 |
+| Dron láser | Haz fino. | 36–41 → **84–94** | 7 → 17 | 13 → 30 |
+
+**Zapador.** Alcance 1–4. Poco daño.
+
+| Arma | Qué dispara | Daño cinético por disparo | Térmica: calor que causa | Iónica: energía que drena |
+|---|---|---|---|---|
+| Dron sifón | Chorro corto que absorbe de cerca. | 20–25 → **46–59** | 7 → 17 | 14 → 31 |
+| Dron de drenaje | Haz corto que absorbe de cerca. | 28–32 → **66–75** | 10 → 23 | 18 → 42 |
+
+### 9.4 Lo que no cuadra hoy
+1. **Todas disparan igual.** La columna "Qué dispara" es lo que se programa después.
+2. **El saboteador de munición cinética no drena.** Se llama "Sifón de plasma" y "Haz de drenaje", pero es un golpe que empuja 4 casillas, con 2 usos. Propuesta: llamarlos "Repulsor de plasma" y "Haz repulsor".
+3. **Las armas de pecho tienen los números de la artillería** (decisión del 2026-11-17), pero con alcance 3–8 en vez de una sola distancia: son una artillería sin su pega. No se propone cambiarlo ahora; queda anotado.
+
+### 9.5 Por decidir (usuario)
+- **A (recomendada): el tipo cambia cómo llega el daño, no cuánto.** Como en el original. A igual clase, la ametralladora y el lanzagranadas pegan lo mismo de media; el lanzagranadas llega a más porque sube a clases más altas. No toca el balance medido ni la campaña. Se programa el disparo de cada arma; los impactos de una ráfaga se ven por separado y el daño sale en un solo número.
+- **B: además, un rasgo de combate por tipo** (propuesta nuestra; el original no tiene nada así). Balas: un escudo solo para el primer impacto de la ráfaga. Cañón: la onda expansiva empuja 1 casilla. Bláster: una parte del daño quema en el turno siguiente. Láser: ignora la mitad de la resistencia. Cada rasgo se paga con menos daño base, y hay que volver a medir los cuatro tipos y la campaña. Un cambio por tipo ya rompió una vez el equilibrio entre elementos (el calor llegó a ganar el 96–100 % de sus combates).
