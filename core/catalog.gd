@@ -75,12 +75,14 @@ func make_build(
 	build.charge = resolve.call(spec.get("charge"))
 	build.teleport = resolve.call(spec.get("teleport"))
 	build.hook = resolve.call(spec.get("hook"))
+	# Un hueco vacio en medio de la lista se queda vacio (null) y en su sitio:
+	# si se quita el brazo 1, el arma del brazo 2 no se mueve a su lugar.
 	for key: String in ["sides", "tops", "modules"]:
 		var list: Array[ItemDef] = []
 		for id: Variant in spec.get(key, []):
-			var def: ItemDef = resolve.call(id)
-			if def != null:
-				list.append(def)
+			list.append(resolve.call(id))
+		while not list.is_empty() and list[-1] == null:
+			list.pop_back()
 		build.set(key, list)
 	return build
 

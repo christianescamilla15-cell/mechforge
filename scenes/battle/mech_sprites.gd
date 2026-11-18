@@ -150,6 +150,36 @@ static func weapon_kind(item: ItemDef) -> String:
 	return ""
 
 
+## Dibujo de una pieza para su miniatura en el taller (el mismo que lleva el
+## mech); null si esa pieza no tiene arte.
+static func icon_for(item: ItemDef) -> Texture2D:
+	if item == null:
+		return null
+	match item.type:
+		ItemDef.Type.SIDE, ItemDef.Type.TOP:
+			var kind := weapon_kind(item)
+			return _texture(WEAPON_SET, kind, item.element) if kind != "" else null
+		ItemDef.Type.TORSO:
+			var torsos := _available(TORSO_SETS, "torso")
+			if torsos.is_empty():
+				return null
+			return _texture(torsos[absi(item.id.hash()) % torsos.size()], "torso", item.element)
+		ItemDef.Type.LEGS:
+			for tag: String in SPECIAL_LEGS:
+				if item.has_tag(tag) and has_piece(SPECIAL_LEGS[tag], "legs"):
+					return _texture(SPECIAL_LEGS[tag], "legs", item.element)
+			var legs := _available(LEGS_SETS, "legs")
+			if legs.is_empty():
+				return null
+			return _texture(legs[absi(item.id.hash()) % legs.size()], "legs", item.element)
+		ItemDef.Type.CHEST:
+			return _texture(MechView.CHEST_SET, "chest", item.element)
+		ItemDef.Type.ASSIST:
+			var form := assist_kind(item.tier)
+			return _texture(ASSIST_SET, form, item.element) if form != "" else null
+	return null
+
+
 ## Punto de la cintura respecto a los pies del mech, en unidades de MechView.
 func hip_point() -> Vector2:
 	var legs: Dictionary = _load_anchors(legs_set)["legs"]

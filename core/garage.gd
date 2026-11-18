@@ -145,6 +145,32 @@ static func ensure_assist(profile: PlayerProfile, catalog: Catalog) -> void:
 		profile.parts[ItemDef.ASSIST_PROGRESS] = profile.part(drone).duplicate()
 
 
+## Hueco en el que se monta una pieza que se suelta sobre el mech: el
+## `preferred` si le cabe; si no, el primer hueco vacio de su tipo; si no, el
+## primero de su tipo. Se salta los huecos de `locked` (los que el nivel del
+## jugador aun no abre). "" si no cabe en ninguno.
+static func drop_slot(
+	build: Dictionary,
+	catalog: Catalog,
+	id: String,
+	preferred: String = "",
+	locked: Array[String] = []
+) -> String:
+	var def := catalog.get_item(id)
+	if def == null:
+		return ""
+	var fits: Array[String] = []
+	for slot in SLOTS:
+		if slot_type(slot) == def.type and not slot in locked:
+			fits.append(slot)
+	if preferred in fits:
+		return preferred
+	for slot in fits:
+		if get_slot(build, slot) == "":
+			return slot
+	return fits[0] if not fits.is_empty() else ""
+
+
 ## Piezas que tiene el jugador y caben en ese hueco.
 static func owned_for(profile: PlayerProfile, catalog: Catalog, slot: String) -> Array[String]:
 	var out: Array[String] = []

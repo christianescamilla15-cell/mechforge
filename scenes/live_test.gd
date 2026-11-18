@@ -172,6 +172,69 @@ func _autoplay_pause_test() -> void:
 		print("AUTOPLAY pausa: sigue, escala de tiempo %.1f" % Engine.time_scale)
 
 
+## Prueba en vivo del taller (`--menu-shot=taller`): elegir un hueco, dejar
+## un brazo vacio, comparar una pieza, arrastrar una pieza de verdad (con el
+## raton simulado) al hueco vacio, subirla de nivel y probar el disparo.
+func workshop_test(workshop: WorkshopScreen) -> void:
+	await get_tree().create_timer(0.8).timeout
+	await shot("taller")
+	workshop.clear_slot("side0")
+	await get_tree().create_timer(0.5).timeout
+	await shot("taller_brazo_vacio")
+	var cards: Array[PartCard] = []
+	for node in workshop.find_children("*", "PartCard", true, false):
+		cards.append(node as PartCard)
+	print("TALLER piezas en la lista: %d" % cards.size())
+	if not cards.is_empty():
+		cards[0].hovered.emit(cards[0].item.id, true)
+		await get_tree().create_timer(0.3).timeout
+		await shot("taller_comparar")
+		await _drag(cards[0], workshop._cells["side0"])
+		await get_tree().create_timer(0.6).timeout
+		print("TALLER brazo 1 tras arrastrar: %s" % Garage.get_slot(main._profile.build, "side0"))
+		await shot("taller_arrastrado")
+	# Un arma a distancia en nivel 0: se sube (destello) y se prueba.
+	workshop.pick("side1")
+	workshop.level_up_selected()
+	await get_tree().create_timer(0.25).timeout
+	await shot("taller_subir")
+	workshop.test_fire()
+	await get_tree().create_timer(0.12).timeout
+	await shot("taller_probar")
+	workshop.pick("torso")
+	workshop.clear_slot("legs")
+	await get_tree().create_timer(0.4).timeout
+	await shot("taller_sin_piernas")
+	get_tree().quit(0)
+
+
+## Arrastra con el raton (eventos de verdad) del centro de un control a otro.
+func _drag(from: Control, to: Control) -> void:
+	var a := from.get_global_rect().get_center()
+	var b := to.get_global_rect().get_center()
+	_mouse_button(a, true)
+	await get_tree().process_frame
+	for i in range(1, 13):
+		var motion := InputEventMouseMotion.new()
+		motion.position = a.lerp(b, i / 12.0)
+		motion.global_position = motion.position
+		motion.button_mask = MOUSE_BUTTON_MASK_LEFT
+		Input.parse_input_event(motion)
+		await get_tree().process_frame
+	_mouse_button(b, false)
+	await get_tree().process_frame
+
+
+func _mouse_button(at: Vector2, pressed: bool) -> void:
+	var event := InputEventMouseButton.new()
+	event.button_index = MOUSE_BUTTON_LEFT
+	event.pressed = pressed
+	event.position = at
+	event.global_position = at
+	event.button_mask = MOUSE_BUTTON_MASK_LEFT if pressed else 0
+	Input.parse_input_event(event)
+
+
 func _on_autoplay_preview() -> void:
 	# Capturas de las tres primeras previsiones (resaltado de casillas incluido).
 	var count: int = _shot_events.get("preview", 0)

@@ -10,6 +10,8 @@
     "ui_subir_nivel": {"files": ["ui/subir_nivel"], "bus": "Interface"},
     "ui_transformar": {"files": ["ui/transformar"], "bus": "Interface"},
     "ui_habilidad": {"files": ["ui/habilidad"], "bus": "Interface"},
+    "taller_montar": {"files": ["mech/despliegue"], "bus": "Interface", "pitch": [1.1, 1.25]},
+    "taller_quitar": {"files": ["ui/cerrar"], "bus": "Interface", "pitch": [0.8, 0.9]},
 
     "bala": {"files": ["armas/bala_1", "armas/bala_2", "armas/bala_3", "armas/bala_4"], "volume_db": -3.0, "pitch": [0.92, 1.08]},
     "rifle": {"files": ["armas/rifle"], "pitch": [0.95, 1.05]},

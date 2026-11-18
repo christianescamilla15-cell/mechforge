@@ -103,9 +103,18 @@ func _ready() -> void:
 			_profile.skills.assign(["asalto_1", "asalto_2", "asalto_3", "blindaje_1", "sistemas_1"])
 		if _args["menu-shot"] == "jefe":
 			_profile.fight = _campaign.fights_in(0)
+		# --xp=<n> y --chest=<id>: un perfil con huecos abiertos y arma de pecho.
+		if _args.has("xp"):
+			_profile.xp = int(_args["xp"])
+		if _args.has("chest"):
+			_profile.owned.append(_args["chest"])
+			_profile.build["chest"] = _args["chest"]
 		_show_menu()
 		if _args["menu-shot"] == "ajustes":
 			_open_settings()
+		elif _args["menu-shot"] == "taller":
+			_live_test().workshop_test(open_workshop())
+			return
 		await get_tree().create_timer(0.6).timeout
 		await _live_test().shot("menu")
 		get_tree().quit(0)
@@ -163,6 +172,22 @@ func _add_system_buttons(box: VBoxContainer) -> void:
 	settings.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var quit := _button(row, Txt.t("quit_game"), 40, func() -> void: get_tree().quit(0))
 	quit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+
+
+## Taller visual (WorkshopScreen): el mech montado y sus huecos alrededor.
+func open_workshop() -> WorkshopScreen:
+	if _menu != null:
+		_menu.queue_free()
+		_menu = null
+	var workshop := WorkshopScreen.new()
+	workshop.main = self
+	workshop.closed.connect(
+		func() -> void:
+			workshop.queue_free()
+			_show_menu()
+	)
+	add_child(workshop)
+	return workshop
 
 
 func _open_settings() -> void:
@@ -231,6 +256,7 @@ func _add_mech_status(box: VBoxContainer) -> bool:
 	_text(box, level_line, 15, COLOR_MUTED)
 	if not problems.is_empty():
 		_text(box, Txt.t("mech_problems", [", ".join(problems)]), 14, COLOR_WARNING)
+	_button(box, Txt.t("workshop_open"), 44, open_workshop)
 	return problems.is_empty()
 
 
@@ -334,7 +360,10 @@ func _add_shop(box: VBoxContainer) -> void:
 	tabs.add_child(upgrades)
 	_add_upgrades(upgrades)
 	if _profile.has_mech():
-		_add_parts(_scroll_tab(tabs, Txt.t("shop_tab_parts")))
+		var parts := _scroll_tab(tabs, Txt.t("shop_tab_parts"))
+		_text(parts, Txt.t("workshop_open_hint"), 15, COLOR_MUTED)
+		_button(parts, Txt.t("workshop_open"), 52, open_workshop)
+		_add_parts(parts)
 		_add_store(_scroll_tab(tabs, Txt.t("shop_tab_store")))
 		_add_skills(_scroll_tab(tabs, Txt.t("shop_tab_skills")))
 	tabs.current_tab = _last.get("tab", 0)

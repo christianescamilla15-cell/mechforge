@@ -68,6 +68,10 @@ var disabled_slot := ""
 var stunned := false
 ## 1 si mira a la derecha, -1 si mira a la izquierda.
 var facing: int = 1
+## Huecos ("torso", "legs") que se dibujan como fantasma: en el taller, un
+## torso o unas piernas que faltan se ven transparentes, para que se note el
+## hueco sin que el mech se quede flotando.
+var ghost_slots: Array[String] = []
 var heat_ratio: float = 0.0
 var shut_down: bool = false
 
@@ -400,7 +404,7 @@ func _draw_sprites(dim: float) -> void:
 	var tint := _body_tint(dim)
 	# Vivo: respira; andando: rebota; apagado: se desploma hacia delante.
 	var breath := 0.0 if (shut_down or _dead) else sin(_time * 2.2) * 1.6
-	var lift := _draw_legs(tint)
+	var lift := _draw_legs(_ghost_tint(tint, "legs"))
 	var body := Vector2(_slump * 9.0, breath + lift + _slump * 13.0)
 	# El cuerpo se inclina sobre la cintura.
 	var hip := _sprites.hip_point() + Vector2(0.0, lift)
@@ -415,7 +419,8 @@ func _draw_sprites(dim: float) -> void:
 		)
 	# El brazo y el hombro del lado lejano van detras del torso.
 	_draw_weapons(tint, body, true)
-	_sprites.draw_piece(self, _sprites.torso_set, "torso", build.torso.element, tint, body)
+	var torso_tint := _ghost_tint(tint, "torso")
+	_sprites.draw_piece(self, _sprites.torso_set, "torso", build.torso.element, torso_tint, body)
 	var torso := _sprites.piece_rect(_sprites.torso_set, "torso", body)
 	MechWear.draw_marks(self, torso, health_ratio, _wear_salt())
 	if has_cannon() and _deploy >= 1.0:
@@ -449,6 +454,52 @@ func _draw_sprites(dim: float) -> void:
 	draw_set_transform(bob + Vector2(0.0, SPRITE_WEAPON_LIFT))
 	_draw_drone(dim)
 	draw_set_transform(Vector2.ZERO)
+
+
+## Tinte de una pieza que falta (ghost_slots): gris azulado y transparente.
+func _ghost_tint(tint: Color, slot: String) -> Color:
+	return Color(0.55, 0.66, 0.82, 0.22) if slot in ghost_slots else tint
+
+
+## Saca el canon de pecho sin animacion (el taller lo ensena montado).
+func show_deployed() -> void:
+	_deployed = true
+	_deploy = 1.0
+	queue_redraw()
+
+
+## Rectangulo que ocupa la pieza de un hueco en reposo, respecto a los pies.
+## Un hueco de arma vacio da el sitio donde iria. Vacio si no se dibuja.
+func slot_rect(slot: String) -> Rect2:
+	if _sprites == null or build == null:
+		return Rect2()
+	match slot:
+		"torso":
+			return _sprites.piece_rect(_sprites.torso_set, "torso")
+		"legs":
+			return _sprites.piece_rect(_sprites.legs_set, "legs")
+		"chest":
+			return _sprites.piece_rect(CHEST_SET, "chest") if has_cannon() else Rect2()
+		"assist", "drone", "drone_low":
+			var kind := _assist_kind()
+			if kind == "":
+				return Rect2()
+			var at := _assist_at()
+			var top := MechSprites.assist_top(kind)
+			var height := top + MechSprites.assist_bottom(kind)
+			return Rect2(at - Vector2(height * 0.6, top), Vector2(height * 1.2, height))
+	if not (slot.begins_with("side") or slot.begins_with("top")):
+		return Rect2()
+	var index := int(slot.right(1))
+	var mounted := _mount_of(slot)
+	if not mounted.is_empty():
+		return _sprites.piece_rect(MechSprites.WEAPON_SET, mounted["kind"], mounted["at"])
+	# Vacio: el sitio de un arma de su tipo en ese hueco.
+	var side := slot.begins_with("side")
+	var mounts := SIDE_MOUNTS if side else TOP_MOUNTS
+	var kind := "arm_medio_balas" if side else "shoulder_bateria_balas"
+	var at := mounts[mini(index, mounts.size() - 1)]
+	return _sprites.piece_rect(MechSprites.WEAPON_SET, kind, at)
 
 
 ## Pieza con la que se dibuja el dron; "" si no tiene arte (va el provisional).
@@ -707,6 +758,8 @@ func _draw() -> void:
 	]
 	for i in mini(build.sides.size(), side_slots.size()):
 		var weapon := build.sides[i]
+		if weapon == null:
+			continue
 		var color := _color(weapon, dim)
 		var origin := side_slots[i]
 		if weapon.has_tag(ItemDef.TAG_SWORD):
@@ -722,6 +775,8 @@ func _draw() -> void:
 
 	# Armas superiores sobre el torso.
 	for i in mini(build.tops.size(), 2):
+		if build.tops[i] == null:
+			continue
 		var color := _color(build.tops[i], dim)
 		var y := -182.0 - 22.0 * i
 		_box(Rect2(-30, y, 34, 20), color.darkened(0.25))

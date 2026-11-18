@@ -8,6 +8,8 @@ const SOURCES: Array[String] = [
 	"res://scenes/battle/arena_view.gd",
 	"res://scenes/battle/shot_fx.gd",
 	"res://ui/settings_panel.gd",
+	"res://scenes/workshop/workshop_screen.gd",
+	"res://scenes/workshop/mech_stage.gd",
 ]
 
 var _sfx: Sfx

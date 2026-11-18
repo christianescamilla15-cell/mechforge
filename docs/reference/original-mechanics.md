@@ -87,6 +87,7 @@ Regla de trabajo que pidió el usuario: no se hace nada desde cero. Cada mecáni
 - Huecos de arma: el original lleva 4 laterales y 2 superiores (6 armas). El usuario fijó 2 brazos, 2 hombros y 1 pecho (5 armas) más el robot de soporte.
 - Clases y niveles máximos (6/12/18/24/30/50), chasis con bonificaciones y tipos de arma ligados a la clase.
 - Mejoras M1 a M6 del GDD, que responden a las quejas de la comunidad.
+- Taller (2026-11-18, PLAN F6): se tomó la mecánica del taller del original (cuadrícula de huecos con la forma del cuerpo, mech montado al centro, piezas por tipo de hueco, X para vaciar), comprobada en la recreación de fans `ctrlraul/supermechs-workshop` (`src/pages/Workshop/slotsConfig.ts` y `Workshop.svelte`). Añadido nuestro: arrastrar y soltar sobre el mech, comparación al pasar el ratón, tienda por hueco, subir y transformar con destello, y probar el disparo.
 - Impacto por tamaño del arma (2026-11-18, GDD §2.10): en el original solo empujan las armas que tienen `push`. El usuario pidió que el golpe empuje según el arma: brazos nada, hombros 1 casilla, pecho hasta 3 y la materia oscura hasta el borde. El `push` propio de cada arma se conserva.
 - Golpes críticos (2026-11-18, GDD §2.9): el original no los tiene (cada golpe es una sola tirada). El usuario los pidió con efectos: inutilizar un arma durante el turno, inmovilizar, etc.; casi seguros con el arma de pecho y mucho menos probables contra escudo y armadura gruesa.
 

@@ -145,3 +145,39 @@ func test_el_mech_armado_se_guarda_y_perder_la_partida_lo_borra() -> void:
 	profile.end_run()
 	assert_false(profile.has_mech())
 	assert_true(profile.owned.is_empty())
+
+
+# --- Taller visual (2026-11-18) ---
+
+
+func test_un_hueco_vacio_en_medio_se_queda_en_su_sitio() -> void:
+	var profile := _new_run()
+	var second := Garage.get_slot(profile.build, "side1")
+	Garage.equip(profile, _catalog, "side0", "")
+	assert_eq(Garage.get_slot(profile.build, "side0"), "")
+	var build := _catalog.make_build(profile.build, _rules, T.COMMON, 0)
+	assert_null(build.sides[0], "el brazo 1 queda vacio")
+	assert_eq(build.sides[1].id, second, "el arma del brazo 2 no se mueve")
+	var mech := BattleMech.new(build, _rules)
+	assert_false(mech.slots.has("side0"))
+	assert_true(mech.slots.has("side1"), "en combate sigue en su hueco")
+
+
+func test_una_pieza_soltada_sobre_el_mech_va_al_hueco_elegido_o_al_primero_libre() -> void:
+	var profile := _new_run()
+	var arm := Garage.get_slot(profile.build, "side2")
+	assert_eq(Garage.drop_slot(profile.build, _catalog, arm, "side3"), "side3", "el elegido")
+	assert_eq(
+		Garage.drop_slot(profile.build, _catalog, arm, "torso"), "side0", "no cabe: el primero"
+	)
+	Garage.equip(profile, _catalog, "side1", "")
+	assert_eq(Garage.drop_slot(profile.build, _catalog, arm, "torso"), "side1", "el primero libre")
+	var torso := Garage.get_slot(profile.build, "torso")
+	assert_eq(Garage.drop_slot(profile.build, _catalog, torso), "torso")
+
+
+func test_no_se_suelta_en_un_hueco_cerrado() -> void:
+	var profile := _new_run()
+	var chest: String = _catalog.by_type(ItemDef.Type.CHEST)[0].id
+	assert_eq(Garage.drop_slot(profile.build, _catalog, chest, "", ["chest"]), "")
+	assert_eq(Garage.drop_slot(profile.build, _catalog, chest), "chest")
