@@ -110,6 +110,9 @@ func setup(p_build: MechBuild, p_facing: int) -> void:
 	if _sprites != null and not _sprites.rigid_legs:
 		_rig = _sprites.leg_rig(build.legs.element)
 	_locomotion = locomotion_of(build.legs)
+	# Con otro equipo, el arma de pecho vuelve a estar guardada.
+	_deployed = false
+	_deploy = 0.0
 	set_facing(p_facing)
 
 

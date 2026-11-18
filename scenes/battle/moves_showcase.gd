@@ -46,6 +46,9 @@ var only_shots := false
 ## Solo el estado a la vista: desgaste por la vida, fallos por la energia y
 ## efectos de los criticos (tools/clip.ps1 -Wear).
 var only_wear := false
+## Solo los impactos: brazo, hombro, pecho y la materia oscura de cada tipo de
+## arma de pecho (tools/clip.ps1 -Impact).
+var only_impacts := false
 var library: BuildLibrary
 var stages: StageLibrary
 
@@ -98,6 +101,10 @@ func _run() -> void:
 		return
 	if only_wear:
 		await _show_wear()
+		finished.emit()
+		return
+	if only_impacts:
+		await _show_impacts()
 		finished.emit()
 		return
 
@@ -232,6 +239,47 @@ func _show_shots() -> void:
 		await _pause(BEAT * 1.2)
 		await _fire_slot(slot)
 		await _pause(BEAT * 1.6)
+
+
+## Los tramos del impacto (GDD 2.10) y la materia oscura de cada tipo de
+## arma de pecho, con su despliegue, su carga y su disparo.
+func _show_impacts() -> void:
+	var hero := _arena.mechs[0]
+	var foe := _arena.mechs[1]
+	_hero.chest = _item("canon_pesado_canon_cin")
+	_arm(["medio_balas_cin"], ["bateria_canon_cin"])
+	hero.place(_cell(1))
+	foe.place(_cell(4))
+	_arena.update_facing()
+	await _pause(BEAT * 2)
+	_caption.text = "Brazo: impacto ligero, solo chispas"
+	await _fire_slot("side0")
+	_arena.impact(1, "light", 0.7)
+	await _pause(BEAT * 3)
+	_caption.text = "Hombro: impacto medio, retrocede una casilla"
+	await _fire_slot("top0")
+	_arena.impact(1, "medium", 0.7)
+	await foe.knockback_to(_cell(5), 0.7).finished
+	await _pause(BEAT * 3)
+	_caption.text = "Pecho: impacto grave, retrocede hasta tres casillas"
+	await _fire_slot("chest")
+	_arena.impact(1, "heavy", 0.7)
+	await foe.knockback_to(_cell(8), 1.2).finished
+	await _pause(BEAT * 3)
+	var names := {"canon": "cañón de asedio", "blaster": "cañón de plasma", "laser": "cañón láser"}
+	for type: String in names:
+		_hero.chest = _item("canon_pesado_%s_cin" % type)
+		_arm(["medio_balas_cin"], ["bateria_canon_cin"])
+		hero.place(_cell(1))
+		foe.place(_cell(4))
+		_arena.update_facing()
+		_caption.text = "Materia oscura del %s: despliegue, carga y disparo" % names[type]
+		await _pause(BEAT * 2)
+		await _arena.dark_matter(0, 1, type, Color("b07bff"), 0.7)
+		_arena.float_text(4, Txt.t("crit_hit"), Color("ffd23d"))
+		_caption.text = "Materia oscura: lo manda hasta el borde con un crítico"
+		await foe.knockback_to(_cell(9), 1.8).finished
+		await _pause(BEAT * 3)
 
 
 ## Etapas del estado a la vista (MechWear) y efectos de los criticos.

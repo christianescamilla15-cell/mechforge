@@ -196,6 +196,48 @@ func fire_between(
 	await _shots.play(fx, from, to, color, seconds)
 
 
+## Impacto de un golpe sobre un mech (GDD 2.10): "light" apenas sacude,
+## "medium" sacude y levanta polvo, "heavy" sacude fuerte con un destello y
+## "ultimate" (materia oscura) sacude la arena entera.
+func impact(target: int, tier: String, seconds: float) -> void:
+	var view := mechs[target]
+	match tier:
+		"light":
+			shake(2.5)
+		"medium":
+			shake(6.0)
+			dust(view.position, seconds * 0.6)
+		"heavy":
+			shake(12.0)
+			flash(view.hit_point(), Color("fff3d6"), 120.0, seconds * 0.5)
+			dust(view.position, seconds * 0.8)
+		"ultimate":
+			shake(20.0)
+			flash(view.hit_point(), Color("e8d6ff"), 220.0, seconds)
+			dust(view.position, seconds)
+
+
+## La ultima arma (GDD 2.10): la materia oscura sale del arma de pecho con su
+## propia secuencia segun el tipo del arma: despliegue, carga, disparo y
+## explosion. Vuelve al llegar el golpe.
+func dark_matter(actor: int, target: int, chest_type: String, color: Color, seconds: float) -> void:
+	var shooter := mechs[actor]
+	var deploying := shooter.deploy(seconds * 1.2)
+	if deploying != null:
+		await deploying.finished
+	var from := shooter.muzzle_point(false, "chest")
+	var to := mechs[target].hit_point()
+	shake(3.0)
+	await _shots.charge(from, color, seconds * 3.0, chest_type)
+	shooter.fire(seconds * 0.8, "chest")
+	var shot := "materia_oscura_" + chest_type
+	if not ShotFx.is_known(shot):
+		shot = "materia_oscura"
+	await _shots.play(shot, from, to, color, seconds * 1.5)
+	explode(to, seconds * 2.0)
+	impact(target, "ultimate", seconds)
+
+
 ## Golpe cuerpo a cuerpo: el mech se lanza y, si su arma tiene tajo (las
 ## hojas), lo dibuja sobre el rival. No espera a que termine.
 func strike(actor: int, target: int, fx: String, color: Color, seconds: float) -> void:

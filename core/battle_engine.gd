@@ -375,7 +375,10 @@ func apply(action: BattleAction) -> String:
 			var blast := _dark_matter_damage(me, foe)
 			me.energy = 0
 			foe.health -= blast
-			_log("dark_matter", {"slot": "chest", "damage": blast})
+			var data := {"slot": "chest", "damage": blast}
+			if rules.impact_enabled:
+				data.merge(_dark_matter_impact(me, foe))
+			_log("dark_matter", data)
 	_evade_if_hit(foe, me, foe_health)
 	_check_pickup()
 	actions_left -= 1
@@ -540,8 +543,12 @@ func _use(
 	var data := {"slot": key, "item": def.id, "damage": damage}
 	if crit >= 1.0:
 		data.merge(_apply_crit(def, target))
+	# Un escudo que para el golpe tambien para su impacto.
+	var knock := 0 if shielded else impact_push(def, target)
+	if knock > 0:
+		data["knock"] = knock
 	if move:
-		_apply_movement(user, target, def)
+		_apply_movement(user, target, def, knock)
 	_spend_use(slot)
 	if shielded:
 		data["shielded"] = true
@@ -646,6 +653,22 @@ func _crit_factor(crit: float) -> float:
 	return 1.0 + crit * (rules.crit_damage_mult - 1.0)
 
 
+## Impacto de la materia oscura (GDD 2.10): manda al rival hasta el borde de
+## la arena y le deja el critico de su arma de pecho. Devuelve lo que hay que
+## anadir al registro.
+func _dark_matter_impact(me: BattleMech, foe: BattleMech) -> Dictionary:
+	var out := {}
+	var edge := rules.arena_size - 1 if _dir(me, foe) > 0 else 0
+	var knock := absi(edge - foe.position)
+	if knock > 0:
+		foe.position = edge
+		out["knock"] = knock
+	var chest := me.slots["chest"].def
+	if chest.crit_effect != "":
+		out.merge(_apply_crit(chest, foe))
+	return out
+
+
 ## Materia oscura: una parte de la vida maxima del rival, sin resistencias
 ## ni escudos.
 func _dark_matter_damage(me: BattleMech, foe: BattleMech) -> int:
@@ -666,7 +689,23 @@ func _evade_if_hit(target: BattleMech, user: BattleMech, health_before: int) -> 
 	_log("evade", {"who": mechs.find(target), "from": from, "to": to})
 
 
-func _apply_movement(user: BattleMech, target: BattleMech, def: ItemDef) -> void:
+## Casillas que empuja el impacto de un golpe de esa arma (GDD 2.10): nada
+## las de brazo, impact_push_top las de hombro (no el ancla, que jala) y
+## hasta impact_push_chest las de pecho, menos si el blindaje del rival es de
+## mas clase que el arma.
+func impact_push(def: ItemDef, target: BattleMech) -> int:
+	if not rules.impact_enabled or not def.deals_damage() or def.pull > 0:
+		return 0
+	match def.type:
+		ItemDef.Type.TOP:
+			return rules.impact_push_top
+		ItemDef.Type.CHEST:
+			var level := ItemScaling.power(rules, def.tier, def.level) / target.armor_power(rules)
+			return clampi(roundi(rules.impact_push_chest * level), 1, rules.impact_push_chest)
+	return 0
+
+
+func _apply_movement(user: BattleMech, target: BattleMech, def: ItemDef, knock: int = 0) -> void:
 	var last := rules.arena_size - 1
 	var dir := _dir(user, target)
 	if def.recoil > 0:
@@ -676,8 +715,9 @@ func _apply_movement(user: BattleMech, target: BattleMech, def: ItemDef) -> void
 	if def.advance > 0:
 		var gap := absi(target.position - user.position) - 1
 		user.position += mini(def.advance, gap) * dir
-	if def.push > 0:
-		target.position = clampi(target.position + def.push * dir, 0, last)
+	var push := maxi(def.push, knock)
+	if push > 0:
+		target.position = clampi(target.position + push * dir, 0, last)
 	if def.pull > 0:
 		var gap := absi(target.position - user.position) - 1
 		target.position -= mini(def.pull, gap) * dir

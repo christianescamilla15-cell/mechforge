@@ -150,6 +150,22 @@ p = min(p, 0.9)
 
 Pasan todas las puertas, más cerca del 50 % que sin críticos (balas sin críticos: 49.0, 54.5, 46.5 y 52.3 %).
 
+### 2.10 Impacto de los golpes
+Pedido por el usuario el 2026-11-18. El golpe empuja al rival según el tamaño del arma. En el original el empuje es un número de cada arma (`push`), que se conserva; esto se suma por encima (gana el mayor de los dos). En el motor desde ese día (tests/unit/test_impact.gd, 10 tests); viene apagado en `RulesConfig` (`impact_enabled`) y el juego lo enciende.
+
+| Tramo | Armas | Impacto | Retroceso del rival |
+|---|---|---|---|
+| Ligero | Brazos (y piernas y robot de asistencia) | Solo chispas | Ninguno (las que ya empujan por sí mismas, como la escopeta cinética o el repulsor, siguen igual) |
+| Semi | Hombros | Ligero o medio según el daño frente a la vida del rival | 1 casilla (`impact_push_top`); el ancla no, porque jala |
+| Grave | Pecho (cañón pesado y nova) | Grave: sacudida fuerte y destello | Hasta 3 casillas (`impact_push_chest`), menos si el blindaje del rival es de más clase que el arma |
+| Última | Materia oscura | Secuencia propia: despliegue, carga y disparo según el tipo del arma de pecho | Hasta el borde de la arena, y le deja el crítico de su arma de pecho (§2.9) |
+
+- Un escudo que para el golpe también para su impacto.
+- La materia oscura tiene una secuencia distinta para cada tipo de arma de pecho: el cañón de asedio carga con partículas que llegan derechas y dispara un obús negro; el cañón de plasma las hace girar en espiral y dispara una esfera de plasma negro; el cañón láser concentra rayas en la lente y dispara un haz negro. Las tres terminan en una explosión que sacude la arena y mandan al rival al borde.
+- **Medido** con los críticos encendidos (balance_sim `--crits --impact`, mismas condiciones que en §2.9): balas 49.7, 50.0, 50.2 y 53.5 %; cañón 50.8, 51.0, 48.3 y 47.5 %; bláster 51.5, 51.0, 47.5 y 51.0 %; láser 52.5, 48.3, 49.3 y 48.7 % (físico, calor, energía e híbrido). Pasan todas las puertas; la duración media no cambia (12.3 a 12.7 turnos).
+- **Campaña** (tools/economy_sweep.ps1, 24 combates por casilla, con críticos e impacto), con 50 victorias en la zona: 58, 82, 91, 84, 84, 24, 99, 74, 69 y 57 % (solo con críticos: 58, 81, 87, 91, 70, 24, 98, 54, 63 y 41). Fuera del margen de ±10 puntos se vuelven más fáciles las zonas 5 (+14), 8 (+20) y 10 (+16). El impacto favorece al jugador porque en la campaña solo él lleva arma de pecho (la que empuja hasta 3) y materia oscura; además, los jefes de las zonas 5 y 10 llevan anclas en los hombros, que jalan y no empujan. Queda así, en la línea de lo que el usuario decidió con los críticos, hasta que diga otra cosa.
+- Para verlo: `tools/clip.ps1 -Impact`.
+
 ## 3. Estadísticas
 | Clave | Significado | Viene de |
 |---|---|---|
@@ -465,7 +481,8 @@ Victorias contra el jefe tras gastar N victorias en la zona, empezando con lo qu
 - De la 2 a la 9, con unas 50 victorias en la zona se gana a menudo, y el mech que ataca el punto débil del jefe gana casi siempre. En las zonas 6, 8 y 9 la media baja porque hay que llevar el mech adecuado: cambiar de armas en el taller es parte de la táctica. La zona 7 quedó fácil (el Espectro cae con 50 victorias con cualquier mech).
 - Las zonas que abren clase nueva (3, 5, 7 y 9) piden más victorias: hay que transformar las piezas (y en la 3, comprar el arma de pecho).
 - El jefe final es extremadamente difícil, como pidió el usuario: 32 % de media con 50 victorias y 34 % con 100. Repartir los puntos por igual no llega a la materia oscura (nivel 25 en la rama Asalto); quien la persiga la tiene para el Coloso.
-- **Los golpes críticos (§2.9) movieron poco el ritmo.** Medido el 2026-11-18, con 50 victorias: 58, 81, 87, 91, 70, 24, 98, 54, 63 y 41 % (antes 46, 88, 88, 79, 66, 26, 96, 57, 63 y 32). Fuera del margen de ±10 puntos solo las zonas 1 y 4 (+12). Con 25 victorias, la zona 3 sube de 17 a 46 %: es donde se compra el cañón pesado, casi seguro de crítico, y en la campaña solo lo lleva el jugador. Pendiente de que el usuario diga si se endurecen las zonas 3 y 4.
+- **Los golpes críticos (§2.9) movieron poco el ritmo.** Medido el 2026-11-18, con 50 victorias: 58, 81, 87, 91, 70, 24, 98, 54, 63 y 41 % (antes 46, 88, 88, 79, 66, 26, 96, 57, 63 y 32). Fuera del margen de ±10 puntos solo las zonas 1 y 4 (+12). Con 25 victorias, la zona 3 sube de 17 a 46 %: es donde se compra el cañón pesado, casi seguro de crítico, y en la campaña solo lo lleva el jugador. El usuario decidió dejarla así (2026-11-18).
+- **El impacto de los golpes (§2.10) la facilita algo más.** Medido el 2026-11-18, con 50 victorias: 58, 82, 91, 84, 84, 24, 99, 74, 69 y 57 % (solo con críticos: 58, 81, 87, 91, 70, 24, 98, 54, 63 y 41). Suben las zonas 5 (+14), 8 (+20) y 10 (+16): en la campaña solo el jugador lleva arma de pecho y materia oscura, que son las que más empujan, y los jefes de las zonas 5 y 10 llevan anclas, que jalan. Queda así hasta que el usuario diga otra cosa; si se quiere endurecer, la palanca es la vida o el nivel de esos tres jefes.
 - **El robot de asistencia no movió el ritmo.** La misma medición sin él (2026-11-17) daba, con 50 victorias: 46, 83, 89, 70, 66, 24, 99, 52, 56 y 21 %. Con él: 46, 88, 88, 79, 66, 26, 96, 57, 63 y 32 %. Todas las diferencias caben en el margen de ±10 puntos salvo la del Coloso (+11), que con 100 victorias queda igual (37 % → 34 %). El jugador sube y transforma su asistente con las celdas de la zona y compra la batería; el Orden lleva el suyo a la clase de la zona.
 
 ## 10. Pantallas

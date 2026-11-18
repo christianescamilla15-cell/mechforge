@@ -22,6 +22,9 @@ const COLOR_DROP := Color("ffe27a")
 const COLOR_REPAIR := Color("7dff9b")
 const COLOR_DARK_MATTER := Color("b07bff")
 const COLOR_CRIT := Color("ffd23d")
+## Parte de la vida del rival desde la que el golpe de un arma de hombro es
+## un impacto medio y no ligero.
+const MEDIUM_IMPACT_SHARE := 0.07
 
 var rules: RulesConfig
 var engine: BattleEngine
@@ -181,7 +184,7 @@ func _play_event(entry: Dictionary) -> void:
 				_arena.float_text(_state[target]["pos"], Txt.t("shield_hit"), COLOR_COOL)
 			if damage > 0:
 				_arena.mechs[target].hit(step)
-				_arena.shake(clampf(damage / 30.0, 2.0, 9.0))
+				_arena.impact(target, _impact_tier(def, damage, target), step)
 				_arena.float_text(_state[target]["pos"], "-%d" % damage, COLOR_DAMAGE)
 			if entry.get("crit", false):
 				# Critico (GDD 2.9): aviso y lo que le hace al rival.
@@ -199,10 +202,14 @@ func _play_event(entry: Dictionary) -> void:
 				if cell != _state[i]["pos"] or _arena.mechs[i].position != _arena.cell_point(cell):
 					# Al rival lo empujan o lo arrastran; quien dispara retrocede.
 					if i == target:
-						_arena.mechs[i].knockback_to(_arena.cell_point(cell), step * 0.9)
+						# Un impacto grave lo arrastra mas lejos: tarda mas.
+						var knock: int = entry.get("knock", 1)
+						var slide := step * (0.9 + 0.25 * maxi(0, knock - 1))
+						_arena.mechs[i].knockback_to(_arena.cell_point(cell), slide)
 					else:
 						_arena.mechs[i].hop_back(_arena.cell_point(cell), step * 0.9)
-			await get_tree().create_timer(step * 0.9).timeout
+			var sliding: int = entry.get("knock", 1)
+			await get_tree().create_timer(step * (0.9 + 0.25 * maxi(0, sliding - 1))).timeout
 		"walk":
 			var destination := _arena.cell_point(entry["to"])
 			if _is_jump(entry, actor):
@@ -237,18 +244,25 @@ func _play_event(entry: Dictionary) -> void:
 			_arena.float_text(_state[actor]["pos"], healed, COLOR_REPAIR)
 			await get_tree().create_timer(step).timeout
 		"dark_matter":
-			# El arma de pecho dispara materia oscura: un rayo violeta y una
-			# explosion que sacude la arena.
-			var dark := COLOR_DARK_MATTER
-			await _arena.fire_between(
-				actor, target, "materia_oscura", dark, step * 1.5, false, "chest"
-			)
-			_arena.explode(_arena.mechs[target].hit_point(), step * 2.0)
+			# La ultima arma (GDD 2.10): secuencia propia segun el tipo del arma
+			# de pecho, y el rival sale despedido hasta el borde.
+			var chest_type := ""
+			if engine.mechs[actor].slots.has("chest"):
+				chest_type = engine.mechs[actor].slots["chest"].def.weapon_type
+			await _arena.dark_matter(actor, target, chest_type, COLOR_DARK_MATTER, step)
 			_arena.mechs[target].hit(step)
-			_arena.shake(14.0)
-			var blast := "-%d" % entry["damage"]
-			_arena.float_text(_state[target]["pos"], blast, COLOR_DARK_MATTER)
-			await get_tree().create_timer(step * 1.5).timeout
+			var cell: int = _state[target]["pos"]
+			_arena.float_text(cell, "-%d" % entry["damage"], COLOR_DARK_MATTER)
+			if entry.get("crit", false):
+				_arena.float_text(cell, Txt.t("crit_hit"), COLOR_CRIT)
+				_arena.float_text(cell, Txt.t("crit_" + str(entry["crit_effect"])), COLOR_CRIT)
+			await get_tree().create_timer(step).timeout
+			var edge: int = snapshot[target]["pos"]
+			if edge != cell:
+				var away := _arena.cell_point(edge)
+				await _arena.mechs[target].knockback_to(away, step * 2.6).finished
+				_arena.dust(away, step)
+			await get_tree().create_timer(step * 0.8).timeout
 		"drop_taken":
 			var percent := roundi(float(entry["amount"]) * 100.0)
 			var label := "+%d %% %s" % [percent, Txt.t("drop_%s_short" % entry["kind"])]
@@ -301,6 +315,21 @@ func _event_def(entry: Dictionary, actor: int) -> ItemDef:
 	if slot != "" and engine.mechs[actor].slots.has(slot):
 		return engine.mechs[actor].slots[slot].def
 	return null
+
+
+## Tramo del impacto de un golpe (GDD 2.10): las armas de brazo (y las
+## piernas y el asistente) ligero; las de hombro de ligero a medio segun el
+## dano que hacen frente a la vida del rival; las de pecho grave.
+func _impact_tier(def: ItemDef, damage: int, target: int) -> String:
+	if def == null:
+		return "light"
+	match def.type:
+		ItemDef.Type.CHEST:
+			return "heavy"
+		ItemDef.Type.TOP:
+			var share := float(damage) / float(maxi(engine.mechs[target].max_health, 1))
+			return "medium" if share >= MEDIUM_IMPACT_SHARE else "light"
+	return "light"
 
 
 ## Las armas que no son cuerpo a cuerpo disparan un proyectil.

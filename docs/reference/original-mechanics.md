@@ -87,6 +87,7 @@ Regla de trabajo que pidió el usuario: no se hace nada desde cero. Cada mecáni
 - Huecos de arma: el original lleva 4 laterales y 2 superiores (6 armas). El usuario fijó 2 brazos, 2 hombros y 1 pecho (5 armas) más el robot de soporte.
 - Clases y niveles máximos (6/12/18/24/30/50), chasis con bonificaciones y tipos de arma ligados a la clase.
 - Mejoras M1 a M6 del GDD, que responden a las quejas de la comunidad.
+- Impacto por tamaño del arma (2026-11-18, GDD §2.10): en el original solo empujan las armas que tienen `push`. El usuario pidió que el golpe empuje según el arma: brazos nada, hombros 1 casilla, pecho hasta 3 y la materia oscura hasta el borde. El `push` propio de cada arma se conserva.
 - Golpes críticos (2026-11-18, GDD §2.9): el original no los tiene (cada golpe es una sola tirada). El usuario los pidió con efectos: inutilizar un arma durante el turno, inmovilizar, etc.; casi seguros con el arma de pecho y mucho menos probables contra escudo y armadura gruesa.
 
 **Se aparta del original por ajuste nuestro (pendiente del visto bueno del usuario)**

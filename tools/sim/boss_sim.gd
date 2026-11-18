@@ -29,6 +29,7 @@ func _initialize() -> void:
 	var tier_names: PackedStringArray = str(args.get("player-tiers", "LEGENDARY,MYTHIC")).split(",")
 	_rules_drops.drops_enabled = true
 	_rules_drops.crits_enabled = true
+	_rules_drops.impact_enabled = true
 
 	var catalog := Catalog.load_file("res://data/catalog.json")
 	var library := BuildLibrary.load_file("res://data/builds.json")

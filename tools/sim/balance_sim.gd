@@ -14,6 +14,7 @@ extends SceneTree
 ##   --seed=1             semilla base
 ##   --no-m2 --no-m5 --no-m6    apaga una mejora para medir su efecto
 ##   --crits              enciende los golpes criticos (GDD 2.9), como en el juego
+##   --impact             enciende el impacto de los golpes (GDD 2.10), como en el juego
 ##   --hp-scales=0.92,0.96,1,1.04,1.08   escalas de vida sobre las que se promedia.
 ##                        Con poco azar en el dano, quien gana un cruce parejo
 ##                        depende de la paridad de las acciones que hacen falta
@@ -52,6 +53,7 @@ func _initialize() -> void:
 	_rules.m5_first_turn_single_action = not args.has("no-m5")
 	_rules.m6_regen_at_turn_start = not args.has("no-m6")
 	_rules.crits_enabled = args.has("crits")
+	_rules.impact_enabled = args.has("impact")
 	var tier_name: String = args.get("tier", "DIVINE")
 	var tier: ItemDef.Tier = ItemDef.Tier[tier_name]
 	var levels: Array[int] = []

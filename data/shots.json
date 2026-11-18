@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "comment": "Disparos de las armas (docs/CATALOGO_ARMAS.md, seccion 9). Cada arma del catalogo lleva el suyo en 'fx'; scenes/battle/shot_fx.gd los dibuja. Solo es presentacion: el dano lo decide el motor. path: camino (straight recto, arc parabola, high_arc parabola alta, missile curva de cohete, drop bomba que cae, stream chorro, beam haz instantaneo, orbital rayo desde el cielo, cable arpon con cable, ring onda alrededor del mech, wave onda que avanza, melee tajo). body: como se ve lo que viaja. count: proyectiles o pulsos; gap: segundos entre uno y otro; spread: dispersion en pixeles (abanico si salen a la vez). speed: pixeles por segundo; max_travel: tope del viaje en segundos. size: tamano. hold: cuanto dura un haz. impact: sparks chispas, explosion, splash salpicadura de plasma, burn quemadura de haz, drain absorcion. Los tiempos valen a velocidad normal del combate y se escalan con ella.",
+  "comment": "Disparos de las armas (docs/CATALOGO_ARMAS.md, seccion 9). Cada arma del catalogo lleva el suyo en 'fx'; scenes/battle/shot_fx.gd los dibuja. Solo es presentacion: el dano lo decide el motor. path: camino (straight recto, arc parabola, high_arc parabola alta, missile curva de cohete, drop bomba que cae, stream chorro, beam haz instantaneo, orbital rayo desde el cielo, cable arpon con cable, ring onda alrededor del mech, wave onda que avanza, melee tajo). body: como se ve lo que viaja. count: proyectiles o pulsos; gap: segundos entre uno y otro; spread: dispersion en pixeles (abanico si salen a la vez). speed: pixeles por segundo; max_travel: tope del viaje en segundos. size: tamano. hold: cuanto dura un haz. impact: sparks chispas, explosion, splash salpicadura de plasma, burn quemadura de haz, drain absorcion. core: 'dark' para el nucleo negro de la materia oscura. Los tiempos valen a velocidad normal del combate y se escalan con ella.",
   "shots": {
     "tajo_vibrante": {"desc": "Cuchilla vibratoria: tajo con chispas de metal", "path": "melee", "body": "slash", "size": 1.0, "impact": "sparks", "impact_size": 1.1},
     "tajo_plasma": {"desc": "Hoja de plasma: tajo con estela caliente que salpica", "path": "melee", "body": "slash", "size": 1.15, "impact": "splash", "impact_size": 0.9},
@@ -47,6 +47,9 @@
     "perno": {"desc": "Dron de plasma: un perno", "path": "straight", "body": "bolt", "speed": 3000, "max_travel": 0.4, "size": 0.9, "impact": "splash", "impact_size": 0.5},
     "haz_dron": {"desc": "Dron láser: haz fino", "path": "beam", "body": "beam", "hold": 0.2, "size": 0.6, "impact": "burn", "impact_size": 0.5},
 
-    "materia_oscura": {"desc": "Materia oscura: el arma del pecho dispara un haz que aniquila", "path": "beam", "body": "beam", "hold": 0.7, "size": 2.6, "impact": "explosion", "impact_size": 1.8}
+    "materia_oscura": {"desc": "Materia oscura: el arma del pecho dispara un haz que aniquila", "path": "beam", "body": "beam", "hold": 0.7, "size": 2.6, "core": "dark", "impact": "explosion", "impact_size": 1.8},
+    "materia_oscura_canon": {"desc": "Materia oscura del cañón de asedio: un obús negro que lo arrasa todo", "path": "straight", "body": "shell", "speed": 1500, "max_travel": 0.6, "size": 2.8, "trail": "glow", "core": "dark", "impact": "explosion", "impact_size": 2.2},
+    "materia_oscura_blaster": {"desc": "Materia oscura del cañón de plasma: una esfera de plasma negro", "path": "straight", "body": "orb", "speed": 1100, "max_travel": 0.7, "size": 3.0, "trail": "glow", "core": "dark", "impact": "splash", "impact_size": 2.4},
+    "materia_oscura_laser": {"desc": "Materia oscura del cañón láser: un haz negro que lo atraviesa", "path": "beam", "body": "beam", "hold": 0.8, "size": 2.8, "core": "dark", "impact": "burn", "impact_size": 2.2}
   }
 }

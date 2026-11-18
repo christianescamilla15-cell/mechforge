@@ -69,7 +69,15 @@ const DEFAULTS := {
 	"trail": "",
 	"impact": "sparks",
 	"impact_size": 1.0,
+	"core": "",
 }
+## Nucleos de los disparos: "" blanco; "dark" el negro de la materia oscura.
+const CORES: Array[String] = ["", "dark"]
+const DARK_CORE := Color("12061f")
+## Cargas de la materia oscura segun el tipo del arma de pecho: las
+## particulas llegan derechas al canon, en espiral al plasma y en rayas a la
+## lente del laser.
+const CHARGE_STYLES: Array[String] = ["canon", "blaster", "laser"]
 ## Los tamanos de shots.json se multiplican por esto. Con la camara alejada
 ## (zoom de 0.5 a 0.7) los trazos finos apenas se leian.
 const BODY_SCALE := 1.8
@@ -90,6 +98,8 @@ static var _table: Dictionary = {}
 
 var _time := 0.0
 var _effects: Array[Dictionary] = []
+## Nucleo del disparo que se esta lanzando o dibujando.
+var _core := CORE
 
 
 ## Los disparos de data/shots.json, por id.
@@ -139,6 +149,8 @@ static func problems() -> Array[String]:
 			out.append("%s: impacto desconocido '%s'" % [id, s["impact"]])
 		if not s["trail"] in TRAILS:
 			out.append("%s: estela desconocida '%s'" % [id, s["trail"]])
+		if not s["core"] in CORES:
+			out.append("%s: nucleo desconocido '%s'" % [id, s["core"]])
 		if int(s["count"]) < 1 or float(s["speed"]) <= 0.0 or float(s["size"]) <= 0.0:
 			out.append("%s: count, speed y size deben ser positivos" % id)
 		if str(s["desc"]) == "":
@@ -150,6 +162,7 @@ static func problems() -> Array[String]:
 ## llega el ultimo impacto; los efectos siguen solos hasta apagarse.
 func play(id: String, from: Vector2, to: Vector2, color: Color, seconds: float) -> void:
 	var s := shot(id)
+	_core = DARK_CORE if s["core"] == "dark" else CORE
 	var k := clampf(seconds / REFERENCE_STEP, 0.3, 2.5)
 	var count: int = s["count"]
 	var arrival := 0.0
@@ -162,7 +175,17 @@ func play(id: String, from: Vector2, to: Vector2, color: Color, seconds: float) 
 		var reach := delay + _launch(s, origin, to + offset, color, k, delay, i)
 		_impact(s, to + offset, color, k, reach)
 		arrival = maxf(arrival, reach)
+	_core = CORE
 	await get_tree().create_timer(maxf(arrival, 0.01)).timeout
+
+
+## Carga de la materia oscura en la boca del arma de pecho: particulas que
+## llegan (derechas, en espiral o en rayas segun `style`) y una esfera negra
+## que crece. Vuelve cuando esta cargada.
+func charge(at: Vector2, color: Color, seconds: float, style: String) -> void:
+	var kind := style if style in CHARGE_STYLES else "canon"
+	_add(_effect("charge", _time, seconds, color, 1.0, {"at": at, "style": kind}))
+	await get_tree().create_timer(seconds).timeout
 
 
 func _process(delta: float) -> void:
@@ -247,6 +270,7 @@ func _effect(
 ) -> Dictionary:
 	var out := {"kind": kind, "start": start, "life": maxf(life, 0.01), "color": color}
 	out["size"] = size
+	out["dark"] = _core == DARK_CORE
 	out.merge(extra)
 	return out
 
@@ -338,7 +362,10 @@ func _draw() -> void:
 		var t := (_time - float(effect["start"])) / float(effect["life"])
 		if t < 0.0 or t > 1.0:
 			continue
+		_core = DARK_CORE if effect.get("dark", false) else CORE
 		match effect["kind"]:
+			"charge":
+				_draw_charge(effect, t)
 			"projectile":
 				_draw_projectile(effect, t)
 			"beam":
@@ -364,6 +391,30 @@ func _draw() -> void:
 				var head: Vector2 = effect["at"] + effect["dir"] * effect["reach"] * eased
 				var tail: Vector2 = head - effect["dir"] * (8.0 + 12.0 * (1.0 - t))
 				draw_line(tail, head, _alpha(effect["color"], 1.0 - t), 3.0, true)
+
+
+func _draw_charge(e: Dictionary, t: float) -> void:
+	var at: Vector2 = e["at"]
+	var color: Color = e["color"]
+	var reach := 190.0
+	for j in 18:
+		var u := fposmod(t * 3.0 + j / 18.0, 1.0)
+		var direction := Vector2.from_angle(TAU * j / 18.0)
+		var tint := _alpha(color.lightened(0.3), u)
+		match e["style"]:
+			"blaster":
+				var swirl := Vector2.from_angle(TAU * j / 18.0 + u * 4.0)
+				draw_circle(at + swirl * reach * (1.0 - u), 5.0 * (1.0 - u) + 2.0, tint)
+			"laser":
+				var head := at + direction * reach * (1.0 - u)
+				draw_line(head, head + direction * 30.0 * (1.0 - u), tint, 3.0, true)
+			_:
+				draw_circle(at + direction * reach * (1.0 - u), 4.0 + 3.0 * (1.0 - u), tint)
+	var radius := 8.0 + 34.0 * t
+	var pulse := 1.0 + 0.08 * sin(_time * 30.0)
+	draw_circle(at, radius * 1.7 * pulse, _alpha(color, 0.25))
+	draw_circle(at, radius, DARK_CORE)
+	draw_arc(at, radius, 0.0, TAU, 40, color.lightened(0.35), 3.0, true)
 
 
 ## Punto del camino de un proyectil a esa altura de su viaje (0 a 1).
@@ -442,14 +493,14 @@ func _draw_trail(e: Dictionary, t: float) -> void:
 ## Trazo de luz: un halo del color de la municion y un nucleo blanco.
 func _streak(p: Vector2, d: Vector2, length: float, glow: Color, width: float, core: float) -> void:
 	draw_line(p - d * length, p, _alpha(glow, 0.45 * glow.a), width, true)
-	draw_line(p - d * length * 0.7, p, _alpha(CORE, glow.a), core, true)
+	draw_line(p - d * length * 0.7, p, _alpha(_core, glow.a), core, true)
 
 
 func _orb(p: Vector2, size: float, color: Color) -> void:
 	var flicker := 1.0 + 0.12 * sin(_time * 40.0)
 	draw_circle(p, 17.0 * size * flicker, _alpha(color, 0.25 * color.a))
 	draw_circle(p, 10.0 * size, _alpha(color.lightened(0.25), 0.7 * color.a))
-	draw_circle(p, 5.0 * size, _alpha(CORE, color.a))
+	draw_circle(p, 5.0 * size, _alpha(_core, color.a))
 
 
 ## Obus: cuerpo de metal con la punta hacia delante y el culote encendido.
@@ -462,7 +513,9 @@ func _shell(p: Vector2, d: Vector2, size: float, color: Color) -> void:
 	]:
 		outline.append(p + d * point.x * grow + n * point.y * grow)
 	draw_circle(p - d * 14.0 * grow, 7.0 * grow, _alpha(color.lightened(0.3), 0.8))
-	draw_colored_polygon(outline, METAL.lightened(0.15))
+	# El obus de materia oscura es negro; los demas, de metal.
+	var hull := DARK_CORE.lightened(0.12) if _core == DARK_CORE else METAL.lightened(0.15)
+	draw_colored_polygon(outline, hull)
 	draw_line(p + n * -6.0 * grow, p + n * 6.0 * grow, METAL.darkened(0.3), 2.0 * size)
 
 
@@ -517,7 +570,7 @@ func _draw_beam(e: Dictionary, t: float) -> void:
 		return
 	draw_line(a, b, _alpha(color, 0.25 * f), 22.0 * size * f, true)
 	draw_line(a, b, _alpha(color.lightened(0.3), 0.7 * f), 9.0 * size * f, true)
-	draw_line(a, b, _alpha(CORE, f), 3.2 * size * f, true)
+	draw_line(a, b, _alpha(_core, f), 3.2 * size * f, true)
 
 
 ## Haz que absorbe: una linea que ondula y bolitas que van del rival a quien

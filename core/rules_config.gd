@@ -62,6 +62,17 @@ extends Resource
 ## y el escudo de jefe) quita esta parte de la probabilidad.
 @export var crit_shield_cut: float = 0.25
 
+@export_group("Impacto")
+## Impacto de los golpes (GDD 2.10): el golpe empuja al rival segun el tamano
+## del arma. Apagado por defecto, como los criticos; el juego lo enciende.
+@export var impact_enabled: bool = false
+## Casillas que empuja un arma de hombro (impacto ligero a medio). Las de
+## brazo solo hacen chispas.
+@export var impact_push_top: int = 1
+## Casillas que empuja como mucho un arma de pecho (impacto grave): menos si
+## el blindaje del rival es de mas clase que el arma.
+@export var impact_push_chest: int = 3
+
 @export_group("Bonificaciones")
 ## Bonificaciones que deja caer una nave en la arena (GDD 2.8). Apagadas por
 ## defecto para no alterar los combates de prueba; el juego las enciende.

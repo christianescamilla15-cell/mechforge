@@ -32,6 +32,7 @@ func _initialize() -> void:
 	var zone := int(args.get("zone", "0"))
 	_rules.drops_enabled = true
 	_rules.crits_enabled = not OS.get_cmdline_user_args().has("--no-crits")
+	_rules.impact_enabled = not OS.get_cmdline_user_args().has("--no-impact")
 
 	var catalog := Catalog.load_file("res://data/catalog.json")
 	var library := BuildLibrary.load_file("res://data/builds.json")
