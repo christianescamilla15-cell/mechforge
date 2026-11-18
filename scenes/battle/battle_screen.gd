@@ -22,6 +22,7 @@ const COLOR_DROP := Color("ffe27a")
 const COLOR_REPAIR := Color("7dff9b")
 const COLOR_DARK_MATTER := Color("b07bff")
 const COLOR_CRIT := Color("ffd23d")
+const COLOR_WARNING := Color("ff9a7d")
 ## Parte de la vida del rival desde la que el golpe de un arma de hombro es
 ## un impacto medio y no ligero.
 const MEDIUM_IMPACT_SHARE := 0.07
@@ -47,8 +48,23 @@ var allow_rematch: bool = true
 var rematch_text: String = ""
 ## Cuanto tardo la IA en decidir cada accion, en ms (para tools/fps.ps1).
 var ai_think_ms: PackedFloat32Array = []
+## Ajustes del jugador: con ellos la pausa deja abrirlos y la velocidad los
+## sigue. Sin ellos (pruebas en vivo) la pausa no los ensena.
+var settings: GameSettings
+## Donde se guardan los ajustes; vacio = no se guardan.
+var settings_path: String = ""
+## Rendirse contra un jefe acaba la partida: la pausa lo avisa.
+var surrender_ends_run: bool = false
 ## Tarea del WorkerThreadPool en la que piensa la IA; -1 si no hay ninguna.
 var _ai_task: int = -1
+var _pause: Control
+var _pause_resume: Button
+var _pause_settings: Button
+var _surrender_button: Button
+var _paused: bool = false
+## Primer clic en Rendirse: pide confirmacion.
+var _surrender_armed: bool = false
+var _surrendered: bool = false
 
 var _arena: ArenaView
 var _panels: Array[StatPanel] = []
@@ -87,6 +103,10 @@ func start(
 	_shown = 0
 	_busy = true
 	_teleport_mode = false
+	_surrendered = false
+	_paused = false
+	Engine.time_scale = 1.0
+	_pause.hide()
 	_result.hide()
 	set_result_note("")
 	_log.clear()
@@ -111,6 +131,8 @@ func start(
 
 
 func _advance() -> void:
+	if _surrendered:
+		return
 	_busy = false
 	_refresh()
 	if engine.is_over():
@@ -124,7 +146,7 @@ func _advance() -> void:
 	_busy = true
 	_refresh()
 	var action := await _think(ai)
-	if action != null:
+	if action != null and not _surrendered:
 		_perform(action)
 
 
@@ -150,8 +172,10 @@ func _think(ai: BattleAI) -> BattleAction:
 	return result[0]
 
 
-## Si se cierra la pantalla mientras la IA piensa, se espera a que acabe.
+## Si se cierra la pantalla mientras la IA piensa, se espera a que acabe; y
+## si estaba en pausa, el tiempo vuelve a correr.
 func _exit_tree() -> void:
+	Engine.time_scale = 1.0
 	if _ai_task >= 0:
 		WorkerThreadPool.wait_for_task_completion(_ai_task)
 		_ai_task = -1
@@ -441,7 +465,14 @@ func _on_cell_hovered(cell: int) -> void:
 
 
 func _can_act() -> bool:
-	return not _busy and not engine.is_over() and engine.turn == player and player_ai == null
+	return (
+		not _busy
+		and not _paused
+		and not _surrendered
+		and not engine.is_over()
+		and engine.turn == player
+		and player_ai == null
+	)
 
 
 # --- Dibujo ------------------------------------------------------------------
@@ -467,7 +498,7 @@ func _refresh() -> void:
 				highlights[cell] = COLOR_WALK
 			_hint_label.text = Txt.t("walk_hint")
 	else:
-		_hint_label.text = "" if engine.is_over() or mine else Txt.t("thinking")
+		_hint_label.text = "" if engine.is_over() or mine or _surrendered else Txt.t("thinking")
 	_arena.set_highlights(highlights)
 
 
@@ -491,7 +522,10 @@ func _place_mechs() -> void:
 
 
 func _show_result() -> void:
-	var won := engine.winner == player
+	_show_outcome(engine.winner == player)
+
+
+func _show_outcome(won: bool) -> void:
 	_result_label.text = Txt.t("victory") if won else Txt.t("defeat")
 	_result_label.add_theme_color_override(
 		"font_color", Color("7dff9b") if won else Color("ff7d7d")
@@ -502,6 +536,8 @@ func _show_result() -> void:
 
 ## Linea bajo el resultado: lo que el jugador cobra o pierde con el combate.
 func set_result_note(text: String) -> void:
+	if _surrendered:
+		text = Txt.t("surrendered") + (String.chr(10) + text if text != "" else "")
 	_result_note.text = text
 	_result_note.visible = text != ""
 
@@ -771,6 +807,111 @@ func _build_ui() -> void:
 	menu.pressed.connect(func() -> void: menu_requested.emit())
 	buttons.add_child(menu)
 	_result.hide()
+	_build_pause()
+
+
+# --- Pausa -------------------------------------------------------------------
+
+
+## Pausa (Esc): congela el combate por encima de todo, con Continuar, Ajustes
+## y Rendirse.
+func _build_pause() -> void:
+	_pause = Control.new()
+	_pause.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_pause.mouse_filter = Control.MOUSE_FILTER_STOP
+	add_child(_pause)
+	var dim := ColorRect.new()
+	dim.color = SettingsPanel.COLOR_DIM
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_pause.add_child(dim)
+	var center := CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_pause.add_child(center)
+	var panel := PanelContainer.new()
+	panel.custom_minimum_size = Vector2(360, 0)
+	panel.add_theme_stylebox_override("panel", SettingsPanel.frame_style())
+	center.add_child(panel)
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 12)
+	panel.add_child(box)
+	_label(box, 40).text = Txt.t("pause_title")
+	var hint := _label(box, 15)
+	hint.text = Txt.t("pause_hint")
+	hint.add_theme_color_override("font_color", SettingsPanel.COLOR_MUTED)
+	_pause_resume = _pause_button(box, Txt.t("pause_resume"), set_paused.bind(false))
+	_pause_settings = _pause_button(box, Txt.t("settings_open"), open_settings)
+	_surrender_button = _pause_button(box, Txt.t("surrender"), surrender)
+	_pause.hide()
+
+
+func _pause_button(box: VBoxContainer, text: String, action: Callable) -> Button:
+	var button := Button.new()
+	button.text = text
+	button.custom_minimum_size = Vector2(0, 44)
+	button.add_theme_font_size_override("font_size", 18)
+	button.pressed.connect(action)
+	box.add_child(button)
+	return button
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if not event.is_action_pressed("ui_cancel"):
+		return
+	if engine == null or _result.visible or _surrendered:
+		return
+	get_viewport().set_input_as_handled()
+	set_paused(not _paused)
+
+
+func is_paused() -> bool:
+	return _paused
+
+
+## Congela o suelta el combate: con la escala de tiempo a 0 se paran las
+## animaciones, los temporizadores y la pausa antes de cada accion de la IA.
+func set_paused(on: bool) -> void:
+	if on and (_surrendered or _result.visible):
+		return
+	_paused = on
+	Engine.time_scale = 0.0 if on else 1.0
+	_pause.visible = on
+	_pause_settings.visible = settings != null
+	_surrender_armed = false
+	_surrender_button.text = Txt.t("surrender")
+	_surrender_button.remove_theme_color_override("font_color")
+	if on:
+		_pause_resume.grab_focus()
+	if engine != null:
+		_refresh()
+
+
+## Abre los ajustes encima de la pausa; la velocidad del combate los sigue.
+func open_settings() -> void:
+	if settings == null:
+		return
+	var panel := SettingsPanel.open(self, settings, settings_path)
+	panel.changed.connect(func() -> void: speed = settings.speed())
+
+
+## Rendirse cuenta como derrota. El primer clic pide confirmacion (contra un
+## jefe avisa de que se acaba la partida); el segundo termina el combate.
+## El motor no cambia: el combate se deja sin terminar y se da por perdido.
+func surrender() -> void:
+	if _surrendered or _result.visible:
+		return
+	if not _surrender_armed:
+		_surrender_armed = true
+		_surrender_button.text = Txt.t(
+			"surrender_confirm_boss" if surrender_ends_run else "surrender_confirm"
+		)
+		_surrender_button.add_theme_color_override("font_color", COLOR_WARNING)
+		return
+	_surrendered = true
+	set_paused(false)
+	_busy = true
+	_refresh()
+	set_result_note("")
+	_show_outcome(false)
 
 
 func _label(parent: Node, font_size: int) -> Label:

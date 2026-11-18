@@ -1,27 +1,19 @@
+class_name MainScreen
 extends Control
 ## Punto de entrada: la base del jugador (GDD 9). Desde aqui se entra a la
 ## campana (los combates de la zona y su jefe), a la arena (para juntar
 ## celdas) y a la armeria (mejoras permanentes). Hay ademas un combate libre,
 ## sin recompensa, para probar cualquier cruce.
 ##
-## Prueba en vivo automatica (tools/live.ps1): con `++ --autoplay` la IA juega
-## por los dos lados en la ventana real, guarda capturas y cierra el juego.
-## Con --ui, el lado del jugador actua a traves de los controles de la
-## interfaz (prevision, botones y casillas), como lo haria una persona.
-##   --player=<id> --enemy=<id> --tier=EPIC --seed=1 --speed=3
-##   --fight=<n>  en vez de --enemy y --tier: el combate n de la primera zona,
-##                contando desde 0 (el ultimo es el jefe); --level=<n> pone las
-##                piezas del jugador en ese nivel de la clase Basica
-## Con `++ --menu-shot` guarda una captura del menu con un perfil de muestra
-## (--menu-shot=jefe: delante del jefe) y sale.
-## La carpeta de capturas se indica en la variable de entorno MECHFORGE_SHOTS.
+## Pruebas en vivo: `++ --autoplay` (ver LiveTest) y `++ --menu-shot`, que
+## guarda una captura del menu con un perfil de muestra y sale
+## (--menu-shot=jefe: delante del jefe; =ajustes: con los ajustes abiertos).
 
 const SAVE_PATH := "user://save.json"
 const MENU_DIFFICULTIES: Array[BattleAI.Difficulty] = [
 	BattleAI.Difficulty.EASY, BattleAI.Difficulty.NORMAL, BattleAI.Difficulty.HARD
 ]
 const DIFFICULTY_IDS: Array[String] = ["EASY", "NORMAL", "HARD"]
-const AUTOPLAY_TIMEOUT_SECONDS := 180.0
 const COLOR_CELLS := Color("7fe3ff")
 const COLOR_WARNING := Color("ff9a7d")
 const COLOR_MUTED := Color("9aa7b8")
@@ -57,10 +49,8 @@ var _last: Dictionary = {}
 ## el nivel de sus piezas (PlayerProfile.parts).
 var _spec: Dictionary = {}
 var _args: Dictionary = {}
-var _shot_count: int = 0
-## Con `++ --autoplay --fps`, mide los cuadros del combate (tools/fps.ps1).
-var _probe: FrameProbe
-var _shot_events: Dictionary = {}
+## Ajustes del jugador (velocidad, pantalla y volumen), aparte de la partida.
+var _settings := GameSettings.new()
 
 
 func _ready() -> void:
@@ -89,7 +79,7 @@ func _ready() -> void:
 		showcase.finished.connect(func() -> void: get_tree().quit(0))
 		add_child(showcase)
 	elif _args.has("autoplay"):
-		_start_autoplay()
+		_live_test().start_autoplay()
 	elif _args.has("menu-shot"):
 		# Prueba en vivo del menu: perfil de muestra, captura y salir.
 		_profile.start_run(_library, _library.ids()[0])
@@ -112,13 +102,17 @@ func _ready() -> void:
 		if _args["menu-shot"] == "jefe":
 			_profile.fight = _campaign.fights_in(0)
 		_show_menu()
+		if _args["menu-shot"] == "ajustes":
+			_open_settings()
 		await get_tree().create_timer(0.6).timeout
-		await _shot("menu")
+		await _live_test().shot("menu")
 		get_tree().quit(0)
 	else:
 		_profile = PlayerProfile.load_or_new(SAVE_PATH)
 		Garage.ensure_assist(_profile, _catalog)
 		_persist = true
+		_settings = GameSettings.load_from()
+		_settings.apply()
 		_show_menu()
 
 
@@ -153,7 +147,23 @@ func _show_menu() -> void:
 		_add_campaign(left, can_fight)
 		_add_arena(left, can_fight)
 		_add_free_fight(left)
+	_add_system_buttons(left)
 	_add_shop(_column(columns, 520))
+
+
+## Ajustes y salir del juego (hace falta en pantalla completa).
+func _add_system_buttons(box: VBoxContainer) -> void:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	box.add_child(row)
+	var settings := _button(row, Txt.t("settings_open"), 40, _open_settings)
+	settings.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var quit := _button(row, Txt.t("quit_game"), 40, func() -> void: get_tree().quit(0))
+	quit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+
+
+func _open_settings() -> void:
+	SettingsPanel.open(self, _settings, GameSettings.PATH if _persist else "")
 
 
 func _column(parent: Control, width: int) -> VBoxContainer:
@@ -754,6 +764,15 @@ func _start_battle(spec: Dictionary) -> void:
 		_battle.rematch_text = Txt.t("arena_again")
 	_battle.rematch_requested.connect(_on_rematch)
 	_battle.menu_requested.connect(_show_menu)
+	_battle.speed = _settings.speed()
+	_battle.settings = _settings
+	_battle.settings_path = GameSettings.PATH if _persist else ""
+	# Rendirse contra un jefe acaba la partida, como perder: la pausa lo avisa.
+	_battle.surrender_ends_run = (
+		spec["mode"] == "campaign"
+		and _campaign.is_boss_fight(spec["zone"], _profile.fight)
+		and _campaign.on_boss_loss == "new_game"
+	)
 	if rewarded:
 		_battle.finished.connect(_on_battle_finished)
 	add_child(_battle)
@@ -812,167 +831,9 @@ func _on_battle_finished(player_won: bool) -> void:
 	_battle.set_result_note(_last_result)
 
 
-# --- Prueba en vivo automatica -----------------------------------------------
-
-
-func _start_autoplay() -> void:
-	print("AUTOPLAY argumentos: %s" % _args)
-	var ids := _library.all_ids()
-	var tier: ItemDef.Tier = ItemDef.Tier[_args.get("tier", "EPIC")]
-	var level := _rules.tier_max_level[tier]
-	var spec := {
-		"mode": "free",
-		"player": _args.get("player", ids[0]),
-		"items": {},
-		"name": "",
-		"enemy": _args.get("enemy", ids[1]),
-		"enemy_tier": tier,
-		"enemy_level": level,
-		"player_tier": tier,
-		"player_level": level,
-		"difficulty": 1,
-		"seed": int(_args.get("seed", "1")),
-	}
-	if _args.has("fight"):
-		# Un combate de la primera zona de la campana, con sus niveles y su
-		# recompensa, sobre un perfil vacio que no se guarda.
-		_profile.fight = int(_args["fight"])
-		var fight := _campaign.fight_at(0, _profile.fight)
-		spec["mode"] = "campaign"
-		spec["zone"] = 0
-		_profile.parts = _uniform_parts(spec["player"], int(_args.get("level", "0")))
-		spec["enemy"] = fight["enemy"]
-		spec["enemy_tier"] = _campaign.tier_of(0)
-		spec["enemy_level"] = int(fight["level"])
-		spec["difficulty"] = DIFFICULTY_IDS.find(fight["difficulty"])
-	for side: String in ["player", "enemy"]:
-		if not spec[side] in ids:
-			spec[side] = ids[0]
-	spec["items"] = _library.specs[spec["player"]]["items"].duplicate(true)
-	# --chest=<id> monta un arma de pecho; --skills=all da todas las habilidades.
-	if _args.has("chest"):
-		spec["items"]["chest"] = _args["chest"]
-	if _args.get("skills", "") == "all":
-		for branch in _skills.branches:
-			for node: Dictionary in branch["nodes"]:
-				_profile.skills.append(node["id"])
-	spec["name"] = _library.display_name(spec["player"])
-	_start_battle(spec)
-	var driver := BattleAI.new(BattleAI.Difficulty.NORMAL, int(spec["seed"]) + 7)
-	if _args.has("ui"):
-		# El jugador actua a traves de los controles de la interfaz.
-		_battle.ui_driver = driver
-		_battle.preview_shown.connect(_on_autoplay_preview)
-	else:
-		_battle.player_ai = driver
-	_battle.speed = float(_args.get("speed", "3"))
-	_battle.event_played.connect(_on_autoplay_event)
-	_battle.finished.connect(_on_autoplay_finished)
-	if _args.has("fps"):
-		_probe = FrameProbe.new()
-		add_child(_probe)
-	get_tree().create_timer(0.8).timeout.connect(_shot.bind("inicio"))
-	# A menos velocidad el combate dura mas.
-	var timeout := AUTOPLAY_TIMEOUT_SECONDS * maxf(1.0, 3.0 / _battle.speed)
-	get_tree().create_timer(timeout).timeout.connect(_on_autoplay_timeout)
-
-
-## Piezas de un mech todas en clase Basica y ese nivel (para la prueba en vivo).
-func _uniform_parts(mech: String, level: int) -> Dictionary[String, Dictionary]:
-	var out: Dictionary[String, Dictionary] = {}
-	if not _library.specs.has(mech):
-		return out
-	for id in _library.item_ids(mech):
-		var def := _catalog.get_item(id)
-		var key := def.progress_id() if def != null else id
-		out[key] = {"tier": ItemDef.Tier.COMMON, "level": level}
-	return out
-
-
-func _on_autoplay_event(entry: Dictionary) -> void:
-	# Una captura la primera vez que pasa cada cosa interesante.
-	var event: String = entry["event"]
-	if entry.get("shielded", false) and not _shot_events.has("shielded"):
-		_shot_events["shielded"] = true
-		_shot("escudo")
-	if entry.get("crit", false) and not _shot_events.has("crit"):
-		_shot_events["crit"] = true
-		_shot("critico")
-	if (
-		event
-		in [
-			"weapon",
-			"drone",
-			"forced_cool",
-			"shutdown",
-			"charge",
-			"hook",
-			"teleport",
-			"drop_spawn",
-			"drop_taken",
-			"repair",
-			"evade",
-			"barrier",
-			"repair_kit",
-			"dark_matter"
-		]
-	):
-		if not _shot_events.has(event):
-			_shot_events[event] = true
-			_shot(event)
-
-
-func _on_autoplay_preview() -> void:
-	# Capturas de las tres primeras previsiones (resaltado de casillas incluido).
-	var count: int = _shot_events.get("preview", 0)
-	if count < 3:
-		_shot_events["preview"] = count + 1
-		await get_tree().create_timer(0.1).timeout
-		_shot("prevision")
-
-
-func _on_autoplay_finished(player_won: bool) -> void:
-	print(
-		(
-			"AUTOPLAY fin: gana %s en %d turnos"
-			% ["el jugador" if player_won else "el rival", _battle.engine.turn_number]
-		)
-	)
-	if _probe != null:
-		print("FPS %s" % _probe.summary())
-		var think := _battle.ai_think_ms
-		var worst := 0.0
-		var total := 0.0
-		for ms in think:
-			worst = maxf(worst, ms)
-			total += ms
-		print(
-			(
-				"FPS la IA decidio %d veces: media %.1f ms, la mas lenta %.1f ms"
-				% [think.size(), total / maxf(1.0, think.size()), worst]
-			)
-		)
-	await get_tree().create_timer(0.4).timeout
-	await _shot("final")
-	get_tree().quit(0)
-
-
-func _on_autoplay_timeout() -> void:
-	printerr("AUTOPLAY: tiempo agotado")
-	get_tree().quit(1)
-
-
-func _shot(label: String) -> void:
-	# La carpeta llega por variable de entorno: PowerShell parte en dos los
-	# argumentos con "C:" al pasarlos de un script a otro.
-	var folder: String = _args.get("shots", "")
-	if folder == "":
-		folder = OS.get_environment("MECHFORGE_SHOTS")
-	if folder == "":
-		return
-	await RenderingServer.frame_post_draw
-	var image := get_viewport().get_texture().get_image()
-	var path := "%s/%02d_%s.png" % [folder, _shot_count, label]
-	_shot_count += 1
-	var error := image.save_png(path)
-	print("AUTOPLAY captura %s (%s)" % [path, "ok" if error == OK else "error %d" % error])
+## Herramienta de prueba en vivo (LiveTest), solo con --autoplay o --menu-shot.
+func _live_test() -> LiveTest:
+	var live := LiveTest.new()
+	live.main = self
+	add_child(live)
+	return live
