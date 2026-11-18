@@ -33,6 +33,7 @@ var _shop := ArenaShop.load_file("res://data/arena_shop.json")
 var _workshop := Workshop.load_file("res://data/workshop.json")
 var _garage := Garage.load_file("res://data/part_shop.json")
 var _progression := Progression.load_file("res://data/progression.json")
+var _skills := SkillTree.load_file("res://data/skills.json")
 ## Celdas, mejoras, avance e historial del jugador.
 var _profile := PlayerProfile.new()
 ## Las pruebas automaticas no tocan el guardado del jugador.
@@ -84,6 +85,7 @@ func _ready() -> void:
 	elif _args.has("menu-shot"):
 		# Prueba en vivo del menu: perfil de muestra, captura y salir.
 		_profile.start_run(_library, _library.ids()[0])
+		Garage.ensure_assist(_profile, _catalog)
 		_profile.gold = 1500
 		_profile.shop_levels = {"damage": 3, "health": 10}
 		_profile.parts = {"torso_baluarte": {"tier": 0, "level": 3}}
@@ -95,6 +97,10 @@ func _ready() -> void:
 			_profile = PlayerProfile.new()
 		elif _args["menu-shot"] == "tienda":
 			_last["tab"] = 2
+		elif _args["menu-shot"] == "habilidades":
+			_last["tab"] = 3
+			_profile.xp = 9500
+			_profile.skills.assign(["asalto_1", "asalto_2", "asalto_3", "blindaje_1", "sistemas_1"])
 		if _args["menu-shot"] == "jefe":
 			_profile.fight = _campaign.fights_in(0)
 		_show_menu()
@@ -103,6 +109,7 @@ func _ready() -> void:
 		get_tree().quit(0)
 	else:
 		_profile = PlayerProfile.load_or_new(SAVE_PATH)
+		Garage.ensure_assist(_profile, _catalog)
 		_persist = true
 		_show_menu()
 
@@ -228,6 +235,9 @@ func _add_campaign(box: VBoxContainer, can_fight: bool) -> void:
 		var ability := _boss_ability(fight["enemy"])
 		if ability != "":
 			_text(box, ability, 14, COLOR_MUTED)
+		var trained := _campaign.boss_skills(zone)
+		if trained > 0:
+			_text(box, Txt.t("campaign_boss_skills", [trained]), 14, COLOR_MUTED)
 		_button(box, Txt.t("campaign_boss_fight"), 46, _on_campaign_pressed).disabled = not can_fight
 		if _campaign.on_boss_loss == "new_game":
 			_text(box, Txt.t("campaign_boss_warning"), 14, COLOR_WARNING)
@@ -305,6 +315,7 @@ func _add_shop(box: VBoxContainer) -> void:
 	if _profile.has_mech():
 		_add_parts(_scroll_tab(tabs, Txt.t("shop_tab_parts")))
 		_add_store(_scroll_tab(tabs, Txt.t("shop_tab_store")))
+		_add_skills(_scroll_tab(tabs, Txt.t("shop_tab_skills")))
 	tabs.current_tab = _last.get("tab", 0)
 	tabs.tab_changed.connect(func(tab: int) -> void: _last["tab"] = tab)
 
@@ -334,8 +345,12 @@ func _add_upgrades(box: VBoxContainer) -> void:
 			buy.text = Txt.t("shop_max")
 			buy.disabled = true
 		else:
+			var reason := _profile.why_cant_buy(_shop, track)
 			buy.text = Txt.t("shop_buy", [_shop.price(level + 1)])
-			buy.disabled = _profile.why_cant_buy(_shop, track) != ""
+			buy.disabled = reason != ""
+			if reason.begins_with("se abre"):
+				buy.text = Txt.t("shop_locked_assist")
+				buy.tooltip_text = reason
 		buy.pressed.connect(_on_buy_pressed.bind(track))
 
 
@@ -350,7 +365,7 @@ func _add_parts(box: VBoxContainer) -> void:
 		box.add_child(row)
 		var name_label := Label.new()
 		name_label.text = Txt.t("slot_" + slot.rstrip("0123456789")) + _slot_number(slot)
-		name_label.custom_minimum_size = Vector2(96, 0)
+		name_label.custom_minimum_size = Vector2(112, 0)
 		row.add_child(name_label)
 		var current := Garage.get_slot(_profile.build, slot)
 		var unlocked := _progression.is_unlocked(slot, _player_level())
@@ -384,10 +399,22 @@ func _add_parts(box: VBoxContainer) -> void:
 			buy.text = "—"
 			buy.disabled = true
 			continue
-		var p := _profile.part(current)
+		var def := _catalog.get_item(current)
+		if def.type == ItemDef.Type.DRONE and _profile.build.has("assist"):
+			# Las armas del robot de asistencia suben con el.
+			level_label.text = Txt.t("part_follows_assist")
+			if slot == "drone_low" and _assist_tier() < _rules.assist_second_weapon_tier:
+				level_label.text = Txt.t("slot_second_weapon")
+			buy.text = "—"
+			buy.disabled = true
+			continue
+		var key := def.progress_id()
+		var p := _profile.part(key)
 		var top := _rules.tier_max_level[p["tier"]]
 		level_label.text = Txt.t("part_level", [Txt.TIER_NAMES[p["tier"]], p["level"], top])
-		_set_part_button(buy, current, p, max_tier, cap_level)
+		if def.type == ItemDef.Type.ASSIST:
+			level_label.text = Txt.t("assist_form_%d" % p["tier"]) + " · " + level_label.text
+		_set_part_button(buy, current, key, p, max_tier, cap_level)
 
 
 func _slot_number(slot: String) -> String:
@@ -396,27 +423,28 @@ func _slot_number(slot: String) -> String:
 
 
 ## Boton de una pieza: subir de nivel, transformar o el tope que la para.
+## `key` es donde se guarda su progreso (el del asistente es comun).
 func _set_part_button(
-	buy: Button, id: String, p: Dictionary, max_tier: int, cap_level: int
+	buy: Button, id: String, key: String, p: Dictionary, max_tier: int, cap_level: int
 ) -> void:
 	if p["level"] < _rules.tier_max_level[p["tier"]]:
-		var level_reason := _profile.why_cant_level(_workshop, _rules, id, max_tier, cap_level)
+		var level_reason := _profile.why_cant_level(_workshop, _rules, key, max_tier, cap_level)
 		if level_reason == "la zona no deja subirla mas":
 			buy.text = Txt.t("part_zone_max")
 			buy.disabled = true
 			return
 		buy.text = Txt.t("part_level_up", [_workshop.level_cost(_rules, p["tier"], p["level"])])
 		buy.disabled = level_reason != ""
-		buy.pressed.connect(_on_part_level.bind(id, max_tier, cap_level))
+		buy.pressed.connect(_on_part_level.bind(key, max_tier, cap_level))
 		return
 	var item_max := _catalog.get_item(id).tier_max
-	var reason := _profile.why_cant_transform(_workshop, _rules, id, max_tier, item_max)
+	var reason := _profile.why_cant_transform(_workshop, _rules, key, max_tier, item_max)
 	if reason in ["", "faltan celdas"]:
 		buy.text = Txt.t("part_transform", [_workshop.transform_cost(p["tier"])])
 		if p["tier"] == ItemDef.Tier.MYTHIC:
 			buy.text = Txt.t("part_unique")
 		buy.disabled = reason != ""
-		buy.pressed.connect(_on_part_transform.bind(id, max_tier, item_max))
+		buy.pressed.connect(_on_part_transform.bind(key, max_tier, item_max))
 		return
 	var zone_cap := reason == "la clase siguiente se abre en otra zona"
 	buy.text = Txt.t("part_zone_max" if zone_cap else "shop_max")
@@ -443,6 +471,41 @@ func _add_store(box: VBoxContainer) -> void:
 		var reason := _garage.why_cant_buy(_profile, _catalog, _rules, _workshop, id, zone_tier)
 		buy.disabled = reason != ""
 		buy.pressed.connect(_on_store_buy.bind(id, zone_tier))
+
+
+## Arbol de habilidades: puntos por nivel y tres ramas que se aprenden en
+## orden; Asalto termina en la materia oscura.
+func _add_skills(box: VBoxContainer) -> void:
+	var level := _player_level()
+	var points := _skills.points_left(_profile, level)
+	_text(box, Txt.t("skill_points", [points, level]), 16, COLOR_CELLS)
+	for branch in _skills.branches:
+		var nodes: Array = branch["nodes"]
+		var done := _skills.learned_in(_profile, branch["id"])
+		_text(box, Txt.t("skill_branch", [branch["name"], done, nodes.size()]), 18)
+		if done > 0:
+			var learned: Array[String] = []
+			for i in done:
+				learned.append(str(nodes[i]["name"]))
+			_text(box, Txt.t("skill_learned", [", ".join(learned)]), 13, COLOR_MUTED)
+		var next := _skills.next_in(_profile, branch)
+		if next.is_empty():
+			_text(box, Txt.t("skill_done"), 14, COLOR_MUTED)
+			continue
+		var label := Txt.t("skill_next", [next["name"], SkillTree.describe(next)])
+		var learn := _shop_row(box, label)
+		var reason := _skills.why_cant_learn(_profile, next["id"], level)
+		learn.text = Txt.t("skill_learn")
+		learn.disabled = reason != ""
+		learn.tooltip_text = reason
+		learn.pressed.connect(_on_learn.bind(next["id"]))
+
+
+func _on_learn(id: String) -> void:
+	if _skills.learn(_profile, id, _player_level()) == "":
+		_save()
+	_remember_picks()
+	_show_menu()
 
 
 ## Clase de la zona en la que esta el jugador.
@@ -516,6 +579,7 @@ func _remember_picks() -> void:
 
 func _on_starter_picked(id: String) -> void:
 	_profile.start_run(_library, id)
+	Garage.ensure_assist(_profile, _catalog)
 	_save()
 	_show_menu()
 
@@ -540,6 +604,7 @@ func _on_store_buy(id: String, zone_tier: int) -> void:
 func _player_build() -> MechBuild:
 	var build := _catalog.make_build(_profile.build, _rules, ItemDef.Tier.COMMON, 0, _profile.parts)
 	_progression.apply_locks(build, _player_level())
+	build.skills = _skills.effects_for(_profile.skills)
 	return build
 
 
@@ -547,9 +612,25 @@ func _player_level() -> int:
 	return _progression.level_for(_profile.xp)
 
 
-## Piezas distintas del mech armado del jugador.
+## Piezas del mech armado del jugador que tienen clase y nivel propios (sus
+## claves de progreso): las armas del asistente suben con el.
 func _player_items() -> Array[String]:
-	return BuildLibrary.items_of(_profile.build)
+	var out: Array[String] = []
+	var carried := _profile.build.has("assist")
+	for id in BuildLibrary.items_of(_profile.build):
+		var def := _catalog.get_item(id)
+		if def == null or (carried and def.type == ItemDef.Type.DRONE):
+			continue
+		if not def.progress_id() in out:
+			out.append(def.progress_id())
+	return out
+
+
+## Clase del robot de asistencia del jugador; -1 si no lo lleva.
+func _assist_tier() -> int:
+	if not _profile.build.has("assist"):
+		return -1
+	return _profile.part(ItemDef.ASSIST_PROGRESS)["tier"]
 
 
 func _on_buy_pressed(track: String) -> void:
@@ -628,6 +709,7 @@ func _spec_for(mode: String, zone: int, fight: Dictionary) -> Dictionary:
 		"enemy": fight["enemy"],
 		"enemy_tier": int(fight.get("tier", _campaign.tier_of(zone))),
 		"enemy_level": int(fight["level"]),
+		"enemy_skills": int(fight.get("skills", 0)),
 		"difficulty": DIFFICULTY_IDS.find(fight["difficulty"]),
 		"seed": randi(),
 	}
@@ -673,9 +755,12 @@ func _start_battle(spec: Dictionary) -> void:
 			spec["items"], _rules, ItemDef.Tier.COMMON, 0, _profile.parts
 		)
 		_progression.apply_locks(player_build, _player_level())
+		player_build.skills = _skills.effects_for(_profile.skills)
 	else:
 		var player_tier: ItemDef.Tier = spec["player_tier"]
 		player_build = _catalog.make_build(spec["items"], _rules, player_tier, spec["player_level"])
+		# Tambien en el combate libre el mech lleva las habilidades del jugador.
+		player_build.skills = _skills.effects_for(_profile.skills)
 	# Las mejoras de la armeria solo cuentan para el mech del jugador.
 	if rewarded:
 		player_build.upgrades = _shop.upgrades_for(_profile.shop_levels)
@@ -685,6 +770,9 @@ func _start_battle(spec: Dictionary) -> void:
 	# En la campana y la arena los rivales llevan la armeria del Orden.
 	if spec.has("zone"):
 		enemy_build.upgrades = _campaign.enemy_upgrades(spec["zone"], _shop)
+	# Los jefes del Orden llevan su entrenamiento (GDD 9.3).
+	var trained := _skills.spread(int(spec.get("enemy_skills", 0)))
+	enemy_build.skills = _skills.effects_for(trained)
 	_battle.start(
 		_rules, player_build, enemy_build, spec["seed"], MENU_DIFFICULTIES[spec["difficulty"]]
 	)
@@ -752,7 +840,14 @@ func _start_autoplay() -> void:
 	for side: String in ["player", "enemy"]:
 		if not spec[side] in ids:
 			spec[side] = ids[0]
-	spec["items"] = _library.specs[spec["player"]]["items"]
+	spec["items"] = _library.specs[spec["player"]]["items"].duplicate(true)
+	# --chest=<id> monta un arma de pecho; --skills=all da todas las habilidades.
+	if _args.has("chest"):
+		spec["items"]["chest"] = _args["chest"]
+	if _args.get("skills", "") == "all":
+		for branch in _skills.branches:
+			for node: Dictionary in branch["nodes"]:
+				_profile.skills.append(node["id"])
 	spec["name"] = _library.display_name(spec["player"])
 	_start_battle(spec)
 	var driver := BattleAI.new(BattleAI.Difficulty.NORMAL, int(spec["seed"]) + 7)
@@ -775,7 +870,9 @@ func _uniform_parts(mech: String, level: int) -> Dictionary[String, Dictionary]:
 	if not _library.specs.has(mech):
 		return out
 	for id in _library.item_ids(mech):
-		out[id] = {"tier": ItemDef.Tier.COMMON, "level": level}
+		var def := _catalog.get_item(id)
+		var key := def.progress_id() if def != null else id
+		out[key] = {"tier": ItemDef.Tier.COMMON, "level": level}
 	return out
 
 
@@ -798,7 +895,10 @@ func _on_autoplay_event(entry: Dictionary) -> void:
 			"drop_spawn",
 			"drop_taken",
 			"repair",
-			"evade"
+			"evade",
+			"barrier",
+			"repair_kit",
+			"dark_matter"
 		]
 	):
 		if not _shot_events.has(event):

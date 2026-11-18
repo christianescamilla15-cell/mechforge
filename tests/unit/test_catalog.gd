@@ -11,7 +11,7 @@ const FORBIDDEN_PATH := "res://docs/reference/original-item-names.txt"
 func test_el_catalogo_real_carga_sin_errores() -> void:
 	var catalog := Catalog.load_file(CATALOG_PATH)
 	assert_eq(catalog.errors, [] as Array[String])
-	assert_eq(catalog.items.size(), 136)
+	assert_eq(catalog.items.size(), 140)
 
 
 func test_el_catalogo_real_pasa_el_validador() -> void:

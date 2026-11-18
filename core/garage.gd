@@ -19,7 +19,9 @@ const SLOTS: Array[String] = [
 	"top0",
 	"top1",
 	"chest",
+	"assist",
 	"drone",
+	"drone_low",
 	"module0",
 	"module1",
 	"module2",
@@ -59,6 +61,8 @@ static func load_file(path: String) -> Garage:
 
 ## Tipo de pieza que va en un hueco.
 static func slot_type(slot: String) -> ItemDef.Type:
+	if slot == "drone_low":
+		return ItemDef.Type.DRONE
 	for prefix: String in LISTS:
 		if slot.begins_with(prefix):
 			return ItemDef.Type[prefix.to_upper()]
@@ -120,6 +124,27 @@ static func equip(profile: PlayerProfile, catalog: Catalog, slot: String, id: St
 	return reason
 
 
+## Da al jugador los cuerpos del robot de asistencia (uno por protocolo, que
+## se cambia gratis) y le monta uno si su mech no lo lleva, como en las
+## partidas de antes del asistente; su progreso arranca del de su dron.
+static func ensure_assist(profile: PlayerProfile, catalog: Catalog) -> void:
+	var bodies := catalog.by_type(ItemDef.Type.ASSIST)
+	if not profile.has_mech() or bodies.is_empty():
+		return
+	var ids: Array[String] = []
+	for def in bodies:
+		ids.append(def.id)
+	ids.sort()
+	for id in ids:
+		if not id in profile.owned:
+			profile.owned.append(id)
+	if str(profile.build.get("assist", "")) == "":
+		profile.build["assist"] = ids[0]
+	var drone := str(profile.build.get("drone", ""))
+	if not profile.parts.has(ItemDef.ASSIST_PROGRESS):
+		profile.parts[ItemDef.ASSIST_PROGRESS] = profile.part(drone).duplicate()
+
+
 ## Piezas que tiene el jugador y caben en ese hueco.
 static func owned_for(profile: PlayerProfile, catalog: Catalog, slot: String) -> Array[String]:
 	var out: Array[String] = []
@@ -134,6 +159,9 @@ static func owned_for(profile: PlayerProfile, catalog: Catalog, slot: String) ->
 func stock_for(catalog: Catalog, zone_tier: int) -> Array[String]:
 	var out: Array[String] = []
 	for type in ItemDef.Type.values():
+		# Los cuerpos del robot de asistencia no se venden: se tienen todos.
+		if type == ItemDef.Type.ASSIST:
+			continue
 		var ids: Array[String] = []
 		for def in catalog.by_type(type):
 			if def.tier_min <= zone_tier and zone_tier <= def.tier_max:

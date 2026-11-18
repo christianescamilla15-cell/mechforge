@@ -8,6 +8,8 @@ extends RefCounted
 ## Tabla de pasos: lo que da cada nivel, sobre 20. Es la del original.
 var steps: Array[int] = []
 ## Mejoras a la venta, por id: {"name", "kind" ("percent" o "flat"), "max"}.
+## Con "assist_tier", la mejora se abre cuando el robot de asistencia llega a
+## esa clase (antes no sirve) y no cuenta para el ritmo de la primera zona.
 var tracks: Dictionary[String, Dictionary] = {}
 ## Oro que cuesta llegar a cada nivel desde el anterior.
 var prices: Array[int] = []
@@ -73,12 +75,22 @@ func price(level: int) -> int:
 	return prices[clampi(level, 0, max_level())]
 
 
-## Oro total para llevar todas las mejoras del nivel 0 a ese nivel.
+## Clase del robot de asistencia que pide una mejora; -1 si no pide nada.
+func assist_tier(track: String) -> int:
+	return int(tracks[track].get("assist_tier", -1))
+
+
+## Oro total para llevar del nivel 0 a ese nivel las mejoras que estan
+## abiertas desde el principio (las que no piden nada).
 func total_cost(level: int) -> int:
 	var per_track := 0
 	for step in range(1, clampi(level, 0, max_level()) + 1):
 		per_track += prices[step]
-	return per_track * tracks.size()
+	var open := 0
+	for track in tracks:
+		if assist_tier(track) < 0:
+			open += 1
+	return per_track * open
 
 
 func reward(kind: String) -> int:

@@ -17,6 +17,12 @@ extends Resource
 ## Lo que vale cada turno de una bonificacion del 100 por ciento (GDD 2.8),
 ## en barras de vida: una del 30 por ciento durante 3 turnos vale 0.3 x 3 x esto.
 @export var buff_turn_value: float = 0.15
+## Cuanto vale un escudo de energia activado, en acciones del rival que
+## absorbera (1 = una accion media entera).
+@export var barrier_value: float = 0.8
+## Cuanto de una reparacion se guarda como valor de tener el kit sin usar:
+## asi no lo gasta con la vida casi llena.
+@export var repair_hold: float = 0.6
 ## Valor de ganar o perder el combate.
 @export var win_value: float = 100.0
 

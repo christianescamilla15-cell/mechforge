@@ -24,6 +24,18 @@
 
 Las cuatro pasan todas las puertas, igual que el catálogo anterior (51.5 / 49.8 / 48.8 / 48.0).
 
+**Con el robot de asistencia** (GDD §4; 2026-11-17, mismas condiciones, `--assist=full` y `--assist=charged`). Todos los mechs llevan el protocolo Blindaje y dos armas gemelas que alternan; "batería" es la mejora de la armería al máximo (+10 % al daño de sus disparos):
+
+| Tipo | Batería | Físico | Calor | Energía | Híbrido | Duración media |
+|---|---|---|---|---|---|---|
+| Balas | sin mejora | 49.0 % | 54.5 % | 46.5 % | 52.3 % | 12.7 turnos |
+| Cañón | sin mejora | 48.5 % | 54.5 % | 47.0 % | 52.3 % | 12.7 turnos |
+| Bláster | sin mejora | 48.8 % | 54.3 % | 47.0 % | 51.5 % | 12.7 turnos |
+| Láser | sin mejora | 46.3 % | 54.8 % | 49.0 % | 51.5 % | 12.7 turnos |
+| Láser | al máximo | 53.8 % | 50.0 % | 46.3 % | 51.0 % | 12.3 turnos |
+
+Pasan todas las puertas. El calor queda cerca del tope sin la mejora (Blindaje alarga los combates, y eso le favorece) y el físico cerca del tope con ella; por eso la batería no pasa de +10 %. Con +15 % los otros tres tipos seguían dentro (físico 52.8–54.5 %) y el láser no (56.8 %). Lo que se probó antes y se descartó, con sus cifras, está en el GDD §4.
+
 Lo que fijó el usuario: armas galácticas que se despliegan desde el cuerpo del robot; cuatro categorías según dónde van montadas; dentro de cada categoría, división por tipo de arma (balas, cañón, bláster, láser); al menos 100 armas; y la materia oscura como habilidad del arma del pecho.
 
 ## 1. Categorías: dónde van las armas
@@ -95,7 +107,7 @@ El arma pesada. El pecho se abre y el arma sale del interior del torso. Mucho da
 | Nova | Onda a corta distancia que daña y empuja | 1–2 | | | Nova de plasma | Nova láser |
 
 ### Robot de soporte: 6 diseños, 18 robots
-Dispara solo al terminar tu turno, sin gastar acción.
+Dispara solo al terminar tu turno, sin gastar acción. Son las armas del **robot de asistencia** (GDD §4): lleva una arriba y otra abajo, dispara una por turno y las alterna.
 
 | Forma | Papel en combate | Alcance | Balas | Cañón | Bláster | Láser |
 |---|---|---|---|---|---|---|
@@ -110,9 +122,9 @@ Definida por el usuario: es el disparo más poderoso del juego y prácticamente 
 
 - No es un arma: es una **habilidad** que el robot desarrolla en su árbol de habilidades.
 - Solo se aplica al arma central, la del pecho: convierte su disparo en materia oscura.
-- Propuesta de reglas, por decidir: un solo uso por combate, exige el arma del pecho ya desplegada y gasta toda la energía; ignora las resistencias del rival.
+- Reglas decididas por el usuario (2026-11-17): un solo uso por combate, exige el arma del pecho ya desplegada, gasta toda la energía, ignora resistencias y escudos y quita el 60 % de la vida máxima del rival. Se alcanza en el nivel 25, al final de la rama Asalto.
 
-**Árbol de habilidades.** Es un sistema nuevo: el jugador elige un árbol y lo desarrolla con el nivel. Está por diseñar: cuántos árboles hay, qué da cada rama y en qué nivel se alcanza la materia oscura.
+**Árbol de habilidades.** Hecho el 2026-11-17: tres ramas libres (Asalto, Blindaje y Sistemas), 1 punto por nivel del jugador. Detalle en el GDD §8.
 
 ## 5. Cómo se despliegan
 

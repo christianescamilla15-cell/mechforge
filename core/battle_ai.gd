@@ -82,7 +82,7 @@ func evaluate(e: BattleEngine, me: int) -> float:
 
 	# Acciones que el calor ya le quito al rival en el turno que empieza.
 	if e.turn == me:
-		score += foe_strike * per_turn + _slot_strike(foe, mine, "drone")
+		score += foe_strike * per_turn + _assist_strike(foe, mine)
 	else:
 		score += foe_strike * (per_turn - e.actions_left)
 
@@ -95,6 +95,10 @@ func evaluate(e: BattleEngine, me: int) -> float:
 	score += config.energy_discount * foe_strike * per_turn * _energy_starvation(foe, mine, false)
 	score -= config.energy_discount * my_strike * per_turn * _energy_starvation(mine, foe, true)
 
+	# Habilidades del arbol: un escudo activado vale lo que absorbera, y un kit
+	# de reparacion sin usar vale parte de lo que curaria.
+	score += config.barrier_value * (foe_strike * mine.barrier - my_strike * foe.barrier)
+	score += config.repair_hold * (_repair_worth(mine) - _repair_worth(foe))
 	# Bonificaciones en vigor (GDD 2.8): valen por lo que dan y lo que les queda.
 	score += config.buff_turn_value * (_buff_worth(mine) - _buff_worth(foe))
 
@@ -139,6 +143,12 @@ func _turn_ended(after: BattleEngine, before: BattleEngine) -> bool:
 	return after.is_over() or after.turn_number != before.turn_number
 
 
+func _repair_worth(mech: BattleMech) -> float:
+	if mech.build == null or mech.build.skills == null:
+		return 0.0
+	return mech.kits_left("repair") * mech.build.skills.repair_share
+
+
 func _buff_worth(mech: BattleMech) -> float:
 	var total := 0.0
 	for buff in mech.buffs:
@@ -181,6 +191,12 @@ func _slot_strike(mech: BattleMech, target: BattleMech, key: String) -> float:
 	return damage / float(maxi(target.max_health, 1))
 
 
+## Lo que pega el robot de asistencia al acabar el turno: el arma a la que
+## le toca (dispara una por turno y las alterna).
+func _assist_strike(mech: BattleMech, target: BattleMech) -> float:
+	return _slot_strike(mech, target, mech.assist_order()[0])
+
+
 ## Cuanta energia le falta a un mech para disparar sus dos armas mas caras,
 ## de 0 (le sobra) a 1 (no puede disparar nada).
 func _energy_starvation(mech: BattleMech, enemy: BattleMech, before_enemy_turn: bool) -> float:
@@ -215,8 +231,12 @@ func _threat(mech: BattleMech, stat: String) -> int:
 	var total := 0
 	for i in mini(2, values.size()):
 		total += values[i]
-	if mech.slots.has("drone") and mech.slots["drone"].uses_left != 0:
-		total += mech.slots["drone"].def.get(stat)
+	# El asistente dispara una de sus dos armas: cuenta la que mas hace.
+	var assist := 0
+	for key: String in ["drone", "drone_low"]:
+		if mech.slots.has(key) and mech.slots[key].uses_left != 0:
+			assist = maxi(assist, mech.slots[key].def.get(stat))
+	total += assist
 	return total
 
 

@@ -39,6 +39,10 @@
     "CHEST": [
       40,
       90
+    ],
+    "ASSIST": [
+      0,
+      0
     ]
   },
   "min_per_element": {
@@ -53,7 +57,8 @@
     "MODULE": 10,
     "CHARGE": 1,
     "TELEPORT": 1,
-    "HOOK": 1
+    "HOOK": 1,
+    "ASSIST": 4
   },
   "legs_need_both_kinds": true
 }

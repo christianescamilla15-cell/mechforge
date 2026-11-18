@@ -7,11 +7,13 @@ extends RefCounted
 ## La moneda se llama `gold` en el codigo y en el guardado; en pantalla se
 ## muestra con el nombre de la tabla de textos (GDD 8).
 
-const SCHEMA_VERSION := 5
+const SCHEMA_VERSION := 6
 
 var gold: int = 0
 ## Experiencia total; de ella sale el nivel del jugador (Progression).
 var xp: int = 0
+## Habilidades aprendidas del arbol (ids de data/skills.json).
+var skills: Array[String] = []
 ## Nivel comprado de cada mejora de la armeria: {id: nivel}.
 var shop_levels: Dictionary[String, int] = {}
 ## Clase y nivel de cada pieza, por id del catalogo: {id: {"tier", "level"}}.
@@ -79,6 +81,7 @@ func end_run() -> void:
 	runs_lost += 1
 	gold = 0
 	xp = 0
+	skills.clear()
 	shop_levels.clear()
 	parts.clear()
 	unique_cores = 0
@@ -101,6 +104,8 @@ func level_of(track: String) -> int:
 func why_cant_buy(shop: ArenaShop, track: String) -> String:
 	if not shop.tracks.has(track):
 		return "esa mejora no existe"
+	if part(ItemDef.ASSIST_PROGRESS)["tier"] < shop.assist_tier(track):
+		return "se abre con la primera transformacion del asistente"
 	var next := level_of(track) + 1
 	if next > shop.max_level():
 		return "ya esta al maximo"
@@ -215,6 +220,7 @@ func to_dict() -> Dictionary:
 		"schema_version": SCHEMA_VERSION,
 		"gold": gold,
 		"xp": xp,
+		"skills": skills.duplicate(),
 		"shop_levels": shop_levels.duplicate(),
 		"parts": parts.duplicate(true),
 		"unique_cores": unique_cores,
@@ -239,6 +245,8 @@ static func from_dict(data: Dictionary) -> PlayerProfile:
 	var profile := PlayerProfile.new()
 	profile.gold = maxi(0, int(data.get("gold", 0)))
 	profile.xp = maxi(0, int(data.get("xp", 0)))
+	for id: Variant in data.get("skills", []):
+		profile.skills.append(str(id))
 	profile.mech = str(data.get("mech", ""))
 	profile.unique_cores = maxi(0, int(data.get("unique_cores", 0)))
 	for id: Variant in data.get("owned", []):

@@ -66,7 +66,10 @@ func xp_for(kind: String) -> int:
 
 
 ## Nivel en el que se abre ese hueco (1 si esta abierto desde el principio).
+## El robot de asistencia y su arma inferior se abren con el dron.
 func unlock_level(slot: String) -> int:
+	if slot in ["assist", "drone_low"]:
+		slot = "drone"
 	return int(unlocks.get(slot, 1))
 
 
@@ -78,6 +81,8 @@ func is_unlocked(slot: String, level: int) -> bool:
 ## ellas montadas no pelean.
 func apply_locks(build: MechBuild, level: int) -> void:
 	if not is_unlocked("drone", level):
+		build.assist = null
 		build.drone = null
+		build.drone_low = null
 	if not is_unlocked("chest", level):
 		build.chest = null

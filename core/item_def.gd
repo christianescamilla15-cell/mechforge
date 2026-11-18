@@ -6,7 +6,7 @@ extends Resource
 
 ## CHEST: arma de pecho, aparte de las 6 laterales y superiores (decision del
 ## usuario, 2026-11-17).
-enum Type { TORSO, LEGS, SIDE, TOP, DRONE, MODULE, CHARGE, TELEPORT, HOOK, CHEST }
+enum Type { TORSO, LEGS, SIDE, TOP, DRONE, MODULE, CHARGE, TELEPORT, HOOK, CHEST, ASSIST }
 enum Element { PHYSICAL, HEAT, ENERGY, COMBINED }
 enum Tier { COMMON, RARE, EPIC, LEGENDARY, MYTHIC, DIVINE }
 
@@ -19,6 +19,9 @@ const TAG_HOVER := "levita"
 const KNOWN_TAGS: Array[String] = [TAG_MELEE, TAG_SWORD, TAG_TRACKS, TAG_WHEELS, TAG_HOVER]
 
 ## Estadisticas que crecen con el tier y el nivel (GDD 8).
+## Clave con la que se guarda el progreso del robot de asistencia: es uno
+## solo aunque cambie de protocolo (cada protocolo es una pieza ASSIST).
+const ASSIST_PROGRESS := "asistente"
 const SCALED_STATS: Array[String] = [
 	"health",
 	"energy_cap",
@@ -118,6 +121,12 @@ const FIXED_STATS: Array[String] = [
 
 func has_tag(tag: String) -> bool:
 	return tags.has(tag)
+
+
+## Clave de su clase y su nivel en PlayerProfile.parts: el robot de
+## asistencia comparte la suya entre protocolos.
+func progress_id() -> String:
+	return ASSIST_PROGRESS if type == Type.ASSIST else id
 
 
 func deals_damage() -> bool:

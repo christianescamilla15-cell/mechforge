@@ -20,6 +20,7 @@ const COLOR_HEAT := Color("ff8a3d")
 const COLOR_COOL := Color("9fd8ff")
 const COLOR_DROP := Color("ffe27a")
 const COLOR_REPAIR := Color("7dff9b")
+const COLOR_DARK_MATTER := Color("b07bff")
 
 var rules: RulesConfig
 var engine: BattleEngine
@@ -162,9 +163,11 @@ func _play_event(entry: Dictionary) -> void:
 				_arena.cable(actor, target, step * 1.6)
 			var shot_color := _shot_color(entry, actor)
 			if event == "drone":
-				await _arena.fire_between(actor, target, shot_color, step, true)
+				var drone_slot: String = entry.get("slot", "drone")
+				await _arena.fire_between(actor, target, shot_color, step, true, drone_slot)
 			elif _is_ranged(entry, actor):
-				await _arena.fire_between(actor, target, shot_color, step, false)
+				var slot: String = entry.get("slot", "")
+				await _arena.fire_between(actor, target, shot_color, step, false, slot)
 			else:
 				_arena.mechs[actor].lunge(step)
 			var damage: int = entry.get("damage", 0)
@@ -213,6 +216,24 @@ func _play_event(entry: Dictionary) -> void:
 			await _arena.mechs[who].blink_to(_arena.cell_point(entry["to"]), step).finished
 		"drop_spawn":
 			await _arena.ship_drop(entry["drop"], step * 1.6)
+		"barrier":
+			_arena.float_text(_state[actor]["pos"], Txt.t("shield_hit"), COLOR_COOL)
+			_arena.flash(_arena.mechs[actor].hit_point(), COLOR_COOL, 90.0, step)
+			await get_tree().create_timer(step).timeout
+		"repair_kit":
+			var healed := "+%d" % entry["amount"]
+			_arena.float_text(_state[actor]["pos"], healed, COLOR_REPAIR)
+			await get_tree().create_timer(step).timeout
+		"dark_matter":
+			# El arma de pecho dispara materia oscura: un rayo violeta y una
+			# explosion que sacude la arena.
+			await _arena.fire_between(actor, target, COLOR_DARK_MATTER, step * 1.5, false, "chest")
+			_arena.explode(_arena.mechs[target].hit_point(), step * 2.0)
+			_arena.mechs[target].hit(step)
+			_arena.shake(14.0)
+			var blast := "-%d" % entry["damage"]
+			_arena.float_text(_state[target]["pos"], blast, COLOR_DARK_MATTER)
+			await get_tree().create_timer(step * 1.5).timeout
 		"drop_taken":
 			var percent := roundi(float(entry["amount"]) * 100.0)
 			var label := "+%d %% %s" % [percent, Txt.t("drop_%s_short" % entry["kind"])]
@@ -426,6 +447,13 @@ func _reason_for(action: BattleAction) -> String:
 
 
 func _uses_left_for(action: BattleAction) -> int:
+	var kinds := {
+		BattleAction.Type.SHIELD: "shield",
+		BattleAction.Type.REPAIR: "repair",
+		BattleAction.Type.DARK_MATTER: "dark_matter",
+	}
+	if kinds.has(action.type):
+		return engine.mechs[player].kits_left(kinds[action.type])
 	var key := _slot_of(action)
 	var slots := engine.mechs[player].slots
 	return slots[key].uses_left if slots.has(key) else -1
@@ -484,9 +512,19 @@ func _preview_text(action: BattleAction) -> String:
 
 ## Lineas del registro de las habilidades de jefe (GDD 9.1).
 func _ability_line(entry: Dictionary) -> String:
-	if entry["event"] == "repair":
-		var repair_args := [names[entry["actor"]], entry["amount"]]
-		return "[color=#7dff9b]%s[/color]" % Txt.t("log_repair", repair_args)
+	var who := names[entry["actor"]]
+	match entry["event"]:
+		"repair":
+			return "[color=#7dff9b]%s[/color]" % Txt.t("log_repair", [who, entry["amount"]])
+		"barrier":
+			return "[color=#7fe3ff]%s[/color]" % Txt.t("log_barrier", [who])
+		"repair_kit":
+			return "[color=#7dff9b]%s[/color]" % Txt.t("log_repair_kit", [who, entry["amount"]])
+		"dark_matter":
+			return (
+				"[b][color=#c79bff]%s[/color][/b]"
+				% Txt.t("log_dark_matter", [who, entry["damage"]])
+			)
 	return Txt.t("log_evade", [names[entry["who"]], entry["to"]])
 
 
@@ -498,7 +536,7 @@ func _log_line(entry: Dictionary) -> String:
 	if slot != "" and engine.mechs[actor].slots.has(slot):
 		item = engine.mechs[actor].slots[slot].def.display_name
 	var damage: int = entry.get("damage", 0)
-	if entry["event"] in ["repair", "evade"]:
+	if entry["event"] in ["repair", "evade", "barrier", "repair_kit", "dark_matter"]:
 		return _ability_line(entry)
 	match entry["event"]:
 		"weapon":

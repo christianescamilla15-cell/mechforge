@@ -15,6 +15,9 @@ extends Resource
 @export var health: float = 0.0
 ## Fraccion que se quita al dano que las armas le hacen a quien las dispara.
 @export var backfire: float = 0.0
+## Bateria del robot de asistencia: fraccion que se suma al dano de sus
+## armas (solo al dano; no dispara mas veces ni le cuesta menos al mech).
+@export var assist: float = 0.0
 
 
 ## Aplica las mejoras a las estadisticas sumadas de un mech (MechBuild.summary).

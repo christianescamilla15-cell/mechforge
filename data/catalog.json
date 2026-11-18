@@ -193,6 +193,11 @@
     {"id": "zapador_blaster_ion", "name": "Dron sifón iónico", "type": "DRONE", "element": "ENERGY", "tier_min": "RARE", "tier_max": "LEGENDARY", "weapon_type": "blaster", "form": "zapador", "top": {"weight": 30, "dmg_min": 59, "dmg_max": 76, "energy_dmg": 55, "range_min": 1, "range_max": 4, "energy_cost": 14}},
     {"id": "zapador_laser_cin", "name": "Dron de drenaje cinético", "type": "DRONE", "element": "PHYSICAL", "tier_min": "EPIC", "tier_max": "MYTHIC", "weapon_type": "laser", "form": "zapador", "top": {"weight": 36, "dmg_min": 86, "dmg_max": 98, "res_dmg": 6, "energy_cost": 20, "range_min": 1, "range_max": 4}},
     {"id": "zapador_laser_ter", "name": "Dron de drenaje térmico", "type": "DRONE", "element": "HEAT", "tier_min": "EPIC", "tier_max": "MYTHIC", "weapon_type": "laser", "form": "zapador", "top": {"weight": 28, "dmg_min": 63, "dmg_max": 72, "heat_dmg": 30, "range_min": 1, "range_max": 4, "heat_cost": 14}},
-    {"id": "zapador_laser_ion", "name": "Dron de drenaje iónico", "type": "DRONE", "element": "ENERGY", "tier_min": "EPIC", "tier_max": "MYTHIC", "weapon_type": "laser", "form": "zapador", "top": {"weight": 28, "dmg_min": 63, "dmg_max": 72, "energy_dmg": 55, "range_min": 1, "range_max": 4, "energy_cost": 14}}
+    {"id": "zapador_laser_ion", "name": "Dron de drenaje iónico", "type": "DRONE", "element": "ENERGY", "tier_min": "EPIC", "tier_max": "MYTHIC", "weapon_type": "laser", "form": "zapador", "top": {"weight": 28, "dmg_min": 63, "dmg_max": 72, "energy_dmg": 55, "range_min": 1, "range_max": 4, "energy_cost": 14}},
+
+    {"id": "asistente_escolta", "name": "Asistente: protocolo Escolta", "type": "ASSIST", "element": "PHYSICAL", "tier_min": "COMMON", "tier_max": "DIVINE", "top": {"weight": 0, "res_physical": 6, "res_heat": 6, "res_energy": 6}},
+    {"id": "asistente_blindaje", "name": "Asistente: protocolo Blindaje", "type": "ASSIST", "element": "PHYSICAL", "tier_min": "COMMON", "tier_max": "DIVINE", "top": {"weight": 0, "health": 75}},
+    {"id": "asistente_reactor", "name": "Asistente: protocolo Reactor", "type": "ASSIST", "element": "PHYSICAL", "tier_min": "COMMON", "tier_max": "DIVINE", "top": {"weight": 0, "energy_cap": 35, "energy_regen": 15}},
+    {"id": "asistente_criogenia", "name": "Asistente: protocolo Criogenia", "type": "ASSIST", "element": "PHYSICAL", "tier_min": "COMMON", "tier_max": "DIVINE", "top": {"weight": 0, "heat_cap": 35, "cooling": 15}}
   ]
 }

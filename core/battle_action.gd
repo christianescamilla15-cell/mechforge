@@ -2,7 +2,8 @@ class_name BattleAction
 extends RefCounted
 ## Una accion de combate. Es serializable para poder repetir combates.
 
-enum Type { WALK, STOMP, WEAPON, COOL, CHARGE, TELEPORT, HOOK }
+## SHIELD, REPAIR y DARK_MATTER son habilidades del arbol (SkillTree).
+enum Type { WALK, STOMP, WEAPON, COOL, CHARGE, TELEPORT, HOOK, SHIELD, REPAIR, DARK_MATTER }
 
 var type: Type
 ## Hueco del arma para WEAPON ("side0", "top1"...).
@@ -43,6 +44,21 @@ static func teleport(to: int) -> BattleAction:
 
 static func hook() -> BattleAction:
 	return BattleAction.new(Type.HOOK)
+
+
+## Escudo de energia: absorbe el siguiente golpe.
+static func shield() -> BattleAction:
+	return BattleAction.new(Type.SHIELD)
+
+
+## Kit de reparacion: recupera parte de la vida.
+static func repair() -> BattleAction:
+	return BattleAction.new(Type.REPAIR)
+
+
+## Materia oscura: el disparo del arma de pecho que casi aniquila.
+static func dark_matter() -> BattleAction:
+	return BattleAction.new(Type.DARK_MATTER, "chest")
 
 
 func to_dict() -> Dictionary:

@@ -45,6 +45,9 @@ func _run() -> void:
 	await get_tree().process_frame
 	_arena.cells = rules.arena_size
 	_hero = library.make("fisico_vanguardia", catalog, rules, ItemDef.Tier.COMMON, 6)
+	# Con todos los huecos llenos, para ver cada arma en su sitio.
+	_hero.tops.append(_hero.tops[0])
+	_hero.chest = _item("canon_pesado_canon_cin")
 	var rival := library.make("calor_horno", catalog, rules, ItemDef.Tier.COMMON, 6)
 	var hero := _arena.mechs[0]
 	var foe := _arena.mechs[1]
@@ -81,7 +84,27 @@ func _run() -> void:
 	await _show("Rodar (orugas)", hero.move_to(_cell(4), 1.2))
 	await _show("Rodar hacia atrás", hero.move_to(_cell(2), 1.2))
 
+	_swap_legs("piernas_rodillos")
+	await _show("Rodar (ruedas)", hero.move_to(_cell(4), 1.2))
+	await _show("Rodar hacia atrás", hero.move_to(_cell(2), 1.2))
+
 	_swap_legs("piernas_zancos")
+	await _fire("Disparar: brazos de delante", ["side0", "side1"])
+	await _fire("Disparar: brazos del lado lejano", ["side2", "side3"])
+	await _fire("Disparar: armas de hombro", ["top0", "top1"])
+	await _fire("Disparar: arma de pecho", ["chest"])
+	# El robot de asistencia: sus seis formas, y un disparo de cada arma.
+	for form in 6:
+		_set_assist(form)
+		_caption.text = (
+			"Asistente: %s (%s)" % [Txt.t("assist_form_%d" % form), Txt.TIER_NAMES[form]]
+		)
+		await _pause(BEAT * 2.4)
+		if form in [2, 5]:
+			await _arena.fire_between(0, 1, Color("ffb347"), 0.7, true, "drone")
+			await _pause(BEAT * 0.6)
+			await _arena.fire_between(0, 1, Color("ffb347"), 0.7, true, "drone_low")
+			await _pause(BEAT)
 	await _show("Salto con baliza (teletransporte)", hero.blink_to(_cell(5), 0.8))
 	await _pause(BEAT * 2)
 	finished.emit()
@@ -93,6 +116,15 @@ func _show(text: String, tween: Tween) -> void:
 	await _pause(BEAT)
 
 
+## Dispara las armas de esos huecos, una tras otra.
+func _fire(text: String, slots: Array[String]) -> void:
+	_caption.text = text
+	for slot in slots:
+		await _arena.fire_between(0, 1, Color("ffb347"), 0.7, false, slot)
+		await _pause(BEAT * 0.6)
+	await _pause(BEAT)
+
+
 func _pause(seconds: float) -> void:
 	await get_tree().create_timer(seconds).timeout
 
@@ -101,10 +133,25 @@ func _cell(index: int) -> Vector2:
 	return _arena.cell_point(index)
 
 
-## Cambia las piernas del mech de muestra (levitar, orugas...).
-func _swap_legs(id: String) -> void:
-	_hero.legs = ItemScaling.resolve(catalog.get_item(id), rules, ItemDef.Tier.COMMON, 6)
+## Pone al mech de muestra el robot de asistencia de esa clase, con sus dos armas.
+func _set_assist(tier: int) -> void:
+	var body := catalog.get_item("asistente_blindaje")
+	_hero.assist = ItemScaling.resolve(body, rules, tier as ItemDef.Tier, 0)
+	_hero.drone_low = _hero.drone
 	var view := _arena.mechs[0]
 	var at := view.position
 	view.setup(_hero, view.facing)
 	view.place(at)
+
+
+## Cambia las piernas del mech de muestra (levitar, orugas...).
+func _swap_legs(id: String) -> void:
+	_hero.legs = _item(id)
+	var view := _arena.mechs[0]
+	var at := view.position
+	view.setup(_hero, view.facing)
+	view.place(at)
+
+
+func _item(id: String) -> ItemDef:
+	return ItemScaling.resolve(catalog.get_item(id), rules, ItemDef.Tier.COMMON, 6)

@@ -32,6 +32,15 @@ FALLBACK = {
 }
 BAND_NAME = {"balas": "", "canon": " de Asalto", "blaster": " de Plasma", "laser": " Láser"}
 
+# Robot de asistencia de los mechs de ejemplo y del Orden: todos el mismo
+# protocolo y, de arma inferior, una gemela de la superior (alternan, asi
+# que disparan lo mismo que el dron de siempre). Medido el 2026-11-17: con
+# un protocolo distinto por elemento el balance se rompia (laser: fisico
+# 76 %, energia 28 %), y con un zapador distinto por elemento, mas (fisico
+# 90 %, calor 20 %). Igual para todos, el asistente suma lo mismo a los dos
+# lados.
+ASSIST_PROTOCOL = "asistente_blindaje"
+
 # Mechs de ejemplo: id base, nombre, elemento, torso, piernas, armas por
 # (forma, elemento), modulos y especiales. Mismas piezas que los anteriores.
 MECHS = [
@@ -98,13 +107,16 @@ def weight(catalog, items):
 
 
 def build_items(catalog, mech, band):
-    _, _, _, torso, legs, sides, tops, drone, modules, special = mech
+    base_id, _, _, torso, legs, sides, tops, drone, modules, special = mech
+    protocol, low = ASSIST_PROTOCOL, drone
     items = {
         "torso": torso,
         "legs": legs,
         "sides": [weapon(catalog, f, e, band) for f, e in sides],
         "tops": [weapon(catalog, f, e, band) for f, e in tops],
+        "assist": protocol,
         "drone": weapon(catalog, drone[0], drone[1], band),
+        "drone_low": weapon(catalog, low[0], low[1], band),
         "modules": list(modules),
     }
     items.update(special)

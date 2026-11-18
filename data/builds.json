@@ -19,7 +19,9 @@
         "tops": [
           "bateria_balas_cin"
         ],
+        "assist": "asistente_blindaje",
         "drone": "artillero_balas_cin",
+        "drone_low": "artillero_balas_cin",
         "modules": [
           "mod_blindaje",
           "mod_matriz",
@@ -47,7 +49,9 @@
         "tops": [
           "bateria_canon_cin"
         ],
+        "assist": "asistente_blindaje",
         "drone": "artillero_canon_cin",
+        "drone_low": "artillero_canon_cin",
         "modules": [
           "mod_blindaje",
           "mod_matriz",
@@ -75,7 +79,9 @@
         "tops": [
           "bateria_blaster_cin"
         ],
+        "assist": "asistente_blindaje",
         "drone": "artillero_blaster_cin",
+        "drone_low": "artillero_blaster_cin",
         "modules": [
           "mod_blindaje",
           "mod_matriz",
@@ -103,7 +109,9 @@
         "tops": [
           "bateria_laser_cin"
         ],
+        "assist": "asistente_blindaje",
         "drone": "artillero_laser_cin",
+        "drone_low": "artillero_laser_cin",
         "modules": [
           "mod_blindaje",
           "mod_matriz",
@@ -132,7 +140,9 @@
         "tops": [
           "bateria_balas_ter"
         ],
+        "assist": "asistente_blindaje",
         "drone": "artillero_balas_ter",
+        "drone_low": "artillero_balas_ter",
         "modules": [
           "mod_blindaje",
           "mod_blindaje",
@@ -161,7 +171,9 @@
         "tops": [
           "bateria_canon_ter"
         ],
+        "assist": "asistente_blindaje",
         "drone": "artillero_canon_ter",
+        "drone_low": "artillero_canon_ter",
         "modules": [
           "mod_blindaje",
           "mod_blindaje",
@@ -190,7 +202,9 @@
         "tops": [
           "bateria_blaster_ter"
         ],
+        "assist": "asistente_blindaje",
         "drone": "artillero_blaster_ter",
+        "drone_low": "artillero_blaster_ter",
         "modules": [
           "mod_blindaje",
           "mod_blindaje",
@@ -219,7 +233,9 @@
         "tops": [
           "bateria_laser_ter"
         ],
+        "assist": "asistente_blindaje",
         "drone": "artillero_laser_ter",
+        "drone_low": "artillero_laser_ter",
         "modules": [
           "mod_blindaje",
           "mod_blindaje",
@@ -249,7 +265,9 @@
         "tops": [
           "bateria_balas_ion"
         ],
+        "assist": "asistente_blindaje",
         "drone": "artillero_balas_ion",
+        "drone_low": "artillero_balas_ion",
         "modules": [
           "mod_blindaje",
           "mod_blindaje",
@@ -279,7 +297,9 @@
         "tops": [
           "bateria_canon_ion"
         ],
+        "assist": "asistente_blindaje",
         "drone": "artillero_canon_ion",
+        "drone_low": "artillero_canon_ion",
         "modules": [
           "mod_blindaje",
           "mod_blindaje",
@@ -309,7 +329,9 @@
         "tops": [
           "bateria_blaster_ion"
         ],
+        "assist": "asistente_blindaje",
         "drone": "artillero_blaster_ion",
+        "drone_low": "artillero_blaster_ion",
         "modules": [
           "mod_blindaje",
           "mod_blindaje",
@@ -339,7 +361,9 @@
         "tops": [
           "bateria_laser_ion"
         ],
+        "assist": "asistente_blindaje",
         "drone": "artillero_laser_ion",
+        "drone_low": "artillero_laser_ion",
         "modules": [
           "mod_blindaje",
           "mod_blindaje",
@@ -371,7 +395,9 @@
           "ancla_canon_ter",
           "ancla_canon_ion"
         ],
+        "assist": "asistente_blindaje",
         "drone": "artillero_balas_cin",
+        "drone_low": "artillero_balas_cin",
         "modules": [
           "mod_blindaje",
           "mod_blindaje",
@@ -400,7 +426,9 @@
           "ancla_canon_ter",
           "ancla_canon_ion"
         ],
+        "assist": "asistente_blindaje",
         "drone": "artillero_canon_cin",
+        "drone_low": "artillero_canon_cin",
         "modules": [
           "mod_blindaje",
           "mod_blindaje",
@@ -429,7 +457,9 @@
           "ancla_canon_ter",
           "ancla_canon_ion"
         ],
+        "assist": "asistente_blindaje",
         "drone": "artillero_blaster_cin",
+        "drone_low": "artillero_blaster_cin",
         "modules": [
           "mod_blindaje",
           "mod_blindaje",
@@ -458,7 +488,9 @@
           "ancla_laser_ter",
           "ancla_laser_ion"
         ],
+        "assist": "asistente_blindaje",
         "drone": "artillero_laser_cin",
+        "drone_low": "artillero_laser_cin",
         "modules": [
           "mod_blindaje",
           "mod_blindaje",
@@ -488,7 +520,9 @@
         "tops": [
           "bateria_balas_cin"
         ],
+        "assist": "asistente_blindaje",
         "drone": "artillero_balas_cin",
+        "drone_low": "artillero_balas_cin",
         "modules": [
           "mod_blindaje",
           "mod_matriz",
@@ -518,7 +552,9 @@
         "tops": [
           "bateria_balas_cin"
         ],
+        "assist": "asistente_blindaje",
         "drone": "artillero_balas_cin",
+        "drone_low": "artillero_balas_cin",
         "modules": [
           "mod_blindaje",
           "mod_matriz",
@@ -548,7 +584,9 @@
         "tops": [
           "bateria_canon_ion"
         ],
+        "assist": "asistente_blindaje",
         "drone": "artillero_canon_ion",
+        "drone_low": "artillero_canon_ion",
         "modules": [
           "mod_blindaje",
           "mod_blindaje",
@@ -580,7 +618,9 @@
         "tops": [
           "bateria_canon_ter"
         ],
+        "assist": "asistente_blindaje",
         "drone": "artillero_canon_ter",
+        "drone_low": "artillero_canon_ter",
         "modules": [
           "mod_blindaje",
           "mod_blindaje",
@@ -612,7 +652,9 @@
           "ancla_canon_ter",
           "ancla_canon_ion"
         ],
+        "assist": "asistente_blindaje",
         "drone": "artillero_blaster_cin",
+        "drone_low": "artillero_blaster_cin",
         "modules": [
           "mod_blindaje",
           "mod_blindaje",
@@ -642,7 +684,9 @@
         "tops": [
           "bateria_blaster_ter"
         ],
+        "assist": "asistente_blindaje",
         "drone": "artillero_blaster_ter",
+        "drone_low": "artillero_blaster_ter",
         "modules": [
           "mod_blindaje",
           "mod_blindaje",
@@ -673,7 +717,9 @@
         "tops": [
           "bateria_laser_ion"
         ],
+        "assist": "asistente_blindaje",
         "drone": "artillero_laser_ion",
+        "drone_low": "artillero_laser_ion",
         "modules": [
           "mod_blindaje",
           "mod_blindaje",
@@ -705,7 +751,9 @@
         "tops": [
           "bateria_laser_ter"
         ],
+        "assist": "asistente_blindaje",
         "drone": "artillero_laser_ter",
+        "drone_low": "artillero_laser_ter",
         "modules": [
           "mod_blindaje",
           "mod_blindaje",
@@ -736,7 +784,9 @@
         "tops": [
           "bateria_laser_cin"
         ],
+        "assist": "asistente_blindaje",
         "drone": "artillero_laser_cin",
+        "drone_low": "artillero_laser_cin",
         "modules": [
           "mod_blindaje",
           "mod_matriz",
@@ -767,7 +817,9 @@
           "ancla_laser_ter",
           "ancla_laser_ion"
         ],
+        "assist": "asistente_blindaje",
         "drone": "artillero_laser_cin",
+        "drone_low": "artillero_laser_cin",
         "modules": [
           "mod_blindaje",
           "mod_blindaje",

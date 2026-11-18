@@ -162,14 +162,22 @@ func _on_float_done(label: Label, cell: int) -> void:
 
 ## Disparo completo de un mech a otro: despliega el arma si hace falta,
 ## retroceso, fogonazo, proyectil y chispas al llegar.
-func fire_between(actor: int, target: int, color: Color, seconds: float, from_drone: bool) -> void:
+## `slot` es el hueco del arma ("side0", "top1", "chest"...): el canon de
+## pecho solo se despliega cuando dispara el.
+func fire_between(
+	actor: int, target: int, color: Color, seconds: float, from_drone: bool, slot: String = ""
+) -> void:
 	var shooter := mechs[actor]
 	if not from_drone:
-		var deploying := shooter.deploy(seconds * 0.9)
-		if deploying != null:
-			await deploying.finished
-		shooter.fire(seconds * 0.6)
-	var from := shooter.muzzle_point(from_drone)
+		if slot == "chest" or not MechSprites.has_weapon_art():
+			var deploying := shooter.deploy(seconds * 0.9)
+			if deploying != null:
+				await deploying.finished
+		shooter.fire(seconds * 0.6, slot)
+	elif slot != "":
+		# El robot de asistencia tambien retrocede al disparar.
+		shooter.fire(seconds * 0.6, slot)
+	var from := shooter.muzzle_point(from_drone, slot)
 	var to := mechs[target].hit_point()
 	flash(from, color, 30.0, seconds * 0.4)
 	var travel := clampf(from.distance_to(to) / 2400.0, 0.07, 0.4) * clampf(seconds * 2.5, 0.2, 1.0)

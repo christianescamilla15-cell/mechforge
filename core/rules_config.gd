@@ -37,6 +37,11 @@ extends Resource
 ## Nivel maximo de un chasis; ahi su bonificacion es completa.
 @export var chassis_max_level: int = 30
 
+@export_group("Robot de asistencia")
+## Clase del robot de asistencia desde la que pelea su segunda arma (la
+## inferior): la primera transformacion, Intermedia (GDD 4).
+@export var assist_second_weapon_tier: int = 1
+
 @export_group("Bonificaciones")
 ## Bonificaciones que deja caer una nave en la arena (GDD 2.8). Apagadas por
 ## defecto para no alterar los combates de prueba; el juego las enciende.

@@ -32,11 +32,22 @@ var heat_cap: int = 0
 var cooling: int = 0
 ## Resistencias indexadas por ItemDef.Element (fisico, calor, energia).
 var res: Array[int] = [0, 0, 0]
+## Arma del asistente que disparo la ultima vez ("drone" o "drone_low"):
+## dispara una por turno y las alterna.
+var assist_last: String = ""
 var shutdown_last_turn: bool = false
 ## Habilidades de jefe (GDD 9.1): golpes que su escudo todavia puede anular
 ## y esquivas que le quedan en el turno del rival.
 var shield_left: int = 0
 var evade_left: int = 0
+## Escudo de energia activado (arbol de habilidades): golpes que absorbera,
+## sean del turno que sean.
+var barrier: int = 0
+## Usos que le quedan de las habilidades de combate: "shield", "repair" y
+## "dark_matter".
+var kits: Dictionary = {}
+## Si el arma de pecho ya disparo en este combate (esta desplegada).
+var chest_fired: bool = false
 ## Bonificaciones en vigor (GDD 2.8): {"kind", "amount", "turns"}.
 var buffs: Array[Dictionary] = []
 ## Huecos que actuan en combate: "legs", "side0".."side3", "top0", "top1",
@@ -66,9 +77,18 @@ func _init(p_build: MechBuild = null, rules: RulesConfig = null, p_position: int
 		_add_slot("top%d" % i, build.tops[i])
 	_add_slot("chest", build.chest)
 	_add_slot("drone", build.drone)
+	_add_slot("drone_low", build.drone_low)
 	_add_slot("charge", build.charge)
 	_add_slot("teleport", build.teleport)
 	_add_slot("hook", build.hook)
+	if build.skills != null:
+		kits = {
+			"shield": build.skills.shield_uses,
+			"repair": build.skills.repair_uses,
+			"dark_matter": build.skills.dark_matter_uses,
+		}
+		if slots.has("chest") and slots["chest"].uses_left > 0:
+			slots["chest"].uses_left += build.skills.chest_uses
 
 
 func clone() -> BattleMech:
@@ -84,9 +104,13 @@ func clone() -> BattleMech:
 	copy.heat_cap = heat_cap
 	copy.cooling = cooling
 	copy.res = res.duplicate()
+	copy.assist_last = assist_last
 	copy.shutdown_last_turn = shutdown_last_turn
 	copy.shield_left = shield_left
 	copy.evade_left = evade_left
+	copy.barrier = barrier
+	copy.kits = kits.duplicate()
+	copy.chest_fired = chest_fired
 	copy.buffs = buffs.duplicate(true)
 	for key in slots:
 		copy.slots[key] = slots[key].clone()
@@ -98,6 +122,27 @@ func energy_cost(def: ItemDef) -> int:
 	if build == null or build.chassis == null:
 		return def.energy_cost
 	return build.chassis.energy_cost(def)
+
+
+## Armas del robot de asistencia: disparan solas al acabar el turno.
+static func is_assist_slot(key: String) -> bool:
+	return key == "drone" or key == "drone_low"
+
+
+## Bateria del robot de asistencia: lo que la mejora de la armeria suma al
+## dano de sus armas (1.0 = sin mejora). Solo al dano: no cambia cuantas
+## veces dispara ni lo que le cuesta al mech.
+func assist_power() -> float:
+	if build == null or build.assist == null or build.upgrades == null:
+		return 1.0
+	return 1.0 + build.upgrades.assist
+
+
+## Arma del asistente a la que le toca disparar: alterna con la ultima.
+func assist_order() -> Array[String]:
+	if assist_last == "drone" and slots.has("drone_low"):
+		return ["drone_low", "drone"]
+	return ["drone", "drone_low"]
 
 
 ## Dano que un arma le hace a este mech al dispararla.
@@ -151,7 +196,20 @@ func damage_mult() -> float:
 		base = build.chassis.damage_mult
 	if build != null and build.upgrades != null:
 		base *= build.upgrades.damage_mult()
+	if build != null and build.skills != null:
+		base *= build.skills.damage_mult()
 	return base * (1.0 + buff_amount("firepower"))
+
+
+## Dano de mas del arma de pecho por las habilidades.
+func chest_damage_mult() -> float:
+	if build == null or build.skills == null:
+		return 1.0
+	return 1.0 + build.skills.chest_damage
+
+
+func kits_left(kind: String) -> int:
+	return int(kits.get(kind, 0))
 
 
 ## Suma de las bonificaciones en vigor de ese tipo (0 si no tiene ninguna).

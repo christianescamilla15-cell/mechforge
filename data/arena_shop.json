@@ -7,7 +7,8 @@
     {"id": "heat", "name": "Calor y enfriamiento", "kind": "percent", "max": 20},
     {"id": "resistance", "name": "Resistencias", "kind": "percent", "max": 40},
     {"id": "health", "name": "Blindaje", "kind": "percent", "max": 15},
-    {"id": "backfire", "name": "Amortiguación del retroceso", "kind": "percent", "max": 20}
+    {"id": "backfire", "name": "Amortiguación del retroceso", "kind": "percent", "max": 20},
+    {"id": "assist", "name": "Batería del asistente", "kind": "percent", "max": 10, "assist_tier": 1}
   ],
   "prices": [0, 150, 200, 300, 400, 450, 550, 600, 700, 800, 950],
   "rewards": {"arena_win": 250, "arena_loss": 60, "campaign_win": 250, "campaign_loss": 60, "boss_win": 2500, "boss_loss": 0}

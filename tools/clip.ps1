@@ -22,8 +22,12 @@ param(
 )
 $root = Split-Path -Parent $PSScriptRoot
 $py = 'C:\Users\DANNY\dev\tools\mechforge-art\env\Scripts\python.exe'
-$movie = Join-Path $env:TEMP 'mechforge-clip.avi'
-Remove-Item $movie -ErrorAction SilentlyContinue
+# Cuadros PNG y no AVI: el AVI (MJPEG) de Godot salia con bloques verdes que
+# no estan en el juego (2026-11-17).
+$frames = Join-Path $env:TEMP 'mechforge-clip-frames'
+Remove-Item $frames -Recurse -Force -ErrorAction SilentlyContinue
+New-Item -ItemType Directory -Force $frames | Out-Null
+$movie = Join-Path $frames 'f.png'
 $env:MECHFORGE_SHOTS = (Join-Path $env:TEMP 'mechforge-clip-shots').Replace('\', '/')
 New-Item -ItemType Directory -Force $env:MECHFORGE_SHOTS | Out-Null
 & "$PSScriptRoot\godot.ps1" --headless --path $root --import *> $null
@@ -34,10 +38,10 @@ if ($Cycle) {
 } else {
     & "$PSScriptRoot\godot.ps1" --path $root --resolution 1280x720 --write-movie $movie --fixed-fps 30 '++' @run *> $null
 }
-if (-not (Test-Path $movie)) { Write-Output 'no se grabo el combate'; exit 1 }
+if (-not (Get-ChildItem $frames -Filter *.png)) { Write-Output 'no se grabo el combate'; exit 1 }
 $crop = @('--crop', '0', '138', '1280', '350')
 if ($Showcase) { $crop = @('--crop', '0', '0', '1280', '660') }
 if ($Cycle) { $crop = @('--crop', '240', '0', '800', '700') }
 if ($Full) { $crop = @() }
-& $py "$root\tools\art\movie_to_gif.py" $movie $Out --start $From --end $To --width $Width --fps $Fps @crop
+& $py "$root\tools\art\movie_to_gif.py" $frames $Out --start $From --end $To --width $Width --fps $Fps @crop
 exit $LASTEXITCODE

@@ -19,6 +19,11 @@ extends SceneTree
 ##                        para matar; promediar varias escalas mide el balance
 ##                        real y no ese artefacto. Usa --hp-scales=1 para una sola.
 ##   --band=balas         mechs de ese tipo de arma: balas, canon, blaster o laser
+##   --assist=full        robot de asistencia: full (como en los datos), top (sin
+##                        el arma inferior), bare (sin la bonificacion del
+##                        protocolo), charged (con la bateria de la armeria al
+##                        maximo) u off (dron suelto, como antes del asistente)
+##   --protocol=id        todos los mechs llevan ese cuerpo de asistente
 ##   --json=ruta          guarda el resumen en JSON
 ## Sale con codigo 1 si no se cumple alguna puerta de la fase F3.
 
@@ -67,6 +72,12 @@ func _initialize() -> void:
 	for id in _library.band_ids(_band):
 		for v in _variants.size():
 			var build := _library.make(id, catalog, _rules, tier, _variants[v]["level"])
+			var protocol: String = args.get("protocol", "")
+			if protocol != "" and catalog.get_item(protocol) != null:
+				build.assist = ItemScaling.resolve(
+					catalog.get_item(protocol), _rules, tier, _variants[v]["level"]
+				)
+			_strip_assist(build, args.get("assist", "full"))
 			for item in build.all_items():
 				item.health = roundi(item.health * _variants[v]["scale"])
 			_builds["%s@%d" % [id, v]] = build
@@ -369,3 +380,29 @@ func _parse_args() -> Dictionary:
 		var parts := text.split("=", true, 1)
 		out[parts[0]] = parts[1] if parts.size() > 1 else "true"
 	return out
+
+
+## Variantes del robot de asistencia, para medir que parte cambia el balance.
+func _strip_assist(build: MechBuild, mode: String) -> void:
+	if mode == "off":
+		build.assist = null
+		build.drone_low = null
+	elif mode == "top":
+		build.drone_low = null
+	elif mode == "charged":
+		build.upgrades = ArenaUpgrades.new()
+		build.upgrades.assist = 0.1
+	elif mode == "bare" and build.assist != null:
+		var plain: ItemDef = build.assist.duplicate()
+		for key: String in [
+			"health",
+			"energy_cap",
+			"energy_regen",
+			"heat_cap",
+			"cooling",
+			"res_physical",
+			"res_heat",
+			"res_energy"
+		]:
+			plain.set(key, 0)
+		build.assist = plain

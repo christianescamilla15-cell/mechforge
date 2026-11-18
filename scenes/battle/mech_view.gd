@@ -30,6 +30,26 @@ const GAIT_SPEED := 10.0
 ## Cuanto se separa la pierna de detras y cuanto se oscurece.
 const FAR_LEG_OFFSET := Vector2(-14.0, -2.0)
 const FAR_LEG_DIM := 0.65
+## Donde va cada arma respecto a la que se dibujo sobre el robot, en
+## unidades de MechView: las dos primeras laterales, delante del torso; las
+## otras dos, detras y mas oscuras (el brazo del lado lejano). Igual con
+## las superiores.
+const SIDE_MOUNTS: Array[Vector2] = [
+	Vector2(0.0, 0.0), Vector2(8.0, 34.0), Vector2(-24.0, -8.0), Vector2(-18.0, 26.0)
+]
+const TOP_MOUNTS: Array[Vector2] = [Vector2(0.0, 0.0), Vector2(-48.0, 10.0)]
+## A partir de que indice las armas van del lado lejano.
+const FAR_SIDE_FROM := 2
+const FAR_TOP_FROM := 1
+const FAR_WEAPON_DIM := 0.62
+## Donde flota el robot de asistencia (el centro de su casco) respecto a
+## los pies del mech, y cuanto se aparta por cada transformacion: las
+## formas grandes van mas arriba y mas atras.
+const ASSIST_AT := Vector2(-112.0, -238.0)
+const ASSIST_STEP := Vector2(-7.0, -9.0)
+## Donde cuelga el arma inferior del robot de asistencia, respecto a la
+## superior.
+const DRONE_LOW_OFFSET := Vector2(10.0, 30.0)
 ## Altura a la que flotan las piernas que levitan.
 const HOVER_HEIGHT := 16.0
 const FLAME_CORE := Color(1.0, 0.95, 0.75)
@@ -49,6 +69,8 @@ var _time := 0.0
 var _walking := false
 ## Retroceso del arma, en unidades hacia atras.
 var _recoil := 0.0
+## Hueco del arma que acaba de disparar (la que retrocede).
+var _fired_slot := ""
 ## Cuanto ha salido el arma del torso: 0 guardada, 1 desplegada.
 var _deploy := 0.0
 var _deployed := false
@@ -75,7 +97,9 @@ var _rig: LegRig
 func setup(p_build: MechBuild, p_facing: int) -> void:
 	build = p_build
 	_sprites = MechSprites.for_build(build)
-	_rig = _sprites.leg_rig(build.legs.element) if _sprites != null else null
+	_rig = null
+	if _sprites != null and not _sprites.rigid_legs:
+		_rig = _sprites.leg_rig(build.legs.element)
 	_locomotion = locomotion_of(build.legs)
 	set_facing(p_facing)
 
@@ -265,7 +289,15 @@ func _process(delta: float) -> void:
 func has_cannon() -> bool:
 	if _sprites == null or build == null or _sprites.is_boss:
 		return false
-	return build.chest != null or not build.tops.is_empty()
+	# Sin arte de armas, el canon de pecho hace de arma superior.
+	if not MechSprites.has_weapon_art():
+		return build.chest != null or not build.tops.is_empty()
+	return build.chest != null
+
+
+## Las armas montadas se dibujan en su hueco (con arte y sin ser jefe).
+func _shows_weapons() -> bool:
+	return _sprites != null and not _sprites.is_boss and MechSprites.has_weapon_art()
 
 
 ## Pieza que da el color al canon del pecho.
@@ -286,8 +318,9 @@ func deploy(seconds: float) -> Tween:
 	return tween
 
 
-## Retroceso del arma al disparar.
-func fire(seconds: float) -> void:
+## Retroceso del arma al disparar: la del hueco que dispara.
+func fire(seconds: float, slot: String = "") -> void:
+	_fired_slot = slot
 	var tween := create_tween()
 	tween.tween_property(self, "_recoil", RECOIL, seconds * 0.15)
 	tween.tween_property(self, "_recoil", 0.0, seconds * 0.85).set_trans(Tween.TRANS_SINE)
@@ -295,11 +328,22 @@ func fire(seconds: float) -> void:
 
 ## Punto del que sale el disparo, en las coordenadas del padre: la boca del
 ## canon, o el dron si dispara el.
-func muzzle_point(from_drone: bool) -> Vector2:
+func muzzle_point(from_drone: bool, slot: String = "") -> Vector2:
 	var local := Vector2(-70.0, -206.0 + SPRITE_WEAPON_LIFT)
+	if from_drone and _assist_kind() != "":
+		var gun := "gun_low" if slot == "drone_low" else "gun_top"
+		local = _assist_at() + MechSprites.assist_point(_assist_kind(), gun)
+	elif from_drone and _drone_kind() != "":
+		local = _sprites.piece_tip(MechSprites.WEAPON_SET, _drone_kind())
+		var low_kind := _drone_kind(true)
+		if slot == "drone_low" and low_kind != "":
+			local = _sprites.piece_tip(MechSprites.WEAPON_SET, low_kind) + DRONE_LOW_OFFSET
 	if not from_drone:
 		local = Vector2(60.0, -110.0)
-		if has_cannon():
+		var mounted := _mount_of(slot)
+		if not mounted.is_empty():
+			local = _sprites.piece_tip(MechSprites.WEAPON_SET, mounted["kind"]) + mounted["at"]
+		elif has_cannon() and (slot == "chest" or not _shows_weapons()):
 			local = _sprites.piece_tip(CHEST_SET, "chest")
 	return position + Vector2(local.x * facing, local.y) * scale.y
 
@@ -341,14 +385,110 @@ func _draw_sprites(dim: float) -> void:
 		_sprites.draw_piece(
 			self, CHEST_SET, "chest", _cannon_item().element, cannon_tint, cannon_at
 		)
+	# El brazo y el hombro del lado lejano van detras del torso.
+	_draw_weapons(tint, body, true)
 	_sprites.draw_piece(self, _sprites.torso_set, "torso", build.torso.element, tint, body)
 	if has_cannon() and _deploy >= 1.0:
 		_sprites.draw_piece(self, CHEST_SET, "chest", _cannon_item().element, tint, cannon_at)
-	# Las demas armas todavia no tienen arte y no se pintan; solo el dron.
-	var hover := Vector2(0.0, SPRITE_WEAPON_LIFT + sin(_time * 3.1) * 4.0)
-	draw_set_transform(hover)
+	_draw_weapons(tint, body, false)
+	# El dron flota aparte, sin inclinarse con el cuerpo.
+	var bob := Vector2(0.0, sin(_time * 3.1) * 4.0)
+	if _assist_kind() != "":
+		# El asistente lleva sus armas en el dibujo de su forma; se tine con
+		# el color del torso para que haga juego con su mech.
+		draw_set_transform(Vector2.ZERO)
+		var kick := (
+			Vector2(-_recoil * 0.4, 0.0) if _fired_slot.begins_with("drone") else Vector2.ZERO
+		)
+		MechSprites.draw_assist(
+			self, _assist_kind(), build.torso.element, tint, _assist_at() + bob + kick
+		)
+		return
+	var drone_kind := _drone_kind()
+	if drone_kind != "":
+		draw_set_transform(Vector2.ZERO)
+		var low_kind := _drone_kind(true)
+		if low_kind != "":
+			var low_at := bob + DRONE_LOW_OFFSET + Vector2(0.0, sin(_time * 3.1 + 1.3) * 2.0)
+			var low_element := build.drone_low.element
+			_sprites.draw_piece(self, MechSprites.WEAPON_SET, low_kind, low_element, tint, low_at)
+		var element := build.drone.element
+		_sprites.draw_piece(self, MechSprites.WEAPON_SET, drone_kind, element, tint, bob)
+		return
+	draw_set_transform(bob + Vector2(0.0, SPRITE_WEAPON_LIFT))
 	_draw_drone(dim)
 	draw_set_transform(Vector2.ZERO)
+
+
+## Pieza con la que se dibuja el dron; "" si no tiene arte (va el provisional).
+## Forma dibujada del robot de asistencia; "" si no lleva o no hay arte.
+func _assist_kind() -> String:
+	if build.assist == null or _sprites == null or _sprites.is_boss:
+		return ""
+	return MechSprites.assist_kind(build.assist.tier)
+
+
+func _assist_at() -> Vector2:
+	return ASSIST_AT + ASSIST_STEP * float(build.assist.tier)
+
+
+## Con `low`, la del arma inferior del asistente.
+func _drone_kind(low: bool = false) -> String:
+	var item := build.drone_low if low else build.drone
+	if item == null or not _shows_weapons():
+		return ""
+	return MechSprites.weapon_kind(item)
+
+
+## Armas laterales y superiores en sus huecos: las del lado lejano (`far`)
+## o las de delante.
+func _draw_weapons(tint: Color, body: Vector2, far: bool) -> void:
+	if not _shows_weapons():
+		return
+	var dim := FAR_WEAPON_DIM if far else 1.0
+	var weapon_tint := Color(tint.r * dim, tint.g * dim, tint.b * dim, tint.a)
+	for slot: String in _weapon_slots():
+		var mounted := _mount_of(slot)
+		if mounted.is_empty() or mounted["far"] != far:
+			continue
+		var kick := Vector2(-_recoil, 0.0) if slot == _fired_slot else Vector2.ZERO
+		var at: Vector2 = body + mounted["at"] + kick
+		var element: int = mounted["item"].element
+		_sprites.draw_piece(self, MechSprites.WEAPON_SET, mounted["kind"], element, weapon_tint, at)
+
+
+func _weapon_slots() -> Array[String]:
+	var out: Array[String] = []
+	for i in build.sides.size():
+		out.append("side%d" % i)
+	for i in build.tops.size():
+		out.append("top%d" % i)
+	return out
+
+
+## Arma de un hueco con su arte: {"item", "kind", "at", "far"}; {} si no
+## es un arma montada o no tiene arte.
+func _mount_of(slot: String) -> Dictionary:
+	if not _shows_weapons() or slot.length() < 4:
+		return {}
+	var index := int(slot.right(1))
+	var item: ItemDef = null
+	var at := Vector2.ZERO
+	var far := false
+	if slot.begins_with("side") and index < build.sides.size():
+		item = build.sides[index]
+		at = SIDE_MOUNTS[mini(index, SIDE_MOUNTS.size() - 1)]
+		far = index >= FAR_SIDE_FROM
+	elif slot.begins_with("top") and index < build.tops.size():
+		item = build.tops[index]
+		at = TOP_MOUNTS[mini(index, TOP_MOUNTS.size() - 1)]
+		far = index >= FAR_TOP_FROM
+	if item == null:
+		return {}
+	var kind := MechSprites.weapon_kind(item)
+	if kind == "":
+		return {}
+	return {"item": item, "kind": kind, "at": at, "far": far}
 
 
 ## Dibuja las dos piernas con su pose y los propulsores o el brillo de
@@ -357,8 +497,7 @@ func _draw_sprites(dim: float) -> void:
 func _draw_legs(tint: Color) -> float:
 	var texture := _sprites.legs_texture(build.legs.element)
 	if _rig == null or texture == null:
-		_sprites.draw_piece(self, _sprites.legs_set, "legs", build.legs.element, tint)
-		return 0.0
+		return _draw_rigid_legs(tint)
 	var origin := _sprites.legs_origin()
 	var unit := MechSprites.UNIT_SCALE
 	var near := _leg_pose(0.0)
@@ -378,6 +517,24 @@ func _draw_legs(tint: Color) -> float:
 	_rig.draw(self, texture, origin + FAR_LEG_OFFSET + shift, unit, far, far_tint)
 	_draw_jets(origin + shift, unit, near, 1.0)
 	_rig.draw(self, texture, origin + shift, unit, near, tint)
+	return lift
+
+
+## Piernas de una pieza (orugas, ruedas o levitar): sin zancada. Las que
+## levitan flotan con su brillo debajo; las que ruedan vibran al moverse.
+func _draw_rigid_legs(tint: Color) -> float:
+	var lift := 0.0
+	if _locomotion == "hover":
+		lift = -HOVER_HEIGHT - sin(_time * 2.6) * 3.0
+		var glow := HOVER_GLOW
+		for i in 3:
+			glow.a = 0.24 - 0.06 * i
+			_ellipse(Vector2(0.0, -2.0), Vector2(70.0 + 16.0 * i, 8.0 + 3.0 * i), glow)
+	elif _locomotion == "roll" and _walking:
+		lift = sin(_time * 47.0) * 0.9
+	_sprites.draw_piece(
+		self, _sprites.legs_set, "legs", build.legs.element, tint, Vector2(0.0, lift)
+	)
 	return lift
 
 

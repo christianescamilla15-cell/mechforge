@@ -98,6 +98,7 @@ Siguiente paso (sin hacer): generar varias semillas del cuerpo con el bloque neu
 ## Límites de los 6 GB de VRAM
 - El UNet (5.14 GB) más el ControlNet (2.5 GB) no caben a la vez en 16 bits. Guardando los dos en 8 bits (`tools/art/sd.py`) sí caben con `enable_model_cpu_offload()`: pico de 4.3 GB y 42 segundos por imagen. Exige tener el vigilante de transcripciones en pausa.
 - Entrenar un LoRA de SDXL pide 8 GB como mínimo: no es viable en esta laptop.
+- **No usar Godot (grabar clips, jugar, capturas) mientras se genera.** Medido el 2026-11-17: una grabación con `tools/clip.ps1` durante una tanda empujó el modelo a la memoria compartida y la imagen siguiente tardó 54 minutos en vez de 50 segundos; no se recupera hasta reiniciar el script.
 - IP-Adapter añade un codificador de 2.5 GB: último recurso.
 
 ## Alternativas descartadas o de reserva

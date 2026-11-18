@@ -1,0 +1,83 @@
+{
+  "scale": 0.5,
+  "arm_medio": {
+    "hip": [
+      63,
+      92
+    ],
+    "size": [
+      256,
+      67
+    ]
+  },
+  "arm_hoja": {
+    "hip": [
+      62,
+      92
+    ],
+    "size": [
+      266,
+      67
+    ]
+  },
+  "arm_corto": {
+    "hip": [
+      63,
+      92
+    ],
+    "size": [
+      236,
+      68
+    ]
+  },
+  "arm_largo": {
+    "hip": [
+      63,
+      106
+    ],
+    "size": [
+      320,
+      80
+    ]
+  },
+  "arm_saboteador": {
+    "hip": [
+      62,
+      92
+    ],
+    "size": [
+      260,
+      66
+    ]
+  },
+  "shoulder_artilleria": {
+    "hip": [
+      126,
+      288
+    ],
+    "size": [
+      256,
+      105
+    ]
+  },
+  "shoulder_ancla": {
+    "hip": [
+      120,
+      291
+    ],
+    "size": [
+      271,
+      108
+    ]
+  },
+  "shoulder_bateria": {
+    "hip": [
+      90,
+      272
+    ],
+    "size": [
+      115,
+      90
+    ]
+  }
+}

@@ -38,6 +38,13 @@ func build_for(mech: BattleMech) -> void:
 		_add(BattleAction.hook(), _item_title(Txt.t("hook"), mech.slots["hook"].def))
 	if mech.slots.has("teleport"):
 		_add(BattleAction.teleport(-1), _item_title(Txt.t("teleport"), mech.slots["teleport"].def))
+	# Habilidades del arbol que lleva este mech.
+	if mech.kits_left("shield") > 0:
+		_add(BattleAction.shield(), Txt.t("ability_shield"))
+	if mech.kits_left("repair") > 0:
+		_add(BattleAction.repair(), Txt.t("ability_repair"))
+	if mech.kits_left("dark_matter") > 0:
+		_add(BattleAction.dark_matter(), Txt.t("ability_dark_matter"))
 	_add(BattleAction.cool(), Txt.t("cool"))
 
 

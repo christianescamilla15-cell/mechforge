@@ -12,6 +12,13 @@ extends SceneTree
 ##   --start-tier=COMMON       clase de las piezas al llegar (por defecto, Basica)
 ##   --start-level=0           nivel de las piezas al llegar
 ##   --start-armory=0          nivel de las mejoras de la armeria al llegar
+##   --start-xp=-1             experiencia al llegar a la zona; con ella el
+##                             jugador lleva los puntos de habilidad de su
+##                             nivel al llegar al jefe (los combates de la
+##                             zona y las N victorias suman experiencia),
+##                             repartidos por igual entre las ramas. -1 = sin
+##                             habilidades
+##   --boss-skills=N           puntos del jefe (por defecto, los de la campana)
 ##   --chest=bought|owned|none arma de pecho del jugador (canon pesado de su
 ##                             elemento): comprada en esta zona (se paga
 ##                             con las celdas), traida de antes, o ninguna
@@ -43,6 +50,7 @@ func _initialize() -> void:
 	var start_level := int(args.get("start-level", "0"))
 	var start_armory := int(args.get("start-armory", "0"))
 	var chest_mode: String = args.get("chest", "none")
+	var start_xp := int(args.get("start-xp", "-1"))
 	var wins_list: Array[int] = []
 	for text: String in str(args.get("wins", "10;25;50;75;100")).split(";"):
 		wins_list.append(int(text))
@@ -55,6 +63,8 @@ func _initialize() -> void:
 	var workshop := Workshop.load_file("res://data/workshop.json")
 	var campaign := Campaign.load_file("res://data/campaign.json", library)
 	var garage := Garage.load_file("res://data/part_shop.json")
+	var tree := SkillTree.load_file("res://data/skills.json")
+	var progression := Progression.load_file("res://data/progression.json")
 	var problems := (
 		catalog.errors
 		+ library.errors
@@ -72,9 +82,19 @@ func _initialize() -> void:
 	var boss := campaign.fight_at(zone, campaign.fights_in(zone))
 	_builds["boss"] = library.make(boss["enemy"], catalog, _rules, tier, boss["level"], chassis)
 	_builds["boss"].upgrades = campaign.enemy_upgrades(zone, shop)
+	var boss_skills := int(args.get("boss-skills", str(campaign.boss_skills(zone))))
+	_builds["boss"].skills = tree.effects_for(tree.spread(boss_skills))
+	var points_line: Array[String] = []
 	_boss_ai = DIFFICULTY[boss["difficulty"]]
 	var reward := shop.reward("arena_win") * campaign.reward_mult(zone)
 	for wins in wins_list:
+		var points := 0
+		if start_xp >= 0:
+			var fights := campaign.fights_in(zone) + wins
+			var xp := start_xp + fights * progression.xp_for("win")
+			points = (progression.level_for(xp) - 1) * tree.points_per_level
+		var skills := tree.effects_for(tree.spread(points))
+		points_line.append("%d vict. %d" % [wins, points])
 		for id in library.band_ids(campaign.band_of(zone)):
 			var items: Dictionary = library.specs[id]["items"].duplicate(true)
 			var chest := ""
@@ -83,7 +103,8 @@ func _initialize() -> void:
 				items["chest"] = chest
 				_fit_weight(items, catalog)
 			var profile := PlayerProfile.new()
-			for item in BuildLibrary.items_of(items):
+			var levelable := _levelable(items, catalog)
+			for item: String in levelable:
 				profile.parts[item] = {"tier": start_tier, "level": start_level}
 			for track in shop.track_ids():
 				profile.shop_levels[track] = start_armory
@@ -94,10 +115,11 @@ func _initialize() -> void:
 				profile.gold -= garage.price(catalog, _rules, workshop, chest, tier)
 			var cap := campaign.level_cap(zone)
 			if profile.gold > 0:
-				_spend(profile, BuildLibrary.items_of(items), tier, cap, workshop, shop, catalog)
+				_spend(profile, levelable, tier, cap, workshop, shop)
 			var key := "%s@%d" % [id, wins]
 			_states[key] = profile
 			var build := catalog.make_build(items, _rules, ItemDef.Tier.COMMON, 0, profile.parts)
+			build.skills = skills
 			build.upgrades = shop.upgrades_for(profile.shop_levels)
 			_builds[key] = build
 			for n in battles:
@@ -107,7 +129,10 @@ func _initialize() -> void:
 				)
 	print(
 		(
-			"Zona %d (%s), jefe %s (%s nivel %d, Orden %d). Al llegar: %s %d, armeria %d."
+			(
+				"Zona %d (%s), jefe %s (%s nivel %d, Orden %d, %d habilidades)."
+				+ " Al llegar: %s %d, armeria %d."
+			)
 			% [
 				zone + 1,
 				campaign.zone_name(zone),
@@ -115,12 +140,15 @@ func _initialize() -> void:
 				Txt.TIER_NAMES[tier],
 				boss["level"],
 				campaign.enemy_armory(zone),
+				boss_skills,
 				Txt.TIER_NAMES[start_tier],
 				start_level,
 				start_armory,
 			]
 		)
 	)
+	if start_xp >= 0:
+		print("Puntos de habilidad del jugador: ", ", ".join(points_line))
 	_results.resize(_tasks.size())
 	var group := WorkerThreadPool.add_group_task(_run_task, _tasks.size())
 	WorkerThreadPool.wait_for_group_task_completion(group)
@@ -152,7 +180,8 @@ func _fit_weight(items: Dictionary, catalog: Catalog) -> void:
 
 func _weight(items: Dictionary, catalog: Catalog) -> int:
 	var total := 0
-	# El arma de pecho no cuenta para el limite (MechBuild.total_weight).
+	# El arma de pecho no cuenta para el limite (MechBuild.total_weight), ni
+	# el robot de asistencia y su arma inferior.
 	for key: String in ["torso", "legs", "drone", "charge", "teleport", "hook"]:
 		if str(items.get(key, "")) != "":
 			total += catalog.get_item(items[key]).weight
@@ -163,21 +192,40 @@ func _weight(items: Dictionary, catalog: Catalog) -> int:
 	return total
 
 
-## Compra lo mas barato que pueda pagar hasta quedarse sin celdas.
+## Claves de progreso de las piezas que se suben en el taller, con la clase
+## maxima de cada una. Las armas del asistente no: suben con el.
+func _levelable(items: Dictionary, catalog: Catalog) -> Dictionary:
+	var out := {}
+	var carried := items.has("assist")
+	for id in BuildLibrary.items_of(items):
+		var def := catalog.get_item(id)
+		if carried and def.type == ItemDef.Type.DRONE:
+			continue
+		out[def.progress_id()] = def.tier_max
+	return out
+
+
+## Compra lo mas barato que pueda pagar hasta quedarse sin celdas. `items`
+## son las claves de progreso con su clase maxima (_levelable). La bateria
+## del asistente solo se compra cuando ya pelea con dos armas.
 func _spend(
 	profile: PlayerProfile,
-	items: Array[String],
+	items: Dictionary,
 	max_tier: int,
 	cap_level: int,
 	workshop: Workshop,
-	shop: ArenaShop,
-	catalog: Catalog
+	shop: ArenaShop
 ) -> void:
 	while true:
 		var best_cost := -1
 		var best: Callable
-		for id in items:
+		var two_weapons: bool = (
+			items.has(ItemDef.ASSIST_PROGRESS)
+			and profile.part(ItemDef.ASSIST_PROGRESS)["tier"] >= _rules.assist_second_weapon_tier
+		)
+		for id: String in items:
 			var p := profile.part(id)
+			var item_max: int = items[id]
 			var cost := -1
 			var action: Callable
 			var level_reason := profile.why_cant_level(workshop, _rules, id, max_tier, cap_level)
@@ -187,20 +235,18 @@ func _spend(
 			elif (
 				p["level"] >= _rules.tier_max_level[p["tier"]]
 				and (
-					profile.why_cant_transform(
-						workshop, _rules, id, max_tier, catalog.get_item(id).tier_max
-					)
+					profile.why_cant_transform(workshop, _rules, id, max_tier, item_max)
 					in ["", "faltan celdas"]
 				)
 			):
 				cost = workshop.transform_cost(p["tier"])
-				action = profile.transform.bind(
-					workshop, _rules, id, max_tier, catalog.get_item(id).tier_max
-				)
+				action = profile.transform.bind(workshop, _rules, id, max_tier, item_max)
 			if cost >= 0 and (best_cost < 0 or cost < best_cost):
 				best_cost = cost
 				best = action
 		for track in shop.track_ids():
+			if track == "assist" and not two_weapons:
+				continue
 			var level := profile.level_of(track)
 			if level < shop.max_level() and (best_cost < 0 or shop.price(level + 1) < best_cost):
 				best_cost = shop.price(level + 1)

@@ -176,7 +176,39 @@ func why_illegal(action: BattleAction) -> String:
 			if not (action.position in teleportable_positions()):
 				return "casilla ocupada o fuera de la arena"
 			return ""
+		BattleAction.Type.SHIELD, BattleAction.Type.REPAIR, BattleAction.Type.DARK_MATTER:
+			return _why_no_skill(action, me, foe)
 	return "accion desconocida"
+
+
+## Habilidades del arbol: escudo, reparacion y materia oscura.
+func _why_no_skill(action: BattleAction, me: BattleMech, foe: BattleMech) -> String:
+	match action.type:
+		BattleAction.Type.SHIELD:
+			return "" if me.kits_left("shield") > 0 else "no le quedan escudos"
+		BattleAction.Type.REPAIR:
+			if me.kits_left("repair") <= 0:
+				return "no le quedan reparaciones"
+			return "" if me.health < me.max_health else "no tiene danos"
+	return _why_no_dark_matter(me, foe)
+
+
+## Materia oscura (GDD 8): una vez por combate, con el arma de pecho ya
+## desplegada y el rival a su alcance; gasta toda la energia.
+func _why_no_dark_matter(me: BattleMech, foe: BattleMech) -> String:
+	if me.kits_left("dark_matter") <= 0:
+		return "no tiene materia oscura"
+	if not me.slots.has("chest"):
+		return "no lleva arma de pecho"
+	if not me.chest_fired:
+		return "el arma de pecho aun no se ha desplegado"
+	var def := me.slots["chest"].def
+	var distance := absi(me.position - foe.position)
+	if def.range_max > 0 and (distance < def.range_min or distance > def.range_max):
+		return "fuera de alcance"
+	if me.energy < me.energy_cost(def):
+		return "falta energia"
+	return ""
 
 
 func legal_actions() -> Array[BattleAction]:
@@ -195,6 +227,11 @@ func legal_actions() -> Array[BattleAction]:
 		out.append(BattleAction.charge())
 	if why_cant_use(me, foe, "hook") == "":
 		out.append(BattleAction.hook())
+	for kind: BattleAction in [
+		BattleAction.shield(), BattleAction.repair(), BattleAction.dark_matter()
+	]:
+		if why_illegal(kind) == "":
+			out.append(kind)
 	for pos in walkable_positions():
 		out.append(BattleAction.walk(pos))
 	if why_cant_use(me, foe, "teleport") == "":
@@ -219,6 +256,11 @@ func preview(action: BattleAction) -> Dictionary:
 		"self_overheats": false,
 		"target_overheats": false,
 	}
+	if action.type == BattleAction.Type.DARK_MATTER:
+		out["dmg_min"] = _dark_matter_damage(me, foe)
+		out["dmg_max"] = out["dmg_min"]
+		out["self_energy"] = 0
+		return out
 	var key := _slot_key(action)
 	if action.type == BattleAction.Type.COOL:
 		out["self_heat"] = maxi(0, me.heat - me.cooling)
@@ -288,6 +330,23 @@ func apply(action: BattleAction) -> String:
 			if logging:
 				events[-1]["from"] = from
 				events[-1]["to"] = me.position
+		BattleAction.Type.SHIELD:
+			me.kits["shield"] -= 1
+			me.barrier += 1
+			_log("barrier")
+		BattleAction.Type.REPAIR:
+			me.kits["repair"] -= 1
+			var healed := mini(
+				roundi(me.max_health * me.build.skills.repair_share), me.max_health - me.health
+			)
+			me.health += healed
+			_log("repair_kit", {"amount": healed})
+		BattleAction.Type.DARK_MATTER:
+			me.kits["dark_matter"] -= 1
+			var blast := _dark_matter_damage(me, foe)
+			me.energy = 0
+			foe.health -= blast
+			_log("dark_matter", {"slot": "chest", "damage": blast})
 	_evade_if_hit(foe, me, foe_health)
 	_check_pickup()
 	actions_left -= 1
@@ -344,30 +403,44 @@ func _begin_turn() -> void:
 func _end_turn(fire_drone: bool) -> void:
 	var me := attacker()
 	var foe := defender()
-	if fire_drone and why_cant_use(me, foe, "drone") == "":
-		var before := foe.health
-		_use(me, foe, "drone", "drone")
-		if _check_winner():
-			return
-		_evade_if_hit(foe, me, before)
-		for i in me.extra_drone_shots():
-			# El enjambre no dispara con el rival pegado.
-			if absi(me.position - foe.position) <= 1:
-				break
-			me.slots["drone"].used_this_turn = false
-			if why_cant_use(me, foe, "drone") != "":
-				break
-			before = foe.health
-			_use(me, foe, "drone", "drone")
-			if _check_winner():
-				return
-			_evade_if_hit(foe, me, before)
+	if fire_drone and _fire_assist(me, foe):
+		return
 	if not rules.m6_regen_at_turn_start:
 		_regen(me)
 	_check_pickup()
 	_tick_buffs(me)
 	turn = 1 - turn
 	_begin_turn()
+
+
+## El robot de asistencia dispara una de sus armas: alterna la superior y
+## la inferior, y si a la que le toca no puede (alcance, usos o costo),
+## dispara la otra. Un solo disparo por turno: medido el 2026-11-17, cada
+## disparo de mas rompia el balance entre elementos. El enjambre de la
+## Colmena repite el arma que disparo. Devuelve true si el combate termino.
+func _fire_assist(me: BattleMech, foe: BattleMech) -> bool:
+	var fired := ""
+	for key in me.assist_order():
+		if why_cant_use(me, foe, key) == "":
+			fired = key
+			break
+	if fired == "":
+		return false
+	me.assist_last = fired
+	for i in 1 + me.extra_drone_shots():
+		if i > 0:
+			# El enjambre no dispara con el rival pegado.
+			if absi(me.position - foe.position) <= 1:
+				break
+			me.slots[fired].used_this_turn = false
+			if why_cant_use(me, foe, fired) != "":
+				break
+		var before := foe.health
+		_use(me, foe, fired, "drone")
+		if _check_winner():
+			return true
+		_evade_if_hit(foe, me, before)
+	return false
 
 
 func _regen(mech: BattleMech) -> void:
@@ -386,10 +459,15 @@ func _use(
 	var roll := 0.0
 	if def.deals_damage():
 		roll = fixed_roll if fixed_roll >= 0.0 else _rng.randf()
-	var shielded := def.deals_damage() and target.shield_left > 0
+	var shielded := def.deals_damage() and (target.shield_left > 0 or target.barrier > 0)
 	var damage := _damage(def, user, target, roll)
 	if shielded:
-		target.shield_left -= 1
+		if target.shield_left > 0:
+			target.shield_left -= 1
+		else:
+			target.barrier -= 1
+	if key == "chest":
+		user.chest_fired = true
 
 	user.health -= user.backfire_of(def)
 	user.heat += def.heat_cost
@@ -428,13 +506,17 @@ func _spend_use(slot: BattleMech.Slot) -> void:
 
 ## Dano final (GDD 2.4). roll en [0, 1].
 func _damage(def: ItemDef, attacker: BattleMech, target: BattleMech, roll: float) -> int:
-	if def.deals_damage() and target.shield_left > 0:
+	if def.deals_damage() and (target.shield_left > 0 or target.barrier > 0):
 		return 0
 	var damage := 0
 	if def.deals_damage():
 		damage = def.dmg_min + roundi(roll * (def.dmg_max - def.dmg_min))
 		# Con potencia 1.0 el resultado es exactamente el de antes.
 		damage = roundi(damage * attacker.damage_mult())
+		if attacker.build != null and def == attacker.build.chest:
+			damage = roundi(damage * attacker.chest_damage_mult())
+		if attacker.build != null and def in [attacker.build.drone, attacker.build.drone_low]:
+			damage = roundi(damage * attacker.assist_power())
 		if def.element != ItemDef.Element.COMBINED:
 			damage = maxi(1, damage - target.res[def.element])
 		# Bonificacion de armadura del rival (GDD 2.8); sin ella no cambia nada.
@@ -445,6 +527,12 @@ func _damage(def: ItemDef, attacker: BattleMech, target: BattleMech, roll: float
 	if target.free_energy():
 		return damage
 	return damage + maxi(0, def.energy_dmg - target.energy)
+
+
+## Materia oscura: una parte de la vida maxima del rival, sin resistencias
+## ni escudos.
+func _dark_matter_damage(me: BattleMech, foe: BattleMech) -> int:
+	return roundi(foe.max_health * me.build.skills.dark_matter_share)
 
 
 ## Evasion (GDD 9.1): si el golpe le hizo dano, salta al extremo de la

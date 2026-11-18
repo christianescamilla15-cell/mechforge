@@ -83,6 +83,32 @@ FORM_EXTRA = {
     "nova": {"dmg": 1.3, "push": 2, "uses": 3},
 }
 
+# Robot de asistencia (usuario, 2026-11-17): un cuerpo por protocolo. Todos
+# Cada uno da al mech una bonificacion que vale lo que 10 kg de modulos (el
+# peso de los modulos es la vara: 300 de vida = 40 kg, 28 de las tres
+# resistencias = 48 kg, 140 de capacidad = 22 kg, 60 de regeneracion o
+# enfriamiento = 18 kg). Medido: con el doble, el mismo protocolo en todos
+# ya movia el balance (laser, calor 57.8 %). Van de Basica a Unica: cinco
+# transformaciones. No pesan.
+ASSIST_BODIES = [
+    ("asistente_escolta", "Asistente: protocolo Escolta",
+     {"res_physical": 6, "res_heat": 6, "res_energy": 6}),
+    ("asistente_blindaje", "Asistente: protocolo Blindaje", {"health": 75}),
+    ("asistente_reactor", "Asistente: protocolo Reactor", {"energy_cap": 35, "energy_regen": 15}),
+    ("asistente_criogenia", "Asistente: protocolo Criogenia", {"heat_cap": 35, "cooling": 15}),
+]
+
+
+def assist_bodies():
+    out = []
+    for aid, name, bonus in ASSIST_BODIES:
+        top = {"weight": 0}
+        top.update(bonus)
+        out.append({"id": aid, "name": name, "type": "ASSIST", "element": "PHYSICAL",
+                    "tier_min": "COMMON", "tier_max": "DIVINE", "top": top})
+    return out
+
+
 def make(form, slot, base, fixed, type_id, name, gender, element):
     t = TYPES[type_id]
     top = dict(base["top"])
@@ -132,7 +158,7 @@ def main():
         for type_id, (name, gender) in names.items():
             for element, base_id in zip(ELEMENTS, bases):
                 generated.append(make(form, slot, base_items[base_id], fixed, type_id, name, gender, element))
-    kept = {k: v for k, v in items.items() if v["type"] not in ("SIDE", "TOP", "DRONE", "CHEST")}
+    kept = {k: v for k, v in items.items() if v["type"] not in ("SIDE", "TOP", "DRONE", "CHEST", "ASSIST")}
     # Las piezas que no son armas existen en todas las clases normales.
     for item in kept.values():
         item["tier_min"] = "COMMON"
@@ -146,7 +172,7 @@ def main():
             print(json.dumps(item, ensure_ascii=False))
         return
     out = dict(kept)
-    for item in generated:
+    for item in generated + assist_bodies():
         out[item["id"]] = item
     save(out)
 

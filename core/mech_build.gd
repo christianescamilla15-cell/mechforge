@@ -10,11 +10,17 @@ const MODULE_SLOTS := 8
 @export var chassis: ChassisDef
 ## Mejoras de la tienda de arena del jugador (GDD 8); null = ninguna.
 @export var upgrades: ArenaUpgrades
+## Habilidades del arbol del jugador (SkillTree); null = ninguna.
+@export var skills: SkillSet
 @export var torso: ItemDef
 @export var legs: ItemDef
 @export var sides: Array[ItemDef] = []
 @export var tops: Array[ItemDef] = []
+## Robot de asistencia (GDD 4): su cuerpo, con la bateria y el protocolo,
+## y sus dos armas, la superior (`drone`) y la inferior (`drone_low`).
+@export var assist: ItemDef
 @export var drone: ItemDef
+@export var drone_low: ItemDef
 ## Arma de pecho: un canon o una nova, aparte de las seis armas.
 @export var chest: ItemDef
 @export var modules: Array[ItemDef] = []
@@ -25,7 +31,7 @@ const MODULE_SLOTS := 8
 
 func all_items() -> Array[ItemDef]:
 	var out: Array[ItemDef] = []
-	for item: ItemDef in [torso, legs, drone, chest, charge, teleport, hook]:
+	for item: ItemDef in [torso, legs, assist, drone, drone_low, chest, charge, teleport, hook]:
 		if item != null:
 			out.append(item)
 	for list: Array[ItemDef] in [sides, tops, modules]:
@@ -39,12 +45,19 @@ func all_items() -> Array[ItemDef]:
 ## reforzado aparte, que se abre en el nivel 10 del jugador (GDD 4). Medido el
 ## 2026-11-17: si contara, montarla obligaba a quitar modulos y el mech salia
 ## peor que sin ella.
+## El cuerpo del robot de asistencia y su arma inferior tampoco: es un hueco
+## nuevo, y si contara habria que quitar piezas para montarla. El arma
+## superior pesa como siempre peso el dron.
 func total_weight() -> int:
 	var total := 0
 	for item in all_items():
-		if item != chest:
+		if not _weightless(item):
 			total += item.weight
 	return total
+
+
+func _weightless(item: ItemDef) -> bool:
+	return item == chest or item == assist or item == drone_low
 
 
 ## Devuelve los motivos por los que el mech no puede pelear; vacio si es valido.
@@ -92,12 +105,13 @@ func summary(rules: RulesConfig) -> Dictionary:
 	for item in all_items():
 		for key: String in s:
 			s[key] += item.get(key)
-	if chest != null:
-		s["weight"] -= chest.weight
+	s["weight"] = total_weight()
 	if chassis != null:
 		chassis.apply(s)
 	if upgrades != null:
 		upgrades.apply(s)
+	if skills != null:
+		skills.apply(s)
 	var over: int = s["weight"] - rules.max_weight
 	if over > 0:
 		s["health"] = maxi(1, s["health"] - over * rules.overload_hp_penalty_per_kg)

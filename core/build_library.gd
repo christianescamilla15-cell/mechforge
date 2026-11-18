@@ -99,13 +99,13 @@ func item_ids(id: String) -> Array[String]:
 ## Piezas distintas de un mech dado por sus "items" (formato de builds.json).
 static func items_of(items: Dictionary) -> Array[String]:
 	var out: Array[String] = []
-	for key: String in ["torso", "legs", "sides", "tops", "drone", "modules"]:
+	for key: String in ["torso", "legs", "sides", "tops", "drone", "drone_low", "modules"]:
 		var value: Variant = items.get(key)
 		var list: Array = value if value is Array else [value]
 		for item: Variant in list:
 			if item != null and str(item) != "" and not str(item) in out:
 				out.append(str(item))
-	for key: String in ["chest", "charge", "teleport", "hook"]:
+	for key: String in ["assist", "chest", "charge", "teleport", "hook"]:
 		var item: Variant = items.get(key)
 		if item != null and str(item) != "" and not str(item) in out:
 			out.append(str(item))

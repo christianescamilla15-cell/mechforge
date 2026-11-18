@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "points_per_level": 1,
+  "dark_matter_share": 0.6,
+  "branches": [
+    {
+      "id": "asalto",
+      "name": "Asalto",
+      "nodes": [
+        {"id": "asalto_1", "name": "Calibrado", "effects": {"damage": 0.03}},
+        {"id": "asalto_2", "name": "Pecho reforzado", "effects": {"chest_damage": 0.15}},
+        {"id": "asalto_3", "name": "Puntería", "effects": {"damage": 0.03}},
+        {"id": "asalto_4", "name": "Cargador de pecho", "effects": {"chest_uses": 1}},
+        {"id": "asalto_5", "name": "Sobrecarga de armas", "effects": {"damage": 0.03}},
+        {"id": "asalto_6", "name": "Núcleo de pecho", "effects": {"chest_damage": 0.15}},
+        {"id": "asalto_7", "name": "Puntería fina", "effects": {"damage": 0.03}},
+        {"id": "asalto_8", "name": "Cargador ampliado", "effects": {"chest_uses": 1}},
+        {"id": "asalto_9", "name": "Armas de élite", "effects": {"damage": 0.03}},
+        {"id": "asalto_10", "name": "Pecho de asedio", "effects": {"chest_damage": 0.2}},
+        {"id": "asalto_11", "name": "Furia", "effects": {"damage": 0.03}},
+        {"id": "materia_oscura", "name": "Materia oscura", "level": 25, "effects": {"dark_matter": 1}}
+      ]
+    },
+    {
+      "id": "blindaje",
+      "name": "Blindaje",
+      "nodes": [
+        {"id": "blindaje_1", "name": "Placas", "effects": {"health": 0.03}},
+        {"id": "blindaje_2", "name": "Aislamiento", "effects": {"resistance": 0.05}},
+        {"id": "blindaje_3", "name": "Placas dobles", "effects": {"health": 0.03}},
+        {"id": "blindaje_4", "name": "Aislamiento total", "effects": {"resistance": 0.05}},
+        {"id": "blindaje_5", "name": "Refuerzo", "effects": {"health": 0.03}},
+        {"id": "escudo", "name": "Escudo de energía", "effects": {"shield_uses": 1}},
+        {"id": "blindaje_7", "name": "Coraza", "effects": {"resistance": 0.05}},
+        {"id": "blindaje_8", "name": "Estructura", "effects": {"health": 0.03}},
+        {"id": "blindaje_9", "name": "Coraza pesada", "effects": {"resistance": 0.05}},
+        {"id": "escudo_doble", "name": "Escudo doble", "effects": {"shield_uses": 1}},
+        {"id": "blindaje_11", "name": "Blindaje total", "effects": {"health": 0.03}},
+        {"id": "blindaje_12", "name": "Bastión", "effects": {"resistance": 0.05}}
+      ]
+    },
+    {
+      "id": "sistemas",
+      "name": "Sistemas",
+      "nodes": [
+        {"id": "sistemas_1", "name": "Baterías", "effects": {"energy": 0.04}},
+        {"id": "sistemas_2", "name": "Radiadores", "effects": {"heat": 0.04}},
+        {"id": "sistemas_3", "name": "Celdas eficientes", "effects": {"energy": 0.04}},
+        {"id": "sistemas_4", "name": "Ventilación", "effects": {"heat": 0.04}},
+        {"id": "reparacion", "name": "Kit de reparación", "effects": {"repair_uses": 1, "repair_share": 0.2}},
+        {"id": "sistemas_6", "name": "Baterías de alto rendimiento", "effects": {"energy": 0.04}},
+        {"id": "sistemas_7", "name": "Disipadores", "effects": {"heat": 0.04}},
+        {"id": "nanorreparacion", "name": "Nanorreparación", "effects": {"repair_share": 0.1}},
+        {"id": "sistemas_9", "name": "Generador auxiliar", "effects": {"energy": 0.04}},
+        {"id": "sistemas_10", "name": "Refrigeración líquida", "effects": {"heat": 0.04}},
+        {"id": "segundo_kit", "name": "Segundo kit", "effects": {"repair_uses": 1}},
+        {"id": "sistemas_12", "name": "Sistemas óptimos", "effects": {"energy": 0.04, "heat": 0.04}}
+      ]
+    }
+  ]
+}

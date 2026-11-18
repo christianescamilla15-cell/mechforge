@@ -126,6 +126,20 @@ Pedido por el usuario el 2026-11-16, como en el juego antiguo. **En el motor des
 
 ## 4. Armado
 - **Huecos:** torso, piernas, 4 armas laterales, 2 superiores, 1 arma de pecho, 1 dron (robot de soporte), 8 módulos y un hueco por especial (carga, teletransporte y gancho). El arma de pecho va **aparte** de las seis armas del original (decisión del usuario, 2026-11-17) y **no cuenta para el límite de peso**: va en un hueco reforzado que se abre en el nivel 10. Medido: si contara, había que quitar uno o dos módulos para montarla y el mech salía peor que sin ella (zonas 3 a 8, del 72–81 % al 7–38 % contra el jefe con 50 victorias).
+- **Robot de asistencia** (pedido del usuario, 2026-11-17; sustituye al dron de soporte y se abre igual, en el nivel 3 del jugador). Diseño:
+  - **Un solo asistente por partida, con clase y nivel en el Taller.** Se transforma **5 veces** siguiendo la escalera de clases de las piezas, con el mismo tope de zona: Sonda (Básica), Vigía (Intermedia), Centinela (Avanzada), Custodio (Legendaria), Guardián (Mítica) y Arconte (Única, con un núcleo único). Cada forma tiene su dibujo, más grande y con más piezas.
+  - **Dos armas, superior e inferior** (huecos `drone` y `drone_low`, con las armas de dron del catálogo). **Dispara una sola por turno y las alterna**; si a la que le toca no puede (alcance, usos o energía), dispara la otra. La segunda arma da versatilidad (otro alcance, otro efecto), no más disparos. La inferior pelea desde la primera transformación (`RulesConfig.assist_second_weapon_tier`); antes se puede montar, pero no pelea, como los huecos que abre el nivel del jugador.
+  - **Ataque:** sus armas suben con él, a su clase y su nivel, sin salirse del rango de clases de su tipo. Por eso cada transformación sube el ataque, y un arma de tipo viejo se queda en su clase máxima y conviene cambiarla en la tienda.
+  - **Energía propia: la batería**, que alimenta sus armas. La mejora **Batería del asistente** de la armería (se abre con la primera transformación) sube el daño de sus disparos hasta +10 %; solo el daño, no el drenaje ni el calor que causan. Es poco a propósito: con +15 % el físico ya pasaba del 55 % en láser.
+  - **Sus armas siguen pagando energía y calor al mech**, como el dron de siempre. Así, quedarse sin energía o apagado por calor también calla al asistente.
+  - **Defensa y bonificación al mech:** el protocolo, que se cambia gratis entre cuatro cuerpos: **Escolta** (resistencias), **Blindaje** (vida), **Reactor** (energía) y **Criogenia** (calor). Cada uno vale lo que 10 kg de módulos (un cuarto de módulo) y crece con la clase y el nivel del asistente, así que cada transformación sube también la defensa. No valen lo mismo contra todos, y esa es su gracia: Reactor contra rivales de energía y Criogenia contra los de calor rinden mucho más que los otros dos, que sirven siempre.
+  - **Peso:** el arma superior pesa como siempre pesó el dron; el cuerpo y el arma inferior no cuentan para el límite (es un hueco nuevo, como el del arma de pecho: si contara habría que quitar piezas para montarla).
+  - **Estable en combate, medido** (2026-11-17, tools/sim/balance_sim.gd `--assist`, tipo láser; antes del asistente: físico 49 %, calor 50 %, energía 51 %, híbrido 48 %). El balance entre elementos es muy sensible, y se descartaron tres versiones:
+    1. *La batería paga los disparos y hay dos por turno:* físico 93 %, energía 14 %. El drenaje y el calor dejaban de afectar al asistente.
+    2. *Dos disparos, limitados por la batería:* energía 62–68 %. Cada disparo de más acumula drenaje.
+    3. *Un disparo, y la batería paga uno de cada cuatro:* energía 34 %, y 21 % con más batería.
+    Regla que queda: el asistente no puede cambiar **cuántas veces** dispara ni **quién paga**. Tampoco puede haber un protocolo distinto por elemento en los mechs del Orden (físico 76 %, energía 28 %): todos llevan Blindaje, y de arma inferior una gemela de la superior, así que el asistente suma lo mismo a los dos lados. Blindaje se eligió midiendo: con Reactor o Criogenia en todos el balance se rompe (energía 25 %; físico e híbrido 63 %), Escolta es el más neutro sin batería, y Blindaje favorece un poco al calor justo en sentido contrario a la batería, que favorece al físico, así que aguanta todo el recorrido de la mejora. Las armas solo se recortan al rango de clases de su tipo en el asistente del jugador; los rivales llevan todo a la clase de su zona. Resultados en docs/CATALOGO_ARMAS.md.
+  - En el código: piezas `ASSIST` de data/catalog.json (tools/catalog_gen.py), progreso común en `PlayerProfile.parts["asistente"]`, `BattleEngine._fire_assist`, `BattleMech.assist_power` y tests/unit/test_assist.gd.
 - **Peso:** límite de 1000 kg. Se permite sobrecarga hasta +10 kg, con −15 de vida por cada kg de más. Por encima de 1010 kg el mech no puede pelear.
 - **Obligatorio:** torso y piernas.
 - **Resistencias:** como máximo 1 módulo por tipo de resistencia.
@@ -218,7 +232,13 @@ Unas 58 piezas con nombres propios (nunca los del original).
 - **Color personalizable:** el jugador puede cambiar los colores de cada pieza. Se hace con un shader sobre zonas de color del sprite (principal, secundario y luces), sin generar arte nuevo.
 - **Piezas únicas:** solo las sueltan los 3 últimos jefes de los 10 de cada mundo (§9). No se compran ni se consiguen transformando otra pieza.
 - **Tipos de arma y clases** (usuario, 2026-11-16): balas en las clases Básica e Intermedia, cañón y bláster (plasma) en las medias, láser de Avanzada en adelante. El detalle está en docs/CATALOGO_ARMAS.md: 4 categorías por hueco, 37 diseños y 111 armas.
-- **Materia oscura:** el disparo más poderoso del juego; prácticamente aniquila al enemigo. No es un arma sino una habilidad del **árbol de habilidades** que elija el jugador, y solo se aplica al arma del pecho. El árbol de habilidades es un sistema nuevo, por diseñar.
+- **Árbol de habilidades** (decisiones del usuario, 2026-11-17; data/skills.json, core/skill_tree.gd). Cada nivel del jugador da 1 punto (29 en el nivel 30), como los puntos por nivel de Swords and Sandals. Hay **tres ramas libres**, de 12 habilidades cada una, que se aprenden en orden; no se llega a todo, así que el jugador elige su estilo:
+  - **Asalto:** +3 % de daño (seis veces), daño del arma de pecho (+15, +15 y +20 %), +1 uso del pecho (dos veces) y, al final, la **materia oscura**.
+  - **Blindaje:** +3 % de vida (cinco veces), +5 % de resistencias (cinco veces) y el **escudo de energía** (1 por combate en la sexta, 2 en la décima): absorbe el siguiente golpe, sea del turno que sea. Cubre el hueco de escudo del original.
+  - **Sistemas:** +4 % de energía y de calor (seis veces cada una) y el **kit de reparación** (de la versión de 2013): devuelve el 20 % de la vida máxima, 30 % con Nanorreparación, y llega a 2 por combate.
+  - El escudo y la reparación gastan una acción. La IA sabe usarlos: valora un escudo activo por lo que absorberá y guarda el kit hasta que haga falta.
+  - **Los jefes del Orden también entrenan** (2026-11-17): medido con la campaña entera, el árbol solo volvía fácil a todos los jefes (zona 1 al 81 % con 50 victorias; zonas 7 a 10 cerca del 100 % con 10). Cada jefe lleva los puntos que tendría el jugador al llegar a él con unas 50 victorias por zona, repartidos por igual entre las tres ramas (data/campaign.json, `boss.skills`; el menú lo enseña). Nunca llegan a la materia oscura: es del jugador. Así el ritmo de la campaña no cambia, y especializarse en una rama, farmear más o llegar a la materia oscura es lo que da ventaja.
+- **Materia oscura:** el disparo más poderoso del juego; prácticamente aniquila al enemigo. Es la última habilidad de la rama Asalto y se abre en el **nivel 25**. Reglas decididas por el usuario: una vez por combate, con el arma de pecho ya desplegada (que haya disparado en ese combate) y el rival a su alcance; quita el **60 % de la vida máxima del rival**, ignora resistencias y escudos y gasta toda la energía.
 - **Huecos y nivel del jugador:** seis armas como en el original (4 laterales y 2 superiores), más el arma de pecho y el robot de soporte. El nivel del jugador sube con la experiencia de los combates (data/progression.json: 100 por victoria, 25 por derrota, 500 por jefe; nivel 3 tras unas 3 victorias, nivel 10 tras unas 75, máximo 30). El robot de soporte se abre en el nivel 3 y el arma de pecho en el 10, como fijó el usuario; las seis armas están abiertas desde el principio. Las piezas de un hueco cerrado se pueden tener y montar, pero no pelean hasta que se abre.
 - **Por confirmar con el usuario:** si una pieza puede subir de clase (hoy sí, con la transformación de más abajo, hasta Mítica) o si su clase es fija, y si las clases y las etapas valen igual para torsos, piernas y drones (hoy sí) o solo para armas.
 - **Poder y fusión:** el nivel sube con "poder", que se gana fusionando piezas sobrantes (su poder depende de su tier) o núcleos.
@@ -381,26 +401,27 @@ Medido el 2026-11-17 (tools/economy_sweep.ps1). Al pasar de la zona 1, la armer�
 
 **El arma de pecho entra en la medición:** con unas 50 victorias por zona el jugador llega al nivel 10 durante la zona 2, compra un cañón pesado en la 3 (la primera que vende armas de pecho, pagándolo con las celdas de la zona) y lo lleva después. No cuenta para el límite de peso (§4).
 
-Victorias contra el jefe tras gastar N victorias en la zona, empezando con lo que tendría quien pasó la anterior con unas 50 (24 combates por casilla; cada cifra tiene unos ±10 puntos de margen):
+Victorias contra el jefe tras gastar N victorias en la zona, empezando con lo que tendría quien pasó la anterior con unas 50 (24 combates por casilla; cada cifra tiene unos ±10 puntos de margen). Medido el 2026-11-17 con el árbol de habilidades (el jugador lleva los puntos de su nivel, repartidos por igual) y los jefes entrenados (§8):
 
-| Zona | Jefe | Orden | 10 vict. | 25 vict. | 50 vict. | Mech que mejor lo vence a las 50 |
-|---|---|---|---|---|---|---|
-| 1 | Capataz (superblindaje) | 0 | 0 % | 15 % | 44 % | calor (96 %) |
-| 2 | Verdugo (poder de daño) | 0 | 22 % | 57 % | 83 % | físico (100 %) |
-| 3 | Reactor (energía infinita) | 3 | 0 % | 4 % | 84 % | calor (96 %) |
-| 4 | Hidra (regeneración) | 5 | 2 % | 32 % | 79 % | híbrido (88 %) |
-| 5 | Centella (velocidad) | 5 | 0 % | 10 % | 73 % | calor (96 %) |
-| 6 | Égida (escudo) | 6 | 2 % | 31 % | 23 % | calor (67–88 %) |
-| 7 | Espectro (evasión) | 8 | 16 % | 38 % | 77 % | físico (83 %) |
-| 8 | Caldera (núcleo térmico) | 8 | 18 % | 48 % | 45 % | energía (92 %) |
-| 9 | Colmena (enjambre) | 8 | 3 % | 13 % | 43 % | físico (79 %) |
-| 10 | Coloso (final) | 8 | 1 % | 6 % | 7 % | físico (13 %) |
+| Zona | Jefe | Orden | Entreno | 25 vict. | 50 vict. | 100 vict. | Mech que mejor lo vence a las 50 |
+|---|---|---|---|---|---|---|---|
+| 1 | Capataz (superblindaje) | 0 | 8 | 8 % | 46 % | 88 % | calor (92 %) |
+| 2 | Verdugo (poder de daño) | 0 | 11 | 52 % | 83 % | 97 % | físico (100 %) |
+| 3 | Reactor (energía infinita) | 3 | 14 | 15 % | 89 % | 100 % | calor e híbrido (92 %) |
+| 4 | Hidra (regeneración) | 5 | 16 | 33 % | 70 % | 74 % | híbrido (92 %) |
+| 5 | Centella (velocidad) | 5 | 18 | 21 % | 66 % | 78 % | híbrido (88 %) |
+| 6 | Égida (escudo) | 6 | 19 | 27 % | 24 % | 27 % | calor (79–88 %) |
+| 7 | Espectro (evasión) | 8 | 21 | 69 % | 99 % | 99 % | todos |
+| 8 | Caldera (núcleo térmico) | 8 | 22 | 53 % | 52 % | 70 % | energía (96 %) |
+| 9 | Colmena (enjambre) | 8 | 24 | 9 % | 56 % | 68 % | físico (79 %) |
+| 10 | Coloso (final) | 8 | 25 | 25 % | 21 % | 37 % | físico e híbrido (hasta 50 %) |
 
+- Sin entrenar a los jefes, el árbol solo bastaba para volver fáciles a casi todos: zona 1 al 81 % con 50 victorias, zonas 7 a 10 cerca del 100 % con 10. Con el entrenamiento el ritmo vuelve al de antes del árbol (zona 1: 44 % → 46 % con 50).
 - La zona 1 sigue el ritmo del usuario: unas 50 victorias para tener opciones y unas 100 para ganar con facilidad (§9.2).
-- De la 2 a la 9, con unas 50 victorias en la zona se gana a menudo, y el mech que ataca el punto débil del jefe gana casi siempre. En las zonas 6, 8 y 9 la media baja porque hay que llevar el mech adecuado: cambiar de armas en el taller es parte de la táctica.
+- De la 2 a la 9, con unas 50 victorias en la zona se gana a menudo, y el mech que ataca el punto débil del jefe gana casi siempre. En las zonas 6, 8 y 9 la media baja porque hay que llevar el mech adecuado: cambiar de armas en el taller es parte de la táctica. La zona 7 quedó fácil (el Espectro cae con 50 victorias con cualquier mech).
 - Las zonas que abren clase nueva (3, 5, 7 y 9) piden más victorias: hay que transformar las piezas (y en la 3, comprar el arma de pecho).
-- El jefe final es extremadamente difícil, como pidió el usuario: 7 % de media con todo al tope de la zona; ganable con bonificaciones y táctica.
-
+- El jefe final es extremadamente difícil, como pidió el usuario: 21 % de media con 50 victorias y 37 % con 100. Repartir los puntos por igual no llega a la materia oscura (nivel 25 en la rama Asalto); quien la persiga la tiene para el Coloso.
+- Esta tabla es anterior al robot de asistencia (§4), que se mide aparte.
 
 ## 10. Pantallas
 Menú · Taller (armado con resumen de stats, barra de peso y avisos) · Inventario y fusión · Taller de mejoras · Mapa de campaña · Combate (arena, mechs, botones de acción, previsualización y registro) · Resultados y botín · Ajustes.

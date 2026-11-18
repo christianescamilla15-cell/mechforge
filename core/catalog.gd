@@ -58,12 +58,19 @@ func make_build(
 		if not items.has(id):
 			errors.append("build: no existe la pieza '%s'" % id)
 			return null
-		var own: Dictionary = parts.get(id, {})
+		var own: Dictionary = parts.get((items[id] as ItemDef).progress_id(), {})
 		var own_tier: ItemDef.Tier = own.get("tier", tier)
 		return ItemScaling.resolve(items[id], rules, own_tier, own.get("level", level))
 	build.torso = resolve.call(spec.get("torso"))
 	build.legs = resolve.call(spec.get("legs"))
-	build.drone = resolve.call(spec.get("drone"))
+	build.assist = resolve.call(spec.get("assist"))
+	# Con el progreso del asistente del jugador, sus armas suben con el.
+	var follow: ItemDef = build.assist if parts.has(ItemDef.ASSIST_PROGRESS) else null
+	build.drone = _assist_weapon(spec.get("drone"), follow, rules, resolve)
+	build.drone_low = _assist_weapon(spec.get("drone_low"), follow, rules, resolve)
+	# La segunda arma pelea desde la primera transformacion del asistente.
+	if build.assist == null or build.assist.tier < rules.assist_second_weapon_tier:
+		build.drone_low = null
 	build.chest = resolve.call(spec.get("chest"))
 	build.charge = resolve.call(spec.get("charge"))
 	build.teleport = resolve.call(spec.get("teleport"))
@@ -76,6 +83,23 @@ func make_build(
 				list.append(def)
 		build.set(key, list)
 	return build
+
+
+## Arma del robot de asistencia del jugador: sube con el, a su clase y su
+## nivel, sin salirse del rango de clases de su tipo. Sin ese progreso
+## (rivales y simuladores, con todas las piezas a la misma clase) va como
+## cualquier otra pieza.
+func _assist_weapon(id: Variant, assist: ItemDef, rules: RulesConfig, resolve: Callable) -> ItemDef:
+	if assist == null or id == null or id == "" or not items.has(id):
+		return resolve.call(id)
+	var def: ItemDef = items[id]
+	var tier: ItemDef.Tier = clampi(assist.tier, def.tier_min, def.tier_max) as ItemDef.Tier
+	var level := assist.level
+	if tier < assist.tier:
+		level = rules.tier_max_level[tier]
+	elif tier > assist.tier:
+		level = 0
+	return ItemScaling.resolve(def, rules, tier, level)
 
 
 func _load(data: Dictionary) -> void:

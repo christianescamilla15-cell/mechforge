@@ -292,3 +292,15 @@ func test_los_rivales_llevan_la_armeria_del_orden_de_su_zona() -> void:
 	var upgrades := campaign.enemy_upgrades(last, _shop)
 	assert_almost_eq(upgrades.damage, _shop.value("damage", campaign.enemy_armory(last)), 0.0001)
 	assert_almost_eq(campaign.enemy_upgrades(0, _shop).damage, 0.0, 0.0001)
+
+
+func test_los_jefes_del_orden_entrenan_cada_zona_mas() -> void:
+	var campaign := _campaign()
+	var tree := SkillTree.load_file("res://data/skills.json")
+	assert_gt(campaign.boss_skills(0), 0)
+	for zone in range(1, campaign.zone_count()):
+		assert_gte(campaign.boss_skills(zone), campaign.boss_skills(zone - 1), "no baja")
+	var last := campaign.zone_count() - 1
+	var learned := tree.spread(campaign.boss_skills(last))
+	assert_eq(learned.size(), campaign.boss_skills(last), "le alcanzan los puntos")
+	assert_false("materia_oscura" in learned, "la materia oscura es solo del jugador")

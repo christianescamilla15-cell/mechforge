@@ -66,7 +66,8 @@
       "boss": {
         "enemy": "jefe_zona_1",
         "level": 3,
-        "difficulty": "HARD"
+        "difficulty": "HARD",
+        "skills": 8
       },
       "reward_mult": 1.0,
       "stage": "desierto",
@@ -138,7 +139,8 @@
       "boss": {
         "enemy": "jefe_zona_2",
         "level": 6,
-        "difficulty": "HARD"
+        "difficulty": "HARD",
+        "skills": 11
       },
       "band": "balas",
       "enemy_armory": 0
@@ -208,7 +210,8 @@
       "boss": {
         "enemy": "jefe_zona_3",
         "level": 6,
-        "difficulty": "HARD"
+        "difficulty": "HARD",
+        "skills": 14
       },
       "band": "canon",
       "enemy_armory": 3
@@ -278,7 +281,8 @@
       "boss": {
         "enemy": "jefe_zona_4",
         "level": 12,
-        "difficulty": "HARD"
+        "difficulty": "HARD",
+        "skills": 16
       },
       "band": "canon",
       "enemy_armory": 5
@@ -348,7 +352,8 @@
       "boss": {
         "enemy": "jefe_zona_5",
         "level": 9,
-        "difficulty": "HARD"
+        "difficulty": "HARD",
+        "skills": 18
       },
       "band": "blaster",
       "enemy_armory": 5
@@ -418,7 +423,8 @@
       "boss": {
         "enemy": "jefe_zona_6",
         "level": 18,
-        "difficulty": "HARD"
+        "difficulty": "HARD",
+        "skills": 19
       },
       "band": "blaster",
       "enemy_armory": 6
@@ -488,7 +494,8 @@
       "boss": {
         "enemy": "jefe_zona_7",
         "level": 12,
-        "difficulty": "HARD"
+        "difficulty": "HARD",
+        "skills": 21
       },
       "band": "laser",
       "enemy_armory": 8
@@ -558,7 +565,8 @@
       "boss": {
         "enemy": "jefe_zona_8",
         "level": 24,
-        "difficulty": "HARD"
+        "difficulty": "HARD",
+        "skills": 22
       },
       "drops_unique": true,
       "band": "laser",
@@ -629,7 +637,8 @@
       "boss": {
         "enemy": "jefe_zona_9",
         "level": 15,
-        "difficulty": "HARD"
+        "difficulty": "HARD",
+        "skills": 24
       },
       "drops_unique": true,
       "band": "laser",
@@ -700,7 +709,8 @@
       "boss": {
         "enemy": "jefe_final",
         "level": 30,
-        "difficulty": "HARD"
+        "difficulty": "HARD",
+        "skills": 25
       },
       "drops_unique": true,
       "band": "laser",

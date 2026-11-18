@@ -14,6 +14,36 @@ const TORSO_SETS: Array[String] = ["ligero_18", "ligero_13", "ligero_16"]
 const LEGS_SETS: Array[String] = ["ligero_18", "ligero_14", "ligero_17"]
 ## Cuerpo de los jefes (linea robusta), entero y sin mezclar.
 const BOSS_SET := "jefe_103"
+## Armas dibujadas ya montadas sobre el robot del chasis ligero
+## (tools/art/mounts_test.py), cada una anclada a la cintura de ese robot.
+const WEAPON_SET := "armas_ligero"
+## Arte de cada forma de arma del catalogo, en orden de preferencia: las
+## formas que aun no tienen el suyo usan el de su familia.
+const WEAPON_ART: Dictionary[String, Array] = {
+	"hoja": ["arm_hoja"],
+	"corto": ["arm_corto", "arm_medio"],
+	"medio": ["arm_medio"],
+	"largo": ["arm_largo", "arm_medio"],
+	"saboteador": ["arm_saboteador", "arm_medio"],
+	"bateria": ["shoulder_bateria"],
+	"artilleria": ["shoulder_artilleria", "shoulder_bateria"],
+	"ancla": ["shoulder_ancla", "shoulder_bateria"],
+	"artillero": ["drone_artillero"],
+	"zapador": ["drone_zapador", "drone_artillero"],
+}
+## Formas del robot de asistencia, una por clase (tools/art/export_assist.py):
+## "assist_0" (Sonda) .. "assist_5" (Arconte), con el centro del casco y las
+## bocas de sus dos armas.
+const ASSIST_SET := "asistente_ligero"
+## Unidades de MechView por pixel de esos sprites.
+const ASSIST_UNIT := 0.62
+## Piernas que no andan, por su etiqueta del catalogo: se dibujan enteras,
+## sin esqueleto.
+const SPECIAL_LEGS: Dictionary[String, String] = {
+	ItemDef.TAG_TRACKS: "orugas_ligero",
+	ItemDef.TAG_WHEELS: "ruedas_ligero",
+	ItemDef.TAG_HOVER: "levita_ligero",
+}
 
 static var _anchors: Dictionary[String, Dictionary] = {}
 static var _textures: Dictionary[String, Texture2D] = {}
@@ -22,6 +52,8 @@ var torso_set: String = ""
 ## True si es un jefe: usa su propio cuerpo entero, de la linea robusta.
 var is_boss: bool = false
 var legs_set: String = ""
+## True si las piernas son de una pieza (orugas, ruedas o levitar).
+var rigid_legs: bool = false
 
 
 ## Elige las piezas de un mech segun sus piezas del catalogo: la misma pieza
@@ -40,7 +72,62 @@ static func for_build(build: MechBuild) -> MechSprites:
 		return out
 	out.torso_set = torsos[absi(build.torso.id.hash()) % torsos.size()]
 	out.legs_set = legs[absi(build.legs.id.hash()) % legs.size()]
+	for tag: String in SPECIAL_LEGS:
+		if build.legs.has_tag(tag) and has_piece(SPECIAL_LEGS[tag], "legs"):
+			out.legs_set = SPECIAL_LEGS[tag]
+			out.rigid_legs = true
 	return out
+
+
+static func has_piece(set_name: String, kind: String) -> bool:
+	return _load_anchors(set_name).get(kind) is Dictionary
+
+
+## Hay arte de armas montadas: entonces cada arma se dibuja en su hueco.
+static func has_weapon_art() -> bool:
+	for value: Variant in _load_anchors(WEAPON_SET).values():
+		if value is Dictionary:
+			return true
+	return false
+
+
+## Forma con la que se dibuja el robot de asistencia de esa clase: la suya
+## o la mas cercana por debajo que tenga arte; "" si no hay ninguna.
+static func assist_kind(tier: int) -> String:
+	for form in range(tier, -1, -1):
+		var piece: Variant = _load_anchors(ASSIST_SET).get("assist_%d" % form)
+		if piece is Dictionary and piece.has("center"):
+			return "assist_%d" % form
+	return ""
+
+
+## Dibuja el robot de asistencia con el centro de su casco en `at`.
+static func draw_assist(
+	canvas: CanvasItem, kind: String, element: int, tint: Color, at: Vector2
+) -> void:
+	var texture := _texture(ASSIST_SET, kind, element)
+	if texture == null:
+		return
+	var piece: Dictionary = _load_anchors(ASSIST_SET)[kind]
+	var center := Vector2(piece["center"][0], piece["center"][1])
+	var rect := Rect2(at - center * ASSIST_UNIT, texture.get_size() * ASSIST_UNIT)
+	canvas.draw_texture_rect(texture, rect, false, tint)
+
+
+## Boca de un arma del asistente ("gun_top" o "gun_low") respecto al centro
+## de su casco, en unidades de MechView.
+static func assist_point(kind: String, key: String) -> Vector2:
+	var piece: Dictionary = _load_anchors(ASSIST_SET).get(kind, {})
+	var point: Array = piece.get(key, [0, 0])
+	return Vector2(point[0], point[1]) * ASSIST_UNIT
+
+
+## Pieza de WEAPON_SET con la que se dibuja un arma; "" si no tiene.
+static func weapon_kind(item: ItemDef) -> String:
+	for kind: String in WEAPON_ART.get(item.form, []):
+		if has_piece(WEAPON_SET, kind):
+			return kind
+	return ""
 
 
 ## Punto de la cintura respecto a los pies del mech, en unidades de MechView.

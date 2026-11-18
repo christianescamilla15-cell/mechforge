@@ -165,6 +165,13 @@ static func _check_type(def: ItemDef, problems: Array[String]) -> void:
 			if not def.deals_damage():
 				problems.append("un dron debe hacer dano")
 			_forbid(def, BODY_STATS + ["walk", "jump", "recoil", "advance", "retreat"], problems)
+		ItemDef.Type.ASSIST:
+			var bonus := false
+			for key in BODY_STATS:
+				bonus = bonus or def.get(key) > 0
+			if not bonus:
+				problems.append("un robot de asistencia debe dar alguna bonificacion")
+			_forbid(def, ATTACK_STATS + ["walk", "jump"], problems)
 		ItemDef.Type.MODULE:
 			var gives_something := false
 			for key in BODY_STATS:
