@@ -109,6 +109,24 @@ static func draw_assist(
 	canvas.draw_texture_rect(texture, rect, false, tint)
 
 
+## Cuanto baja el dibujo del robot de asistencia por debajo del centro de
+## su casco, en unidades de MechView.
+static func assist_bottom(kind: String) -> float:
+	var piece: Dictionary = _load_anchors(ASSIST_SET).get(kind, {})
+	if piece.is_empty():
+		return 0.0
+	return (float(piece["size"][1]) - float(piece["center"][1])) * ASSIST_UNIT
+
+
+## Cuanto sube el dibujo del robot de asistencia por encima del centro de
+## su casco, en unidades de MechView.
+static func assist_top(kind: String) -> float:
+	var piece: Dictionary = _load_anchors(ASSIST_SET).get(kind, {})
+	if piece.is_empty():
+		return 0.0
+	return float(piece["center"][1]) * ASSIST_UNIT
+
+
 ## Boca de un arma del asistente ("gun_top" o "gun_low") respecto al centro
 ## de su casco, en unidades de MechView.
 static func assist_point(kind: String, key: String) -> Vector2:
@@ -182,6 +200,16 @@ func legs_texture(element: int) -> Texture2D:
 func legs_origin() -> Vector2:
 	var legs: Dictionary = _load_anchors(legs_set)["legs"]
 	return hip_point() - Vector2(legs["hip"][0], legs["hip"][1]) * UNIT_SCALE
+
+
+## Borde de arriba del dibujo de una pieza anclada a la cintura (torso o
+## arma montada) con su desplazamiento, respecto a los pies (hacia arriba es
+## negativo).
+func piece_top(set_name: String, kind: String, offset := Vector2.ZERO) -> float:
+	var piece: Variant = _load_anchors(set_name).get(kind)
+	if not piece is Dictionary:
+		return hip_point().y
+	return hip_point().y - float(piece["hip"][1]) * UNIT_SCALE + offset.y
 
 
 ## Punta delantera de una pieza (la boca de un arma), respecto a los pies.

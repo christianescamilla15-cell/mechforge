@@ -42,11 +42,13 @@ const TOP_MOUNTS: Array[Vector2] = [Vector2(0.0, 0.0), Vector2(-48.0, 10.0)]
 const FAR_SIDE_FROM := 2
 const FAR_TOP_FROM := 1
 const FAR_WEAPON_DIM := 0.62
-## Donde flota el robot de asistencia (el centro de su casco) respecto a
-## los pies del mech, y cuanto se aparta por cada transformacion: las
-## formas grandes van mas arriba y mas atras.
-const ASSIST_AT := Vector2(-112.0, -238.0)
-const ASSIST_STEP := Vector2(-7.0, -9.0)
+## Donde flota el robot de asistencia respecto a los pies del mech: detras
+## del torso, y mas atras en cada transformacion (las formas grandes son mas
+## anchas). La altura sale de su mech: flota por encima de lo mas alto (el
+## torso o el arma de hombro) con este aire libre, para no montarse encima.
+const ASSIST_BACK := -112.0
+const ASSIST_BACK_STEP := -7.0
+const ASSIST_CLEARANCE := 18.0
 ## Donde cuelga el arma inferior del robot de asistencia, respecto a la
 ## superior.
 const DRONE_LOW_OFFSET := Vector2(10.0, 30.0)
@@ -429,7 +431,36 @@ func _assist_kind() -> String:
 
 
 func _assist_at() -> Vector2:
-	return ASSIST_AT + ASSIST_STEP * float(build.assist.tier)
+	var x := ASSIST_BACK + ASSIST_BACK_STEP * float(build.assist.tier)
+	var y := _body_top() - ASSIST_CLEARANCE - MechSprites.assist_bottom(_assist_kind())
+	return Vector2(x, y)
+
+
+## Alto de lo que dibuja el mech en reposo, robot de asistencia incluido,
+## en unidades del mundo: la camara lo usa para que quepa entero.
+func standing_height() -> float:
+	if _sprites == null:
+		return 0.0
+	var top := _body_top()
+	var kind := _assist_kind()
+	if kind != "":
+		# El asistente sube y baja 4 unidades al flotar.
+		top = minf(top, _assist_at().y - MechSprites.assist_top(kind) - 4.0)
+	return -top * absf(scale.y)
+
+
+## Lo mas alto del mech en reposo (torso y armas montadas), respecto a sus
+## pies; las piernas que levitan lo suben.
+func _body_top() -> float:
+	var top := _sprites.piece_top(_sprites.torso_set, "torso")
+	for slot in _weapon_slots():
+		var mounted := _mount_of(slot)
+		if not mounted.is_empty():
+			var kind: String = mounted["kind"]
+			top = minf(top, _sprites.piece_top(MechSprites.WEAPON_SET, kind, mounted["at"]))
+	if _locomotion == "hover":
+		top -= HOVER_HEIGHT + 3.0
+	return top
 
 
 ## Con `low`, la del arma inferior del asistente.

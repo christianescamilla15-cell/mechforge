@@ -16,6 +16,9 @@ const FLOOR_MARGIN := 58.0
 ## La camara se aleja cuando los mechs se separan y se acerca cuando se juntan.
 const MIN_ZOOM := 0.5
 const MAX_ZOOM := 1.0
+## Aire que la camara deja sobre lo mas alto de los mechs (el robot de
+## asistencia), en pixeles de pantalla.
+const TOP_MARGIN := 12.0
 ## Casillas de margen que la camara deja a cada lado de los mechs.
 const VIEW_MARGIN_CELLS := 1.6
 ## Rapidez con la que la camara alcanza su objetivo.
@@ -315,7 +318,12 @@ func _follow(delta: float) -> void:
 	var a := mechs[0].position.x
 	var b := mechs[1].position.x
 	var span := absf(a - b) + 2.0 * VIEW_MARGIN_CELLS * CELL_WIDTH
-	var target_zoom := clampf(size.x / span, MIN_ZOOM, MAX_ZOOM)
+	var target_zoom := size.x / span
+	# Tambien en vertical: que el asistente que flota sobre su mech no se salga.
+	var tallest := maxf(mechs[0].standing_height(), mechs[1].standing_height())
+	if tallest > 0.0:
+		target_zoom = minf(target_zoom, (size.y - FLOOR_MARGIN - TOP_MARGIN) / tallest)
+	target_zoom = clampf(target_zoom, MIN_ZOOM, MAX_ZOOM)
 	var target_x := (a + b) / 2.0
 	if _camera_x < 0.0:
 		_camera_x = target_x
