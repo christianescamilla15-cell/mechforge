@@ -14,23 +14,18 @@ const TORSO_SETS: Array[String] = ["ligero_18", "ligero_13", "ligero_16"]
 const LEGS_SETS: Array[String] = ["ligero_18", "ligero_14", "ligero_17"]
 ## Cuerpo de los jefes (linea robusta), entero y sin mezclar.
 const BOSS_SET := "jefe_103"
-## Armas dibujadas ya montadas sobre el robot del chasis ligero
-## (tools/art/mounts_test.py), cada una anclada a la cintura de ese robot.
+## Armas del chasis ligero, una por forma y tipo (tools/art/weapons_test.py
+## y export_weapons.py): "arm_<forma>_<tipo>" las de brazo y
+## "shoulder_<forma>_<tipo>" las de hombro, cada una anclada a la cintura
+## del robot y con la boca de la que sale su disparo.
 const WEAPON_SET := "armas_ligero"
-## Arte de cada forma de arma del catalogo, en orden de preferencia: las
-## formas que aun no tienen el suyo usan el de su familia.
-const WEAPON_ART: Dictionary[String, Array] = {
-	"hoja": ["arm_hoja"],
-	"corto": ["arm_corto", "arm_medio"],
-	"medio": ["arm_medio"],
-	"largo": ["arm_largo", "arm_medio"],
-	"saboteador": ["arm_saboteador", "arm_medio"],
-	"bateria": ["shoulder_bateria"],
-	"artilleria": ["shoulder_artilleria", "shoulder_bateria"],
-	"ancla": ["shoulder_ancla", "shoulder_bateria"],
-	"artillero": ["drone_artillero"],
-	"zapador": ["drone_zapador", "drone_artillero"],
+const WEAPON_PREFIX: Dictionary[int, String] = {
+	ItemDef.Type.SIDE: "arm_",
+	ItemDef.Type.TOP: "shoulder_",
 }
+## Tipos de arma, en el orden en que se busca otro dibujo de la misma
+## forma cuando falta el del tipo pedido.
+const WEAPON_TYPES: Array[String] = ["balas", "canon", "blaster", "laser"]
 ## Formas del robot de asistencia, una por clase (tools/art/export_assist.py):
 ## "assist_0" (Sonda) .. "assist_5" (Arconte), con el centro del casco y las
 ## bocas de sus dos armas.
@@ -122,11 +117,18 @@ static func assist_point(kind: String, key: String) -> Vector2:
 	return Vector2(point[0], point[1]) * ASSIST_UNIT
 
 
-## Pieza de WEAPON_SET con la que se dibuja un arma; "" si no tiene.
+## Pieza de WEAPON_SET con la que se dibuja un arma: la de su forma y su
+## tipo, o la de otro tipo de esa forma si la suya no esta; "" si no
+## tiene ninguna.
 static func weapon_kind(item: ItemDef) -> String:
-	for kind: String in WEAPON_ART.get(item.form, []):
-		if has_piece(WEAPON_SET, kind):
-			return kind
+	if item == null or item.form == "" or not WEAPON_PREFIX.has(item.type):
+		return ""
+	var base: String = WEAPON_PREFIX[item.type] + item.form + "_"
+	if has_piece(WEAPON_SET, base + item.weapon_type):
+		return base + item.weapon_type
+	for type in WEAPON_TYPES:
+		if has_piece(WEAPON_SET, base + type):
+			return base + type
 	return ""
 
 
@@ -187,9 +189,12 @@ func piece_tip(set_name: String, kind: String) -> Vector2:
 	var piece: Variant = _load_anchors(set_name).get(kind)
 	if not piece is Dictionary:
 		return hip_point()
-	var forward := (float(piece["size"][0]) - float(piece["hip"][0])) * UNIT_SCALE
-	var middle := (float(piece["size"][1]) / 2.0 - float(piece["hip"][1])) * UNIT_SCALE
-	return hip_point() + Vector2(forward, middle)
+	var hip := Vector2(piece["hip"][0], piece["hip"][1])
+	# Sin boca marcada, el extremo de delante a media altura.
+	var tip := Vector2(piece["size"][0], float(piece["size"][1]) / 2.0)
+	if piece.has("tip"):
+		tip = Vector2(piece["tip"][0], piece["tip"][1])
+	return hip_point() + (tip - hip) * UNIT_SCALE
 
 
 static func _available(names: Array[String], kind: String) -> Array[String]:

@@ -8,6 +8,35 @@ signal finished
 
 const STAGE := "desierto"
 const BEAT := 0.5
+## Juegos de armas que se van montando para ver el dibujo de cada forma y
+## tipo: [rotulo, laterales (las dos primeras van delante), superiores].
+const LOADOUTS: Array[Array] = [
+	[
+		"Armas de balas",
+		["medio_balas_cin", "corto_balas_cin", "largo_balas_cin", "hoja_balas_cin"],
+		["bateria_balas_cin"],
+	],
+	[
+		"Armas de cañón",
+		["largo_canon_ter", "corto_canon_ter", "medio_canon_ter", "hoja_balas_ter"],
+		["artilleria_canon_ter", "ancla_canon_ter"],
+	],
+	[
+		"Armas bláster",
+		["hoja_blaster_ion", "saboteador_blaster_ion", "medio_blaster_ion", "largo_blaster_ion"],
+		["artilleria_blaster_ion", "bateria_blaster_ion"],
+	],
+	[
+		"Armas láser",
+		["saboteador_laser_cin", "hoja_laser_cin", "medio_laser_cin", "largo_laser_cin"],
+		["artilleria_laser_cin", "ancla_laser_cin"],
+	],
+	[
+		"Armas cortas y baterías",
+		["corto_blaster_ter", "corto_laser_ter", "medio_balas_ter", "largo_balas_ter"],
+		["bateria_canon_ter", "bateria_laser_ter"],
+	],
+]
 
 var rules: RulesConfig
 var catalog: Catalog
@@ -89,6 +118,10 @@ func _run() -> void:
 	await _show("Rodar hacia atrás", hero.move_to(_cell(2), 1.2))
 
 	_swap_legs("piernas_zancos")
+	for loadout in LOADOUTS:
+		_arm(loadout[1], loadout[2])
+		await _fire(loadout[0], ["side0", "side1", "top0"])
+	_arm(LOADOUTS[0][1], ["bateria_balas_cin", "artilleria_canon_cin"])
 	await _fire("Disparar: brazos de delante", ["side0", "side1"])
 	await _fire("Disparar: brazos del lado lejano", ["side2", "side3"])
 	await _fire("Disparar: armas de hombro", ["top0", "top1"])
@@ -147,6 +180,20 @@ func _set_assist(tier: int) -> void:
 ## Cambia las piernas del mech de muestra (levitar, orugas...).
 func _swap_legs(id: String) -> void:
 	_hero.legs = _item(id)
+	var view := _arena.mechs[0]
+	var at := view.position
+	view.setup(_hero, view.facing)
+	view.place(at)
+
+
+## Monta en el mech de muestra esas armas (ids del catalogo).
+func _arm(sides: Array, tops: Array) -> void:
+	_hero.sides.clear()
+	for id: String in sides:
+		_hero.sides.append(_item(id))
+	_hero.tops.clear()
+	for id: String in tops:
+		_hero.tops.append(_item(id))
 	var view := _arena.mechs[0]
 	var at := view.position
 	view.setup(_hero, view.facing)

@@ -505,7 +505,7 @@ Animación por piezas (cada pieza es un sprite que se mueve, gira o se desplaza)
 - **Levitar** (piernas con la etiqueta `levita`): flotan con un brillo debajo y se deslizan inclinándose. **Rodar** (`orugas` o `ruedas`): se deslizan sin pasos, con una vibración leve.
 - **Empujones y jalones:** el rival resbala sin girarse, con las piernas clavadas y el cuerpo echado hacia el golpe. **Retroceso al disparar** (armas que retroceden): salto corto hacia atrás con propulsores.
 - **Embestida:** propulsores y cuerpo echado hacia delante.
-- Para revisarlas: `tools/clip.ps1 -Showcase` (muestra en la arena) y `tools/clip.ps1 -Cycle` (ciclos de cerca); `tools/rig_frames.gd` saca una hoja de poses.
+- Para revisarlas: `tools/clip.ps1 -Showcase` (muestra en la arena) y `tools/clip.ps1 -Cycle` (ciclos de cerca); `tools/rig_frames.gd` saca una hoja de poses y `tools/weapon_frames.gd` una de armas montadas.
 - Falta: arte propio para orugas, ruedas y piernas que levitan (hoy usan los dibujos de piernas que andan) y que las armas tengan dibujo propio.
 
 **Armas: cómo se empuñan y cómo disparan** (pedido del usuario, 2026-11-16). Cada familia de arma tiene su propia forma de desplegarse, apuntar, disparar e impactar, y evoluciona con las etapas tecnológicas de la pieza (§8): el mismo cañón no se ve ni dispara igual en la etapa 1 que en la 5.
