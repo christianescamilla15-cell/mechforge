@@ -100,8 +100,8 @@ func level_of(track: String) -> int:
 
 
 ## Devuelve "" si se puede comprar el siguiente nivel de esa mejora; si no,
-## el motivo.
-func why_cant_buy(shop: ArenaShop, track: String) -> String:
+## el motivo. La zona pone un tope a la armeria: `cap` (Campaign.armory_cap).
+func why_cant_buy(shop: ArenaShop, track: String, cap: int = 999) -> String:
 	if not shop.tracks.has(track):
 		return "esa mejora no existe"
 	if part(ItemDef.ASSIST_PROGRESS)["tier"] < shop.assist_tier(track):
@@ -109,6 +109,8 @@ func why_cant_buy(shop: ArenaShop, track: String) -> String:
 	var next := level_of(track) + 1
 	if next > shop.max_level():
 		return "ya esta al maximo"
+	if next > cap:
+		return "la zona no deja subirla mas"
 	if shop.price(next) > gold:
 		return "faltan celdas"
 	return ""
@@ -205,8 +207,8 @@ func transform(
 
 
 ## Compra el siguiente nivel de una mejora. Devuelve "" o el motivo del fallo.
-func buy(shop: ArenaShop, track: String) -> String:
-	var reason := why_cant_buy(shop, track)
+func buy(shop: ArenaShop, track: String, cap: int = 999) -> String:
+	var reason := why_cant_buy(shop, track, cap)
 	if reason != "":
 		return reason
 	var next := level_of(track) + 1

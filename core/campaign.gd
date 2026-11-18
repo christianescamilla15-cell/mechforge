@@ -10,6 +10,9 @@ extends RefCounted
 ##   "fights": [{"enemy", "level", "difficulty"}], "boss": {...}}]}
 ## "enemy_armory" es el nivel de la armeria del Orden en esa zona: todas las
 ## mejoras de sus rivales (jefe incluido) estan a ese nivel.
+## "armory_cap" es el nivel mas alto al que el jugador puede subir las mejoras
+## de su armeria mientras este en esa zona (sin el, el maximo): lo que se
+## abre al vencer jefes no se compra por adelantado.
 ## "boss": {"skills"} son los puntos de habilidad del jefe: los jefes del
 ## Orden entrenan y los reparten por igual entre las ramas del arbol.
 ## "tier" es la clase de los rivales de la zona y la mas alta a la que el
@@ -100,6 +103,12 @@ func fight_at(zone: int, fight: int) -> Dictionary:
 ## Puntos de habilidad del jefe de esa zona (0 = sin entrenar).
 func boss_skills(zone: int) -> int:
 	return int(zones[mini(zone, zone_count() - 1)]["boss"].get("skills", 0))
+
+
+## Nivel mas alto de las mejoras de la armeria del jugador en esa zona.
+func armory_cap(zone: int, shop: ArenaShop) -> int:
+	var raw: Variant = zones[mini(zone, zone_count() - 1)].get("armory_cap")
+	return shop.max_level() if raw == null else int(raw)
 
 
 ## Nivel de la armeria del Orden en esa zona (0 = sin mejoras).

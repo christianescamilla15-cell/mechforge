@@ -207,12 +207,15 @@ func impact(target: int, tier: String, seconds: float) -> void:
 		"medium":
 			shake(6.0)
 			dust(view.position, seconds * 0.6)
+			Sfx.play("impacto_medio")
 		"heavy":
 			shake(12.0)
+			Sfx.play("impacto_grave")
 			flash(view.hit_point(), Color("fff3d6"), 120.0, seconds * 0.5)
 			dust(view.position, seconds * 0.8)
 		"ultimate":
 			shake(20.0)
+			Sfx.play("impacto_ultimo")
 			flash(view.hit_point(), Color("e8d6ff"), 220.0, seconds)
 			dust(view.position, seconds)
 
@@ -224,10 +227,12 @@ func dark_matter(actor: int, target: int, chest_type: String, color: Color, seco
 	var shooter := mechs[actor]
 	var deploying := shooter.deploy(seconds * 1.2)
 	if deploying != null:
+		Sfx.play("despliegue")
 		await deploying.finished
 	var from := shooter.muzzle_point(false, "chest")
 	var to := mechs[target].hit_point()
 	shake(3.0)
+	Sfx.rising("carga_oscura", seconds * 3.0)
 	await _shots.charge(from, color, seconds * 3.0, chest_type)
 	shooter.fire(seconds * 0.8, "chest")
 	var shot := "materia_oscura_" + chest_type

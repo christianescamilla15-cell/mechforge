@@ -14,6 +14,8 @@ extends Node
 ##   --chest=<id> --skills=all   arma de pecho y todas las habilidades
 ##   --fps        mide los cuadros (FrameProbe) y lo que tarda la IA
 ##   --pause-test [--surrender]  prueba la pausa, los ajustes y rendirse
+##   --record-audio  graba el canal general (audio.wav) y lo que pidio sonar
+##                   el juego (sonidos.json), en la carpeta de capturas
 ## La carpeta de capturas se indica en la variable de entorno MECHFORGE_SHOTS.
 
 const AUTOPLAY_TIMEOUT_SECONDS := 180.0
@@ -22,6 +24,8 @@ var main: MainScreen
 var _shot_count: int = 0
 var _shot_events: Dictionary = {}
 var _probe: FrameProbe
+var _record: AudioEffectRecord
+var _record_start_ms: int = 0
 
 
 func start_autoplay() -> void:
@@ -80,6 +84,12 @@ func start_autoplay() -> void:
 	if main._args.has("fps"):
 		_probe = FrameProbe.new()
 		add_child(_probe)
+	if main._args.has("record-audio") and Sfx.current() != null:
+		_record = AudioEffectRecord.new()
+		AudioServer.add_bus_effect(AudioServer.get_bus_index("Master"), _record)
+		_record.set_recording_active(true)
+		_record_start_ms = Time.get_ticks_msec()
+		Sfx.current().log_plays = true
 	get_tree().create_timer(0.8).timeout.connect(shot.bind("inicio"))
 	if main._args.has("pause-test"):
 		# Tiempo real: la pausa para los temporizadores normales.
@@ -194,7 +204,43 @@ func _on_autoplay_finished(player_won: bool) -> void:
 		)
 	await get_tree().create_timer(0.4).timeout
 	await shot("final")
+	if _record != null:
+		# Deja sonar el jingle antes de cortar.
+		await get_tree().create_timer(3.0).timeout
+		_save_recording()
 	get_tree().quit(0)
+
+
+## Guarda lo grabado y la lista de lo que sono, con el tiempo desde que
+## empezo la grabacion (para compararlos en tools/audio).
+func _save_recording() -> void:
+	_record.set_recording_active(false)
+	var folder := _folder()
+	if folder == "":
+		return
+	var wav := _record.get_recording()
+	var error := wav.save_to_wav(folder + "/audio.wav")
+	var plays: Array[Dictionary] = []
+	var counts := {}
+	for entry in Sfx.current().played:
+		plays.append({"t": (int(entry["ms"]) - _record_start_ms) / 1000.0, "id": entry["id"]})
+		counts[entry["id"]] = int(counts.get(entry["id"], 0)) + 1
+	var file := FileAccess.open(folder + "/sonidos.json", FileAccess.WRITE)
+	file.store_string(JSON.stringify(plays, " "))
+	file.close()
+	print(
+		(
+			"AUDIO grabado (%s), %d sonidos: %s"
+			% ["ok" if error == OK else str(error), plays.size(), counts]
+		)
+	)
+
+
+func _folder() -> String:
+	var folder: String = main._args.get("shots", "")
+	if folder == "":
+		folder = OS.get_environment("MECHFORGE_SHOTS")
+	return folder
 
 
 func _on_autoplay_timeout() -> void:

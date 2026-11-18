@@ -99,6 +99,8 @@ const ES := {
 	"shop_row": "%s · nivel %d de %d (%s)",
 	"shop_buy": "Mejorar · %d",
 	"shop_max": "Al máximo",
+	"shop_zone_cap":
+	"En esta zona la armería llega hasta el nivel %d: vence al jefe para subirla más",
 	"shop_tab_upgrades": "Mejoras",
 	"shop_tab_parts": "Taller",
 	"part_row": "%s · %s %d/%d",
@@ -203,7 +205,6 @@ const ES := {
 	"settings_volume_music": "Música",
 	"settings_volume_effects": "Efectos",
 	"settings_volume_interface": "Interfaz",
-	"settings_no_sound": "El juego aún no tiene sonido: estos volúmenes valdrán cuando lo tenga.",
 	"settings_close": "Cerrar",
 	"quit_game": "Salir del juego",
 	"pause_title": "PAUSA",

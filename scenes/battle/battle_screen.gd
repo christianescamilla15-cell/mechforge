@@ -214,9 +214,12 @@ func _play_event(entry: Dictionary) -> void:
 		line += " · [color=#ffd23d]%s[/color]" % Txt.t("log_crit", [effect])
 	if line != "":
 		_log.append_text(line + "\n")
+	if entry.get("shielded", false):
+		Sfx.play("escudo")
 
 	match event:
 		"weapon", "stomp", "charge", "hook", "teleport", "drone":
+			_event_sound(event)
 			# Primero se mueve quien ataca (embestida, salto, espada).
 			var attacker_cell: int = snapshot[actor]["pos"]
 			if attacker_cell != _state[actor]["pos"]:
@@ -244,6 +247,7 @@ func _play_event(entry: Dictionary) -> void:
 				_arena.float_text(_state[target]["pos"], "-%d" % damage, COLOR_DAMAGE)
 			if entry.get("crit", false):
 				# Critico (GDD 2.9): aviso y lo que le hace al rival.
+				Sfx.play("critico")
 				_arena.shake(12.0)
 				var cell: int = _state[target]["pos"]
 				_arena.float_text(cell, Txt.t("crit_hit"), COLOR_CRIT)
@@ -269,13 +273,17 @@ func _play_event(entry: Dictionary) -> void:
 		"walk":
 			var destination := _arena.cell_point(entry["to"])
 			if _is_jump(entry, actor):
+				Sfx.play("propulsor")
 				await _arena.mechs[actor].jump_to(destination, step).finished
 				_arena.dust(destination, step * 0.6)
 			else:
+				Sfx.play("paso")
+				Sfx.play("paso", step * 0.5)
 				await _arena.mechs[actor].move_to(destination, step).finished
 		"cool", "forced_cool", "shutdown":
 			var amount: int = entry.get("amount", 0)
 			_arena.float_text(_state[actor]["pos"], "-%d" % amount, COLOR_COOL)
+			Sfx.play("apagado" if event == "shutdown" else "enfriar")
 			if event == "shutdown":
 				_arena.mechs[actor].set_heat(1.0, true)
 				await get_tree().create_timer(step * 2.0).timeout
@@ -284,18 +292,23 @@ func _play_event(entry: Dictionary) -> void:
 		"regen":
 			pass
 		"repair":
+			Sfx.play("reparar")
 			_arena.float_text(_state[actor]["pos"], "+%d" % entry["amount"], COLOR_REPAIR)
 			await get_tree().create_timer(step).timeout
 		"evade":
 			var who: int = entry["who"]
+			Sfx.play("esquiva")
 			await _arena.mechs[who].blink_to(_arena.cell_point(entry["to"]), step).finished
 		"drop_spawn":
+			Sfx.play("nave")
 			await _arena.ship_drop(entry["drop"], step * 1.6)
 		"barrier":
+			Sfx.play("escudo")
 			_arena.float_text(_state[actor]["pos"], Txt.t("shield_hit"), COLOR_COOL)
 			_arena.flash(_arena.mechs[actor].hit_point(), COLOR_COOL, 90.0, step)
 			await get_tree().create_timer(step).timeout
 		"repair_kit":
+			Sfx.play("reparar")
 			var healed := "+%d" % entry["amount"]
 			_arena.float_text(_state[actor]["pos"], healed, COLOR_REPAIR)
 			await get_tree().create_timer(step).timeout
@@ -310,6 +323,7 @@ func _play_event(entry: Dictionary) -> void:
 			var cell: int = _state[target]["pos"]
 			_arena.float_text(cell, "-%d" % entry["damage"], COLOR_DARK_MATTER)
 			if entry.get("crit", false):
+				Sfx.play("critico")
 				_arena.float_text(cell, Txt.t("crit_hit"), COLOR_CRIT)
 				_arena.float_text(cell, Txt.t("crit_" + str(entry["crit_effect"])), COLOR_CRIT)
 			await get_tree().create_timer(step).timeout
@@ -320,12 +334,14 @@ func _play_event(entry: Dictionary) -> void:
 				_arena.dust(away, step)
 			await get_tree().create_timer(step * 0.8).timeout
 		"drop_taken":
+			Sfx.play("bonificacion")
 			var percent := roundi(float(entry["amount"]) * 100.0)
 			var label := "+%d %% %s" % [percent, Txt.t("drop_%s_short" % entry["kind"])]
 			_arena.float_text(snapshot[entry["who"]]["pos"], label, COLOR_DROP)
 			await get_tree().create_timer(step).timeout
 		"win":
 			var loser := 1 - int(entry["winner"])
+			Sfx.play("destruido")
 			_arena.explode(_arena.mechs[loser].hit_point(), step * 2.0)
 			await _arena.mechs[loser].destroy(step * 2.0).finished
 
@@ -526,6 +542,7 @@ func _show_result() -> void:
 
 
 func _show_outcome(won: bool) -> void:
+	Sfx.jingle("victoria" if won else "derrota")
 	_result_label.text = Txt.t("victory") if won else Txt.t("defeat")
 	_result_label.add_theme_color_override(
 		"font_color", Color("7dff9b") if won else Color("ff7d7d")
@@ -810,6 +827,19 @@ func _build_ui() -> void:
 	_build_pause()
 
 
+## Lo que suena al empezar una jugada (los disparos suenan desde ShotFx).
+func _event_sound(event: String) -> void:
+	match event:
+		"stomp":
+			Sfx.play("pisoton")
+		"charge":
+			Sfx.play("propulsor")
+		"hook":
+			Sfx.play("arpon")
+		"teleport":
+			Sfx.play("salto")
+
+
 # --- Pausa -------------------------------------------------------------------
 
 
@@ -872,6 +902,8 @@ func is_paused() -> bool:
 func set_paused(on: bool) -> void:
 	if on and (_surrendered or _result.visible):
 		return
+	if on != _paused:
+		Sfx.play("ui_abrir" if on else "ui_cerrar")
 	_paused = on
 	Engine.time_scale = 0.0 if on else 1.0
 	_pause.visible = on

@@ -55,6 +55,8 @@ var _settings := GameSettings.new()
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	# El sonido va primero: asi oye los botones de todo lo que se cree despues.
+	add_child(Sfx.new())
 	# En el juego la nave deja bonificaciones en la arena (GDD 2.8), hay
 	# golpes criticos (GDD 2.9) y los golpes empujan (GDD 2.10).
 	_rules.drops_enabled = true
@@ -132,6 +134,7 @@ func _show_menu() -> void:
 		margin.add_theme_constant_override("margin_" + side, 24)
 	_menu = margin
 	add_child(_menu)
+	Sfx.music("base")
 	var columns := HBoxContainer.new()
 	columns.alignment = BoxContainer.ALIGNMENT_CENTER
 	columns.add_theme_constant_override("separation", 40)
@@ -352,6 +355,7 @@ func _scroll_tab(tabs: TabContainer, title: String) -> VBoxContainer:
 
 ## Mejoras permanentes de la armeria: seis lineas en 10 niveles.
 func _add_upgrades(box: VBoxContainer) -> void:
+	var cap := _armory_cap()
 	for track in _shop.track_ids():
 		var level := _profile.level_of(track)
 		var label := Txt.t(
@@ -363,12 +367,15 @@ func _add_upgrades(box: VBoxContainer) -> void:
 			buy.text = Txt.t("shop_max")
 			buy.disabled = true
 		else:
-			var reason := _profile.why_cant_buy(_shop, track)
+			var reason := _profile.why_cant_buy(_shop, track, cap)
 			buy.text = Txt.t("shop_buy", [_shop.price(level + 1)])
 			buy.disabled = reason != ""
 			if reason.begins_with("se abre"):
 				buy.text = Txt.t("shop_locked_assist")
 				buy.tooltip_text = reason
+			elif reason == "la zona no deja subirla mas":
+				buy.text = Txt.t("part_zone_max")
+				buy.tooltip_text = Txt.t("shop_zone_cap", [cap])
 		buy.pressed.connect(_on_buy_pressed.bind(track))
 
 
@@ -521,6 +528,7 @@ func _add_skills(box: VBoxContainer) -> void:
 
 func _on_learn(id: String) -> void:
 	if _skills.learn(_profile, id, _player_level()) == "":
+		Sfx.play("ui_habilidad")
 		_save()
 	_remember_picks()
 	_show_menu()
@@ -612,6 +620,7 @@ func _on_slot_picked(index: int, slot: String, options: Array[String]) -> void:
 
 func _on_store_buy(id: String, zone_tier: int) -> void:
 	if _garage.buy(_profile, _catalog, _rules, _workshop, id, zone_tier) == "":
+		Sfx.play("ui_comprar")
 		_save()
 	_remember_picks()
 	_show_menu()
@@ -651,8 +660,14 @@ func _assist_tier() -> int:
 	return _profile.part(ItemDef.ASSIST_PROGRESS)["tier"]
 
 
+## Tope de la armeria en la zona en la que esta el jugador.
+func _armory_cap() -> int:
+	return _campaign.armory_cap(mini(_profile.zone, _campaign.zone_count() - 1), _shop)
+
+
 func _on_buy_pressed(track: String) -> void:
-	if _profile.buy(_shop, track) == "":
+	if _profile.buy(_shop, track, _armory_cap()) == "":
+		Sfx.play("ui_comprar")
 		_save()
 	_remember_picks()
 	_show_menu()
@@ -660,6 +675,7 @@ func _on_buy_pressed(track: String) -> void:
 
 func _on_part_level(id: String, cap_tier: int, cap_level: int) -> void:
 	if _profile.level_up(_workshop, _rules, id, cap_tier, cap_level) == "":
+		Sfx.play("ui_subir_nivel")
 		_save()
 	_remember_picks()
 	_show_menu()
@@ -667,6 +683,7 @@ func _on_part_level(id: String, cap_tier: int, cap_level: int) -> void:
 
 func _on_part_transform(id: String, max_tier: int, item_max: int) -> void:
 	if _profile.transform(_workshop, _rules, id, max_tier, item_max) == "":
+		Sfx.play("ui_transformar")
 		_save()
 	_remember_picks()
 	_show_menu()
@@ -767,12 +784,12 @@ func _start_battle(spec: Dictionary) -> void:
 	_battle.speed = _settings.speed()
 	_battle.settings = _settings
 	_battle.settings_path = GameSettings.PATH if _persist else ""
-	# Rendirse contra un jefe acaba la partida, como perder: la pausa lo avisa.
-	_battle.surrender_ends_run = (
-		spec["mode"] == "campaign"
-		and _campaign.is_boss_fight(spec["zone"], _profile.fight)
-		and _campaign.on_boss_loss == "new_game"
+	var boss: bool = (
+		spec["mode"] == "campaign" and _campaign.is_boss_fight(spec["zone"], _profile.fight)
 	)
+	# Rendirse contra un jefe acaba la partida, como perder: la pausa lo avisa.
+	_battle.surrender_ends_run = boss and _campaign.on_boss_loss == "new_game"
+	Sfx.music("jefe" if boss else "combate")
 	if rewarded:
 		_battle.finished.connect(_on_battle_finished)
 	add_child(_battle)

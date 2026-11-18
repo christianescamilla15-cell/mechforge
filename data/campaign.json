@@ -72,7 +72,8 @@
       "reward_mult": 1.0,
       "stage": "desierto",
       "band": "balas",
-      "enemy_armory": 0
+      "enemy_armory": 0,
+      "armory_cap": 9
     },
     {
       "id": "zona_2",
@@ -143,7 +144,8 @@
         "skills": 11
       },
       "band": "balas",
-      "enemy_armory": 0
+      "enemy_armory": 0,
+      "armory_cap": 9
     },
     {
       "id": "zona_3",

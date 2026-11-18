@@ -28,6 +28,7 @@ static func open(parent: Node, p_settings: GameSettings, p_save_path: String) ->
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
+	Sfx.play("ui_abrir")
 	var dim := ColorRect.new()
 	dim.color = COLOR_DIM
 	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -60,7 +61,6 @@ func _ready() -> void:
 
 	for bus in GameSettings.BUSES:
 		_volume_row(box, bus)
-	_label(box, Txt.t("settings_no_sound"), COLOR_MUTED, 14)
 
 	var close := Button.new()
 	close.text = Txt.t("settings_close")
@@ -77,6 +77,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func close_panel() -> void:
+	Sfx.play("ui_cerrar")
 	closed.emit()
 	queue_free()
 

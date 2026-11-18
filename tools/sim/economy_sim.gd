@@ -21,6 +21,8 @@ extends SceneTree
 ##   --boss-skills=N           puntos del jefe (por defecto, los de la campana)
 ##   --enemy-armory=N          armeria del Orden en la zona (por defecto, la
 ##                             de la campana)
+##   --armory-cap=N            tope de la armeria del jugador en la zona (por
+##                             defecto, el de la campana)
 ##   --chest=bought|owned|none arma de pecho del jugador (canon pesado de su
 ##                             elemento): comprada en esta zona (se paga
 ##                             con las celdas), traida de antes, o ninguna
@@ -86,6 +88,7 @@ func _initialize() -> void:
 	var boss := campaign.fight_at(zone, campaign.fights_in(zone))
 	_builds["boss"] = library.make(boss["enemy"], catalog, _rules, tier, boss["level"], chassis)
 	var enemy_armory := int(args.get("enemy-armory", str(campaign.enemy_armory(zone))))
+	var armory_cap := int(args.get("armory-cap", str(campaign.armory_cap(zone, shop))))
 	var enemy_levels := {}
 	for track in shop.track_ids():
 		enemy_levels[track] = enemy_armory
@@ -123,7 +126,7 @@ func _initialize() -> void:
 				profile.gold -= garage.price(catalog, _rules, workshop, chest, tier)
 			var cap := campaign.level_cap(zone)
 			if profile.gold > 0:
-				_spend(profile, levelable, tier, cap, workshop, shop)
+				_spend(profile, levelable, tier, cap, armory_cap, workshop, shop)
 			var key := "%s@%d" % [id, wins]
 			_states[key] = profile
 			var build := catalog.make_build(items, _rules, ItemDef.Tier.COMMON, 0, profile.parts)
@@ -221,6 +224,7 @@ func _spend(
 	items: Dictionary,
 	max_tier: int,
 	cap_level: int,
+	armory_cap: int,
 	workshop: Workshop,
 	shop: ArenaShop
 ) -> void:
@@ -256,9 +260,10 @@ func _spend(
 			if track == "assist" and not two_weapons:
 				continue
 			var level := profile.level_of(track)
-			if level < shop.max_level() and (best_cost < 0 or shop.price(level + 1) < best_cost):
+			var top := mini(shop.max_level(), armory_cap)
+			if level < top and (best_cost < 0 or shop.price(level + 1) < best_cost):
 				best_cost = shop.price(level + 1)
-				best = profile.buy.bind(shop, track)
+				best = profile.buy.bind(shop, track, armory_cap)
 		if best_cost < 0 or best_cost > profile.gold:
 			return
 		best.call()

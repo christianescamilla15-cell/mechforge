@@ -14,7 +14,7 @@ Actualiza la tabla de estado al terminar cada tarea. Una fase se cierra solo cua
 | F6 | Taller de armado | en curso | La armería ya tiene el taller (cambiar la pieza de cada hueco, subirla de nivel y transformarla) y la tienda de piezas. Puerta sin comprobar |
 | F7 | Progresión y guardado | en curso | Celdas, nivel del jugador, árbol de habilidades y guardado en `user://save.json` con `schema_version`. Puerta sin comprobar |
 | F8 | Campaña | en curso | Las 10 zonas de 10 combates y su jefe están en datos y se juegan desde la base; su ritmo está medido zona a zona (GDD §9.3). Puerta sin comprobar: ningún capítulo lo ha jugado entero una persona |
-| F9 | Pulido y exportación | en curso | **Puerta cumplida el 2026-11-18:** `tools/export.ps1` saca `build/windows/MechForge.exe` (113 MB, un solo archivo con los datos dentro); copiado a una carpeta limpia en `%TEMP%` arranca la base y juega un combate entero con pausa (código 0, capturas revisadas). Pausa, ajustes y rendirse hechos. Falta: sonido y música, escenarios definitivos e icono |
+| F9 | Pulido y exportación | en curso | **Puerta cumplida el 2026-11-18:** `tools/export.ps1` saca `build/windows/MechForge.exe` (113 MB, un solo archivo con los datos dentro); copiado a una carpeta limpia en `%TEMP%` arranca la base y juega un combate entero con pausa (código 0, capturas revisadas). Pausa, ajustes y rendirse hechos. Sonido y música hechos el mismo día (GDD §12.3). Falta: escenarios definitivos, icono y que el usuario escuche el sonido |
 
 Orden: F0 → F1 → F2 → F3 en serie (cada una depende de la anterior). A petición del usuario (2026-11-16), el combate jugable de F5 se hizo antes que F4, con figuras provisionales, para poder probar las mecánicas en vivo cuanto antes; el arte de F4 sustituye después el dibujo de `MechView` sin tocar el resto.
 
@@ -192,6 +192,8 @@ Causa: la armería llega al máximo hacia la zona 4 y los rivales no tienen nada
 - **Ajustes** (en la base y en la pausa; `ui/game_settings.gd`, `ui/settings_panel.gd`, 5 tests): velocidad de las animaciones (×1, ×1.5, ×2, ×3), pantalla completa y volumen general, de música, efectos e interfaz. Se guardan en `user://settings.cfg`, aparte de la partida. Los volúmenes ya mueven sus canales de sonido; el juego todavía no tiene sonido y el panel lo dice.
 - **Salir del juego** en la base (hace falta en pantalla completa).
 - La prueba en vivo (autoplay, capturas, FPS) pasa a `scenes/live_test.gd`; `main.gd` ya no la lleva. `--pause-test` y `--surrender` prueban la pausa y la rendición; `--menu-shot=ajustes`, el panel en la base.
+- **Sonido y música** (pedido del usuario, 2026-11-18): GDD §12.3. 75 archivos CC0 o sintetizados en `assets/audio/` con sus créditos, `data/sounds.json`, `scenes/audio/sfx.gd` y `tools/audio/curate.py` (lo rehace desde los paquetes, con `--fetch` los baja). `--record-audio` en la prueba en vivo graba lo que sale y lo que se pidió. 7 tests nuevos.
+- **Bloqueos de la progresión** (el usuario pidió revisarlos): todo estaba limitado por zona y nivel salvo la armería, que solo pedía dinero (llenarla costaba 30 600 celdas). Ahora tiene tope 9 en las zonas 1 y 2 (GDD §9.2). tests/unit/test_progress_locks.gd gasta 100 000 celdas en la zona 1 y comprueba cada tope. El simulador de economía respeta el tope (`--armory-cap` para probar otros).
 
 ## Herramientas
 | Herramienta | Estado | Para qué |

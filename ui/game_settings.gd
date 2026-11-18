@@ -68,8 +68,14 @@ func apply() -> void:
 		DisplayServer.window_set_mode(mode)
 
 
-## Crea los canales de sonido que falten, todos mandando al general.
+## Crea los canales de sonido que falten, todos mandando al general, y pone
+## un limitador en el general para que muchos sonidos juntos no saturen.
 static func ensure_buses() -> void:
+	var master := AudioServer.get_bus_index("Master")
+	if AudioServer.get_bus_effect_count(master) == 0:
+		var limiter := AudioEffectHardLimiter.new()
+		limiter.ceiling_db = -1.0
+		AudioServer.add_bus_effect(master, limiter)
 	for bus in BUSES:
 		if AudioServer.get_bus_index(bus) >= 0:
 			continue

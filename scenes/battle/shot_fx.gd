@@ -174,6 +174,8 @@ func play(id: String, from: Vector2, to: Vector2, color: Color, seconds: float) 
 		var origin := from + offset if s["path"] == "beam" else from
 		var reach := delay + _launch(s, origin, to + offset, color, k, delay, i)
 		_impact(s, to + offset, color, k, reach)
+		Sfx.shot_fired(id, delay)
+		Sfx.shot_hit(id, s["impact"], reach)
 		arrival = maxf(arrival, reach)
 	_core = CORE
 	await get_tree().create_timer(maxf(arrival, 0.01)).timeout
