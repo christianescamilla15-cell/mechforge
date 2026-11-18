@@ -401,27 +401,27 @@ Medido el 2026-11-17 (tools/economy_sweep.ps1). Al pasar de la zona 1, la armer�
 
 **El arma de pecho entra en la medición:** con unas 50 victorias por zona el jugador llega al nivel 10 durante la zona 2, compra un cañón pesado en la 3 (la primera que vende armas de pecho, pagándolo con las celdas de la zona) y lo lleva después. No cuenta para el límite de peso (§4).
 
-Victorias contra el jefe tras gastar N victorias en la zona, empezando con lo que tendría quien pasó la anterior con unas 50 (24 combates por casilla; cada cifra tiene unos ±10 puntos de margen). Medido el 2026-11-17 con el árbol de habilidades (el jugador lleva los puntos de su nivel, repartidos por igual) y los jefes entrenados (§8):
+Victorias contra el jefe tras gastar N victorias en la zona, empezando con lo que tendría quien pasó la anterior con unas 50 (24 combates por casilla; cada cifra tiene unos ±10 puntos de margen). Medido el 2026-11-18 con el árbol de habilidades (el jugador lleva los puntos de su nivel, repartidos por igual), los jefes entrenados (§8) y el robot de asistencia en los dos lados (§4):
 
 | Zona | Jefe | Orden | Entreno | 25 vict. | 50 vict. | 100 vict. | Mech que mejor lo vence a las 50 |
 |---|---|---|---|---|---|---|---|
-| 1 | Capataz (superblindaje) | 0 | 8 | 8 % | 46 % | 88 % | calor (92 %) |
-| 2 | Verdugo (poder de daño) | 0 | 11 | 52 % | 83 % | 97 % | físico (100 %) |
-| 3 | Reactor (energía infinita) | 3 | 14 | 15 % | 89 % | 100 % | calor e híbrido (92 %) |
-| 4 | Hidra (regeneración) | 5 | 16 | 33 % | 70 % | 74 % | híbrido (92 %) |
-| 5 | Centella (velocidad) | 5 | 18 | 21 % | 66 % | 78 % | híbrido (88 %) |
-| 6 | Égida (escudo) | 6 | 19 | 27 % | 24 % | 27 % | calor (79–88 %) |
-| 7 | Espectro (evasión) | 8 | 21 | 69 % | 99 % | 99 % | todos |
-| 8 | Caldera (núcleo térmico) | 8 | 22 | 53 % | 52 % | 70 % | energía (96 %) |
-| 9 | Colmena (enjambre) | 8 | 24 | 9 % | 56 % | 68 % | físico (79 %) |
-| 10 | Coloso (final) | 8 | 25 | 25 % | 21 % | 37 % | físico e híbrido (hasta 50 %) |
+| 1 | Capataz (superblindaje) | 0 | 8 | 7 % | 46 % | 84 % | calor (92 %) |
+| 2 | Verdugo (poder de daño) | 0 | 11 | 59 % | 88 % | 95 % | calor (96 %) |
+| 3 | Reactor (energía infinita) | 3 | 14 | 17 % | 88 % | 100 % | híbrido (92 %) |
+| 4 | Hidra (regeneración) | 5 | 16 | 30 % | 79 % | 76 % | híbrido (88 %) |
+| 5 | Centella (velocidad) | 5 | 18 | 21 % | 66 % | 77 % | híbrido (88 %) |
+| 6 | Égida (escudo) | 6 | 19 | 23 % | 26 % | 29 % | calor (79–88 %) |
+| 7 | Espectro (evasión) | 8 | 21 | 60 % | 96 % | 99 % | todos |
+| 8 | Caldera (núcleo térmico) | 8 | 22 | 54 % | 57 % | 68 % | energía e híbrido (88 %) |
+| 9 | Colmena (enjambre) | 8 | 24 | 8 % | 63 % | 69 % | físico (88 %) |
+| 10 | Coloso (final) | 8 | 25 | 20 % | 32 % | 34 % | híbrido (50 %) |
 
 - Sin entrenar a los jefes, el árbol solo bastaba para volver fáciles a casi todos: zona 1 al 81 % con 50 victorias, zonas 7 a 10 cerca del 100 % con 10. Con el entrenamiento el ritmo vuelve al de antes del árbol (zona 1: 44 % → 46 % con 50).
 - La zona 1 sigue el ritmo del usuario: unas 50 victorias para tener opciones y unas 100 para ganar con facilidad (§9.2).
 - De la 2 a la 9, con unas 50 victorias en la zona se gana a menudo, y el mech que ataca el punto débil del jefe gana casi siempre. En las zonas 6, 8 y 9 la media baja porque hay que llevar el mech adecuado: cambiar de armas en el taller es parte de la táctica. La zona 7 quedó fácil (el Espectro cae con 50 victorias con cualquier mech).
 - Las zonas que abren clase nueva (3, 5, 7 y 9) piden más victorias: hay que transformar las piezas (y en la 3, comprar el arma de pecho).
-- El jefe final es extremadamente difícil, como pidió el usuario: 21 % de media con 50 victorias y 37 % con 100. Repartir los puntos por igual no llega a la materia oscura (nivel 25 en la rama Asalto); quien la persiga la tiene para el Coloso.
-- Esta tabla es anterior al robot de asistencia (§4), que se mide aparte.
+- El jefe final es extremadamente difícil, como pidió el usuario: 32 % de media con 50 victorias y 34 % con 100. Repartir los puntos por igual no llega a la materia oscura (nivel 25 en la rama Asalto); quien la persiga la tiene para el Coloso.
+- **El robot de asistencia no movió el ritmo.** La misma medición sin él (2026-11-17) daba, con 50 victorias: 46, 83, 89, 70, 66, 24, 99, 52, 56 y 21 %. Con él: 46, 88, 88, 79, 66, 26, 96, 57, 63 y 32 %. Todas las diferencias caben en el margen de ±10 puntos salvo la del Coloso (+11), que con 100 victorias queda igual (37 % → 34 %). El jugador sube y transforma su asistente con las celdas de la zona y compra la batería; el Orden lleva el suyo a la clase de la zona.
 
 ## 10. Pantallas
 Menú · Taller (armado con resumen de stats, barra de peso y avisos) · Inventario y fusión · Taller de mejoras · Mapa de campaña · Combate (arena, mechs, botones de acción, previsualización y registro) · Resultados y botín · Ajustes.
