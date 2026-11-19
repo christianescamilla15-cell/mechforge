@@ -32,6 +32,23 @@ $cpuOnly = @('download_models.py', 'contact_sheet.py', 'blockout.py', 'cut_body.
 $scriptName = Split-Path -Leaf $Rest[0]
 $pausedWatcher = $false
 
+# La GPU es compartida con la granja de render del museo (blender -b). Un
+# script de GPU espera a que no haya Blender: la granja toma trabajos nuevos
+# aunque su cola parezca vacia (el 2026-11-19 arranco uno a mitad de una tanda).
+# Entre un trabajo y el siguiente la granja deja unos minutos libres: si estaba
+# activa, hacen falta 10 minutos seguidos sin Blender.
+if ($cpuOnly -notcontains $scriptName) {
+    $quiet = 10
+    if (Get-Process -Name blender -ErrorAction SilentlyContinue) {
+        Write-Output 'Blender esta usando la GPU (granja de render); espero a que termine...'
+        $quiet = 0
+    }
+    while ($quiet -lt 10) {
+        Start-Sleep -Seconds 60
+        if (Get-Process -Name blender -ErrorAction SilentlyContinue) { $quiet = 0 } else { $quiet += 1 }
+    }
+}
+
 if (-not $KeepWatcher -and ($cpuOnly -notcontains $scriptName)) {
     $task = Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
     if ($task -and $task.State -eq 'Running') {

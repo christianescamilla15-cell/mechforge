@@ -40,6 +40,15 @@ var mission_lines: PackedStringArray = []
 var bays: Array[Dictionary] = []
 ## Celdas del estante, por hueco (las crea WorkshopScreen).
 var rack: Dictionary[String, SlotCell] = {}
+## Prueba de robots de frente (pedido del usuario el 2026-11-18): un dibujo
+## del robot de frente en la plataforma, en lugar del de perfil. Solo lo pone
+## la captura de prueba (main.gd, --frente).
+var front_preview: Texture2D:
+	set(value):
+		front_preview = value
+		_mech.visible = value == null
+		_overlay.queue_redraw()
+		queue_redraw()
 
 var _bay_layer := Node2D.new()
 var _bay_views: Array[MechView] = []
@@ -165,10 +174,21 @@ func _draw() -> void:
 	HangarArt.draw_light(self, rect, center, _floor_y, _time)
 	if _mech.build != null:
 		HangarArt.draw_platform(self, Vector2(center, _floor_y), _platform_width)
+	if front_preview != null:
+		_draw_front(center)
 	_draw_props()
 	_draw_target_stand()
 	_draw_shelf()
 	HangarArt.draw_vignette(self, rect, 1.2)
+
+
+## El robot de frente de la prueba, de pie en la plataforma y de la altura
+## del de perfil.
+func _draw_front(center: float) -> void:
+	var height := size.y * 0.5
+	var width := front_preview.get_size().x * height / front_preview.get_size().y
+	var rect := Rect2(center - width / 2.0, _floor_y - height - 4.0, width, height)
+	draw_texture_rect(front_preview, rect, false)
 
 
 ## Fila del fondo: una tarima con tres bahias, cada una con sus columnas, su
@@ -444,7 +464,8 @@ func _draw_shelf() -> void:
 
 func _draw_overlay() -> void:
 	super._draw_overlay()
-	if _mech.build == null:
+	# Con el robot de frente de la prueba los enchufes no caen en su sitio.
+	if _mech.build == null or front_preview != null:
 		return
 	# Enchufes de los huecos de arma vacios: un anillo que late.
 	for slot: String in ["side0", "side1", "side2", "side3", "top0", "top1"]:

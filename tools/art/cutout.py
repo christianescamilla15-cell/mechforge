@@ -40,6 +40,19 @@ def clean_figure(image, tolerance=14):
     return np.logical_and(cv2.dilate(main, kernel).astype(bool), figure.astype(bool))
 
 
+def drop_holes(image, mask, tolerance=14, min_area=1000):
+    """Quita de la mascara los huecos de fondo encerrados por la figura (de
+    frente, el hueco entre las piernas cuando los pies se tocan). Solo los
+    grandes: las motas del color del fondo dentro de una pieza se quedan."""
+    pixels = np.asarray(image.convert("RGB")).astype(np.int16)
+    border = np.concatenate([pixels[:6].reshape(-1, 3), pixels[-6:].reshape(-1, 3)])
+    background_color = np.median(border, axis=0)
+    similar = (np.abs(pixels - background_color).max(axis=2) < tolerance) & mask
+    count, labels, stats, _ = cv2.connectedComponentsWithStats(similar.astype(np.uint8), connectivity=4)
+    holes = [i for i in range(1, count) if stats[i, cv2.CC_STAT_AREA] >= min_area]
+    return mask & ~np.isin(labels, holes)
+
+
 def to_rgba(image, mask):
     """Imagen con transparencia: opaca donde la mascara, con el borde suavizado."""
     alpha = cv2.GaussianBlur(mask.astype(np.uint8) * 255, (3, 3), 0)

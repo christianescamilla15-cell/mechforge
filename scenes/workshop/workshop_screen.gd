@@ -673,6 +673,11 @@ func test_fire() -> void:
 	_stage.test_fire(_selected, item.fx, ShotFx.ammo_color(item.element))
 
 
+## Prueba de robots de frente: ese dibujo en la plataforma (main.gd, --frente).
+func show_front_test(texture: Texture2D) -> void:
+	_stage.front_preview = texture
+
+
 ## Aviso pasajero arriba (lo que paso en el ultimo combate, por ejemplo).
 func toast(text: String) -> void:
 	if text == "" or _toast == null:
