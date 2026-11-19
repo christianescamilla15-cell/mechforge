@@ -19,7 +19,8 @@ Las imagenes van a art_raw/parts/frente/<tanda>_<semilla>.png.
 Uso:
   tools/art/run.ps1 tools/art/front_test.py --blocks-only
   tools/art/run.ps1 tools/art/front_test.py --what maniqui horno --seeds 101 102 103 104
-  tools/art/run.ps1 tools/art/front_test.py --what fiel --detail --tag v3_
+  tools/art/run.ps1 tools/art/front_test.py --what fiel --detail --tag v3b_ --control-scale 0.65 --control-end 0.5
+  tools/art/run.ps1 tools/art/front_test.py --what fiel --detail --tag v4_ --init art_raw/parts/frente/v3b_fiel_103.png --strength 0.5
 """
 
 import argparse
@@ -183,6 +184,8 @@ def main():
     parser.add_argument("--blocks-only", action="store_true", help="solo guarda los bloques, sin GPU")
     parser.add_argument("--detail", action="store_true", help="lineas de detalle dentro de las piezas")
     parser.add_argument("--tag", default="", help="prefijo de los archivos de esta tanda")
+    parser.add_argument("--init", default="", help="refinar esta imagen en vez de partir del bloque")
+    parser.add_argument("--strength", type=float, default=1.0, help="con --init, cuanto cambia (0.5 = sombra y detalle)")
     args = parser.parse_args()
 
     OUT.mkdir(parents=True, exist_ok=True)
@@ -198,6 +201,10 @@ def main():
     pipe = sd.load_pipeline("fp8", controlled="img2img")
     for what in args.what:
         init, control = blocks[what]
+        if args.init:
+            # Refinado: la misma figura, con mas sombra y detalle; el boceto
+            # sigue de control para que no cambie la forma.
+            init = Image.open(args.init).convert("RGB").resize((SIZE, SIZE))
         colors = style.colors_for("chassis", ELEMENT[what])
         prompt = style.prompt(SUBJECTS[what], colors)
         tokens = len(pipe.tokenizer(prompt).input_ids)
@@ -209,7 +216,7 @@ def main():
                 prompt=prompt,
                 negative_prompt=style.NEGATIVE + ", " + NEGATIVE,
                 image=init,
-                strength=1.0,
+                strength=args.strength if args.init else 1.0,
                 control_image=[control],
                 control_mode=[sd.MODE_SCRIBBLE],
                 controlnet_conditioning_scale=args.control_scale,
