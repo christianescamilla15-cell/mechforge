@@ -33,7 +33,7 @@ var hover_slot: String = ""
 var preview: bool = false
 
 var _world := Node2D.new()
-var _mech := MechView.new()
+var _mech: MechView = _make_mech()
 var _overlay := Node2D.new()
 var _shots := ShotFx.new()
 var _flash_slot: String = ""
@@ -55,6 +55,12 @@ func _ready() -> void:
 	_world.add_child(_shots)
 	_overlay.draw.connect(_draw_overlay)
 	resized.connect(_fit)
+
+
+## La vista del mech: de perfil, como en combate. El hangar la cambia por la
+## de frente.
+func _make_mech() -> MechView:
+	return MechView.new()
 
 
 ## Arma el mech con este equipo. `ghosts`: piezas que faltan ("torso",
@@ -196,21 +202,18 @@ func _draw_overlay() -> void:
 
 ## Esquinas alrededor de la pieza de un hueco.
 func _brackets(slot: String, color: Color, width: float) -> void:
-	var rect := _world_rect(slot)
-	if rect.size == Vector2.ZERO:
+	var quad := _mech.slot_quad(slot)
+	if quad.size() != 4:
 		return
-	rect = rect.grow(6.0)
-	var arm := minf(18.0, minf(rect.size.x, rect.size.y) * 0.35)
-	var corners := [
-		[rect.position, Vector2(1, 0), Vector2(0, 1)],
-		[Vector2(rect.end.x, rect.position.y), Vector2(-1, 0), Vector2(0, 1)],
-		[Vector2(rect.position.x, rect.end.y), Vector2(1, 0), Vector2(0, -1)],
-		[rect.end, Vector2(-1, 0), Vector2(0, -1)],
-	]
-	for c: Array in corners:
-		var p: Vector2 = c[0]
-		_overlay.draw_line(p, p + c[1] * arm, color, width)
-		_overlay.draw_line(p, p + c[2] * arm, color, width)
+	for i in 4:
+		# Cada esquina, con sus dos lados (la pieza puede ir girada).
+		var p := _mech.transform * quad[i]
+		var next := _mech.transform * quad[(i + 1) % 4] - p
+		var before := _mech.transform * quad[(i + 3) % 4] - p
+		var arm := minf(18.0, minf(next.length(), before.length()) * 0.35)
+		var corner := p - (next.normalized() + before.normalized()) * 6.0
+		_overlay.draw_line(corner, corner + next.normalized() * arm, color, width)
+		_overlay.draw_line(corner, corner + before.normalized() * arm, color, width)
 
 
 ## Rectangulo de la pieza de un hueco en las coordenadas del mundo del taller.
@@ -228,9 +231,9 @@ func slot_at(at: Vector2) -> String:
 	if _mech.build == null:
 		return ""
 	var world := (at - _world.position) / _world.scale.x
+	var local := _mech.transform.affine_inverse() * world
 	for slot in TOUCHABLE:
-		var rect := _world_rect(slot)
-		if rect.size != Vector2.ZERO and rect.has_point(world):
+		if _mech.slot_has_point(slot, local):
 			# Un hueco vacio (o una pieza fantasma) no se toca en el dibujo.
 			if _item_in(slot) == null:
 				continue

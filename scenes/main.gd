@@ -8,8 +8,7 @@ extends Control
 ##
 ## Pruebas en vivo: `++ --autoplay` (ver LiveTest) y `++ --menu-shot`, que
 ## guarda una captura del menu con un perfil de muestra y sale
-## (--menu-shot=jefe: delante del jefe; =ajustes: con los ajustes abiertos;
-## --frente=<png>: un robot de frente en la plataforma del hangar).
+## (--menu-shot=jefe: delante del jefe; =ajustes: con los ajustes abiertos).
 
 const SAVE_PATH := "user://save.json"
 const MENU_DIFFICULTIES: Array[BattleAI.Difficulty] = [
@@ -116,9 +115,6 @@ func _ready() -> void:
 			_profile = PlayerProfile.load_or_new(SAVE_PATH)
 			Garage.ensure_assist(_profile, _catalog)
 		_show_menu()
-		if _args.has("frente") and _menu is WorkshopScreen:
-			var front := ImageTexture.create_from_image(Image.load_from_file(_args["frente"]))
-			(_menu as WorkshopScreen).show_front_test(front)
 		if _args["menu-shot"] == "ajustes":
 			open_settings()
 		elif _args["menu-shot"] == "taller":

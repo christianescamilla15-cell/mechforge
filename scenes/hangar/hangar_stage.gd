@@ -40,15 +40,6 @@ var mission_lines: PackedStringArray = []
 var bays: Array[Dictionary] = []
 ## Celdas del estante, por hueco (las crea WorkshopScreen).
 var rack: Dictionary[String, SlotCell] = {}
-## Prueba de robots de frente (pedido del usuario el 2026-11-18): un dibujo
-## del robot de frente en la plataforma, en lugar del de perfil. Solo lo pone
-## la captura de prueba (main.gd, --frente).
-var front_preview: Texture2D:
-	set(value):
-		front_preview = value
-		_mech.visible = value == null
-		_overlay.queue_redraw()
-		queue_redraw()
 
 var _bay_layer := Node2D.new()
 var _bay_views: Array[MechView] = []
@@ -69,6 +60,11 @@ func _ready() -> void:
 # --- Colocacion ------------------------------------------------------------------
 
 
+## En el hangar los robots se ven de frente (los que tienen ya ese dibujo).
+func _make_mech() -> MechView:
+	return FrontMechView.new()
+
+
 ## El robot que usas, algo a la izquierda del centro y sobre el suelo.
 func _fit() -> void:
 	if _mech.build == null or size.y <= 0.0:
@@ -84,6 +80,9 @@ func _fit() -> void:
 	var zoom := minf(1.3, (_floor_y - size.y * 0.13) / height)
 	_world.scale = Vector2(zoom, zoom)
 	var center := (bounds.position.x + bounds.size.x * 0.35) * zoom
+	if (_mech as FrontMechView).is_front():
+		# De frente es simetrico: sus pies van en el centro de la plataforma.
+		center = 0.0
 	_world.position = Vector2(size.x * 0.43 - center, _floor_y)
 	var legs := _world_rect("legs")
 	_platform_width = maxf(legs.size.x, 80.0) * zoom * 1.7
@@ -143,7 +142,7 @@ func set_bays(p_bays: Array[Dictionary]) -> void:
 		view.queue_free()
 	_bay_views.clear()
 	for bay in bays:
-		var view := MechView.new()
+		var view := FrontMechView.new()
 		_bay_layer.add_child(view)
 		if bay["build"] != null:
 			view.setup(bay["build"], 1)
@@ -174,21 +173,10 @@ func _draw() -> void:
 	HangarArt.draw_light(self, rect, center, _floor_y, _time)
 	if _mech.build != null:
 		HangarArt.draw_platform(self, Vector2(center, _floor_y), _platform_width)
-	if front_preview != null:
-		_draw_front(center)
 	_draw_props()
 	_draw_target_stand()
 	_draw_shelf()
 	HangarArt.draw_vignette(self, rect, 1.2)
-
-
-## El robot de frente de la prueba, de pie en la plataforma y de la altura
-## del de perfil.
-func _draw_front(center: float) -> void:
-	var height := size.y * 0.5
-	var width := front_preview.get_size().x * height / front_preview.get_size().y
-	var rect := Rect2(center - width / 2.0, _floor_y - height - 4.0, width, height)
-	draw_texture_rect(front_preview, rect, false)
 
 
 ## Fila del fondo: una tarima con tres bahias, cada una con sus columnas, su
@@ -464,8 +452,7 @@ func _draw_shelf() -> void:
 
 func _draw_overlay() -> void:
 	super._draw_overlay()
-	# Con el robot de frente de la prueba los enchufes no caen en su sitio.
-	if _mech.build == null or front_preview != null:
+	if _mech.build == null:
 		return
 	# Enchufes de los huecos de arma vacios: un anillo que late.
 	for slot: String in ["side0", "side1", "side2", "side3", "top0", "top1"]:
@@ -504,8 +491,7 @@ func _draw_target_stand() -> void:
 
 ## Punto del enchufe de un hueco de arma, en el mundo del taller.
 func socket_point(slot: String) -> Vector2:
-	var rect := _world_rect(slot)
-	return Vector2(rect.position.x + rect.size.x * 0.22, rect.get_center().y)
+	return _mech.transform * _mech.slot_socket(slot)
 
 
 ## Punto de la pantalla donde esta un hueco (su pieza o su enchufe).

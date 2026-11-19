@@ -7,6 +7,13 @@ anclas que lee el juego (scenes/battle/mech_sprites.gd).
 No usa la GPU.
 Uso: tools/art/run.ps1 tools/art/export_parts.py --torso t.png --legs l.png \
         --hip 530 493 --name ligero_18 --out assets/mechs
+
+Las piezas de frente (tools/art/turn_test.py) salen de un panel de 768, a
+0.75 del lienzo: se exportan con --scale 0.6667 para que midan lo mismo que
+las de perfil, con el aro en la fila 397 y la columna 384, y se llaman
+frente_<juego>:
+  tools/art/run.ps1 tools/art/export_parts.py --torso f.png --hip 397 384 \
+        --scale 0.6667 --holes --name frente_ligero_13 --out assets/mechs
 """
 
 import argparse
@@ -23,10 +30,13 @@ import recolor
 ELEMENTS = {"PHYSICAL": None, "HEAT": recolor.SCHEMES["calor"], "ENERGY": recolor.SCHEMES["energia"]}
 
 
-def piece(path, hip, keep_upper):
-    """Devuelve (imagen original, mascara de la pieza)."""
+def piece(path, hip, keep_upper, holes=False):
+    """Devuelve (imagen original, mascara de la pieza). `holes`: quita tambien
+    el fondo encerrado por la figura (de frente, entre las piernas)."""
     image = Image.open(path).convert("RGB")
     mask = cutout.clean_figure(image)
+    if holes:
+        mask = cutout.drop_holes(image, mask)
     row = hip[0]
     if keep_upper:
         mask[row + cut_body.OVERLAP :] = False
@@ -43,6 +53,7 @@ def main():
     parser.add_argument("--name", required=True)
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--scale", type=float, default=0.5, help="reduccion respecto al lienzo de 1024")
+    parser.add_argument("--holes", action="store_true", help="quita el fondo encerrado por la figura")
     args = parser.parse_args()
 
     args.out.mkdir(parents=True, exist_ok=True)
@@ -51,7 +62,7 @@ def main():
     for kind, path, keep_upper in (("torso", args.torso, True), ("legs", args.legs, False)):
         if path is None:
             continue
-        image, mask = piece(path, hip, keep_upper)
+        image, mask = piece(path, hip, keep_upper, args.holes)
         for element, scheme in ELEMENTS.items():
             colored = recolor.recolor(image, scheme)
             sprite, anchor = cut_body.crop_piece(colored, mask, hip)
