@@ -109,11 +109,19 @@ func _ready() -> void:
 		if _args.has("chest"):
 			_profile.owned.append(_args["chest"])
 			_profile.build["chest"] = _args["chest"]
+		# --real-profile: la partida de verdad del jugador. No se guarda nada:
+		# en esta prueba _persist es false.
+		if _args.has("real-profile"):
+			_profile = PlayerProfile.load_or_new(SAVE_PATH)
+			Garage.ensure_assist(_profile, _catalog)
 		_show_menu()
 		if _args["menu-shot"] == "ajustes":
 			_open_settings()
 		elif _args["menu-shot"] == "taller":
 			_live_test().workshop_test(open_workshop())
+			return
+		elif _args["menu-shot"] == "armeria":
+			_live_test().armory_test()
 			return
 		await get_tree().create_timer(0.6).timeout
 		await _live_test().shot("menu")

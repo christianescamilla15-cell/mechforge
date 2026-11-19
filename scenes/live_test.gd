@@ -172,6 +172,48 @@ func _autoplay_pause_test() -> void:
 		print("AUTOPLAY pausa: sigue, escala de tiempo %.1f" % Engine.time_scale)
 
 
+## Prueba en vivo de la armeria (`--menu-shot=armeria`, con `--real-profile`
+## sobre la partida de verdad, sin guardar nada): gasta en la armeria todo lo
+## que deje la zona, comprueba que lo que para es el tope y no el dinero,
+## ensena la tienda y sigue con la prueba del taller.
+func armory_test() -> void:
+	var profile := main._profile
+	var level := main._player_level()
+	print(
+		(
+			"ARMERIA celdas=%d zona=%d nivel=%d mejoras=%s"
+			% [profile.gold, profile.zone + 1, level, profile.shop_levels]
+		)
+	)
+	main._last["tab"] = 0
+	main._show_menu()
+	await get_tree().create_timer(0.6).timeout
+	await shot("armeria_antes")
+	var cap := main._armory_cap()
+	var gold := profile.gold
+	var changed := true
+	while changed:
+		changed = false
+		for track in main._shop.track_ids():
+			if profile.buy(main._shop, track, cap) == "":
+				changed = true
+	var reasons := {}
+	for track in main._shop.track_ids():
+		reasons[track] = (
+			"%d: %s" % [profile.level_of(track), profile.why_cant_buy(main._shop, track, cap)]
+		)
+	print("ARMERIA tope=%d gastado=%d quedan=%d" % [cap, gold - profile.gold, profile.gold])
+	print("ARMERIA por mejora: %s" % reasons)
+	main._show_menu()
+	await get_tree().create_timer(0.6).timeout
+	await shot("armeria_tope")
+	main._last["tab"] = 2
+	main._show_menu()
+	await get_tree().create_timer(0.6).timeout
+	await shot("armeria_tienda")
+	workshop_test(main.open_workshop())
+
+
 ## Prueba en vivo del taller (`--menu-shot=taller`): elegir un hueco, dejar
 ## un brazo vacio, comparar una pieza, arrastrar una pieza de verdad (con el
 ## raton simulado) al hueco vacio, subirla de nivel y probar el disparo.
