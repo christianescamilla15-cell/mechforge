@@ -12,17 +12,31 @@ extends Node2D
 ## otra cara, el otro costado del robot); al pasar por el frente y la espalda
 ## se ve de canto, en bloques, porque esas caras no estan dibujadas.
 
-## Capas: su nombre en MechView, su fondo (unidades del taller; positivo
-## hacia quien mira con el robot de perfil), su grosor, cuanto se apaga al
-## quedar detras y los huecos cuyas piezas lleva (para saber cuanto ocupa).
+## Capas: su nombre en MechView, de que lado van (-1 el lejano con el robot
+## de perfil, 1 el cercano), cuanto se apagan al quedar detras y los huecos
+## cuyas piezas llevan (para saber cuanto ocupan). Su fondo y su grosor salen
+## de las piezas de cada robot (`_measure`).
 const LAYERS: Array[Dictionary] = [
-	{"name": "far", "z": -42.0, "thick": 12.0, "dim": 0.62, "slots": ["side2", "side3", "top1"]},
-	{"name": "far_leg", "z": -23.0, "thick": 20.0, "dim": 0.65, "slots": ["legs"]},
-	{"name": "body", "z": 0.0, "thick": 44.0, "dim": 1.0, "slots": ["torso", "chest", "legs"]},
-	{"name": "near_leg", "z": 23.0, "thick": 20.0, "dim": 0.65, "slots": ["legs"]},
-	{"name": "near", "z": 42.0, "thick": 12.0, "dim": 0.62, "slots": ["side0", "side1", "top0"]},
-	{"name": "float", "z": 52.0, "thick": 12.0, "dim": 0.8, "slots": ["assist"]},
+	{"name": "far", "side": -1.0, "dim": 0.62, "slots": ["side2", "side3", "top1"]},
+	{"name": "far_leg", "side": -1.0, "dim": 0.65, "slots": ["legs"]},
+	{"name": "body", "side": 0.0, "dim": 1.0, "slots": ["torso", "chest", "legs"]},
+	{"name": "near_leg", "side": 1.0, "dim": 0.65, "slots": ["legs"]},
+	{"name": "near", "side": 1.0, "dim": 0.62, "slots": ["side0", "side1", "top0"]},
+	{"name": "float", "side": 1.0, "dim": 0.8, "slots": ["assist"]},
 ]
+## Ancho del robot visto de frente, como parte de lo que miden de perfil su
+## torso y sus piernas: el tronco y las piernas comparten ese ancho, asi que
+## unas piernas mas anchas ensanchan el tronco y al reves (pedido del usuario
+## el 2026-11-19). Una base de una pieza (orugas, ruedas, levitar) manda mas.
+const WIDTH_FROM_TORSO := 0.2
+const WIDTH_FROM_LEGS := 0.2
+const WIDTH_FROM_TORSO_ON_BASE := 0.14
+const WIDTH_FROM_BASE := 0.3
+## Grosor de cada pierna, como parte del ancho del robot; van a ras del tronco.
+const LEG_SHARE := 0.36
+## Grosor de un arma y del asistente, y el aire entre capas.
+const WEAPON_THICK := 12.0
+const LAYER_GAP := 3.0
 ## El canto de una plancha se dibuja con copias de su silueta, una cada
 ## tantos pixeles de pantalla; la de detras, mas oscura.
 const WALL_STEP := 2.0
@@ -70,6 +84,8 @@ var _walls: Dictionary[String, Node2D] = {}
 var _faces: Dictionary[String, Node2D] = {}
 ## Zona de cada capa, en unidades del taller respecto a los pies.
 var _regions: Dictionary[String, Rect2] = {}
+## Fondo (x) y grosor (y) de cada capa, en unidades del taller.
+var _depths: Dictionary[String, Vector2] = {}
 ## Lo que ocupa el robot, respecto a sus pies, en unidades del taller.
 var _canvas := Rect2()
 ## Eje del giro (el centro de la plataforma).
@@ -102,8 +118,35 @@ func setup(
 		mech.place(-_canvas.position * RENDER_SCALE)
 		mech.scale *= RENDER_SCALE
 		_regions[layer_name] = _region_of(mech, layer["slots"])
+	_measure(_mechs["body"])
 	_ordered_for = 0.0
 	_redraw()
+
+
+## Ancho del robot visto de frente, en unidades del taller (ver WIDTH_*).
+func body_width() -> float:
+	return _depths["body"].y if _depths.has("body") else 0.0
+
+
+## Reparte el fondo del robot segun sus piezas: el tronco y las piernas
+## ocupan el mismo ancho (las piernas, a ras por fuera) y las armas van por
+## fuera, a cada lado.
+func _measure(mech: MechView) -> void:
+	var torso := mech.slot_rect("torso").size.x
+	var legs := mech.slot_rect("legs").size.x
+	var width := WIDTH_FROM_TORSO * torso + WIDTH_FROM_LEGS * legs
+	if mech.has_rigid_legs():
+		width = WIDTH_FROM_TORSO_ON_BASE * torso + WIDTH_FROM_BASE * legs
+	var leg := width * LEG_SHARE
+	var weapon := width * 0.5 + LAYER_GAP + WEAPON_THICK * 0.5
+	_depths = {
+		"body": Vector2(0.0, width),
+		"far_leg": Vector2(-(width - leg) * 0.5, leg),
+		"near_leg": Vector2((width - leg) * 0.5, leg),
+		"far": Vector2(-weapon, WEAPON_THICK),
+		"near": Vector2(weapon, WEAPON_THICK),
+		"float": Vector2(weapon + WEAPON_THICK + LAYER_GAP, WEAPON_THICK),
+	}
 
 
 func _add_layer(layer: Dictionary) -> void:
@@ -169,7 +212,8 @@ func _redraw() -> void:
 		_ordered_for = toward
 		var order := LAYERS.duplicate()
 		order.sort_custom(
-			func(a: Dictionary, b: Dictionary) -> bool: return a["z"] * toward < b["z"] * toward
+			func(a: Dictionary, b: Dictionary) -> bool:
+				return _depths[a["name"]].x * toward < _depths[b["name"]].x * toward
 		)
 		var index := _views.size()
 		for layer: Dictionary in order:
@@ -186,8 +230,7 @@ func _redraw() -> void:
 ## espaldas a la luz.
 func _light(layer: Dictionary) -> float:
 	var c := cos(angle)
-	var z: float = layer["z"]
-	var behind := clampf(-z * c / maxf(absf(z), 1.0), 0.0, 1.0)
+	var behind := clampf(-float(layer["side"]) * c, 0.0, 1.0)
 	return lerpf(1.0, layer["dim"], behind) * (1.0 - TURN_SHADE * (1.0 - absf(c)))
 
 
@@ -203,25 +246,26 @@ func _draw_wall(layer: Dictionary) -> void:
 	var node := _walls[layer_name]
 	var texture := _views[layer_name].get_texture()
 	var facing := 1.0 if c >= 0.0 else -1.0
-	var half: float = layer["thick"] * 0.5
+	var depth := _depths[layer_name]
+	var half := depth.y * 0.5
 	var light := _light(layer)
 	var zoom := absf(get_global_transform().get_scale().x)
-	var on_screen: float = layer["thick"] * absf(s) * zoom
+	var on_screen := depth.y * absf(s) * zoom
 	var copies := clampi(ceili(on_screen / WALL_STEP), 1, WALL_MAX_COPIES)
 	# Contorno: la silueta de la cara de detras, un poco mas atras.
-	var back: float = (layer["z"] - facing * half) * s
+	var back := (depth.x - facing * half) * s
 	var outward := -signf(facing * s) * WALL_OUTLINE / maxf(zoom, 0.01)
 	_card(node, texture, region, back + outward, Color(MechView.OUTLINE, 1.0))
 	for k in copies:
 		var t := float(k) / copies
-		var z: float = layer["z"] + facing * half * (2.0 * t - 1.0)
+		var z := depth.x + facing * half * (2.0 * t - 1.0)
 		var shade := lerpf(WALL_BACK, 1.0, t) * light
 		if copies >= 6 and k == copies / 2:
 			shade *= WALL_SEAM
 		_card(node, texture, region, z * s, Color(_wall_color * shade, 1.0))
 	if absf(c) < FLAT_BELOW:
 		# De canto: la cara tambien va lisa, algo mas clara.
-		var front: float = layer["z"] + facing * half
+		var front := depth.x + facing * half
 		_card(node, texture, region, front * s, Color(_wall_color * light * 1.25, 1.0))
 
 
@@ -235,7 +279,8 @@ func _draw_face(layer: Dictionary) -> void:
 	var facing := 1.0 if c >= 0.0 else -1.0
 	var fade := smoothstep(FLAT_BELOW, FLAT_BELOW * 3.0, absf(c))
 	var bright := _light(layer) * lerpf(FLAT_SHADE, 1.0, fade)
-	var front: float = layer["z"] + facing * layer["thick"] * 0.5
+	var depth := _depths[layer_name]
+	var front := depth.x + facing * depth.y * 0.5
 	var texture := _views[layer_name].get_texture()
 	_card(_faces[layer_name], texture, region, front * sin(angle), Color(bright, bright, bright))
 

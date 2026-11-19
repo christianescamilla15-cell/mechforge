@@ -9,7 +9,7 @@ Disenos (la silueta y el sujeto de cada uno estan en DESIGNS); el nombre
 de la pieza en el juego es el del diseno con brazo -> arm y hombro -> shoulder:
   brazo_corto, brazo_medio, brazo_largo, brazo_hoja, brazo_saboteador
   hombro_bateria, hombro_artilleria, hombro_ancla
-  piernas_orugas, piernas_ruedas, piernas_levita
+  piernas_orugas, piernas_ruedas, piernas_ruedas_cuna, piernas_levita
   dron_artillero, dron_zapador (flotando detras del casco; en el juego, drone_*)
   asistente_0 .. asistente_5: las seis formas del robot de asistencia (Sonda,
     Vigia, Centinela, Custodio, Guardian y Arconte), cada una mas grande y con
@@ -134,6 +134,39 @@ def control_wheels(draw, r, x):
     for cx in (x - 110, x + 130):
         draw.ellipse([cx - 75, r + 250, cx + 75, r + 400], outline=WHITE, width=WIDTH)
         draw.ellipse([cx - 25, r + 300, cx + 25, r + 350], outline=WHITE, width=WIDTH)
+
+
+def control_wheel_wedge(draw, r, x):
+    """Base de ruedas en cuna, baja y larga: bajo la cadera, dos orugas
+    blindadas en cuna (alta por detras, baja por delante), la de un lado
+    asomando tras la otra, con sus ruedas en fila. Es la forma de la base con
+    ruedas del juego original de 2012-2014, que el usuario pidio como modelo;
+    el dibujo es nuestro."""
+    floor = r + 400
+    draw.polygon(
+        [(x - 70, r + 30), (x + 70, r + 30), (x + 85, r + 100), (x - 85, r + 100)], outline=WHITE, width=WIDTH
+    )
+    # La oruga del otro lado: solo lo que asoma por detras y por arriba.
+    draw.line(
+        [(x - 285, floor - 38), (x - 265, floor - 293), (x - 90, floor - 323), (x + 235, floor - 123)],
+        fill=WHITE,
+        width=WIDTH,
+    )
+    # La de este lado: la cuna, su banda de rodadura y las ruedas.
+    draw.polygon(
+        [
+            (x - 215, floor - 255),
+            (x - 40, floor - 285),
+            (x + 285, floor - 85),
+            (x + 285, floor),
+            (x - 235, floor),
+        ],
+        outline=WHITE,
+        width=WIDTH,
+    )
+    draw.line([(x - 232, floor - 72), (x + 285, floor - 72)], fill=WHITE, width=WIDTH)
+    for cx in (-190, -85, 20, 125, 230):
+        draw.ellipse([x + cx - 30, floor - 66, x + cx + 30, floor - 6], outline=WHITE, width=WIDTH)
 
 
 def control_hover(draw, r, x):
@@ -317,6 +350,13 @@ DESIGNS = {
         "control": control_wheels,
         "subject": LEGS_SUBJECT + ", wheels, tire, wheeled vehicle",
         "negative": "feet, legs, humanoid legs, wings",
+        "strength": 1.0,
+    },
+    "piernas_ruedas_cuna": {
+        "zone": LEGS_ZONE,
+        "control": control_wheel_wedge,
+        "subject": LEGS_SUBJECT + ", tank chassis, caterpillar tracks, road wheels, sloped armor",
+        "negative": "feet, humanoid legs, wings, car, cart, wagon",
         "strength": 1.0,
     },
     "piernas_levita": {

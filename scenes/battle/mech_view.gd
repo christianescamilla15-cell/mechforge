@@ -471,6 +471,11 @@ func _draw_sprites(dim: float) -> void:
 	draw_set_transform(Vector2.ZERO)
 
 
+## True si sus piernas son de una pieza (orugas, ruedas o levitar).
+func has_rigid_legs() -> bool:
+	return _rig == null
+
+
 ## True si esta capa se dibuja (ver `only_layer`).
 func _layer(layer: String) -> bool:
 	return only_layer == "" or only_layer == layer

@@ -112,6 +112,28 @@ func test_la_rueda_del_raton_gira_a_saltos() -> void:
 	assert_almost_eq(stage.turn, HangarStage.TURN_PER_NOTCH, 0.01)
 
 
+func test_el_ancho_del_tronco_y_el_de_las_piernas_se_adaptan_entre_si() -> void:
+	var stage := _stage()
+	var table := stage._turntable
+	var width := table.body_width()
+	assert_gt(width, 0.0)
+	# Las piernas van a ras del tronco por fuera, una a cada lado.
+	for layer_name: String in ["far_leg", "near_leg"]:
+		var leg := table._depths[layer_name]
+		assert_almost_eq(absf(leg.x) + leg.y * 0.5, width * 0.5, 0.01, layer_name)
+	# Con una base mas ancha (orugas) el tronco se ensancha con ella.
+	var build := _library.make("fisico_vanguardia", _catalog, _rules, ItemDef.Tier.COMMON, 6)
+	for legs in _catalog.by_type(ItemDef.Type.LEGS):
+		if legs.id == "piernas_orugas":
+			build.legs = ItemScaling.resolve(legs, _rules, ItemDef.Tier.COMMON, 6)
+	assert_eq(build.legs.id, "piernas_orugas")
+	stage.show_build(build, [] as Array[String])
+	assert_gt(table.body_width(), width * 1.15, "sobre orugas el robot es mas ancho")
+	# Y las armas siguen por fuera del tronco.
+	var near := table._depths["near"]
+	assert_gt(near.x - near.y * 0.5, table.body_width() * 0.5)
+
+
 func test_las_capas_del_giro_reparten_el_robot() -> void:
 	var stage := _stage()
 	var table := stage._turntable
