@@ -9,9 +9,11 @@ extends MechView
 ## (las dos primeras de un brazo y las otras dos del otro) y las de hombro
 ## asoman por detras del casco. El asistente flota a un lado.
 ##
-## Si el torso o las piernas no tienen aun su dibujo de frente, el mech se ve
-## de perfil, como en combate. El canon de pecho no se dibuja de frente
-## (apunta al que mira): su hueco esta en el estante del hangar.
+## Si el torso o las piernas no tienen su dibujo de frente, el mech se ve de
+## perfil, como en combate. Asi van los de orugas y los de ruedas: de frente
+## no se reconocian (el usuario vio "un cubo" y "un carrito", 2026-11-19).
+## El canon de pecho no se dibuja de frente (apunta al que mira): su hueco
+## esta en el estante del hangar.
 
 const PREFIX := "frente_"
 ## Articulacion del brazo de un arma respecto a su ancla de cintura, en
@@ -35,6 +37,9 @@ const SOCKET_REACH := 30.0
 const EMPTY_SIDE := "arm_medio_balas"
 const EMPTY_TOP := "shoulder_bateria_balas"
 
+## Para comparar las dos vistas (main.gd, --perfil): todos de perfil.
+static var side_only := false
+
 var _front_torso: String = ""
 var _front_legs: String = ""
 
@@ -43,7 +48,7 @@ func setup(p_build: MechBuild, p_facing: int) -> void:
 	super.setup(p_build, p_facing)
 	_front_torso = ""
 	_front_legs = ""
-	if _sprites == null or _sprites.is_boss:
+	if side_only or _sprites == null or _sprites.is_boss:
 		return
 	var torso := PREFIX + _sprites.torso_set
 	var legs := PREFIX + _sprites.legs_set

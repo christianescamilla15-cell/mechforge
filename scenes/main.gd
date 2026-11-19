@@ -88,6 +88,8 @@ func _ready() -> void:
 		_live_test().start_autoplay()
 	elif _args.has("menu-shot"):
 		# Prueba en vivo del menu: perfil de muestra, captura y salir.
+		# --perfil: los robots del hangar de perfil, para comparar las vistas.
+		FrontMechView.side_only = _args.has("perfil")
 		_profile.start_run(_library, _library.ids()[0])
 		Garage.ensure_assist(_profile, _catalog)
 		_profile.gold = 1500

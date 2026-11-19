@@ -65,6 +65,7 @@ El usuario recuerda una versión para un jugador: empezabas con un robot sencill
 - Wayback Machine tiene capturas de `supermechs.com` desde febrero de 2012 (una página con solo el texto "Super Mechs!"). En la de junio de 2012 el sitio ya cargaba el cliente Flash `BMMPortal.swf` con la descripción "Battle other players in your own Mech Warrior!", es decir, ya era multijugador.
 - Una [reseña de enero de 2013](https://playlikecrazy.blogspot.com/2013/01/super-mechs.html) lo describe en beta, jugable en silvergames.com con registro: un tutorial, combates contra mechs de la computadora y contra otros jugadores, experiencia y créditos, "cientos" de mejoras para comprar, una ametralladora (minigun) y **kits de reparación** para recuperar vida en mitad del combate.
 - Detalle de aquella época que el juego actual ya no tiene y que podemos recuperar: los consumibles de combate (kits de reparación).
+- **Coincidencia probable, encontrada el 2026-11-19:** en un clip fechado el 29 de marzo de 2013 el modo de un jugador es un cuadro de progreso de campaña: una barra, tu mech a la izquierda y una fila de rivales enfrente que se pierde en la sombra; vences al primero y pasas al siguiente. Como invitado, sin registrarse, solo se podía jugar ese modo. Encaja con el recuerdo del usuario (un robot sencillo, combate a combate hasta un jefe); falta que él lo confirme al ver la captura. No se pudo contar cuántos rivales tenía la fila. Detalle en la sección "El taller y el modo de un jugador del original, 2012–2014".
 
 ## Quejas recurrentes de la comunidad (oportunidades)
 - Calor y energía desbalanceados; las bombas de calor encadenan apagados.
@@ -125,3 +126,68 @@ El usuario nombró este juego como modelo de lo que pasa **fuera del combate** y
 **Lo que no tomamos:** nombres, personajes, arte ni sonido. Tampoco su combate.
 
 Fuentes: [wiki de fans](https://swordsandsandals.fandom.com/wiki/Swords_and_sandals_gladiator), [Wikipedia](https://en.wikipedia.com/wiki/Swords_and_Sandals), [TV Tropes](https://www.tvtropes.org/pmwiki/pmwiki.php/VideoGame/SwordsAndSandals), [ficha de Steam de la reedición](https://store.steampowered.com/app/649600/Swords_and_Sandals_2_Redux_Maximus_Edition/), [Flash Legacy](https://www.flashlegacy.com/game/swords-and-sandals-2-emperors-reign).
+
+## El taller y el modo de un jugador del original, 2012–2014 (2026-11-19)
+El usuario pidió ver cómo era el taller "cuando era juego de un solo jugador". Esa época es la versión Flash de 2012 a 2014 (la comunidad la llama *Legacy*).
+
+**Matiz:** nunca fue solo de un jugador. Desde la beta de 2012 tenía combates contra la computadora y en línea a la vez. Lo que sí había: se podía jugar como invitado, sin registrarse, y entonces solo existía el modo de un jugador ("Register now to save your progress and unlock multiplayer mode").
+
+### Cómo se investigó
+- El foro oficial (`community.supermechs.com`) y la wiki de Fandom rechazan la lectura automática (403 y 402). No se rodeó el bloqueo: de ellos solo hay fragmentos del buscador.
+- La prueba son los mosaicos de fotogramas públicos de vídeos de la época, con fecha de subida. Los vídeos en sí no se pudieron bajar desde esta red (403) y tampoco se rodeó.
+- Los fotogramas miden 320×180: la disposición de cada pantalla es segura; el texto pequeño se leyó con confianza media.
+- Están guardados fuera del repositorio, en `art_raw/referencia_original/` (lámina `taller_original_2012_2014.png` y la carpeta `fotogramas/`). Son capturas del juego original: no se suben ni se usan como arte.
+
+| Fuente | Fecha | Qué muestra |
+|---|---|---|
+| [Super Mechs With Thure EP 1](https://www.youtube.com/watch?v=Kah2F7Z4Xkc) | 2012-06-21 | La beta más antigua; fotogramas muy pequeños: solo el menú de fichas y la forma del taller |
+| [Game evolution 2012–2017](https://www.youtube.com/watch?v=fz5dVuB24vM) | clips del 2012-10-11, 2013-03-29 y 2014-02-01 | Menú, taller, campaña y cajas en cada año |
+| [SuperMechs Gameplay HD Walkthrough](https://www.youtube.com/watch?v=pxqK2CAUbos) | 2013-02-06 | Partida de invitado desde el tutorial: combate, taller, tienda, cabina |
+| [Super Mechs Tutorial](https://www.youtube.com/watch?v=Ssmz3rtChEE) | 2013-08-28 | Cabina, taller, tienda, pintura y mapa de un jugador |
+| [Super Mechs Gameplay HD](https://www.youtube.com/watch?v=-pyvTXhzRic) | 2013-09-01 | Tutorial de invitado |
+| [VS Computer GOD MODE](https://www.youtube.com/watch?v=PsIi9HtDFxI) | 2014-01-26 | El reto final del modo de un jugador |
+| [Reseña de enero de 2013](https://playlikecrazy.blogspot.com/2013/01/super-mechs.html) | 2013-01-16 | Créditos y experiencia, compras de equipo, kits de reparación en combate |
+| [Wiki de Fandom](https://super-mechs.fandom.com/wiki/Supermechs_Wiki) (fragmentos) | — | Legacy fue la primera versión, para PC; tienda con todos los objetos; balas y cohetes como munición |
+
+### Menú
+- **Octubre de 2012:** fichas sobre un paisaje. Dos grandes (taller y buscar combate) y cinco pequeñas (fichas de pago, créditos gratis, clasificación, amigos, repeticiones).
+- **Desde febrero de 2013:** la cabina del mech vista desde dentro, con el paisaje tras el parabrisas. Los botones son monitores verdes colgados alrededor: un jugador (contra la computadora), multijugador, taller y, el cuarto, clasificación (después, tienda). En la consola central hay iconos pequeños: logros, repeticiones, amigos, foro, ayuda.
+- **Barra superior, siempre:** créditos, fichas de pago, barra de experiencia con sus números y el nivel con su insignia.
+
+### Taller
+- **El mech va de perfil, mirando a la derecha.** Es el mismo dibujo del combate, al centro de un panel oscuro que ocupa dos tercios de la pantalla. En ninguna versión de 2012 a 2014 aparece de frente, ni en el taller ni en el menú ni en el mapa.
+- **Huecos alrededor del mech,** como cajas pequeñas: armas laterales en columna a izquierda y derecha; en agosto de 2013, además, una fila de cinco huecos pequeños encima y un bloque abajo a la izquierda (kits y módulos); abajo a la derecha, dos cajas apiladas con el torso y las piernas puestos.
+- **Inventario a la derecha,** en rejilla de tres columnas con flechas para desplazar. La pieza elegida lleva marco amarillo.
+- **Resumen del mech** bajo el inventario: vida, energía y su regeneración, calor y enfriamiento, balas y cohetes.
+- **Abajo:** flecha de volver y dos o tres botones de modo: armar, tienda y herramientas. El de herramientas aparece al subir de nivel; en agosto de 2013 abre el taller de pintura (una vista previa y diez colores).
+- **Ficha al pasar el ratón:** nombre, nivel, valor de venta y stats. Leído en un arma: alcance, daño mínimo y máximo con su tipo, calor por uso y balas o energía por uso.
+- **El torso decide los huecos.** Su ficha da vida, energía, regeneración, calor, enfriamiento al apagar, capacidad de balas y de cohetes, y cuántos huecos trae: armas laterales, armas superiores, kits y módulos (leído: 2, 1, 3 y 3 en un torso de nivel 5).
+- **Las piernas** dan vida, distancia al andar, daño físico y retroceso: son la patada.
+- **Los mechs de orugas ya existían en 2012** y en el taller se ven de perfil, como un tanque.
+
+### Tienda
+- Es la misma pantalla: el panel del mech se cambia por una rejilla de 5×4 con desplazamiento y el inventario sigue a la derecha. Lo comprado cae en el inventario.
+- Abajo, pestañas por tipo de pieza. Los tipos aún cerrados llevan candado y se abren con el nivel. Lo que pide más nivel sale oscurecido; su ficha da el precio y el nivel requerido.
+- En agosto de 2013 hay otra tienda aparte, de pago (potenciadores, cajas, cuenta premium). No se toma: aquí no hay monetización.
+
+### Modo de un jugador
+- **Octubre de 2012:** "campaña": combates contra la computadora.
+- **Marzo de 2013:** un cuadro de progreso de campaña: una barra que se va llenando, tu mech a la izquierda y, enfrente, una fila de rivales: el siguiente iluminado y los de detrás cada vez más oscuros, con el botón de combatir. Es una escalera: vences a uno y pasas al siguiente.
+- **Agosto de 2013:** un mapa del mundo en azul oscuro con puntos, uno por misión. Los cerrados dicen qué nivel piden. Al tocar una misión se abre un cuadro con el dibujo del rival, su dificultad y el botón de combatir.
+- **Febrero de 2014:** cada misión se puede completar en Normal, Difícil e Insano, y el mapa marca cuáles llevas. Al final hay un reto especial contra un jefe de nivel 30.
+- **Al empezar el combate** se elige una de tres bonificaciones (vistas: +20 cohetes, +20 % de daño, +20 de energía, +5 de calor).
+- **Al terminar:** créditos y experiencia desglosados (premio, dificultad, total). Subir de nivel da un bono de créditos.
+- **En combate:** de perfil, barras arriba, acciones abajo como iconos (moverse, armas, patada, apagar para enfriar), reloj del turno y aviso de calor crítico.
+
+### Qué significa para MechForge
+Son notas para decidir; las decisiones son del usuario.
+- **Vista del robot:** el hangar de frente es un desvío nuestro, pedido por el usuario. El original nunca enseña el mech de frente. Unas orugas o unas ruedas solo se reconocen de perfil: de frente el usuario vio "un cubo" y "un carrito".
+- **Ya coincide:** mech al centro con huecos alrededor, inventario al lado, tienda por tipo de hueco y ficha al pasar el ratón.
+- **Sin usar, candidatos:**
+  - el menú como cabina con monitores (encaja con la regla de interfaz inmersiva);
+  - el cuadro de misión que enseña al rival y su dificultad antes de combatir;
+  - tres dificultades por misión;
+  - elegir una de tres bonificaciones al empezar (hoy las deja la nave);
+  - taller de pintura;
+  - tipos de pieza que se abren con el nivel.
+- **Distinto por decisión ya tomada:** nuestros huecos son fijos (2 brazos, 2 hombros, 1 pecho); en el original los da el torso. No usamos munición de balas y cohetes.
