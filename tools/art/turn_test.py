@@ -31,6 +31,8 @@ entera) y <tanda>_<semilla>_frente.png (solo la vista de frente).
 Uso:
   tools/art/run.ps1 tools/art/turn_test.py --torso art_raw/parts/lote_ligero/torso_13.png \
       --legs docs/reference/art/elegidos/ligero/robot_18.png --tag t13p18 --seeds 1 2 3 4
+Los que estan en el juego salieron con --strength 0.7 --depth 0.8 --leg-depth 0.62
+--leg-max 128 (t13p18d_2, t16p14_4 y t18p17_4).
 """
 
 import argparse
@@ -77,13 +79,14 @@ def _smooth(values, sigma=5):
     return cv2.GaussianBlur(values.astype(np.float32).reshape(-1, 1), (1, 0), sigma).ravel()
 
 
-def front_unfold(side, side_mask, hip_row, depth, leg_depth, leg_max):
+def front_unfold(side, side_mask, hip_row, depth, leg_depth, leg_max, single_legs=False):
     """Vista de frente de partida, deducida de la de perfil. Devuelve
     (imagen del panel, mascara de la figura).
 
     Sobre el aro es una sola masa centrada cuyo ancho en cada fila es `depth`
     veces el fondo del perfil en esa fila; bajo el aro, dos piernas iguales,
-    cada una `leg_depth` veces su fondo y como mucho `leg_max` de ancho. Cada
+    cada una `leg_depth` veces su fondo y como mucho `leg_max` de ancho (con
+    `single_legs`, una sola base centrada: orugas, ruedas o levitar). Cada
     mitad de cada masa lleva la fila del perfil entera: el borde de atras en
     el borde de fuera y el de delante (el robot mira a la derecha) en el
     centro."""
@@ -126,6 +129,8 @@ def front_unfold(side, side_mask, hip_row, depth, leg_depth, leg_max):
             paint(row, center, ring)
         elif row < hip_row:
             paint(row, center, int(max(torso[row], 8) / 2))
+        elif single_legs:
+            paint(row, center, int(max(legs[row], 8) / 2))
         else:
             # Separadas: entre las dos piernas tiene que verse el fondo.
             for leg_center in (center - apart, center + apart):
@@ -160,6 +165,7 @@ def main():
     parser.add_argument("--depth", type=float, default=0.62, help="ancho de frente del torso / fondo de perfil")
     parser.add_argument("--leg-depth", type=float, default=0.5, help="lo mismo para cada pierna")
     parser.add_argument("--leg-max", type=int, default=104, help="ancho maximo de una pierna, en pixeles del panel")
+    parser.add_argument("--single-legs", action="store_true", help="la base es una sola pieza (orugas, ruedas, levitar)")
     parser.add_argument("--sheet-only", action="store_true", help="solo guarda la hoja de partida, sin GPU")
     args = parser.parse_args()
 
@@ -170,7 +176,9 @@ def main():
     sheet.paste(side, (0, 0))
     hip_row = args.hip[0] * PANEL // blockout.SIZE
     side_mask = cutout.clean_figure(side)
-    unfolded, front_mask = front_unfold(side, side_mask, hip_row, args.depth, args.leg_depth, args.leg_max)
+    unfolded, front_mask = front_unfold(
+        side, side_mask, hip_row, args.depth, args.leg_depth, args.leg_max, args.single_legs
+    )
     envelope = cv2.dilate(front_mask.astype(np.uint8), np.ones((args.margin * 2 + 1,) * 2, np.uint8)) * 255
     mask = np.zeros((PANEL, PANEL * 2), dtype=np.uint8)
     if args.front:

@@ -58,7 +58,14 @@ def main():
 
     args.out.mkdir(parents=True, exist_ok=True)
     hip = tuple(args.hip)
-    anchors = {"scale": args.scale}
+    # Las anclas de las piezas que no se exportan ahora se conservan (un
+    # juego puede sacar el torso y las piernas de imagenes distintas, y el
+    # arma de pecho la anade tools/art/extract_overlay.py).
+    anchors = {}
+    existing = args.out / (args.name + ".json")
+    if existing.exists():
+        anchors = json.loads(existing.read_text(encoding="utf-8"))
+    anchors["scale"] = args.scale
     for kind, path, keep_upper in (("torso", args.torso, True), ("legs", args.legs, False)):
         if path is None:
             continue

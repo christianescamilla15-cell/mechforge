@@ -26,7 +26,9 @@ const RACK_TOP: Array[String] = [
 const RACK_BOTTOM: Array[String] = [
 	"module0", "module1", "module2", "module3", "module4", "module5", "module6", "module7"
 ]
-const BAY_X: Array[float] = [0.075, 0.19, 0.815]
+## Centro de cada bahia, como parte del ancho. De frente y con las armas
+## abiertas un robot es ancho: las dos de la izquierda van separadas.
+const BAY_X: Array[float] = [0.085, 0.225, 0.815]
 const COLOR_SCREEN := Color("0b2a33")
 const COLOR_SCREEN_LINE := Color("3fd0e6")
 const COLOR_TEXT := Color("bfefff")
@@ -109,7 +111,7 @@ func _layout() -> void:
 	for i in _bay_views.size():
 		var view := _bay_views[i]
 		var feet := Vector2(size.x * BAY_X[i], _bay_floor())
-		var factor := (size.y * 0.27) / maxf(view.standing_height(), 200.0)
+		var factor := (size.y * 0.23) / maxf(view.standing_height(), 200.0)
 		view.place(feet)
 		view.set_facing(1)
 		view.scale *= factor
