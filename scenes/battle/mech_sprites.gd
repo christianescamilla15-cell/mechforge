@@ -78,17 +78,6 @@ static func has_piece(set_name: String, kind: String) -> bool:
 	return _load_anchors(set_name).get(kind) is Dictionary
 
 
-## Anclas de una pieza de un juego ({"hip", "size", ...}); {} si no existe.
-static func piece_info(set_name: String, kind: String) -> Dictionary:
-	var piece: Variant = _load_anchors(set_name).get(kind)
-	return piece if piece is Dictionary else {}
-
-
-## Dibujo de una pieza en el color del elemento (null si no existe).
-static func texture(set_name: String, kind: String, element: int) -> Texture2D:
-	return _texture(set_name, kind, element)
-
-
 ## Hay arte de armas montadas: entonces cada arma se dibuja en su hueco.
 static func has_weapon_art() -> bool:
 	for value: Variant in _load_anchors(WEAPON_SET).values():

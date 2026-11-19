@@ -26,8 +26,8 @@ const RACK_TOP: Array[String] = [
 const RACK_BOTTOM: Array[String] = [
 	"module0", "module1", "module2", "module3", "module4", "module5", "module6", "module7"
 ]
-## Centro de cada bahia, como parte del ancho. De frente y con las armas
-## abiertas un robot es ancho: las dos de la izquierda van separadas.
+## Centro de cada bahia, como parte del ancho. Las dos de la izquierda van
+## separadas para que el arma de un robot no tape al de al lado.
 const BAY_X: Array[float] = [0.085, 0.225, 0.815]
 const COLOR_SCREEN := Color("0b2a33")
 const COLOR_SCREEN_LINE := Color("3fd0e6")
@@ -62,11 +62,6 @@ func _ready() -> void:
 # --- Colocacion ------------------------------------------------------------------
 
 
-## En el hangar los robots se ven de frente (los que tienen ya ese dibujo).
-func _make_mech() -> MechView:
-	return FrontMechView.new()
-
-
 ## El robot que usas, algo a la izquierda del centro y sobre el suelo.
 func _fit() -> void:
 	if _mech.build == null or size.y <= 0.0:
@@ -82,9 +77,6 @@ func _fit() -> void:
 	var zoom := minf(1.3, (_floor_y - size.y * 0.13) / height)
 	_world.scale = Vector2(zoom, zoom)
 	var center := (bounds.position.x + bounds.size.x * 0.35) * zoom
-	if (_mech as FrontMechView).is_front():
-		# De frente es simetrico: sus pies van en el centro de la plataforma.
-		center = 0.0
 	_world.position = Vector2(size.x * 0.43 - center, _floor_y)
 	var legs := _world_rect("legs")
 	_platform_width = maxf(legs.size.x, 80.0) * zoom * 1.7
@@ -111,7 +103,7 @@ func _layout() -> void:
 	for i in _bay_views.size():
 		var view := _bay_views[i]
 		var feet := Vector2(size.x * BAY_X[i], _bay_floor())
-		var factor := (size.y * 0.23) / maxf(view.standing_height(), 200.0)
+		var factor := (size.y * 0.25) / maxf(view.standing_height(), 200.0)
 		view.place(feet)
 		view.set_facing(1)
 		view.scale *= factor
@@ -144,7 +136,7 @@ func set_bays(p_bays: Array[Dictionary]) -> void:
 		view.queue_free()
 	_bay_views.clear()
 	for bay in bays:
-		var view := FrontMechView.new()
+		var view := MechView.new()
 		_bay_layer.add_child(view)
 		if bay["build"] != null:
 			view.setup(bay["build"], 1)

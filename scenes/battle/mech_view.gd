@@ -503,7 +503,7 @@ func slot_rect(slot: String) -> Rect2:
 
 
 ## Las cuatro esquinas de la pieza de un hueco, en orden, respecto a los
-## pies; vacio si no se dibuja. De perfil es su rectangulo.
+## pies; vacio si no se dibuja.
 func slot_quad(slot: String) -> PackedVector2Array:
 	var rect := slot_rect(slot)
 	if rect.size == Vector2.ZERO:

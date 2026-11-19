@@ -33,7 +33,7 @@ var hover_slot: String = ""
 var preview: bool = false
 
 var _world := Node2D.new()
-var _mech: MechView = _make_mech()
+var _mech := MechView.new()
 var _overlay := Node2D.new()
 var _shots := ShotFx.new()
 var _flash_slot: String = ""
@@ -55,12 +55,6 @@ func _ready() -> void:
 	_world.add_child(_shots)
 	_overlay.draw.connect(_draw_overlay)
 	resized.connect(_fit)
-
-
-## La vista del mech: de perfil, como en combate. El hangar la cambia por la
-## de frente.
-func _make_mech() -> MechView:
-	return MechView.new()
 
 
 ## Arma el mech con este equipo. `ghosts`: piezas que faltan ("torso",
@@ -206,7 +200,7 @@ func _brackets(slot: String, color: Color, width: float) -> void:
 	if quad.size() != 4:
 		return
 	for i in 4:
-		# Cada esquina, con sus dos lados (la pieza puede ir girada).
+		# Cada esquina, con sus dos lados.
 		var p := _mech.transform * quad[i]
 		var next := _mech.transform * quad[(i + 1) % 4] - p
 		var before := _mech.transform * quad[(i + 3) % 4] - p
