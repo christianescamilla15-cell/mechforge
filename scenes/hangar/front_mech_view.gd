@@ -148,10 +148,14 @@ func _draw() -> void:
 	var tint := _body_tint(1.0)
 	# Respira: el cuerpo y lo que cuelga de el suben y bajan un poco.
 	var body := Vector2(0.0, sin(_time * 2.2) * 1.2)
+	if _locomotion == "hover" and not ("legs" in ghost_slots):
+		_draw_hover_glow()
 	# Las armas de hombro asoman por detras del casco.
 	for slot: String in ["top0", "top1"]:
 		_draw_weapon(slot, tint, body)
-	_draw_piece(_front_legs, "legs", build.legs.element, _ghost_tint(tint, "legs"), Vector2.ZERO)
+	# Las piernas que levitan se mecen con el cuerpo; las demas pisan firme.
+	var legs_at := body * 2.0 if _locomotion == "hover" else Vector2.ZERO
+	_draw_piece(_front_legs, "legs", build.legs.element, _ghost_tint(tint, "legs"), legs_at)
 	# De cada brazo, primero el arma de fuera; el casco tapa las articulaciones.
 	for slot: String in ["side1", "side3", "side0", "side2"]:
 		_draw_weapon(slot, tint, body)
@@ -162,11 +166,14 @@ func _draw() -> void:
 		MechSprites.draw_assist(self, _assist_kind(), element, tint, _front_assist_at() + bob)
 
 
-## Cintura respecto a los pies, segun las piernas de frente.
+## Cintura respecto a los pies, segun las piernas de frente. Las que
+## levitan van separadas del suelo, como de perfil.
 func _hip() -> Vector2:
 	var legs := MechSprites.piece_info(_front_legs, "legs")
-	var up := float(legs["size"][1]) - float(legs["hip"][1])
-	return Vector2(0.0, -up * MechSprites.UNIT_SCALE)
+	var up := (float(legs["size"][1]) - float(legs["hip"][1])) * MechSprites.UNIT_SCALE
+	if _locomotion == "hover":
+		up += HOVER_HEIGHT
+	return Vector2(0.0, -up)
 
 
 func _torso_top() -> float:
@@ -185,6 +192,15 @@ func _piece_rect(set_name: String, kind: String) -> Rect2:
 	var anchor := Vector2(piece["hip"][0], piece["hip"][1])
 	var size := Vector2(piece["size"][0], piece["size"][1])
 	return Rect2(_hip() - anchor * MechSprites.UNIT_SCALE, size * MechSprites.UNIT_SCALE)
+
+
+## Brillo bajo las piernas que levitan, sobre la plataforma.
+func _draw_hover_glow() -> void:
+	var legs := _piece_rect(_front_legs, "legs")
+	var pulse := 0.5 + 0.5 * sin(_time * 5.0)
+	var radius := Vector2(legs.size.x * 0.34, 5.0 + 2.0 * pulse)
+	_ellipse(Vector2(0.0, -2.0), radius, Color(HOVER_GLOW, 0.28 + 0.14 * pulse))
+	_ellipse(Vector2(0.0, -2.0), radius * 0.55, Color(HOVER_GLOW, 0.4 + 0.2 * pulse))
 
 
 func _draw_piece(

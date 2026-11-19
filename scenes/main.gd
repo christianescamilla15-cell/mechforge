@@ -103,6 +103,10 @@ func _ready() -> void:
 			_profile.skills.assign(["asalto_1", "asalto_2", "asalto_3", "blindaje_1", "sistemas_1"])
 		if _args["menu-shot"] == "jefe":
 			_profile.fight = _campaign.fights_in(0)
+		# --legs=<id>: otras piernas (para ver las de orugas, ruedas o levitar).
+		if _args.has("legs"):
+			_profile.owned.append(_args["legs"])
+			_profile.build["legs"] = _args["legs"]
 		# --xp=<n> y --chest=<id>: un perfil con huecos abiertos y arma de pecho.
 		if _args.has("xp"):
 			_profile.xp = int(_args["xp"])
