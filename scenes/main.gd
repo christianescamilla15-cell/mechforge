@@ -2,8 +2,9 @@ class_name MainScreen
 extends Control
 ## Punto de entrada: la base del jugador (GDD 9). Desde aqui se entra a la
 ## campana (los combates de la zona y su jefe), a la arena (para juntar
-## celdas) y a la armeria (mejoras permanentes). Hay ademas un combate libre,
-## sin recompensa, para probar cualquier cruce.
+## celdas) y al taller (WorkshopScreen), que es tambien la armeria: piezas,
+## tienda, mejoras permanentes y habilidades. Hay ademas un combate libre, sin
+## recompensa, para probar cualquier cruce.
 ##
 ## Pruebas en vivo: `++ --autoplay` (ver LiveTest) y `++ --menu-shot`, que
 ## guarda una captura del menu con un perfil de muestra y sale
@@ -90,15 +91,11 @@ func _ready() -> void:
 		_profile.shop_levels = {"damage": 3, "health": 10}
 		_profile.parts = {"torso_baluarte": {"tier": 0, "level": 3}}
 		_profile.parts["hoja_balas_cin"] = {"tier": 0, "level": 3}
-		_last["tab"] = 1
 		_profile.wins = 12
 		_profile.fight = 4
 		if _args["menu-shot"] == "nuevo":
 			_profile = PlayerProfile.new()
-		elif _args["menu-shot"] == "tienda":
-			_last["tab"] = 2
 		elif _args["menu-shot"] == "habilidades":
-			_last["tab"] = 3
 			_profile.xp = 9500
 			_profile.skills.assign(["asalto_1", "asalto_2", "asalto_3", "blindaje_1", "sistemas_1"])
 		if _args["menu-shot"] == "jefe":
@@ -123,6 +120,9 @@ func _ready() -> void:
 		elif _args["menu-shot"] == "armeria":
 			_live_test().armory_test()
 			return
+		elif _args["menu-shot"] in ["tienda", "mejoras", "habilidades"]:
+			# El taller abierto en ese espacio.
+			open_workshop().show_page(_args["menu-shot"])
 		await get_tree().create_timer(0.6).timeout
 		await _live_test().shot("menu")
 		get_tree().quit(0)
@@ -168,7 +168,38 @@ func _show_menu() -> void:
 		_add_arena(left, can_fight)
 		_add_free_fight(left)
 	_add_system_buttons(left)
-	_add_shop(_column(columns, 520))
+	_add_hangar(_column(columns, 520))
+
+
+## Hangar: tus celdas, tu historial y tu mech montado, con la entrada al
+## taller. Todo lo que se compra y se mejora esta en el taller.
+func _add_hangar(box: VBoxContainer) -> void:
+	_text(box, Txt.t("hangar_title"), 26).horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	var cells := _text(box, Txt.t("menu_gold", [_profile.gold]), 24, COLOR_CELLS)
+	cells.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	if _profile.unique_cores > 0:
+		var cores := _text(box, Txt.t("menu_cores", [_profile.unique_cores]), 18, COLOR_CELLS)
+		cores.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	var record := Txt.t(
+		"menu_record", [_profile.wins, _profile.losses, _profile.boss_wins, _campaign.world_bosses]
+	)
+	if _profile.runs_lost > 0:
+		record += "\n" + Txt.t("menu_runs", [_profile.runs_lost, _profile.best_boss_wins])
+	if _last_result != "":
+		record = "%s\n%s" % [_last_result, record]
+	_text(box, record, 15, COLOR_MUTED).horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	if not _profile.has_mech():
+		return
+	var build := _player_build()
+	if build.torso == null or build.legs == null:
+		_text(box, Txt.t("hangar_missing"), 15, COLOR_WARNING)
+	else:
+		var stage := MechStage.new()
+		stage.preview = true
+		stage.custom_minimum_size = Vector2(0, 360)
+		box.add_child(stage)
+		stage.show_build(build, [])
+	_button(box, Txt.t("workshop_enter"), 56, open_workshop)
 
 
 ## Ajustes y salir del juego (hace falta en pantalla completa).
@@ -264,7 +295,6 @@ func _add_mech_status(box: VBoxContainer) -> bool:
 	_text(box, level_line, 15, COLOR_MUTED)
 	if not problems.is_empty():
 		_text(box, Txt.t("mech_problems", [", ".join(problems)]), 14, COLOR_WARNING)
-	_button(box, Txt.t("workshop_open"), 44, open_workshop)
 	return problems.is_empty()
 
 
@@ -343,259 +373,9 @@ func _add_free_fight(box: VBoxContainer) -> void:
 	_button(box, Txt.t("menu_free_fight"), 36, _on_free_pressed)
 
 
-## Armeria (GDD 8): celdas, historial y, en dos pestanas, las mejoras
-## permanentes y las piezas del mech, que se suben de nivel y se transforman.
-func _add_shop(box: VBoxContainer) -> void:
-	_text(box, Txt.t("menu_shop"), 26).horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	var cells := _text(box, Txt.t("menu_gold", [_profile.gold]), 24, COLOR_CELLS)
-	cells.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	if _profile.unique_cores > 0:
-		var cores := _text(box, Txt.t("menu_cores", [_profile.unique_cores]), 18, COLOR_CELLS)
-		cores.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	var record := Txt.t(
-		"menu_record", [_profile.wins, _profile.losses, _profile.boss_wins, _campaign.world_bosses]
-	)
-	if _profile.runs_lost > 0:
-		record += "\n" + Txt.t("menu_runs", [_profile.runs_lost, _profile.best_boss_wins])
-	if _last_result != "":
-		record = "%s\n%s" % [_last_result, record]
-	_text(box, record, 15, COLOR_MUTED).horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	var tabs := TabContainer.new()
-	tabs.custom_minimum_size = Vector2(0, 400)
-	box.add_child(tabs)
-	var upgrades := VBoxContainer.new()
-	upgrades.name = Txt.t("shop_tab_upgrades")
-	tabs.add_child(upgrades)
-	_add_upgrades(upgrades)
-	if _profile.has_mech():
-		var parts := _scroll_tab(tabs, Txt.t("shop_tab_parts"))
-		_text(parts, Txt.t("workshop_open_hint"), 15, COLOR_MUTED)
-		_button(parts, Txt.t("workshop_open"), 52, open_workshop)
-		_add_parts(parts)
-		_add_store(_scroll_tab(tabs, Txt.t("shop_tab_store")))
-		_add_skills(_scroll_tab(tabs, Txt.t("shop_tab_skills")))
-	tabs.current_tab = _last.get("tab", 0)
-	tabs.tab_changed.connect(func(tab: int) -> void: _last["tab"] = tab)
-
-
-## Pestana con barra de desplazamiento; devuelve la caja donde van las filas.
-func _scroll_tab(tabs: TabContainer, title: String) -> VBoxContainer:
-	var scroll := ScrollContainer.new()
-	scroll.name = title
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	tabs.add_child(scroll)
-	var box := VBoxContainer.new()
-	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.add_child(box)
-	return box
-
-
-## Mejoras permanentes de la armeria: seis lineas en 10 niveles.
-func _add_upgrades(box: VBoxContainer) -> void:
-	var cap := _armory_cap()
-	for track in _shop.track_ids():
-		var level := _profile.level_of(track)
-		var label := Txt.t(
-			"shop_row",
-			[_shop.display_name(track), level, _shop.max_level(), _shop_value(track, level)]
-		)
-		var buy := _shop_row(box, label)
-		if level >= _shop.max_level():
-			buy.text = Txt.t("shop_max")
-			buy.disabled = true
-		else:
-			var reason := _profile.why_cant_buy(_shop, track, cap)
-			buy.text = Txt.t("shop_buy", [_shop.price(level + 1)])
-			buy.disabled = reason != ""
-			if reason.begins_with("se abre"):
-				buy.text = Txt.t("shop_locked_assist")
-				buy.tooltip_text = reason
-			elif reason == "la zona no deja subirla mas":
-				buy.text = Txt.t("part_zone_max")
-				buy.tooltip_text = Txt.t("shop_zone_cap", [cap])
-		buy.pressed.connect(_on_buy_pressed.bind(track))
-
-
-## Taller (GDD 4 y 8): cada hueco del mech con la pieza montada, que se cambia
-## por otra que el jugador tenga, y su clase y nivel. Cada pieza sube de nivel
-## por separado y, al maximo de su clase, se transforma si la zona lo permite.
-func _add_parts(box: VBoxContainer) -> void:
-	var max_tier := _zone_tier()
-	var cap_level := _campaign.level_cap(_profile.zone)
-	for slot in Garage.SLOTS:
-		var row := HBoxContainer.new()
-		box.add_child(row)
-		var name_label := Label.new()
-		name_label.text = Txt.t("slot_" + slot.rstrip("0123456789")) + _slot_number(slot)
-		name_label.custom_minimum_size = Vector2(112, 0)
-		row.add_child(name_label)
-		var current := Garage.get_slot(_profile.build, slot)
-		var unlocked := _progression.is_unlocked(slot, _player_level())
-		var picker := OptionButton.new()
-		picker.custom_minimum_size = Vector2(190, 0)
-		# Ancho fijo: los nombres largos se recortan en vez de empujar la fila.
-		picker.fit_to_longest_item = false
-		picker.clip_text = true
-		picker.add_item(Txt.t("slot_empty"))
-		var options := Garage.owned_for(_profile, _catalog, slot)
-		for id in options:
-			picker.add_item(_catalog.get_item(id).display_name)
-		picker.select(options.find(current) + 1)
-		picker.item_selected.connect(_on_slot_picked.bind(slot, options))
-		picker.disabled = not unlocked
-		row.add_child(picker)
-		var level_label := Label.new()
-		level_label.custom_minimum_size = Vector2(96, 0)
-		level_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		level_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		row.add_child(level_label)
-		var buy := Button.new()
-		buy.custom_minimum_size = Vector2(130, 0)
-		row.add_child(buy)
-		if not unlocked:
-			level_label.text = Txt.t("slot_locked", [_progression.unlock_level(slot)])
-			buy.text = "—"
-			buy.disabled = true
-			continue
-		if current == "":
-			buy.text = "—"
-			buy.disabled = true
-			continue
-		var def := _catalog.get_item(current)
-		if def.type == ItemDef.Type.DRONE and _profile.build.has("assist"):
-			# Las armas del robot de asistencia suben con el.
-			level_label.text = Txt.t("part_follows_assist")
-			if slot == "drone_low" and _assist_tier() < _rules.assist_second_weapon_tier:
-				level_label.text = Txt.t("slot_second_weapon")
-			buy.text = "—"
-			buy.disabled = true
-			continue
-		var key := def.progress_id()
-		var p := _profile.part(key)
-		var top := _rules.tier_max_level[p["tier"]]
-		level_label.text = Txt.t("part_level", [Txt.TIER_NAMES[p["tier"]], p["level"], top])
-		if def.type == ItemDef.Type.ASSIST:
-			level_label.text = Txt.t("assist_form_%d" % p["tier"]) + " · " + level_label.text
-		_set_part_button(buy, current, key, p, max_tier, cap_level)
-
-
-func _slot_number(slot: String) -> String:
-	var digits := slot.trim_prefix(slot.rstrip("0123456789"))
-	return " %d" % (int(digits) + 1) if digits != "" else ""
-
-
-## Boton de una pieza: subir de nivel, transformar o el tope que la para.
-## `key` es donde se guarda su progreso (el del asistente es comun).
-func _set_part_button(
-	buy: Button, id: String, key: String, p: Dictionary, max_tier: int, cap_level: int
-) -> void:
-	if p["level"] < _rules.tier_max_level[p["tier"]]:
-		var level_reason := _profile.why_cant_level(_workshop, _rules, key, max_tier, cap_level)
-		if level_reason == "la zona no deja subirla mas":
-			buy.text = Txt.t("part_zone_max")
-			buy.disabled = true
-			return
-		buy.text = Txt.t("part_level_up", [_workshop.level_cost(_rules, p["tier"], p["level"])])
-		buy.disabled = level_reason != ""
-		buy.pressed.connect(_on_part_level.bind(key, max_tier, cap_level))
-		return
-	var item_max := _catalog.get_item(id).tier_max
-	var reason := _profile.why_cant_transform(_workshop, _rules, key, max_tier, item_max)
-	if reason in ["", "faltan celdas"]:
-		buy.text = Txt.t("part_transform", [_workshop.transform_cost(p["tier"])])
-		if p["tier"] == ItemDef.Tier.MYTHIC:
-			buy.text = Txt.t("part_unique")
-		buy.disabled = reason != ""
-		buy.pressed.connect(_on_part_transform.bind(key, max_tier, item_max))
-		return
-	var zone_cap := reason == "la clase siguiente se abre en otra zona"
-	buy.text = Txt.t("part_zone_max" if zone_cap else "shop_max")
-	buy.disabled = true
-	buy.tooltip_text = reason
-
-
-## Tienda de piezas: lo que se vende en la clase de la zona. Una pieza nueva
-## llega en esa clase al nivel 0.
-func _add_store(box: VBoxContainer) -> void:
-	var zone_tier := _zone_tier()
-	_text(box, Txt.t("store_info", [Txt.TIER_NAMES[zone_tier]]), 14, COLOR_MUTED)
-	for id in _garage.stock_for(_catalog, zone_tier):
-		var def := _catalog.get_item(id)
-		var label := Txt.t(
-			"store_row", [def.display_name, Txt.t("type_" + ItemDef.Type.keys()[def.type])]
-		)
-		var buy := _shop_row(box, label)
-		if id in _profile.owned:
-			buy.text = Txt.t("store_owned")
-			buy.disabled = true
-			continue
-		buy.text = Txt.t("store_buy", [_garage.price(_catalog, _rules, _workshop, id, zone_tier)])
-		var reason := _garage.why_cant_buy(_profile, _catalog, _rules, _workshop, id, zone_tier)
-		buy.disabled = reason != ""
-		buy.pressed.connect(_on_store_buy.bind(id, zone_tier))
-
-
-## Arbol de habilidades: puntos por nivel y tres ramas que se aprenden en
-## orden; Asalto termina en la materia oscura.
-func _add_skills(box: VBoxContainer) -> void:
-	var level := _player_level()
-	var points := _skills.points_left(_profile, level)
-	_text(box, Txt.t("skill_points", [points, level]), 16, COLOR_CELLS)
-	for branch in _skills.branches:
-		var nodes: Array = branch["nodes"]
-		var done := _skills.learned_in(_profile, branch["id"])
-		_text(box, Txt.t("skill_branch", [branch["name"], done, nodes.size()]), 18)
-		if done > 0:
-			var learned: Array[String] = []
-			for i in done:
-				learned.append(str(nodes[i]["name"]))
-			_text(box, Txt.t("skill_learned", [", ".join(learned)]), 13, COLOR_MUTED)
-		var next := _skills.next_in(_profile, branch)
-		if next.is_empty():
-			_text(box, Txt.t("skill_done"), 14, COLOR_MUTED)
-			continue
-		var label := Txt.t("skill_next", [next["name"], SkillTree.describe(next)])
-		var learn := _shop_row(box, label)
-		var reason := _skills.why_cant_learn(_profile, next["id"], level)
-		learn.text = Txt.t("skill_learn")
-		learn.disabled = reason != ""
-		learn.tooltip_text = reason
-		learn.pressed.connect(_on_learn.bind(next["id"]))
-
-
-func _on_learn(id: String) -> void:
-	if _skills.learn(_profile, id, _player_level()) == "":
-		Sfx.play("ui_habilidad")
-		_save()
-	_remember_picks()
-	_show_menu()
-
-
 ## Clase de la zona en la que esta el jugador.
 func _zone_tier() -> int:
 	return _campaign.tier_of(mini(_profile.zone, _campaign.zone_count() - 1))
-
-
-## Una linea de la armeria: texto a la izquierda y boton de compra.
-func _shop_row(box: VBoxContainer, text: String) -> Button:
-	var row := HBoxContainer.new()
-	box.add_child(row)
-	var label := Label.new()
-	label.text = text
-	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_child(label)
-	var buy := Button.new()
-	buy.custom_minimum_size = Vector2(150, 0)
-	row.add_child(buy)
-	return buy
-
-
-## Lo que da una mejora a ese nivel, como texto: "+5 %" o "+123".
-func _shop_value(track: String, level: int) -> String:
-	var amount := _shop.value(track, level)
-	if _shop.tracks[track]["kind"] == "percent":
-		return "+%d %%" % roundi(amount * 100.0)
-	return "+%d" % roundi(amount)
 
 
 func _add_picker(
@@ -647,22 +427,6 @@ func _on_starter_picked(id: String) -> void:
 	_show_menu()
 
 
-func _on_slot_picked(index: int, slot: String, options: Array[String]) -> void:
-	var id := options[index - 1] if index > 0 else ""
-	if Garage.equip(_profile, _catalog, slot, id) == "":
-		_save()
-	_remember_picks()
-	_show_menu.call_deferred()
-
-
-func _on_store_buy(id: String, zone_tier: int) -> void:
-	if _garage.buy(_profile, _catalog, _rules, _workshop, id, zone_tier) == "":
-		Sfx.play("ui_comprar")
-		_save()
-	_remember_picks()
-	_show_menu()
-
-
 ## Mech armado del jugador con la clase y el nivel de cada pieza, sin lo que
 ## va en huecos que su nivel aun no abre.
 func _player_build() -> MechBuild:
@@ -700,30 +464,6 @@ func _assist_tier() -> int:
 ## Tope de la armeria en la zona en la que esta el jugador.
 func _armory_cap() -> int:
 	return _campaign.armory_cap(mini(_profile.zone, _campaign.zone_count() - 1), _shop)
-
-
-func _on_buy_pressed(track: String) -> void:
-	if _profile.buy(_shop, track, _armory_cap()) == "":
-		Sfx.play("ui_comprar")
-		_save()
-	_remember_picks()
-	_show_menu()
-
-
-func _on_part_level(id: String, cap_tier: int, cap_level: int) -> void:
-	if _profile.level_up(_workshop, _rules, id, cap_tier, cap_level) == "":
-		Sfx.play("ui_subir_nivel")
-		_save()
-	_remember_picks()
-	_show_menu()
-
-
-func _on_part_transform(id: String, max_tier: int, item_max: int) -> void:
-	if _profile.transform(_workshop, _rules, id, max_tier, item_max) == "":
-		Sfx.play("ui_transformar")
-		_save()
-	_remember_picks()
-	_show_menu()
 
 
 func _on_campaign_pressed() -> void:

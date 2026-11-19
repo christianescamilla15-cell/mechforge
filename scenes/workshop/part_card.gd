@@ -11,6 +11,9 @@ signal bought(id: String)
 const COLOR_BACK := Color("18212e")
 const COLOR_MUTED := Color("9aa7b8")
 const COLOR_MOUNTED := Color("ffe27a")
+## Cuanto se puede mover el raton entre pulsar y soltar para que cuente como
+## clic y no como arrastre.
+const CLICK_SLOP := 6.0
 
 var item: ItemDef
 ## Clase y nivel ("Bás 3/6") o lo que cueste en la tienda.
@@ -23,9 +26,12 @@ var mounted: bool = false
 var price: int = -1
 var buy_reason: String = ""
 
+var _press_at := Vector2(-1, -1)
+
 
 func _ready() -> void:
-	mouse_filter = Control.MOUSE_FILTER_STOP
+	# PASS: si se suelta encima una pieza montada, la recibe el panel (quitar).
+	mouse_filter = Control.MOUSE_FILTER_PASS
 	custom_minimum_size = Vector2(0, 62)
 	var style := StyleBoxFlat.new()
 	style.bg_color = COLOR_BACK
@@ -78,19 +84,35 @@ func _line(parent: Control, text: String, font_size: int, color: Color) -> void:
 	parent.add_child(label)
 
 
+## Un clic cuenta al soltar sin haber arrastrado: si contara al pulsar, la
+## lista se redibujaria y la tarjeta desapareceria a mitad del arrastre.
 func _gui_input(event: InputEvent) -> void:
 	var click := event as InputEventMouseButton
-	if click != null and click.pressed and click.button_index == MOUSE_BUTTON_LEFT and price < 0:
+	if click == null or click.button_index != MOUSE_BUTTON_LEFT:
+		return
+	if click.pressed:
+		_press_at = click.position
+	elif _press_at.x >= 0.0 and click.position.distance_to(_press_at) < CLICK_SLOP:
+		_press_at = Vector2(-1, -1)
 		chosen.emit(item.id)
 		accept_event()
 
 
-## Las tuyas se arrastran al hueco o sobre el mech.
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_DRAG_BEGIN:
+		_press_at = Vector2(-1, -1)
+
+
+## Se arrastran al hueco o sobre el mech; las de la tienda se compran al
+## soltarlas (si se pueden comprar).
 func _get_drag_data(_at: Vector2) -> Variant:
-	if price >= 0:
+	if price >= 0 and buy_reason != "":
 		return null
 	set_drag_preview(drag_preview(item))
-	return {"id": item.id, "type": item.type}
+	var data := {"id": item.id, "type": item.type}
+	if price >= 0:
+		data["buy"] = true
+	return data
 
 
 ## Lo que se ve bajo el raton mientras se arrastra una pieza: su dibujo.

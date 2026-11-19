@@ -10,6 +10,7 @@
     "ui_subir_nivel": {"files": ["ui/subir_nivel"], "bus": "Interface"},
     "ui_transformar": {"files": ["ui/transformar"], "bus": "Interface"},
     "ui_habilidad": {"files": ["ui/habilidad"], "bus": "Interface"},
+    "ui_pagina": {"files": ["ui/abrir"], "bus": "Interface", "volume_db": -4.0, "pitch": [1.2, 1.3]},
     "taller_montar": {"files": ["mech/despliegue"], "bus": "Interface", "pitch": [1.1, 1.25]},
     "taller_quitar": {"files": ["ui/cerrar"], "bus": "Interface", "pitch": [0.8, 0.9]},
 

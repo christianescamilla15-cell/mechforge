@@ -1,13 +1,15 @@
 class_name WorkshopScreen
 extends Control
 ## Taller (GDD 4 y 8; como lo pidio el usuario el 2026-11-18, al estilo del
-## taller del original): el mech montado en el centro; a la izquierda sus
-## huecos, colocados como en su cuerpo; a la derecha su resumen, la pieza del
-## hueco elegido (subir, transformar, probar, quitar) y las piezas que tienes o
-## puedes comprar para ese hueco. Las piezas se arrastran al hueco o al mech,
-## una montada se arrastra a otro hueco (se cambian) o fuera (se quita), y la X
-## deja el hueco vacio. Lee y cambia el perfil a traves de MainScreen, que lo
-## guarda.
+## taller del original). Es tambien la armeria: no hay otra pantalla. El mech
+## montado en el centro; a la izquierda sus huecos, colocados como en su
+## cuerpo; a la derecha su resumen y un panel que se desliza entre cuatro
+## espacios: Pieza (la del hueco elegido: subir, transformar, probar, quitar,
+## y las tuyas para ese hueco), Tienda (lo que se vende para tu zona y tu
+## nivel), Mejoras (las permanentes) y Habilidades. Las piezas se arrastran al
+## hueco o al mech (las de la tienda se compran y se montan), una montada se
+## arrastra a otro hueco (se cambian) o al panel (se quita), y la X deja el
+## hueco vacio. Lee y cambia el perfil a traves de MainScreen, que lo guarda.
 
 signal closed
 
@@ -21,6 +23,9 @@ const ASSIST_ROW: Array[String] = ["drone", "drone_low"]
 const MODULES: Array[String] = [
 	"module0", "module1", "module2", "module3", "module4", "module5", "module6", "module7"
 ]
+## Espacios del panel derecho, en el orden en que se deslizan.
+const PAGES: Array[String] = ["pieza", "tienda", "mejoras", "habilidades"]
+const SLIDE_SECONDS := 0.28
 const COLOR_MUTED := Color("9aa7b8")
 const COLOR_GOOD := Color("7dff9b")
 const COLOR_BAD := Color("ff7d7d")
@@ -41,6 +46,14 @@ var main: MainScreen
 
 var _selected: String = "side0"
 var _hover_id: String = ""
+## Hueco con el que se compara la pieza bajo el raton.
+var _hover_slot: String = ""
+var _page: String = "pieza"
+var _store_group: String = "todo"
+var _tabs: Dictionary[String, Button] = {}
+var _pages: Control
+var _page_scroll: ScrollContainer
+var _page_box: VBoxContainer
 var _cells: Dictionary[String, SlotCell] = {}
 var _stage: MechStage
 var _top_info: Label
@@ -48,8 +61,6 @@ var _weight: ProgressBar
 var _weight_label: Label
 var _problems: Label
 var _summary: GridContainer
-var _detail: VBoxContainer
-var _list: VBoxContainer
 
 
 func _ready() -> void:
@@ -159,25 +170,26 @@ func _build_side_panel(body: HBoxContainer) -> void:
 	_summary.add_theme_constant_override("h_separation", 10)
 	panel.add_child(_summary)
 	panel.add_child(HSeparator.new())
-	_detail = VBoxContainer.new()
-	_detail.add_theme_constant_override("separation", 4)
-	panel.add_child(_detail)
-	panel.add_child(HSeparator.new())
-	var scroll := ScrollContainer.new()
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	# Soltar aqui una pieza montada la quita.
-	scroll.set_drag_forwarding(
-		Callable(),
-		func(_at: Vector2, data: Variant) -> bool:
-			return data is Dictionary and data.has("from_slot"),
-		func(_at: Vector2, data: Variant) -> void: clear_slot(data["from_slot"])
-	)
-	panel.add_child(scroll)
-	_list = VBoxContainer.new()
-	_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_list.add_theme_constant_override("separation", 5)
-	scroll.add_child(_list)
+	var tabs := HBoxContainer.new()
+	tabs.add_theme_constant_override("separation", 4)
+	panel.add_child(tabs)
+	for page in PAGES:
+		var tab := Button.new()
+		tab.text = Txt.t("page_" + page)
+		tab.toggle_mode = true
+		tab.button_pressed = page == _page
+		tab.focus_mode = Control.FOCUS_NONE
+		tab.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		tab.pressed.connect(show_page.bind(page))
+		tabs.add_child(tab)
+		_tabs[page] = tab
+	# El espacio que se desliza: cada pagina es un ScrollContainer que entra
+	# por un lado mientras la anterior sale por el otro.
+	_pages = Control.new()
+	_pages.clip_contents = true
+	_pages.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	panel.add_child(_pages)
+	_page_scroll = _new_page()
 
 
 # --- Estado ------------------------------------------------------------------
@@ -212,8 +224,7 @@ func refresh() -> void:
 	for slot: String in _cells:
 		_refresh_cell(_cells[slot], level)
 	_refresh_summary(build)
-	_refresh_detail()
-	_refresh_list()
+	_fill_page()
 
 
 func _refresh_cell(cell: SlotCell, level: int) -> void:
@@ -287,9 +298,9 @@ func _refresh_summary(build: MechBuild) -> void:
 		child.queue_free()
 	var now := build.summary(main._rules)
 	var then := now
-	if _hover_id != "":
+	if _hover_id != "" and _hover_slot != "":
 		var spec: Dictionary = main._profile.build.duplicate(true)
-		Garage.set_slot(spec, _selected, _hover_id)
+		Garage.set_slot(spec, _hover_slot, _hover_id)
 		then = _build_from(spec).summary(main._rules)
 	for key in SUMMARY_KEYS:
 		_label(
@@ -307,30 +318,33 @@ func _refresh_summary(build: MechBuild) -> void:
 			value.add_theme_color_override("font_color", COLOR_GOOD if better else COLOR_BAD)
 
 
-func _refresh_detail() -> void:
-	for child in _detail.get_children():
-		child.queue_free()
+## Espacio Pieza: la del hueco elegido y las tuyas que caben en el.
+func _fill_part_page(box: VBoxContainer) -> void:
 	var id := Garage.get_slot(main._profile.build, _selected)
 	var item := _resolved(id)
 	var head := slot_title(_selected) + " · "
 	head += item.display_name if item != null else Txt.t("slot_empty")
-	_label(_detail, head, 17)
+	_label(box, head, 17).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	var locked := _lock_reason(_selected, main._player_level())
 	if locked != "":
-		_label(_detail, Txt.t("workshop_locked", [locked]), 14, COLOR_MUTED)
+		_label(box, Txt.t("workshop_locked", [locked]), 14, COLOR_MUTED)
 		return
 	if item == null:
-		_label(_detail, Txt.t("workshop_empty_hint"), 13, COLOR_MUTED)
-		return
-	var stats := _label(_detail, item_stats(item, true), 13, COLOR_MUTED)
-	stats.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 6)
-	_detail.add_child(row)
-	_add_upgrade_button(row, item)
-	if item.deals_damage() and item.fx != "":
-		_button(row, Txt.t("workshop_test"), test_fire)
-	_button(row, Txt.t("workshop_remove"), clear_slot.bind(_selected))
+		_label(box, Txt.t("workshop_empty_hint"), 13, COLOR_MUTED)
+	else:
+		var stats := _label(box, item_stats(item, false), 13, COLOR_MUTED)
+		stats.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 6)
+		box.add_child(row)
+		_add_upgrade_button(row, item)
+		if item.deals_damage() and item.fx != "":
+			_button(row, Txt.t("workshop_test"), test_fire)
+		_button(row, Txt.t("workshop_remove"), clear_slot.bind(_selected))
+	box.add_child(HSeparator.new())
+	_fill_owned(box, id)
+	var to_store := _button(box, Txt.t("workshop_to_store"), show_store.bind(""))
+	to_store.custom_minimum_size = Vector2(0, 40)
 
 
 ## Subir de nivel, transformar o el tope que lo para (como en la armeria).
@@ -363,17 +377,11 @@ func _add_upgrade_button(row: HBoxContainer, item: ItemDef) -> void:
 	transform.tooltip_text = why
 
 
-func _refresh_list() -> void:
-	for child in _list.get_children():
-		child.queue_free()
-	var mounted := Garage.get_slot(main._profile.build, _selected)
-	var level := main._player_level()
-	if _lock_reason(_selected, level) != "":
-		return
-	_label(_list, Txt.t("workshop_owned"), 14, COLOR_MUTED)
+func _fill_owned(box: VBoxContainer, mounted: String) -> void:
+	_label(box, Txt.t("workshop_owned"), 14, COLOR_MUTED)
 	var owned := Garage.owned_for(main._profile, main._catalog, _selected)
 	if owned.is_empty():
-		_label(_list, Txt.t("workshop_none"), 13, COLOR_MUTED)
+		_label(box, Txt.t("workshop_none"), 13, COLOR_MUTED)
 	for id in owned:
 		var item := _resolved(id)
 		var card := PartCard.new()
@@ -384,32 +392,77 @@ func _refresh_list() -> void:
 			card.detail += " · " + Txt.t("workshop_mounted")
 		card.stats = item_stats(item, false)
 		card.chosen.connect(equip_selected)
-		card.hovered.connect(_on_card_hovered)
-		_list.add_child(card)
-	var tier := main._zone_tier()
-	var stock: Array[String] = []
-	for id in main._garage.stock_for(main._catalog, tier):
-		var def := main._catalog.get_item(id)
-		if def.type == Garage.slot_type(_selected) and not id in main._profile.owned:
-			stock.append(id)
-	if stock.is_empty():
+		card.hovered.connect(hover_item)
+		box.add_child(card)
+
+
+# --- Espacios que se deslizan --------------------------------------------------
+
+
+## Lleva el panel derecho a otro espacio, deslizandolo: hacia la izquierda
+## si va mas adelante en las pestanas y hacia la derecha si vuelve.
+func show_page(page: String) -> void:
+	for tab: String in _tabs:
+		_tabs[tab].button_pressed = tab == page
+	if page == _page:
+		_fill_page()
 		return
-	_label(_list, Txt.t("workshop_store", [Txt.TIER_NAMES[tier]]), 14, COLOR_MUTED)
-	for id in stock:
-		var def := main._catalog.get_item(id)
-		var card := PartCard.new()
-		card.item = ItemScaling.resolve(def, main._rules, tier, 0)
-		card.detail = Txt.t(
-			"part_level", [Txt.TIER_NAMES[tier], 0, main._rules.tier_max_level[tier]]
-		)
-		card.stats = item_stats(card.item, false)
-		card.price = main._garage.price(main._catalog, main._rules, main._workshop, id, tier)
-		card.buy_reason = main._garage.why_cant_buy(
-			main._profile, main._catalog, main._rules, main._workshop, id, tier
-		)
-		card.bought.connect(buy)
-		card.hovered.connect(_on_card_hovered)
-		_list.add_child(card)
+	var forward := PAGES.find(page) > PAGES.find(_page)
+	_page = page
+	var old := _page_scroll
+	_page_scroll = _new_page()
+	_fill_page()
+	Sfx.play("ui_pagina")
+	var width := maxf(_pages.size.x, 1.0)
+	_page_scroll.position.x = width if forward else -width
+	var slide := create_tween().set_parallel(true)
+	slide.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	slide.tween_property(_page_scroll, "position:x", 0.0, SLIDE_SECONDS)
+	slide.tween_property(old, "position:x", -width if forward else width, SLIDE_SECONDS)
+	slide.chain().tween_callback(old.queue_free)
+
+
+## Tienda, con un grupo de piezas ("" = el del hueco elegido).
+func show_store(group: String) -> void:
+	_store_group = group if group != "" else ArmoryPages.group_of(Garage.slot_type(_selected))
+	show_page("tienda")
+
+
+func current_page() -> String:
+	return _page
+
+
+func _new_page() -> ScrollContainer:
+	var scroll := ScrollContainer.new()
+	scroll.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	# Soltar aqui una pieza montada la quita.
+	scroll.set_drag_forwarding(
+		Callable(),
+		func(_at: Vector2, data: Variant) -> bool:
+			return data is Dictionary and data.has("from_slot"),
+		func(_at: Vector2, data: Variant) -> void: clear_slot(data["from_slot"])
+	)
+	_pages.add_child(scroll)
+	_page_box = VBoxContainer.new()
+	_page_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_page_box.add_theme_constant_override("separation", 5)
+	scroll.add_child(_page_box)
+	return scroll
+
+
+func _fill_page() -> void:
+	for child in _page_box.get_children():
+		child.queue_free()
+	match _page:
+		"pieza":
+			_fill_part_page(_page_box)
+		"tienda":
+			ArmoryPages.store(self, _page_box, _store_group)
+		"mejoras":
+			ArmoryPages.upgrades(self, _page_box)
+		"habilidades":
+			ArmoryPages.skills(self, _page_box)
 
 
 # --- Acciones ----------------------------------------------------------------
@@ -487,17 +540,62 @@ func transform_selected() -> void:
 	_stage.flash(_selected, SlotCell.TIER_COLORS[now.tier])
 
 
-## Compra una pieza de la tienda; si el hueco elegido esta vacio, la monta.
+## Compra una pieza de la tienda. Si el hueco donde iria esta vacio, la
+## monta; si no, queda en tus piezas.
 func buy(id: String) -> void:
+	if not _pay(id):
+		return
+	var slot := _slot_for(id)
+	if slot != "" and Garage.get_slot(main._profile.build, slot) == "":
+		equip(slot, id)
+	else:
+		refresh()
+
+
+func _pay(id: String) -> bool:
 	var tier := main._zone_tier()
 	if main._garage.buy(main._profile, main._catalog, main._rules, main._workshop, id, tier) != "":
+		return false
+	Sfx.play("ui_comprar")
+	main._save()
+	return true
+
+
+## Hueco donde iria una pieza: el elegido si le cabe, o el primero libre de su
+## tipo que tu nivel ya abra.
+func _slot_for(id: String) -> String:
+	var locked: Array[String] = []
+	for slot: String in _cells:
+		if _lock_reason(slot, main._player_level()) != "":
+			locked.append(slot)
+	return Garage.drop_slot(main._profile.build, main._catalog, id, _selected, locked)
+
+
+## Sube una de las mejoras permanentes (la armeria), con el tope de la zona.
+func buy_upgrade(track: String) -> void:
+	if main._profile.buy(main._shop, track, main._armory_cap()) != "":
 		return
 	Sfx.play("ui_comprar")
 	main._save()
-	if Garage.get_slot(main._profile.build, _selected) == "":
-		equip(_selected, id)
-	else:
-		refresh()
+	refresh()
+
+
+## Aprende la siguiente habilidad de una rama.
+func learn(id: String) -> void:
+	if main._skills.learn(main._profile, id, main._player_level()) != "":
+		return
+	Sfx.play("ui_habilidad")
+	main._save()
+	refresh()
+
+
+## Una pieza de la tienda elegida: se marca en el mech el hueco donde iria.
+func focus_item(id: String) -> void:
+	var slot := _slot_for(id)
+	if slot == "":
+		return
+	_selected = slot
+	refresh()
 
 
 ## Dispara el arma del hueco elegido contra la diana.
@@ -509,6 +607,8 @@ func test_fire() -> void:
 
 
 func _on_cell_dropped(slot: String, data: Dictionary) -> void:
+	if data.get("buy", false) and not _pay(data["id"]):
+		return
 	var from: String = data.get("from_slot", "")
 	if from != "":
 		# De un hueco a otro de su tipo: se cambian.
@@ -518,17 +618,20 @@ func _on_cell_dropped(slot: String, data: Dictionary) -> void:
 
 
 func _on_stage_dropped(data: Dictionary) -> void:
-	var locked: Array[String] = []
-	for slot: String in _cells:
-		if _lock_reason(slot, main._player_level()) != "":
-			locked.append(slot)
-	var slot := Garage.drop_slot(main._profile.build, main._catalog, data["id"], _selected, locked)
-	if slot != "":
-		equip(slot, data["id"])
+	var slot := _slot_for(data["id"])
+	if slot == "":
+		return
+	if data.get("buy", false) and not _pay(data["id"]):
+		return
+	equip(slot, data["id"])
 
 
-func _on_card_hovered(id: String, inside: bool) -> void:
+## Pasar el raton por una pieza: el resumen ensena cuanto cambia el mech con
+## ella en el hueco donde iria, y ese hueco se marca en el dibujo.
+func hover_item(id: String, inside: bool) -> void:
 	_hover_id = id if inside else ""
+	_hover_slot = _slot_for(id) if inside else ""
+	_stage.hover_slot = _hover_slot
 	_refresh_summary(_build_from(main._profile.build))
 
 

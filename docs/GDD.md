@@ -410,6 +410,8 @@ Algunos jefes llevan además algo de resistencia o de potencia de más (data/cha
 
 
 ### 9.2 La segunda vía: la arena y la armería
+**Dónde está (2026-11-18, pedido del usuario):** la armería no es una pantalla aparte: es el espacio Mejoras del taller, junto a Pieza, Tienda y Habilidades (PLAN F6).
+
 Hecho el 2026-11-16 y ajustado el 2026-11-17 (core/arena_shop.gd, core/player_profile.gd, core/campaign.gd, data/arena_shop.json). La armería sigue la tienda de arena del original: seis mejoras permanentes en 10 niveles pequeños, con su misma tabla de pasos (0, 1, 3, 5, 7, 9, 11, 13, 15, 17 y 20 sobre 20).
 
 | Mejora | Tope |

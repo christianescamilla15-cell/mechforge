@@ -32,6 +32,8 @@ const SIDE_MARGIN := 14.0
 
 var selected_slot: String = ""
 var hover_slot: String = ""
+## Solo para ver (el hangar de la base): sin raton y sin diana.
+var preview: bool = false
 
 var _world := Node2D.new()
 var _mech := MechView.new()
@@ -45,7 +47,7 @@ var _target_hit: float = 0.0
 
 func _ready() -> void:
 	clip_contents = true
-	mouse_filter = Control.MOUSE_FILTER_STOP
+	mouse_filter = Control.MOUSE_FILTER_IGNORE if preview else Control.MOUSE_FILTER_STOP
 	add_child(_world)
 	_world.add_child(_mech)
 	_world.add_child(_overlay)
@@ -161,9 +163,9 @@ func _draw() -> void:
 func _draw_overlay() -> void:
 	if _mech.build == null:
 		return
-	# Diana de las pruebas de disparo.
+	# Diana de las pruebas de disparo (no en la vista previa).
 	var target := _target_point()
-	for i in 3:
+	for i in 0 if preview else 3:
 		var radius := 34.0 - i * 11.0
 		_overlay.draw_arc(target, radius, 0, TAU, 32, COLOR_TARGET.darkened(0.2 * i), 3.0)
 	if _target_hit > 0.0:
