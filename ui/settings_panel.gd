@@ -82,14 +82,11 @@ func close_panel() -> void:
 	queue_free()
 
 
-## Marco de los paneles de la base y del combate.
-static func frame_style() -> StyleBoxFlat:
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color("141c27")
-	style.border_color = Color("5a6f88")
-	style.set_border_width_all(2)
-	style.set_corner_radius_all(8)
-	style.set_content_margin_all(20)
+## Marco de los paneles de la base y del combate: una placa en relieve con
+## brillo dorado.
+static func frame_style() -> StyleBox:
+	var style := TechStyle.plate(Color("161f2c"), Color("ffd36b"), 20.0, 12.0)
+	style.glow = 0.3
 	return style
 
 

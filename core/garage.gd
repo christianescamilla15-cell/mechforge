@@ -171,6 +171,95 @@ static func drop_slot(
 	return fits[0] if not fits.is_empty() else ""
 
 
+## Piezas de un mech de ejemplo que el jugador aun no tiene.
+static func missing_parts(
+	profile: PlayerProfile, library: BuildLibrary, design: String
+) -> Array[String]:
+	var out: Array[String] = []
+	for id in library.item_ids(design):
+		if not id in profile.owned and not id in out:
+			out.append(id)
+	return out
+
+
+## Lo que cuesta adquirir un robot con ese diseno: solo las piezas que aun no
+## tiene, al precio de la tienda de la zona. Los cuerpos del asistente no se
+## cobran (se tienen todos).
+func design_price(
+	profile: PlayerProfile,
+	library: BuildLibrary,
+	catalog: Catalog,
+	rules: RulesConfig,
+	workshop: Workshop,
+	design: String,
+	zone_tier: int
+) -> int:
+	var total := 0
+	for id in missing_parts(profile, library, design):
+		if catalog.get_item(id).type != ItemDef.Type.ASSIST:
+			total += price(catalog, rules, workshop, id, zone_tier)
+	return total
+
+
+func why_cant_buy_design(
+	profile: PlayerProfile,
+	library: BuildLibrary,
+	catalog: Catalog,
+	rules: RulesConfig,
+	workshop: Workshop,
+	design: String,
+	zone_tier: int
+) -> String:
+	if not design in library.starter_ids():
+		return "ese diseno no se vende"
+	var reason := profile.why_cant_add_mech(rules)
+	if reason != "":
+		return reason
+	var stock := stock_for(catalog, zone_tier)
+	for id in missing_parts(profile, library, design):
+		var def := catalog.get_item(id)
+		if def.type != ItemDef.Type.ASSIST and not id in stock:
+			return "lleva piezas que esta zona no vende"
+	if design_price(profile, library, catalog, rules, workshop, design, zone_tier) > profile.gold:
+		return "faltan celdas"
+	return ""
+
+
+## Adquiere un robot con un diseno de ejemplo: compra en la tienda de la zona
+## las piezas que faltan (llegan en su clase, nivel 0) y lo monta con ellas.
+## Pasa a ser el que usa. Devuelve "" o el motivo.
+func buy_design(
+	profile: PlayerProfile,
+	library: BuildLibrary,
+	catalog: Catalog,
+	rules: RulesConfig,
+	workshop: Workshop,
+	design: String,
+	zone_tier: int
+) -> String:
+	var reason := why_cant_buy_design(profile, library, catalog, rules, workshop, design, zone_tier)
+	if reason != "":
+		return reason
+	for id in missing_parts(profile, library, design):
+		if catalog.get_item(id).type == ItemDef.Type.ASSIST:
+			profile.owned.append(id)
+		else:
+			buy(profile, catalog, rules, workshop, id, zone_tier)
+	(
+		profile
+		. mechs
+		. append(
+			{
+				"name": library.display_name(design),
+				"design": design,
+				"build": library.specs[design]["items"].duplicate(true),
+			}
+		)
+	)
+	profile.active = profile.mechs.size() - 1
+	return ""
+
+
 ## Piezas que tiene el jugador y caben en ese hueco.
 static func owned_for(profile: PlayerProfile, catalog: Catalog, slot: String) -> Array[String]:
 	var out: Array[String] = []

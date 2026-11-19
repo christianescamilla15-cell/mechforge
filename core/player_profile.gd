@@ -7,7 +7,7 @@ extends RefCounted
 ## La moneda se llama `gold` en el codigo y en el guardado; en pantalla se
 ## muestra con el nombre de la tabla de textos (GDD 8).
 
-const SCHEMA_VERSION := 6
+const SCHEMA_VERSION := 7
 
 var gold: int = 0
 ## Experiencia total; de ella sale el nivel del jugador (Progression).
@@ -26,9 +26,24 @@ var unique_cores: int = 0
 ## Piezas que tiene (ids del catalogo). Una pieza que se tiene se puede
 ## montar en tantos huecos como quiera; las copias suben juntas.
 var owned: Array[String] = []
-## Su mech armado, con el formato de los "items" de data/builds.json
-## (Garage). Vacio hasta que elige su primer mech.
-var build: Dictionary = {}
+## Sus robots (GDD 8, garaje): hasta RulesConfig.max_mechs, cada uno
+## {"name", "design", "build"}. "design" es el mech de ejemplo del que salio
+## ("" si se armo desde un armazon vacio). Todos comparten las piezas que
+## tiene el jugador (owned) y su clase y nivel (parts).
+var mechs: Array[Dictionary] = []
+## El que usa: el que pelea y el que se arma en el taller.
+var active: int = 0
+## El robot que usa, con el formato de los "items" de data/builds.json
+## (Garage). Vacio si no tiene ninguno. Cambiarlo cambia ese robot.
+var build: Dictionary:
+	get:
+		return mechs[active]["build"] if active < mechs.size() else {}
+	set(value):
+		if active < mechs.size():
+			mechs[active]["build"] = value
+		elif not value.is_empty():
+			mechs.append({"name": "", "design": "", "build": value})
+			active = mechs.size() - 1
 ## Mech de ejemplo con el que empezo la partida (id de data/builds.json).
 var mech: String = ""
 ## Avance en la campana: zona en la que esta y combates ganados en ella.
@@ -61,17 +76,64 @@ func earn(shop: ArenaShop, kind: String, mult: float = 1.0) -> int:
 
 
 ## Empieza una partida con uno de los mechs de ejemplo: sus piezas pasan a
-## ser del jugador y quedan montadas.
+## ser del jugador y quedan montadas en su primer robot.
 func start_run(library: BuildLibrary, mech_id: String) -> void:
 	mech = mech_id
-	build = library.specs[mech_id]["items"].duplicate(true)
+	mechs.clear()
+	(
+		mechs
+		. append(
+			{
+				"name": library.display_name(mech_id),
+				"design": mech_id,
+				"build": library.specs[mech_id]["items"].duplicate(true),
+			}
+		)
+	)
+	active = 0
 	owned.clear()
 	for id in library.item_ids(mech_id):
 		owned.append(id)
 
 
 func has_mech() -> bool:
-	return not build.is_empty()
+	return not mechs.is_empty()
+
+
+## Devuelve "" si cabe otro robot; si no, el motivo.
+func why_cant_add_mech(rules: RulesConfig) -> String:
+	if mechs.size() >= rules.max_mechs:
+		return "ya tienes %d robots" % rules.max_mechs
+	return ""
+
+
+## Adquiere un armazon vacio, gratis: se arma en el taller con las piezas que
+## ya tiene. Pasa a ser el que usa. Devuelve "" o el motivo.
+func add_frame(rules: RulesConfig, display_name: String) -> String:
+	var reason := why_cant_add_mech(rules)
+	if reason != "":
+		return reason
+	mechs.append({"name": display_name, "design": "", "build": {}})
+	active = mechs.size() - 1
+	return ""
+
+
+## Pasa a usar otro de sus robots.
+func select_mech(index: int) -> void:
+	if index >= 0 and index < mechs.size():
+		active = index
+
+
+## Desmonta un robot (no el ultimo): sus piezas se quedan en el inventario.
+func remove_mech(index: int) -> String:
+	if index < 0 or index >= mechs.size():
+		return "ese robot no existe"
+	if mechs.size() == 1:
+		return "es tu unico robot"
+	mechs.remove_at(index)
+	if active > index or active >= mechs.size():
+		active = maxi(0, active - 1)
+	return ""
 
 
 ## Termina la partida (GDD 9: perder contra un jefe): se pierde todo menos el
@@ -86,7 +148,8 @@ func end_run() -> void:
 	parts.clear()
 	unique_cores = 0
 	owned.clear()
-	build = {}
+	mechs.clear()
+	active = 0
 	mech = ""
 	zone = 0
 	fight = 0
@@ -227,7 +290,8 @@ func to_dict() -> Dictionary:
 		"parts": parts.duplicate(true),
 		"unique_cores": unique_cores,
 		"owned": owned.duplicate(),
-		"build": build.duplicate(true),
+		"mechs": mechs.duplicate(true),
+		"active": active,
 		"mech": mech,
 		"zone": zone,
 		"fight": fight,
@@ -240,9 +304,10 @@ func to_dict() -> Dictionary:
 
 
 ## Migraciones: la version 1 no tenia campana ni mech elegido, la 2 no tenia
-## piezas, la 3 no tenia mech armado y la 4 no tenia experiencia; sus campos
-## nuevos empiezan vacios y
-## lo demas se conserva. Sin mech armado, el menu pide elegir uno.
+## piezas, la 3 no tenia mech armado, la 4 no tenia experiencia y hasta la 6
+## habia un solo mech ("build"), que pasa a ser el primer robot; los campos
+## nuevos empiezan vacios y lo demas se conserva. Sin robots, el menu pide
+## elegir uno.
 static func from_dict(data: Dictionary) -> PlayerProfile:
 	var profile := PlayerProfile.new()
 	profile.gold = maxi(0, int(data.get("gold", 0)))
@@ -254,8 +319,24 @@ static func from_dict(data: Dictionary) -> PlayerProfile:
 	for id: Variant in data.get("owned", []):
 		if not str(id) in profile.owned:
 			profile.owned.append(str(id))
-	if data.get("build") is Dictionary:
-		profile.build = data["build"]
+	var saved_mechs: Variant = data.get("mechs")
+	if saved_mechs is Array:
+		for raw: Variant in saved_mechs:
+			if raw is Dictionary and raw.get("build") is Dictionary:
+				(
+					profile
+					. mechs
+					. append(
+						{
+							"name": str(raw.get("name", "")),
+							"design": str(raw.get("design", "")),
+							"build": raw["build"],
+						}
+					)
+				)
+		profile.active = clampi(int(data.get("active", 0)), 0, maxi(0, profile.mechs.size() - 1))
+	elif data.get("build") is Dictionary and not (data["build"] as Dictionary).is_empty():
+		profile.mechs.append({"name": "", "design": profile.mech, "build": data["build"]})
 	profile.zone = maxi(0, int(data.get("zone", 0)))
 	profile.fight = maxi(0, int(data.get("fight", 0)))
 	profile.wins = int(data.get("wins", 0))

@@ -33,25 +33,19 @@ func _ready() -> void:
 	# PASS: si se suelta encima una pieza montada, la recibe el panel (quitar).
 	mouse_filter = Control.MOUSE_FILTER_PASS
 	custom_minimum_size = Vector2(0, 62)
-	var style := StyleBoxFlat.new()
-	style.bg_color = COLOR_BACK
-	style.set_corner_radius_all(6)
-	style.set_content_margin_all(6)
-	style.set_border_width_all(2)
-	style.border_color = (
-		COLOR_MOUNTED if mounted else SlotCell.TIER_COLORS[item.tier].darkened(0.35)
-	)
+	# Placa en relieve con el borde de la clase; la montada brilla dorada.
+	var accent := COLOR_MOUNTED if mounted else SlotCell.TIER_COLORS[item.tier].darkened(0.2)
+	var style := TechStyle.plate(COLOR_BACK, accent, 7.0, 7.0)
+	style.groove = false
+	style.glow = 0.5 if mounted else 0.0
 	add_theme_stylebox_override("panel", style)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 8)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(row)
-	var icon := TextureRect.new()
+	var icon := PartIcon.new()
 	icon.texture = MechSprites.icon_for(item)
-	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	icon.custom_minimum_size = Vector2(62, 48)
-	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(icon)
 	var text := VBoxContainer.new()
 	text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -118,13 +112,11 @@ func _get_drag_data(_at: Vector2) -> Variant:
 ## Lo que se ve bajo el raton mientras se arrastra una pieza: su dibujo.
 static func drag_preview(def: ItemDef) -> Control:
 	var holder := Control.new()
-	var icon := TextureRect.new()
+	var icon := PartIcon.new()
 	icon.texture = MechSprites.icon_for(def)
-	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	icon.size = Vector2(110, 80)
 	icon.position = Vector2(-55, -40)
-	icon.modulate = Color(1, 1, 1, 0.85)
+	icon.alpha = 0.9
 	holder.add_child(icon)
 	if icon.texture == null:
 		var label := Label.new()

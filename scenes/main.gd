@@ -56,6 +56,9 @@ var _settings := GameSettings.new()
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	# Toda la interfaz con relieve, y el hangar al fondo.
+	theme = Look.theme()
+	add_child(HangarBackdrop.new())
 	# El sonido va primero: asi oye los botones de todo lo que se cree despues.
 	add_child(Sfx.new())
 	# En el juego la nave deja bonificaciones en la arena (GDD 2.8), hay
@@ -120,6 +123,9 @@ func _ready() -> void:
 		elif _args["menu-shot"] == "armeria":
 			_live_test().armory_test()
 			return
+		elif _args["menu-shot"] == "garaje":
+			_live_test().garage_test()
+			return
 		elif _args["menu-shot"] in ["tienda", "mejoras", "habilidades"]:
 			# El taller abierto en ese espacio.
 			open_workshop().show_page(_args["menu-shot"])
@@ -157,7 +163,13 @@ func _show_menu() -> void:
 	columns.add_theme_constant_override("separation", 40)
 	_menu.add_child(columns)
 
-	var left := _column(columns, 560)
+	# La columna de la izquierda, sobre una placa para que se lea encima del
+	# hangar.
+	var left_plate := PanelContainer.new()
+	var left_style := TechStyle.plate(Color(0.07, 0.1, 0.15, 0.9), Color("3c4c62"), 18.0, 12.0)
+	left_plate.add_theme_stylebox_override("panel", left_style)
+	columns.add_child(left_plate)
+	var left := _column(left_plate, 540)
 	var title := _text(left, Txt.t("menu_title"), 40)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	if not _profile.has_mech():
@@ -168,18 +180,16 @@ func _show_menu() -> void:
 		_add_arena(left, can_fight)
 		_add_free_fight(left)
 	_add_system_buttons(left)
-	_add_hangar(_column(columns, 520))
+	var right := _column(columns, 520)
+	if _profile.has_mech():
+		var hangar := HangarPanel.new()
+		hangar.main = self
+		right.add_child(hangar)
+	_text(right, _record_text(), 14, COLOR_MUTED).horizontal_alignment = (HORIZONTAL_ALIGNMENT_CENTER)
 
 
-## Hangar: tus celdas, tu historial y tu mech montado, con la entrada al
-## taller. Todo lo que se compra y se mejora esta en el taller.
-func _add_hangar(box: VBoxContainer) -> void:
-	_text(box, Txt.t("hangar_title"), 26).horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	var cells := _text(box, Txt.t("menu_gold", [_profile.gold]), 24, COLOR_CELLS)
-	cells.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	if _profile.unique_cores > 0:
-		var cores := _text(box, Txt.t("menu_cores", [_profile.unique_cores]), 18, COLOR_CELLS)
-		cores.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+## Historial: victorias, derrotas, jefes y partidas perdidas.
+func _record_text() -> String:
 	var record := Txt.t(
 		"menu_record", [_profile.wins, _profile.losses, _profile.boss_wins, _campaign.world_bosses]
 	)
@@ -187,19 +197,82 @@ func _add_hangar(box: VBoxContainer) -> void:
 		record += "\n" + Txt.t("menu_runs", [_profile.runs_lost, _profile.best_boss_wins])
 	if _last_result != "":
 		record = "%s\n%s" % [_last_result, record]
-	_text(box, record, 15, COLOR_MUTED).horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	if not _profile.has_mech():
+	return record
+
+
+# --- Garaje -------------------------------------------------------------------
+
+
+## Nombre de uno de tus robots: el suyo, el de su diseno o "Robot N".
+func robot_name(index: int) -> String:
+	var robot: Dictionary = _profile.mechs[index]
+	if str(robot.get("name", "")) != "":
+		return robot["name"]
+	if _library.specs.has(str(robot.get("design", ""))):
+		return _library.display_name(robot["design"])
+	return Txt.t("robot_default", [index + 1])
+
+
+## Pasa a usar otro de tus robots.
+func use_robot(index: int) -> void:
+	if index == _profile.active:
 		return
-	var build := _player_build()
-	if build.torso == null or build.legs == null:
-		_text(box, Txt.t("hangar_missing"), 15, COLOR_WARNING)
-	else:
-		var stage := MechStage.new()
-		stage.preview = true
-		stage.custom_minimum_size = Vector2(0, 360)
-		box.add_child(stage)
-		stage.show_build(build, [])
-	_button(box, Txt.t("workshop_enter"), 56, open_workshop)
+	_profile.select_mech(index)
+	Sfx.play("taller_montar")
+	_save()
+	_show_menu()
+
+
+func open_acquire() -> void:
+	var panel := AcquirePanel.new()
+	panel.main = self
+	add_child(panel)
+
+
+## Un armazon vacio, gratis: se abre el taller para armarlo.
+func acquire_frame() -> void:
+	var label := Txt.t("robot_default", [_profile.mechs.size() + 1])
+	if _profile.add_frame(_rules, label) != "":
+		return
+	Sfx.play("ui_comprar")
+	_save()
+	_close_acquire()
+	open_workshop()
+
+
+## Un robot con uno de los disenos de ejemplo: se queda en la base.
+func acquire_design(design: String) -> void:
+	var tier := _zone_tier()
+	if _garage.buy_design(_profile, _library, _catalog, _rules, _workshop, design, tier) != "":
+		return
+	Sfx.play("ui_comprar")
+	_save()
+	_close_acquire()
+	_show_menu()
+
+
+func _close_acquire() -> void:
+	for child in get_children():
+		if child is AcquirePanel:
+			child.queue_free()
+
+
+## Desmontar un robot pide confirmacion; sus piezas se quedan.
+func ask_remove_robot(index: int) -> void:
+	var dialog := ConfirmationDialog.new()
+	dialog.title = Txt.t("robots_remove")
+	dialog.dialog_text = Txt.t("robots_remove_confirm", [robot_name(index)])
+	dialog.ok_button_text = Txt.t("robots_remove_yes")
+	dialog.cancel_button_text = Txt.t("campaign_boss_no")
+	dialog.confirmed.connect(
+		func() -> void:
+			if _profile.remove_mech(index) == "":
+				Sfx.play("taller_quitar")
+				_save()
+				_show_menu()
+	)
+	add_child(dialog)
+	dialog.popup_centered()
 
 
 ## Ajustes y salir del juego (hace falta en pantalla completa).
@@ -287,7 +360,7 @@ func _add_mech_status(box: VBoxContainer) -> bool:
 	var build := _player_build()
 	var problems := build.validate(_rules)
 	var line := Txt.t("mech_weight", [build.total_weight(), _rules.max_weight])
-	_text(box, "%s · %s" % [Txt.t("menu_player"), line], 16)
+	_text(box, "%s · %s" % [_player_name(), line], 16)
 	var next := _progression.next_level_xp(_profile.xp)
 	var level_line := Txt.t("player_level", [_player_level(), _profile.xp])
 	if next >= 0:
@@ -405,8 +478,9 @@ func _boss_ability(id: String) -> String:
 
 
 ## Nombre del mech del jugador: el del mech con el que empezo.
+## Nombre del robot que usa.
 func _player_name() -> String:
-	return _library.display_name(_profile.mech) if _library.specs.has(_profile.mech) else ""
+	return robot_name(_profile.active) if _profile.has_mech() else ""
 
 
 func _save() -> void:
@@ -430,9 +504,16 @@ func _on_starter_picked(id: String) -> void:
 ## Mech armado del jugador con la clase y el nivel de cada pieza, sin lo que
 ## va en huecos que su nivel aun no abre.
 func _player_build() -> MechBuild:
-	var build := _catalog.make_build(_profile.build, _rules, ItemDef.Tier.COMMON, 0, _profile.parts)
+	return _robot_build(_profile.build)
+
+
+## Un robot armado con las piezas del jugador (su clase y nivel), sus
+## habilidades y su armeria, para verlo y medirlo.
+func _robot_build(spec: Dictionary) -> MechBuild:
+	var build := _catalog.make_build(spec, _rules, ItemDef.Tier.COMMON, 0, _profile.parts)
 	_progression.apply_locks(build, _player_level())
 	build.skills = _skills.effects_for(_profile.skills)
+	build.upgrades = _shop.upgrades_for(_profile.shop_levels)
 	return build
 
 

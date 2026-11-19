@@ -184,6 +184,57 @@ func _autoplay_pause_test() -> void:
 		print("AUTOPLAY pausa: sigue, escala de tiempo %.1f" % Engine.time_scale)
 
 
+## Prueba en vivo del garaje (`--menu-shot=garaje`, con `--real-profile`
+## sobre la partida de verdad, sin guardar nada): la base con tus robots,
+## adquirir un diseno, un armazon vacio (abre el taller), volver, cambiar de
+## robot y desmontar uno.
+func garage_test() -> void:
+	var profile := main._profile
+	print(
+		(
+			"GARAJE robots=%d activo=%d celdas=%d"
+			% [profile.mechs.size(), profile.active, profile.gold]
+		)
+	)
+	await get_tree().create_timer(0.8).timeout
+	await shot("base")
+	main.open_acquire()
+	await get_tree().create_timer(0.6).timeout
+	await shot("adquirir")
+	var design: String = main._library.starter_ids()[2]
+	main.acquire_design(design)
+	await get_tree().create_timer(0.8).timeout
+	print(
+		(
+			"GARAJE tras comprar %s: robots=%d activo=%d celdas=%d"
+			% [design, profile.mechs.size(), profile.active, profile.gold]
+		)
+	)
+	await shot("base_dos_robots")
+	main.acquire_frame()
+	await get_tree().create_timer(0.8).timeout
+	print(
+		(
+			"GARAJE armazon: robots=%d activo=%d vacio=%s"
+			% [profile.mechs.size(), profile.active, profile.build.is_empty()]
+		)
+	)
+	await shot("taller_armazon")
+	for child in main.get_children():
+		if child is WorkshopScreen:
+			child.closed.emit()
+	await get_tree().create_timer(0.8).timeout
+	await shot("base_tres_robots")
+	main.use_robot(0)
+	await get_tree().create_timer(0.8).timeout
+	print("GARAJE usa el 0: activo=%d" % profile.active)
+	await shot("base_usa_primero")
+	main.open_acquire()
+	await get_tree().create_timer(0.5).timeout
+	await shot("adquirir_otra_vez")
+	get_tree().quit(0)
+
+
 ## Prueba en vivo de la armeria (`--menu-shot=armeria`, con `--real-profile`
 ## sobre la partida de verdad, sin guardar nada): gasta en la armeria todo lo
 ## que deje la zona, comprueba que lo que para es el tope y no el dinero,

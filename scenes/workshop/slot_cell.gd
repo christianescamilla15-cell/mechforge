@@ -37,7 +37,7 @@ var selected: bool = false
 var compact: bool = false
 
 var _drop_glow: bool = false
-var _icon: TextureRect
+var _icon: PartIcon
 var _name: Label
 var _detail: Label
 var _clear: Button
@@ -45,7 +45,7 @@ var _clear: Button
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
-	custom_minimum_size = Vector2(84, 46) if compact else Vector2(110, 84)
+	custom_minimum_size = Vector2(84, 42) if compact else Vector2(110, 78)
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 0)
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -71,9 +71,7 @@ func _ready() -> void:
 	_clear.tooltip_text = Txt.t("workshop_clear")
 	_clear.pressed.connect(func() -> void: cleared.emit(slot))
 	header.add_child(_clear)
-	_icon = TextureRect.new()
-	_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_icon = PartIcon.new()
 	_icon.custom_minimum_size = Vector2(0, 18 if compact else 38)
 	_icon.size_flags_vertical = (
 		Control.SIZE_SHRINK_CENTER if compact else Control.SIZE_EXPAND_FILL
@@ -102,7 +100,7 @@ func refresh() -> void:
 	_icon.texture = MechSprites.icon_for(item) if item != null else null
 	# En los huecos pequenos el dibujo solo ocupa sitio si lo hay.
 	_icon.visible = not compact or _icon.texture != null
-	_icon.modulate = Color(1, 1, 1, 1) if locked_text == "" else Color(1, 1, 1, 0.3)
+	_icon.alpha = 1.0 if locked_text == "" else 0.3
 	if locked_text != "":
 		_name.text = locked_text
 		_name.add_theme_color_override("font_color", COLOR_MUTED)
@@ -121,21 +119,31 @@ func refresh() -> void:
 	add_theme_stylebox_override("panel", _style())
 
 
-func _style() -> StyleBoxFlat:
-	var style := StyleBoxFlat.new()
-	style.bg_color = COLOR_BACK if item != null else COLOR_BACK.darkened(0.3)
-	style.set_corner_radius_all(6)
-	style.set_content_margin_all(4)
-	style.set_border_width_all(2)
-	style.border_color = TIER_COLORS[item.tier] if item != null else COLOR_EMPTY
+## Placa en relieve: el borde del color de la clase de su pieza; vacia,
+## hundida; brilla verde si cabe la pieza que se arrastra y dorada si esta
+## elegida.
+func _style() -> TechStyle:
+	var accent := TIER_COLORS[item.tier] if item != null else COLOR_EMPTY
+	var style := TechStyle.plate(
+		COLOR_BACK if item != null else COLOR_BACK.darkened(0.25),
+		accent,
+		5.0,
+		6.0 if compact else 8.0
+	)
+	style.groove = not compact
+	style.bolts = not compact
+	style.sunken = item == null
+	if locked_text != "":
+		style.accent = COLOR_EMPTY.darkened(0.3)
+		style.shadow = 1.0
 	if _drop_glow:
-		style.border_color = COLOR_DROP
-		style.set_border_width_all(3)
+		style.accent = COLOR_DROP
+		style.accent_width = 2.5
+		style.glow = 0.6
 	if selected:
-		style.border_color = COLOR_SELECTED
-		style.set_border_width_all(3)
-		style.shadow_color = Color(COLOR_SELECTED, 0.35)
-		style.shadow_size = 6
+		style.accent = COLOR_SELECTED
+		style.accent_width = 2.5
+		style.glow = 0.75
 	return style
 
 

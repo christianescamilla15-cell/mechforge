@@ -11,11 +11,6 @@ signal picked(slot: String)
 signal dropped(data: Dictionary)
 signal hovered(slot: String)
 
-const COLOR_TOP := Color("0d1520")
-const COLOR_BOTTOM := Color("1b2635")
-const COLOR_FLOOR := Color("223044")
-const COLOR_GRID := Color(0.45, 0.6, 0.8, 0.08)
-const COLOR_LIGHT := Color(0.55, 0.75, 1.0, 0.07)
 const COLOR_SELECTED := Color("ffe27a")
 const COLOR_HOVER := Color(1, 1, 1, 0.55)
 const COLOR_TARGET := Color("ff7d6b")
@@ -24,7 +19,9 @@ const COLOR_TARGET := Color("ff7d6b")
 const TOUCHABLE: Array[String] = [
 	"top0", "top1", "side0", "side1", "side2", "side3", "chest", "assist", "torso", "legs"
 ]
-const FLOOR_MARGIN := 64.0
+## Suelo y aire de arriba, como parte del alto (con topes en pixeles).
+const FLOOR_SHARE := 0.15
+const TOP_SHARE := 0.05
 const MAX_ZOOM := 1.45
 ## Sitio que se deja a la derecha para la diana y a los lados.
 const TARGET_SPACE := 90.0
@@ -43,6 +40,10 @@ var _flash_slot: String = ""
 var _flash: float = 0.0
 var _flash_color := Color.WHITE
 var _target_hit: float = 0.0
+var _floor_y: float = 0.0
+## Ancho de la plataforma bajo el mech, en pixeles del escenario.
+var _platform_width: float = 0.0
+var _time: float = 0.0
 
 
 func _ready() -> void:
@@ -79,10 +80,22 @@ func _fit() -> void:
 			bounds = bounds.merge(rect)
 	var height := maxf(-bounds.position.y, 200.0)
 	var width := maxf(bounds.size.x, 200.0)
-	var zoom := minf(MAX_ZOOM, (size.y - FLOOR_MARGIN - 24.0) / height)
-	zoom = minf(zoom, (size.x - TARGET_SPACE - 2.0 * SIDE_MARGIN) / width)
+	var floor_margin := clampf(size.y * FLOOR_SHARE, 10.0, 64.0)
+	var top_margin := clampf(size.y * TOP_SHARE, 3.0, 24.0)
+	var room := 0.0 if preview else TARGET_SPACE
+	var side := SIDE_MARGIN * minf(1.0, size.y / 300.0)
+	var zoom := minf(MAX_ZOOM, (size.y - floor_margin - top_margin) / height)
+	zoom = minf(zoom, (size.x - room - 2.0 * side) / width)
 	_world.scale = Vector2(zoom, zoom)
-	_world.position = Vector2(SIDE_MARGIN - bounds.position.x * zoom, size.y - FLOOR_MARGIN)
+	_floor_y = size.y - floor_margin
+	# En el taller, a la izquierda (a la derecha va la diana); en las vistas
+	# pequenas, centrado.
+	var x := side - bounds.position.x * zoom
+	if preview:
+		x = size.x / 2.0 - (bounds.position.x + bounds.size.x / 2.0) * zoom
+	_world.position = Vector2(x, _floor_y)
+	var legs := _world_rect("legs")
+	_platform_width = maxf(legs.size.x, 80.0) * zoom * 1.7
 	queue_redraw()
 	_overlay.queue_redraw()
 
@@ -127,37 +140,36 @@ func _target_point() -> Vector2:
 	return Vector2(right / _world.scale.x, -175.0)
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
+	# El polvo flota en la luz.
+	_time += delta
+	queue_redraw()
 	# Las esquinas siguen a la pieza mientras el mech respira.
 	if selected_slot != "" or hover_slot != "":
 		_overlay.queue_redraw()
 
 
+## El hangar detras del mech: pared de placas, viga con cadenas, lamparas,
+## suelo en perspectiva, cono de luz con polvo, plataforma con su sombra y
+## vineta (HangarArt). En las vistas pequenas, con menos detalle.
 func _draw() -> void:
-	draw_rect(Rect2(Vector2.ZERO, size), COLOR_BOTTOM)
-	var steps := 24
-	for i in steps:
-		var t := float(i) / steps
-		var band := Rect2(0, size.y * t, size.x, size.y / steps + 1)
-		draw_rect(band, COLOR_TOP.lerp(COLOR_BOTTOM, t))
-	var floor_y := size.y - FLOOR_MARGIN
-	draw_rect(Rect2(0, floor_y, size.x, FLOOR_MARGIN), COLOR_FLOOR)
-	for i in 14:
-		var x := size.x * (float(i) + 0.5) / 14.0
-		draw_line(Vector2(x, 0), Vector2(x, floor_y), COLOR_GRID, 1.0)
+	var rect := Rect2(Vector2.ZERO, size)
+	var floor_y := _floor_y if _floor_y > 0.0 else size.y * (1.0 - FLOOR_SHARE)
+	var detail := clampf(size.y / 420.0, 0.0, 1.0)
+	HangarArt.draw_wall(self, rect, floor_y, detail)
+	if detail >= 0.5:
+		HangarArt.draw_gantry(self, rect, detail)
+		HangarArt.draw_lamp(self, Vector2(size.x * 0.08, floor_y * 0.42), detail)
+		HangarArt.draw_lamp(self, Vector2(size.x * 0.92, floor_y * 0.42), detail)
 	var center := _world.position.x
-	for i in 5:
-		var spread := 60.0 + i * 34.0
-		var light := PackedVector2Array(
-			[
-				Vector2(center - 20, 0),
-				Vector2(center + 20, 0),
-				Vector2(center + spread, floor_y),
-				Vector2(center - spread, floor_y)
-			]
-		)
-		draw_colored_polygon(light, COLOR_LIGHT)
-	draw_line(Vector2(0, floor_y), Vector2(size.x, floor_y), Color(0.6, 0.75, 0.95, 0.35), 2.0)
+	var legs := _world_rect("legs")
+	if legs.size != Vector2.ZERO:
+		center = _world.position.x + legs.get_center().x * _world.scale.x
+	HangarArt.draw_floor(self, rect, floor_y, Vector2(center, floor_y - size.y * 0.9))
+	HangarArt.draw_light(self, rect, center, floor_y, _time)
+	if _mech.build != null:
+		HangarArt.draw_platform(self, Vector2(center, floor_y), _platform_width)
+	HangarArt.draw_vignette(self, rect, 1.0)
 
 
 func _draw_overlay() -> void:

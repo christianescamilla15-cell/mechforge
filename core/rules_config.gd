@@ -37,6 +37,11 @@ extends Resource
 ## Nivel maximo de un chasis; ahi su bonificacion es completa.
 @export var chassis_max_level: int = 30
 
+@export_group("Garaje")
+## Robots que puede tener el jugador: el que usa y los del garaje (pedido del
+## usuario el 2026-11-18: "en total puedes tener 4").
+@export var max_mechs: int = 4
+
 @export_group("Robot de asistencia")
 ## Clase del robot de asistencia desde la que pelea su segunda arma (la
 ## inferior): la primera transformacion, Intermedia (GDD 4).

@@ -65,9 +65,8 @@ var _summary: GridContainer
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	var back := ColorRect.new()
-	back.color = Color("0b1017")
-	back.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var back := HangarBackdrop.new()
+	back.dim = 0.55
 	add_child(back)
 	var margin := MarginContainer.new()
 	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -106,6 +105,7 @@ func _build_top_bar(root: VBoxContainer) -> void:
 	bar.add_theme_constant_override("separation", 16)
 	root.add_child(bar)
 	_label(bar, Txt.t("workshop_title"), 28)
+	_label(bar, main.robot_name(main._profile.active), 20, Color("ffd36b"))
 	_top_info = _label(bar, "", 17, COLOR_CELLS)
 	var weight := VBoxContainer.new()
 	weight.custom_minimum_size = Vector2(240, 0)
@@ -135,8 +135,8 @@ func _build_slots(body: HBoxContainer) -> void:
 	_grid(column, EXTRA_ROW, 4, true)
 	_grid(column, ASSIST_ROW, 2, true)
 	_grid(column, MODULES, 4, true)
-	var hint := _label(column, Txt.t("workshop_hint"), 12, COLOR_MUTED)
-	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	# La ayuda va en la pista del titulo: abajo no cabe con las placas.
+	column.tooltip_text = Txt.t("workshop_hint")
 
 
 func _grid(column: VBoxContainer, slots: Array[String], columns: int, compact: bool) -> void:
