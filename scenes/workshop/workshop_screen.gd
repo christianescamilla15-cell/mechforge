@@ -1,35 +1,32 @@
 class_name WorkshopScreen
 extends Control
-## Taller (GDD 4 y 8; como lo pidio el usuario el 2026-11-18, al estilo del
-## taller del original). Es tambien la armeria: no hay otra pantalla. El mech
-## montado en el centro; a la izquierda sus huecos, colocados como en su
-## cuerpo; a la derecha su resumen y un panel que se desliza entre cuatro
-## espacios: Pieza (la del hueco elegido: subir, transformar, probar, quitar,
-## y las tuyas para ese hueco), Tienda (lo que se vende para tu zona y tu
-## nivel), Mejoras (las permanentes) y Habilidades. Las piezas se arrastran al
-## hueco o al mech (las de la tienda se compran y se montan), una montada se
-## arrastra a otro hueco (se cambian) o al panel (se quita), y la X deja el
-## hueco vacio. Lee y cambia el perfil a traves de MainScreen, que lo guarda.
+## El hangar: la pantalla de inicio, inmersiva y con los menos botones posibles
+## (pedido del usuario el 2026-11-18). Es el taller y la armeria a la vez,
+## todo dentro de la escena (HangarStage):
+## - tu robot en el centro: un clic en una pieza (o en el enchufe de un hueco
+##   vacio) la elige; las piezas se arrastran al robot y del robot;
+## - tus otros robots en las bahias del fondo: un clic y pasas a usarlo; una
+##   bahia vacia es para adquirir otro;
+## - las terminales de la pared: tienda, mejoras, habilidades y misiones (de
+##   ahi se sale a pelear);
+## - el estante de equipo bajo el robot: pecho, especiales, asistente y
+##   modulos.
+## Lo que se toca abre un cajon que se desliza desde la derecha; pulsar el
+## hangar vacio o Esc lo cierra. Arriba, una barra con tu robot, tus celdas,
+## tu nivel, la zona, el peso y los ajustes. Lee y cambia el perfil a traves
+## de MainScreen, que lo guarda.
 
 signal closed
 
-## Cuadricula del cuerpo, fila a fila: el lado lejano a la izquierda y el
-## cercano a la derecha, como se ven en el dibujo (el mech mira a la derecha).
-const BODY_GRID: Array[String] = [
-	"top1", "assist", "top0", "side2", "torso", "side0", "side3", "legs", "side1"
-]
-const EXTRA_ROW: Array[String] = ["chest", "charge", "teleport", "hook"]
-const ASSIST_ROW: Array[String] = ["drone", "drone_low"]
-const MODULES: Array[String] = [
-	"module0", "module1", "module2", "module3", "module4", "module5", "module6", "module7"
-]
-## Espacios del panel derecho, en el orden en que se deslizan.
-const PAGES: Array[String] = ["pieza", "tienda", "mejoras", "habilidades"]
-const SLIDE_SECONDS := 0.28
+const DRAWER_WIDTH := 420.0
+const SLIDE_SECONDS := 0.3
+## Cajones que muestran el resumen del robot (para ver lo que cambia).
+const WITH_SUMMARY: Array[String] = ["pieza", "tienda", "mejoras", "robot"]
 const COLOR_MUTED := Color("9aa7b8")
 const COLOR_GOOD := Color("7dff9b")
 const COLOR_BAD := Color("ff7d7d")
 const COLOR_CELLS := Color("7fe3ff")
+const COLOR_GOLD := Color("ffd36b")
 const SUMMARY_KEYS: Array[String] = [
 	"weight",
 	"health",
@@ -48,148 +45,178 @@ var _selected: String = "side0"
 var _hover_id: String = ""
 ## Hueco con el que se compara la pieza bajo el raton.
 var _hover_slot: String = ""
-var _page: String = "pieza"
+var _page: String = ""
 var _store_group: String = "todo"
-var _tabs: Dictionary[String, Button] = {}
-var _pages: Control
-var _page_scroll: ScrollContainer
-var _page_box: VBoxContainer
-var _cells: Dictionary[String, SlotCell] = {}
-var _stage: MechStage
+var _stage: HangarStage
+var _robot_button: Button
 var _top_info: Label
+var _xp: ProgressBar
 var _weight: ProgressBar
 var _weight_label: Label
 var _problems: Label
+var _toast: Label
+var _drawer: PanelContainer
+var _drawer_title: Label
 var _summary: GridContainer
+var _page_scroll: ScrollContainer
+var _page_box: VBoxContainer
 
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	var back := HangarBackdrop.new()
-	back.dim = 0.55
-	add_child(back)
-	var margin := MarginContainer.new()
-	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	for side: String in ["left", "right", "top", "bottom"]:
-		margin.add_theme_constant_override("margin_" + side, 12)
-	add_child(margin)
-	var root := VBoxContainer.new()
-	root.add_theme_constant_override("separation", 8)
-	margin.add_child(root)
-	_build_top_bar(root)
-	var body := HBoxContainer.new()
-	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	body.add_theme_constant_override("separation", 10)
-	root.add_child(body)
-	_build_slots(body)
-	_stage = MechStage.new()
-	_stage.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_stage.picked.connect(pick)
+	_stage = HangarStage.new()
+	_stage.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(_stage)
+	_stage.picked.connect(_on_part_picked)
 	_stage.dropped.connect(_on_stage_dropped)
-	body.add_child(_stage)
-	_build_side_panel(body)
+	_stage.dropped_on.connect(_on_cell_dropped)
+	_stage.terminal_pressed.connect(show_page)
+	_stage.bay_pressed.connect(_on_bay_pressed)
+	_stage.background_pressed.connect(close_drawer)
+	_build_rack()
+	_build_hud()
+	_build_drawer()
 	refresh()
 
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel"):
 		get_viewport().set_input_as_handled()
-		closed.emit()
+		if _page != "":
+			close_drawer()
+		else:
+			main.open_settings()
 
 
 # --- Construccion ------------------------------------------------------------
 
 
-func _build_top_bar(root: VBoxContainer) -> void:
-	var bar := HBoxContainer.new()
-	bar.add_theme_constant_override("separation", 16)
-	root.add_child(bar)
-	_label(bar, Txt.t("workshop_title"), 28)
-	_label(bar, main.robot_name(main._profile.active), 20, Color("ffd36b"))
-	_top_info = _label(bar, "", 17, COLOR_CELLS)
-	var weight := VBoxContainer.new()
-	weight.custom_minimum_size = Vector2(240, 0)
-	weight.add_theme_constant_override("separation", 0)
-	bar.add_child(weight)
-	_weight_label = _label(weight, "", 13)
-	_weight = ProgressBar.new()
-	_weight.show_percentage = false
-	_weight.custom_minimum_size = Vector2(0, 10)
-	weight.add_child(_weight)
-	_problems = _label(bar, "", 14, COLOR_BAD)
-	_problems.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_problems.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	var back := Button.new()
-	back.text = Txt.t("workshop_back")
-	back.custom_minimum_size = Vector2(170, 40)
-	back.pressed.connect(func() -> void: closed.emit())
-	bar.add_child(back)
-
-
-func _build_slots(body: HBoxContainer) -> void:
-	var column := VBoxContainer.new()
-	column.add_theme_constant_override("separation", 6)
-	column.custom_minimum_size = Vector2(352, 0)
-	body.add_child(column)
-	_grid(column, BODY_GRID, 3, false)
-	_grid(column, EXTRA_ROW, 4, true)
-	_grid(column, ASSIST_ROW, 2, true)
-	_grid(column, MODULES, 4, true)
-	# La ayuda va en la pista del titulo: abajo no cabe con las placas.
-	column.tooltip_text = Txt.t("workshop_hint")
-
-
-func _grid(column: VBoxContainer, slots: Array[String], columns: int, compact: bool) -> void:
-	var grid := GridContainer.new()
-	grid.columns = columns
-	grid.add_theme_constant_override("h_separation", 6)
-	grid.add_theme_constant_override("v_separation", 6)
-	column.add_child(grid)
-	for slot in slots:
+## Los huecos del estante (los que no se ven en el dibujo del robot).
+func _build_rack() -> void:
+	for slot in HangarStage.RACK_TOP + HangarStage.RACK_BOTTOM:
 		var cell := SlotCell.new()
 		cell.slot = slot
-		cell.compact = compact
+		cell.compact = true
 		cell.accepts = Garage.slot_type(slot)
 		cell.title = slot_title(slot)
-		cell.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		cell.picked.connect(pick)
+		cell.picked.connect(_on_part_picked)
 		cell.dropped.connect(_on_cell_dropped)
 		cell.cleared.connect(clear_slot)
 		cell.hovered.connect(_on_cell_hovered)
-		grid.add_child(cell)
-		_cells[slot] = cell
+		_stage.add_child(cell)
+		_stage.rack[slot] = cell
 
 
-func _build_side_panel(body: HBoxContainer) -> void:
-	var panel := VBoxContainer.new()
-	panel.custom_minimum_size = Vector2(390, 0)
-	panel.add_theme_constant_override("separation", 6)
-	body.add_child(panel)
+## Barra de arriba: tu robot (abre su cajon), celdas, nivel con su barra,
+## zona, peso con sus avisos y el engrane de los ajustes.
+func _build_hud() -> void:
+	var bar := PanelContainer.new()
+	var style := TechStyle.plate(Color(0.07, 0.1, 0.14, 0.92), Color("3c4c62"), 6.0, 8.0)
+	style.groove = false
+	bar.add_theme_stylebox_override("panel", style)
+	bar.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+	bar.offset_left = 8
+	bar.offset_right = -8
+	bar.offset_top = 6
+	add_child(bar)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 16)
+	bar.add_child(row)
+	_robot_button = Button.new()
+	_robot_button.flat = true
+	_robot_button.add_theme_font_size_override("font_size", 19)
+	_robot_button.add_theme_color_override("font_color", COLOR_GOLD)
+	_robot_button.tooltip_text = Txt.t("hud_robot_hint")
+	_robot_button.pressed.connect(show_page.bind("robot"))
+	row.add_child(_robot_button)
+	_top_info = _label(row, "", 15, COLOR_CELLS)
+	var xp_box := VBoxContainer.new()
+	xp_box.custom_minimum_size = Vector2(120, 0)
+	xp_box.add_theme_constant_override("separation", 0)
+	row.add_child(xp_box)
+	_label(xp_box, Txt.t("hud_xp"), 10, COLOR_MUTED)
+	_xp = ProgressBar.new()
+	_xp.show_percentage = false
+	_xp.custom_minimum_size = Vector2(0, 8)
+	xp_box.add_child(_xp)
+	var weight := VBoxContainer.new()
+	weight.custom_minimum_size = Vector2(200, 0)
+	weight.add_theme_constant_override("separation", 0)
+	row.add_child(weight)
+	_weight_label = _label(weight, "", 11, COLOR_MUTED)
+	_weight = ProgressBar.new()
+	_weight.show_percentage = false
+	_weight.custom_minimum_size = Vector2(0, 8)
+	weight.add_child(_weight)
+	_problems = _label(row, "", 13, COLOR_BAD)
+	_problems.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_problems.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	var gear := Button.new()
+	gear.text = "⚙"
+	gear.tooltip_text = Txt.t("settings_open")
+	gear.custom_minimum_size = Vector2(40, 34)
+	gear.add_theme_font_size_override("font_size", 18)
+	gear.pressed.connect(main.open_settings)
+	row.add_child(gear)
+	# Aviso pasajero (lo que se cobro en el ultimo combate, etc.).
+	_toast = Label.new()
+	_toast.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
+	_toast.position.y = 58
+	_toast.add_theme_font_size_override("font_size", 17)
+	_toast.add_theme_color_override("font_color", COLOR_GOLD)
+	_toast.add_theme_color_override("font_outline_color", Color.BLACK)
+	_toast.add_theme_constant_override("outline_size", 6)
+	_toast.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_toast.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	add_child(_toast)
+
+
+## El cajon de la derecha: titulo con su X, el resumen del robot y la pagina.
+func _build_drawer() -> void:
+	_drawer = PanelContainer.new()
+	var style := TechStyle.plate(Color(0.07, 0.1, 0.15, 0.96), COLOR_GOLD, 12.0, 12.0)
+	style.glow = 0.25
+	_drawer.add_theme_stylebox_override("panel", style)
+	_drawer.set_anchors_and_offsets_preset(Control.PRESET_RIGHT_WIDE)
+	_drawer.offset_left = -DRAWER_WIDTH
+	_drawer.offset_top = 58
+	_drawer.offset_bottom = -8
+	_drawer.offset_right = -8
+	_drawer.visible = false
+	add_child(_drawer)
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 6)
+	_drawer.add_child(box)
+	var head := HBoxContainer.new()
+	box.add_child(head)
+	_drawer_title = _label(head, "", 22)
+	_drawer_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var close := Button.new()
+	close.text = "×"
+	close.flat = true
+	close.add_theme_font_size_override("font_size", 22)
+	close.tooltip_text = Txt.t("settings_close")
+	close.pressed.connect(close_drawer)
+	head.add_child(close)
 	_summary = GridContainer.new()
-	_summary.columns = 4
-	_summary.add_theme_constant_override("h_separation", 10)
-	panel.add_child(_summary)
-	panel.add_child(HSeparator.new())
-	var tabs := HBoxContainer.new()
-	tabs.add_theme_constant_override("separation", 4)
-	panel.add_child(tabs)
-	for page in PAGES:
-		var tab := Button.new()
-		tab.text = Txt.t("page_" + page)
-		tab.toggle_mode = true
-		tab.button_pressed = page == _page
-		tab.focus_mode = Control.FOCUS_NONE
-		tab.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		tab.pressed.connect(show_page.bind(page))
-		tabs.add_child(tab)
-		_tabs[page] = tab
-	# El espacio que se desliza: cada pagina es un ScrollContainer que entra
-	# por un lado mientras la anterior sale por el otro.
-	_pages = Control.new()
-	_pages.clip_contents = true
-	_pages.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	panel.add_child(_pages)
-	_page_scroll = _new_page()
+	_summary.columns = 6
+	_summary.add_theme_constant_override("h_separation", 8)
+	box.add_child(_summary)
+	_page_scroll = ScrollContainer.new()
+	_page_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_page_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	# Soltar aqui una pieza montada la quita.
+	_page_scroll.set_drag_forwarding(
+		Callable(),
+		func(_at: Vector2, data: Variant) -> bool:
+			return data is Dictionary and data.has("from_slot"),
+		func(_at: Vector2, data: Variant) -> void: clear_slot(data["from_slot"])
+	)
+	box.add_child(_page_scroll)
+	_page_box = VBoxContainer.new()
+	_page_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_page_box.add_theme_constant_override("separation", 5)
+	_page_scroll.add_child(_page_box)
 
 
 # --- Estado ------------------------------------------------------------------
@@ -210,27 +237,51 @@ func refresh() -> void:
 			shown.legs = _placeholder(ItemDef.Type.LEGS)
 			ghosts.append("legs")
 	_stage.show_build(shown, ghosts)
-	_stage.selected_slot = _selected
+	_stage.selected_slot = _selected if _page == "pieza" else ""
+	_stage.mission_lines = main.mission_lines()
+	_stage.set_bays(_bays())
 	var level := main._player_level()
-	_top_info.text = Txt.t("workshop_info", [main._profile.gold, level])
+	_robot_button.text = main.robot_name(main._profile.active) + "  ▾"
+	var zone := mini(main._profile.zone, main._campaign.zone_count() - 1)
+	_top_info.text = Txt.t(
+		"hud_info", [main._profile.gold, level, zone + 1, main._campaign.zone_name(zone)]
+	)
+	var next := main._progression.next_level_xp(main._profile.xp)
+	_xp.max_value = maxi(next, 1)
+	_xp.value = main._profile.xp if next >= 0 else 1
 	var max_weight := main._rules.max_weight
 	_weight.max_value = max_weight + main._rules.overload
 	_weight.value = build.total_weight()
 	_weight_label.text = Txt.t("mech_weight", [build.total_weight(), max_weight])
-	var over := build.total_weight() > max_weight
-	_weight.modulate = COLOR_BAD if over else Color.WHITE
+	_weight.modulate = COLOR_BAD if build.total_weight() > max_weight else Color.WHITE
 	var problems := build.validate(main._rules)
 	_problems.text = "" if problems.is_empty() else Txt.t("mech_problems", [", ".join(problems)])
-	for slot: String in _cells:
-		_refresh_cell(_cells[slot], level)
+	for slot: String in _stage.rack:
+		_refresh_cell(_stage.rack[slot], level)
 	_refresh_summary(build)
-	_fill_page()
+	if _page != "":
+		_fill_page()
+
+
+## Las tres bahias: tus otros robots (un armazon vacio se ve como bahia
+## vacia, pero es tuyo) y, si caben mas, bahias para adquirir.
+func _bays() -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	for i in main._profile.mechs.size():
+		if i == main._profile.active or out.size() >= 3:
+			continue
+		var build := main._robot_build(main._profile.mechs[i]["build"])
+		var armed := build.torso != null and build.legs != null
+		out.append({"index": i, "build": build if armed else null, "name": main.robot_name(i)})
+	while out.size() < main._rules.max_mechs - 1:
+		out.append({"index": -1, "build": null, "name": ""})
+	return out
 
 
 func _refresh_cell(cell: SlotCell, level: int) -> void:
 	var id := Garage.get_slot(main._profile.build, cell.slot)
 	cell.item = _resolved(id)
-	cell.selected = cell.slot == _selected
+	cell.selected = cell.slot == _selected and _page == "pieza"
 	cell.locked_text = _lock_reason(cell.slot, level)
 	cell.progress_text = _progress_text(cell.item)
 	cell.refresh()
@@ -275,13 +326,7 @@ func _progress_text(item: ItemDef) -> String:
 
 
 func _build_from(spec: Dictionary) -> MechBuild:
-	var build := main._catalog.make_build(
-		spec, main._rules, ItemDef.Tier.COMMON, 0, main._profile.parts
-	)
-	main._progression.apply_locks(build, main._player_level())
-	build.skills = main._skills.effects_for(main._profile.skills)
-	build.upgrades = main._shop.upgrades_for(main._profile.shop_levels)
-	return build
+	return main._robot_build(spec)
 
 
 ## Pieza con la que se dibuja un torso o unas piernas que faltan.
@@ -296,6 +341,9 @@ func _placeholder(type: ItemDef.Type) -> ItemDef:
 func _refresh_summary(build: MechBuild) -> void:
 	for child in _summary.get_children():
 		child.queue_free()
+	_summary.visible = _page in WITH_SUMMARY
+	if not _summary.visible:
+		return
 	var now := build.summary(main._rules)
 	var then := now
 	if _hover_id != "" and _hover_slot != "":
@@ -303,22 +351,78 @@ func _refresh_summary(build: MechBuild) -> void:
 		Garage.set_slot(spec, _hover_slot, _hover_id)
 		then = _build_from(spec).summary(main._rules)
 	for key in SUMMARY_KEYS:
-		_label(
-			_summary,
-			Txt.t("stat_weight_total" if key == "weight" else "stat_" + key),
-			13,
-			COLOR_MUTED
-		)
-		var value := _label(_summary, str(now[key]), 14)
+		var name_key := "stat_weight_total" if key == "weight" else "stat_" + key
+		_label(_summary, Txt.t(name_key), 11, COLOR_MUTED)
+		var value := _label(_summary, str(now[key]), 13)
 		var delta: int = int(then[key]) - int(now[key])
 		if delta != 0:
-			value.text += "  %+d" % delta
+			value.text += " %+d" % delta
 			# Mas de todo es mejor, salvo mas peso.
 			var better := delta < 0 if key == "weight" else delta > 0
 			value.add_theme_color_override("font_color", COLOR_GOOD if better else COLOR_BAD)
 
 
-## Espacio Pieza: la del hueco elegido y las tuyas que caben en el.
+# --- El cajon -------------------------------------------------------------------
+
+
+## Abre (o cambia) el cajon de la derecha con una pagina: "pieza", "tienda",
+## "mejoras", "habilidades", "misiones" o "robot".
+func show_page(page: String) -> void:
+	var opening := _page == ""
+	_page = page
+	_hover_id = ""
+	_drawer_title.text = Txt.t("drawer_" + page)
+	_drawer.visible = true
+	refresh()
+	_page_scroll.scroll_vertical = 0
+	if opening:
+		Sfx.play("ui_pagina")
+		_drawer.position.x = size.x
+		var slide := create_tween().set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		slide.tween_property(_drawer, "position:x", size.x - DRAWER_WIDTH - 8.0, SLIDE_SECONDS)
+
+
+## Cierra el cajon deslizandolo hacia fuera.
+func close_drawer() -> void:
+	if _page == "":
+		return
+	_page = ""
+	Sfx.play("ui_cerrar")
+	var slide := create_tween().set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+	slide.tween_property(_drawer, "position:x", size.x, SLIDE_SECONDS * 0.8)
+	slide.tween_callback(func() -> void: _drawer.visible = _page != "")
+	refresh()
+
+
+## Tienda, con un grupo de piezas ("" = el del hueco elegido).
+func show_store(group: String) -> void:
+	_store_group = group if group != "" else ArmoryPages.group_of(Garage.slot_type(_selected))
+	show_page("tienda")
+
+
+func current_page() -> String:
+	return _page
+
+
+func _fill_page() -> void:
+	for child in _page_box.get_children():
+		child.queue_free()
+	match _page:
+		"pieza":
+			_fill_part_page(_page_box)
+		"tienda":
+			ArmoryPages.store(self, _page_box, _store_group)
+		"mejoras":
+			ArmoryPages.upgrades(self, _page_box)
+		"habilidades":
+			ArmoryPages.skills(self, _page_box)
+		"misiones":
+			main.fill_missions(_page_box)
+		"robot":
+			_fill_robot_page(_page_box)
+
+
+## Pagina Pieza: la del hueco elegido y las tuyas que caben en el.
 func _fill_part_page(box: VBoxContainer) -> void:
 	var id := Garage.get_slot(main._profile.build, _selected)
 	var item := _resolved(id)
@@ -347,7 +451,23 @@ func _fill_part_page(box: VBoxContainer) -> void:
 	to_store.custom_minimum_size = Vector2(0, 40)
 
 
-## Subir de nivel, transformar o el tope que lo para (como en la armeria).
+## Pagina del robot que usas: su nombre, su diseno y desmontarlo.
+func _fill_robot_page(box: VBoxContainer) -> void:
+	var index := main._profile.active
+	_label(box, main.robot_name(index), 18)
+	var robot: Dictionary = main._profile.mechs[index]
+	var design := str(robot.get("design", ""))
+	if main._library.specs.has(design):
+		var line := Txt.t("robot_design", [main._library.display_name(design)])
+		_label(box, line, 13, COLOR_MUTED)
+	var hint := _label(box, Txt.t("robot_page_hint"), 13, COLOR_MUTED)
+	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	if main._profile.mechs.size() > 1:
+		var remove := _button(box, Txt.t("robots_remove"), main.ask_remove_robot.bind(index))
+		remove.custom_minimum_size = Vector2(0, 40)
+
+
+## Subir de nivel, transformar o el tope que lo para.
 func _add_upgrade_button(row: HBoxContainer, item: ItemDef) -> void:
 	if item.type == ItemDef.Type.DRONE and main._profile.build.has("assist"):
 		return
@@ -396,85 +516,28 @@ func _fill_owned(box: VBoxContainer, mounted: String) -> void:
 		box.add_child(card)
 
 
-# --- Espacios que se deslizan --------------------------------------------------
-
-
-## Lleva el panel derecho a otro espacio, deslizandolo: hacia la izquierda
-## si va mas adelante en las pestanas y hacia la derecha si vuelve.
-func show_page(page: String) -> void:
-	for tab: String in _tabs:
-		_tabs[tab].button_pressed = tab == page
-	if page == _page:
-		_fill_page()
-		return
-	var forward := PAGES.find(page) > PAGES.find(_page)
-	_page = page
-	var old := _page_scroll
-	_page_scroll = _new_page()
-	_fill_page()
-	Sfx.play("ui_pagina")
-	var width := maxf(_pages.size.x, 1.0)
-	_page_scroll.position.x = width if forward else -width
-	var slide := create_tween().set_parallel(true)
-	slide.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-	slide.tween_property(_page_scroll, "position:x", 0.0, SLIDE_SECONDS)
-	slide.tween_property(old, "position:x", -width if forward else width, SLIDE_SECONDS)
-	slide.chain().tween_callback(old.queue_free)
-
-
-## Tienda, con un grupo de piezas ("" = el del hueco elegido).
-func show_store(group: String) -> void:
-	_store_group = group if group != "" else ArmoryPages.group_of(Garage.slot_type(_selected))
-	show_page("tienda")
-
-
-func current_page() -> String:
-	return _page
-
-
-func _new_page() -> ScrollContainer:
-	var scroll := ScrollContainer.new()
-	scroll.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	# Soltar aqui una pieza montada la quita.
-	scroll.set_drag_forwarding(
-		Callable(),
-		func(_at: Vector2, data: Variant) -> bool:
-			return data is Dictionary and data.has("from_slot"),
-		func(_at: Vector2, data: Variant) -> void: clear_slot(data["from_slot"])
-	)
-	_pages.add_child(scroll)
-	_page_box = VBoxContainer.new()
-	_page_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_page_box.add_theme_constant_override("separation", 5)
-	scroll.add_child(_page_box)
-	return scroll
-
-
-func _fill_page() -> void:
-	for child in _page_box.get_children():
-		child.queue_free()
-	match _page:
-		"pieza":
-			_fill_part_page(_page_box)
-		"tienda":
-			ArmoryPages.store(self, _page_box, _store_group)
-		"mejoras":
-			ArmoryPages.upgrades(self, _page_box)
-		"habilidades":
-			ArmoryPages.skills(self, _page_box)
-
-
 # --- Acciones ----------------------------------------------------------------
 
 
-## Elige un hueco: se marca en el mech y a la derecha salen sus piezas.
+## Elige un hueco: se marca en el robot y el cajon ensena su pieza.
 func pick(slot: String) -> void:
-	if slot == "" or not slot in _cells:
+	if not slot in Garage.SLOTS:
 		return
 	_selected = slot
 	_hover_id = ""
-	refresh()
+	show_page("pieza")
+
+
+func _on_part_picked(slot: String) -> void:
+	Sfx.play("ui_tic")
+	pick(slot)
+
+
+func _on_bay_pressed(index: int) -> void:
+	if index < 0:
+		main.open_acquire()
+	else:
+		main.use_robot(index)
 
 
 ## Monta una pieza en el hueco elegido.
@@ -491,7 +554,10 @@ func equip(slot: String, id: String) -> void:
 	_hover_id = ""
 	main._save()
 	Sfx.play("taller_montar")
-	refresh()
+	if _page == "":
+		show_page("pieza")
+	else:
+		refresh()
 	var item := _resolved(id)
 	if item != null:
 		_stage.flash(slot, SlotCell.TIER_COLORS[item.tier])
@@ -565,13 +631,13 @@ func _pay(id: String) -> bool:
 ## tipo que tu nivel ya abra.
 func _slot_for(id: String) -> String:
 	var locked: Array[String] = []
-	for slot: String in _cells:
+	for slot in Garage.SLOTS:
 		if _lock_reason(slot, main._player_level()) != "":
 			locked.append(slot)
 	return Garage.drop_slot(main._profile.build, main._catalog, id, _selected, locked)
 
 
-## Sube una de las mejoras permanentes (la armeria), con el tope de la zona.
+## Sube una de las mejoras permanentes, con el tope de la zona.
 func buy_upgrade(track: String) -> void:
 	if main._profile.buy(main._shop, track, main._armory_cap()) != "":
 		return
@@ -589,13 +655,14 @@ func learn(id: String) -> void:
 	refresh()
 
 
-## Una pieza de la tienda elegida: se marca en el mech el hueco donde iria.
+## Una pieza de la tienda elegida: se marca en el robot el hueco donde iria.
 func focus_item(id: String) -> void:
 	var slot := _slot_for(id)
 	if slot == "":
 		return
 	_selected = slot
-	refresh()
+	_stage.selected_slot = slot
+	_stage.hover_slot = slot
 
 
 ## Dispara el arma del hueco elegido contra la diana.
@@ -604,6 +671,17 @@ func test_fire() -> void:
 	if item == null or item.fx == "":
 		return
 	_stage.test_fire(_selected, item.fx, ShotFx.ammo_color(item.element))
+
+
+## Aviso pasajero arriba (lo que paso en el ultimo combate, por ejemplo).
+func toast(text: String) -> void:
+	if text == "" or _toast == null:
+		return
+	_toast.text = text
+	_toast.modulate = Color(1, 1, 1, 1)
+	var fade := create_tween()
+	fade.tween_interval(4.0)
+	fade.tween_property(_toast, "modulate:a", 0.0, 1.0)
 
 
 func _on_cell_dropped(slot: String, data: Dictionary) -> void:
@@ -626,7 +704,7 @@ func _on_stage_dropped(data: Dictionary) -> void:
 	equip(slot, data["id"])
 
 
-## Pasar el raton por una pieza: el resumen ensena cuanto cambia el mech con
+## Pasar el raton por una pieza: el resumen ensena cuanto cambia el robot con
 ## ella en el hueco donde iria, y ese hueco se marca en el dibujo.
 func hover_item(id: String, inside: bool) -> void:
 	_hover_id = id if inside else ""

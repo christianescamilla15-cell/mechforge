@@ -45,7 +45,7 @@ var _clear: Button
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
-	custom_minimum_size = Vector2(84, 42) if compact else Vector2(110, 78)
+	custom_minimum_size = Vector2(60, 34) if compact else Vector2(110, 78)
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 0)
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -99,7 +99,8 @@ func refresh() -> void:
 		return
 	_icon.texture = MechSprites.icon_for(item) if item != null else null
 	# En los huecos pequenos el dibujo solo ocupa sitio si lo hay.
-	_icon.visible = not compact or _icon.texture != null
+	# En el estante solo el nombre del hueco y el de la pieza: no cabe mas.
+	_icon.visible = not compact
 	_icon.alpha = 1.0 if locked_text == "" else 0.3
 	if locked_text != "":
 		_name.text = locked_text
@@ -113,7 +114,7 @@ func refresh() -> void:
 	_detail.text = progress_text if item != null else ""
 	if item != null:
 		_detail.add_theme_color_override("font_color", TIER_COLORS[item.tier])
-	_detail.visible = not compact or progress_text != ""
+	_detail.visible = not compact
 	_clear.visible = item != null and locked_text == ""
 	tooltip_text = item.display_name if item != null else title
 	add_theme_stylebox_override("panel", _style())

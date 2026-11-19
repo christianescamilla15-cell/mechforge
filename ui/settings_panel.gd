@@ -12,8 +12,16 @@ const COLOR_MUTED := Color("9aa7b8")
 const WIDTH := 460.0
 
 var settings: GameSettings
+## Con el boton de salir del juego (en el hangar).
+var show_quit: bool = false:
+	set(value):
+		show_quit = value
+		if _quit != null:
+			_quit.visible = value
 ## Donde se guardan los ajustes; vacio = no se guardan (pruebas en vivo).
 var save_path: String = GameSettings.PATH
+
+var _quit: Button
 
 
 ## Abre el panel encima de `parent` y lo devuelve.
@@ -67,6 +75,12 @@ func _ready() -> void:
 	close.custom_minimum_size = Vector2(0, 40)
 	close.pressed.connect(close_panel)
 	box.add_child(close)
+	_quit = Button.new()
+	_quit.text = Txt.t("quit_game")
+	_quit.custom_minimum_size = Vector2(0, 36)
+	_quit.visible = show_quit
+	_quit.pressed.connect(func() -> void: get_tree().quit(0))
+	box.add_child(_quit)
 	close.grab_focus.call_deferred()
 
 

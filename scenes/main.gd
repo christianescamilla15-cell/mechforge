@@ -116,7 +116,7 @@ func _ready() -> void:
 			Garage.ensure_assist(_profile, _catalog)
 		_show_menu()
 		if _args["menu-shot"] == "ajustes":
-			_open_settings()
+			open_settings()
 		elif _args["menu-shot"] == "taller":
 			_live_test().workshop_test(open_workshop())
 			return
@@ -144,6 +144,8 @@ func _ready() -> void:
 # --- Menu --------------------------------------------------------------------
 
 
+## La pantalla de inicio: el hangar inmersivo (WorkshopScreen), que es
+## tambien el taller y la armeria. Sin robot, se elige el primero.
 func _show_menu() -> void:
 	if _battle != null:
 		_battle.queue_free()
@@ -151,41 +153,28 @@ func _show_menu() -> void:
 	if _menu != null:
 		_menu.queue_free()
 	_pickers.clear()
-	var margin := MarginContainer.new()
-	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	for side: String in ["left", "right", "top", "bottom"]:
-		margin.add_theme_constant_override("margin_" + side, 24)
-	_menu = margin
-	add_child(_menu)
 	Sfx.music("base")
-	var columns := HBoxContainer.new()
-	columns.alignment = BoxContainer.ALIGNMENT_CENTER
-	columns.add_theme_constant_override("separation", 40)
-	_menu.add_child(columns)
-
-	# La columna de la izquierda, sobre una placa para que se lea encima del
-	# hangar.
-	var left_plate := PanelContainer.new()
-	var left_style := TechStyle.plate(Color(0.07, 0.1, 0.15, 0.9), Color("3c4c62"), 18.0, 12.0)
-	left_plate.add_theme_stylebox_override("panel", left_style)
-	columns.add_child(left_plate)
-	var left := _column(left_plate, 540)
-	var title := _text(left, Txt.t("menu_title"), 40)
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	if not _profile.has_mech():
-		_add_starters(left)
-	else:
-		var can_fight := _add_mech_status(left)
-		_add_campaign(left, can_fight)
-		_add_arena(left, can_fight)
-		_add_free_fight(left)
-	_add_system_buttons(left)
-	var right := _column(columns, 520)
 	if _profile.has_mech():
-		var hangar := HangarPanel.new()
+		var hangar := WorkshopScreen.new()
 		hangar.main = self
-		right.add_child(hangar)
-	_text(right, _record_text(), 14, COLOR_MUTED).horizontal_alignment = (HORIZONTAL_ALIGNMENT_CENTER)
+		_menu = hangar
+		add_child(hangar)
+		hangar.toast.call_deferred(_last_result)
+		return
+	# Partida nueva: una placa en el centro con los cuatro robots de ejemplo.
+	var center := CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_menu = center
+	add_child(center)
+	var plate := PanelContainer.new()
+	var style := TechStyle.plate(Color(0.07, 0.1, 0.15, 0.94), Color("ffd36b"), 24.0, 14.0)
+	style.glow = 0.3
+	plate.add_theme_stylebox_override("panel", style)
+	center.add_child(plate)
+	var box := _column(plate, 520)
+	_text(box, Txt.t("menu_title"), 40).horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_add_starters(box)
+	_text(box, _record_text(), 14, COLOR_MUTED).horizontal_alignment = (HORIZONTAL_ALIGNMENT_CENTER)
 
 
 ## Historial: victorias, derrotas, jefes y partidas perdidas.
@@ -220,7 +209,7 @@ func use_robot(index: int) -> void:
 	_profile.select_mech(index)
 	Sfx.play("taller_montar")
 	_save()
-	_show_menu()
+	_refresh_hangar()
 
 
 func open_acquire() -> void:
@@ -237,7 +226,10 @@ func acquire_frame() -> void:
 	Sfx.play("ui_comprar")
 	_save()
 	_close_acquire()
-	open_workshop()
+	# Un armazon vacio se arma ya: el cajon abre el torso.
+	_refresh_hangar()
+	if _menu is WorkshopScreen:
+		(_menu as WorkshopScreen).pick("torso")
 
 
 ## Un robot con uno de los disenos de ejemplo: se queda en la base.
@@ -248,7 +240,7 @@ func acquire_design(design: String) -> void:
 	Sfx.play("ui_comprar")
 	_save()
 	_close_acquire()
-	_show_menu()
+	_refresh_hangar()
 
 
 func _close_acquire() -> void:
@@ -269,41 +261,57 @@ func ask_remove_robot(index: int) -> void:
 			if _profile.remove_mech(index) == "":
 				Sfx.play("taller_quitar")
 				_save()
-				_show_menu()
+				_refresh_hangar()
 	)
 	add_child(dialog)
 	dialog.popup_centered()
 
 
-## Ajustes y salir del juego (hace falta en pantalla completa).
-func _add_system_buttons(box: VBoxContainer) -> void:
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 10)
-	box.add_child(row)
-	var settings := _button(row, Txt.t("settings_open"), 40, _open_settings)
-	settings.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var quit := _button(row, Txt.t("quit_game"), 40, func() -> void: get_tree().quit(0))
-	quit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+## Ajustes (el engrane del hangar y Esc), con el boton de salir del juego.
+func open_settings() -> void:
+	var panel := SettingsPanel.open(self, _settings, GameSettings.PATH if _persist else "")
+	panel.show_quit = true
 
 
-## Taller visual (WorkshopScreen): el mech montado y sus huecos alrededor.
+## El hangar (la pantalla de inicio), para quien lo pida por nombre.
 func open_workshop() -> WorkshopScreen:
-	if _menu != null:
-		_menu.queue_free()
-		_menu = null
-	var workshop := WorkshopScreen.new()
-	workshop.main = self
-	workshop.closed.connect(
-		func() -> void:
-			workshop.queue_free()
-			_show_menu()
-	)
-	add_child(workshop)
-	return workshop
+	_show_menu()
+	return _menu as WorkshopScreen
 
 
-func _open_settings() -> void:
-	SettingsPanel.open(self, _settings, GameSettings.PATH if _persist else "")
+## Vuelve a pintar el hangar sin rehacerlo (el cajon abierto se queda).
+func _refresh_hangar() -> void:
+	if _menu is WorkshopScreen:
+		(_menu as WorkshopScreen).refresh()
+	else:
+		_show_menu()
+
+
+## Lineas de la pantalla de misiones del hangar: la zona, el combate que toca
+## y su rival.
+func mission_lines() -> PackedStringArray:
+	var zone := mini(_profile.zone, _campaign.zone_count() - 1)
+	var lines := PackedStringArray([Txt.t("mission_zone", [zone + 1, _campaign.zone_name(zone)])])
+	if _campaign.is_complete(_profile):
+		lines.append(Txt.t("campaign_done"))
+		return lines
+	var fight := _campaign.fight_at(zone, _profile.fight)
+	if _campaign.is_boss_fight(zone, _profile.fight):
+		lines.append(Txt.t("mission_boss"))
+	else:
+		lines.append(Txt.t("mission_fight", [_profile.fight + 1, _campaign.fights_in(zone)]))
+	lines.append(_library.display_name(fight["enemy"]))
+	return lines
+
+
+## Cajon de misiones: el estado de tu robot, la campana, la arena, el combate
+## libre y tu historial.
+func fill_missions(box: VBoxContainer) -> void:
+	var can_fight := _add_mech_status(box)
+	_add_campaign(box, can_fight)
+	_add_arena(box, can_fight)
+	_add_free_fight(box)
+	_text(box, _record_text(), 13, COLOR_MUTED).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 
 
 func _column(parent: Control, width: int) -> VBoxContainer:

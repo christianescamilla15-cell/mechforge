@@ -220,9 +220,7 @@ func garage_test() -> void:
 		)
 	)
 	await shot("taller_armazon")
-	for child in main.get_children():
-		if child is WorkshopScreen:
-			child.closed.emit()
+	(main._menu as WorkshopScreen).close_drawer()
 	await get_tree().create_timer(0.8).timeout
 	await shot("base_tres_robots")
 	main.use_robot(0)
@@ -316,7 +314,8 @@ func workshop_test(workshop: WorkshopScreen) -> void:
 	await get_tree().create_timer(0.8).timeout
 	await shot("taller")
 	workshop.clear_slot("side0")
-	await get_tree().create_timer(0.5).timeout
+	workshop.pick("side0")
+	await get_tree().create_timer(0.6).timeout
 	await shot("taller_brazo_vacio")
 	var cards: Array[PartCard] = []
 	for node in workshop.find_children("*", "PartCard", true, false):
@@ -326,7 +325,8 @@ func workshop_test(workshop: WorkshopScreen) -> void:
 		cards[0].hovered.emit(cards[0].item.id, true)
 		await get_tree().create_timer(0.3).timeout
 		await shot("taller_comparar")
-		await _drag(cards[0], workshop._cells["side0"])
+		# Al enchufe del hueco vacio, en el propio robot.
+		await _drag_to(cards[0], workshop._stage.slot_screen_point("side0"))
 		await get_tree().create_timer(0.6).timeout
 		print("TALLER brazo 1 tras arrastrar: %s" % Garage.get_slot(main._profile.build, "side0"))
 		await shot("taller_arrastrado")
@@ -364,8 +364,12 @@ func workshop_test(workshop: WorkshopScreen) -> void:
 
 ## Arrastra con el raton (eventos de verdad) del centro de un control a otro.
 func _drag(from: Control, to: Control) -> void:
+	await _drag_to(from, to.get_global_rect().get_center())
+
+
+## Arrastra con el raton del centro de un control a un punto de la pantalla.
+func _drag_to(from: Control, b: Vector2) -> void:
 	var a := from.get_global_rect().get_center()
-	var b := to.get_global_rect().get_center()
 	_mouse_button(a, true)
 	await get_tree().process_frame
 	# Godot empieza a arrastrar cuando suma desplazamiento relativo: cada paso
