@@ -129,31 +129,11 @@ def control_tracks(draw, r, x):
 
 
 def control_wheels(draw, r, x):
-    """Piernas de mecha con ruedas: cadera, dos brazos de suspension abiertos
-    y una rueda grande con guardabarros en cada uno. (La primera version era
-    un cajon sobre dos ruedas y el usuario la rechazo: "un carrito".)"""
-    draw.polygon(
-        [(x - 80, r + 30), (x + 80, r + 30), (x + 60, r + 150), (x - 60, r + 150)], outline=WHITE, width=WIDTH
-    )
-    for hx, hy in ((x - 150, r + 315), (x + 165, r + 315)):
-        side = 1 if hx > x else -1
-        # Brazo de suspension, de la cadera al eje.
-        draw.polygon(
-            [
-                (x + side * 10, r + 125),
-                (x + side * 85, r + 95),
-                (hx + side * 42, hy - 32),
-                (hx - side * 36, hy + 4),
-            ],
-            outline=WHITE,
-            width=WIDTH,
-        )
-        # Rueda con llanta y eje, y su guardabarros.
-        for radius in (85, 48, 16):
-            draw.ellipse([hx - radius, hy - radius, hx + radius, hy + radius], outline=WHITE, width=WIDTH)
-        draw.chord([hx - 108, hy - 108, hx + 108, hy + 108], 200, 340, outline=WHITE, width=WIDTH)
-    # Piston entre los dos brazos.
-    draw.line([(x - 90, r + 240), (x + 100, r + 240)], fill=WHITE, width=WIDTH)
+    draw.rectangle([x - 70, r + 30, x + 70, r + 230], outline=WHITE, width=WIDTH)
+    draw.rounded_rectangle([x - 170, r + 225, x + 190, r + 285], radius=20, outline=WHITE, width=WIDTH)
+    for cx in (x - 110, x + 130):
+        draw.ellipse([cx - 75, r + 250, cx + 75, r + 400], outline=WHITE, width=WIDTH)
+        draw.ellipse([cx - 25, r + 300, cx + 25, r + 350], outline=WHITE, width=WIDTH)
 
 
 def control_hover(draw, r, x):
@@ -335,8 +315,8 @@ DESIGNS = {
     "piernas_ruedas": {
         "zone": LEGS_ZONE,
         "control": control_wheels,
-        "subject": LEGS_SUBJECT + ", mechanical legs, large wheels, suspension arms, pistons, fenders",
-        "negative": "feet, humanoid legs, wings, car, cart, wagon, truck, tank treads",
+        "subject": LEGS_SUBJECT + ", wheels, tire, wheeled vehicle",
+        "negative": "feet, legs, humanoid legs, wings",
         "strength": 1.0,
     },
     "piernas_levita": {
