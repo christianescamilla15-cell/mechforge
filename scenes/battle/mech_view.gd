@@ -72,6 +72,12 @@ var facing: int = 1
 ## torso o unas piernas que faltan se ven transparentes, para que se note el
 ## hueco sin que el mech se quede flotando.
 var ghost_slots: Array[String] = []
+## Solo se dibuja esta capa del robot ("" = todas), para el giro del hangar
+## (TurntableMech): "far" (armas del lado lejano), "far_leg", "body" (torso,
+## canon de pecho y piernas de una pieza), "near_leg", "near" (armas del lado
+## cercano) y "float" (asistente o dron). Una capa suelta no se apaga por
+## estar detras: eso lo decide quien la gira.
+var only_layer: String = ""
 var heat_ratio: float = 0.0
 var shut_down: bool = false
 
@@ -413,20 +419,29 @@ func _draw_sprites(dim: float) -> void:
 	# parezca que viene de dentro.
 	var cannon_at := body + Vector2((1.0 - _deploy) * -RETRACT - _recoil, 0.0)
 	var cannon_tint := Color(tint.r, tint.g, tint.b, clampf(_deploy * 1.5, 0.0, 1.0))
-	if has_cannon() and _deploy > 0.0 and _deploy < 1.0:
+	if has_cannon() and _deploy > 0.0 and _deploy < 1.0 and _layer("body"):
 		_sprites.draw_piece(
 			self, CHEST_SET, "chest", _cannon_item().element, cannon_tint, cannon_at
 		)
 	# El brazo y el hombro del lado lejano van detras del torso.
-	_draw_weapons(tint, body, true)
-	var torso_tint := _ghost_tint(tint, "torso")
-	_sprites.draw_piece(self, _sprites.torso_set, "torso", build.torso.element, torso_tint, body)
+	if _layer("far"):
+		_draw_weapons(tint, body, true)
 	var torso := _sprites.piece_rect(_sprites.torso_set, "torso", body)
-	MechWear.draw_marks(self, torso, health_ratio, _wear_salt())
-	if has_cannon() and _deploy >= 1.0:
-		_sprites.draw_piece(self, CHEST_SET, "chest", _cannon_item().element, tint, cannon_at)
-	_draw_weapons(tint, body, false)
-	_draw_condition(torso)
+	if _layer("body"):
+		var torso_tint := _ghost_tint(tint, "torso")
+		_sprites.draw_piece(
+			self, _sprites.torso_set, "torso", build.torso.element, torso_tint, body
+		)
+		MechWear.draw_marks(self, torso, health_ratio, _wear_salt())
+		if has_cannon() and _deploy >= 1.0:
+			_sprites.draw_piece(self, CHEST_SET, "chest", _cannon_item().element, tint, cannon_at)
+	if _layer("near"):
+		_draw_weapons(tint, body, false)
+	if _layer("body"):
+		_draw_condition(torso)
+	if not _layer("float"):
+		draw_set_transform(Vector2.ZERO)
+		return
 	# El dron flota aparte, sin inclinarse con el cuerpo.
 	var bob := Vector2(0.0, sin(_time * 3.1) * 4.0)
 	if _assist_kind() != "":
@@ -454,6 +469,11 @@ func _draw_sprites(dim: float) -> void:
 	draw_set_transform(bob + Vector2(0.0, SPRITE_WEAPON_LIFT))
 	_draw_drone(dim)
 	draw_set_transform(Vector2.ZERO)
+
+
+## True si esta capa se dibuja (ver `only_layer`).
+func _layer(layer: String) -> bool:
+	return only_layer == "" or only_layer == layer
 
 
 ## Tinte de una pieza que falta (ghost_slots): gris azulado y transparente.
@@ -600,7 +620,7 @@ func _drone_kind(low: bool = false) -> String:
 func _draw_weapons(tint: Color, body: Vector2, far: bool) -> void:
 	if not _shows_weapons():
 		return
-	var dim := FAR_WEAPON_DIM if far else 1.0
+	var dim := FAR_WEAPON_DIM if far and only_layer == "" else 1.0
 	var weapon_tint := Color(tint.r * dim, tint.g * dim, tint.b * dim, tint.a)
 	for slot: String in _weapon_slots():
 		var mounted := _mount_of(slot)
@@ -673,12 +693,15 @@ func _draw_legs(tint: Color) -> float:
 		lift -= HOVER_HEIGHT + sin(_time * 2.6) * 3.0
 	elif _locomotion == "roll" and _walking:
 		lift += sin(_time * 47.0) * 0.8
-	var far_tint := Color(tint.r * FAR_LEG_DIM, tint.g * FAR_LEG_DIM, tint.b * FAR_LEG_DIM, tint.a)
+	var far_dim := FAR_LEG_DIM if only_layer == "" else 1.0
+	var far_tint := Color(tint.r * far_dim, tint.g * far_dim, tint.b * far_dim, tint.a)
 	var shift := Vector2(0.0, lift)
-	_draw_jets(origin + FAR_LEG_OFFSET + shift, unit, far, 0.7)
-	_rig.draw(self, texture, origin + FAR_LEG_OFFSET + shift, unit, far, far_tint)
-	_draw_jets(origin + shift, unit, near, 1.0)
-	_rig.draw(self, texture, origin + shift, unit, near, tint)
+	if _layer("far_leg"):
+		_draw_jets(origin + FAR_LEG_OFFSET + shift, unit, far, 0.7)
+		_rig.draw(self, texture, origin + FAR_LEG_OFFSET + shift, unit, far, far_tint)
+	if _layer("near_leg"):
+		_draw_jets(origin + shift, unit, near, 1.0)
+		_rig.draw(self, texture, origin + shift, unit, near, tint)
 	return lift
 
 
@@ -689,14 +712,15 @@ func _draw_rigid_legs(tint: Color) -> float:
 	if _locomotion == "hover":
 		lift = -HOVER_HEIGHT - sin(_time * 2.6) * 3.0
 		var glow := HOVER_GLOW
-		for i in 3:
+		for i in 3 if _layer("body") else 0:
 			glow.a = 0.24 - 0.06 * i
 			_ellipse(Vector2(0.0, -2.0), Vector2(70.0 + 16.0 * i, 8.0 + 3.0 * i), glow)
 	elif _locomotion == "roll" and _walking:
 		lift = sin(_time * 47.0) * 0.9
-	_sprites.draw_piece(
-		self, _sprites.legs_set, "legs", build.legs.element, tint, Vector2(0.0, lift)
-	)
+	if _layer("body"):
+		_sprites.draw_piece(
+			self, _sprites.legs_set, "legs", build.legs.element, tint, Vector2(0.0, lift)
+		)
 	return lift
 
 

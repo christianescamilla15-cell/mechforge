@@ -222,6 +222,11 @@ func _build_drawer() -> void:
 # --- Estado ------------------------------------------------------------------
 
 
+## Gira el robot del hangar a ese angulo, en grados (0 = de perfil).
+func turn_robot(degrees: float) -> void:
+	_stage.turn = deg_to_rad(degrees)
+
+
 ## Vuelve a pintar todo con el perfil actual.
 func refresh() -> void:
 	var build := _build_from(main._profile.build)

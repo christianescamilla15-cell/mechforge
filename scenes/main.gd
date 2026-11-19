@@ -133,6 +133,22 @@ func _ready() -> void:
 		elif _args["menu-shot"] in ["tienda", "mejoras", "habilidades"]:
 			# El taller abierto en ese espacio.
 			open_workshop().show_page(_args["menu-shot"])
+		elif _args["menu-shot"] == "giro":
+			# El robot dando la vuelta entera sobre su plataforma, cuadro a
+			# cuadro (--step=<grados>, 10 si no se dice).
+			var hangar := _menu as WorkshopScreen
+			var step := float(_args.get("step", "10"))
+			var live := _live_test()
+			await get_tree().create_timer(0.6).timeout
+			for i in roundi(360.0 / step):
+				hangar.turn_robot(i * step)
+				await get_tree().create_timer(0.1).timeout
+				await live.shot("giro")
+			get_tree().quit(0)
+			return
+		# --turn=<grados>: el robot del hangar, girado.
+		if _args.has("turn") and _menu is WorkshopScreen:
+			(_menu as WorkshopScreen).turn_robot(float(_args["turn"]))
 		await get_tree().create_timer(0.6).timeout
 		await _live_test().shot("menu")
 		get_tree().quit(0)
