@@ -77,7 +77,7 @@ func _ready() -> void:
 	var console := _stage.console
 	console.upgrade_picked.connect(buy_upgrade)
 	console.skill_picked.connect(learn)
-	console.remove_pressed.connect(func() -> void: main.ask_remove_robot(main._profile.active))
+	console.remove_pressed.connect(_on_robot_removed)
 	console.setting_changed.connect(_on_setting_changed)
 	console.quit_pressed.connect(func() -> void: get_tree().quit(0))
 	_stage.projector.bought.connect(_on_offer_bought)
@@ -223,6 +223,13 @@ func _console_state() -> Dictionary:
 		"ajustes":
 			return WallConsole.settings_state(main._settings, true)
 	return brief.robot(main._profile, main.robot_name(main._profile.active))
+
+
+## La ficha del robot pidio desmontarlo (con sus dos pulsaciones): se
+## desmonta y la ficha se recoge.
+func _on_robot_removed() -> void:
+	_console = ""
+	main.remove_robot(main._profile.active)
 
 
 ## Un ajuste cambiado en el cuadro de control: se aplica y se guarda, y la

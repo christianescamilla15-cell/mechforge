@@ -320,22 +320,14 @@ func acquire_design(design: String) -> void:
 	_refresh_hangar()
 
 
-## Desmontar un robot pide confirmacion; sus piezas se quedan.
-func ask_remove_robot(index: int) -> void:
-	var dialog := ConfirmationDialog.new()
-	dialog.title = Txt.t("robots_remove")
-	dialog.dialog_text = Txt.t("robots_remove_confirm", [robot_name(index)])
-	dialog.ok_button_text = Txt.t("robots_remove_yes")
-	dialog.cancel_button_text = Txt.t("campaign_boss_no")
-	dialog.confirmed.connect(
-		func() -> void:
-			if _profile.remove_mech(index) == "":
-				Sfx.play("taller_quitar")
-				_save()
-				_refresh_hangar()
-	)
-	add_child(dialog)
-	dialog.popup_centered()
+## Desmonta un robot; sus piezas se quedan. Quien lo pide ya confirmo (la
+## ficha del robot pide dos pulsaciones).
+func remove_robot(index: int) -> void:
+	if _profile.remove_mech(index) != "":
+		return
+	Sfx.play("taller_quitar")
+	_save()
+	_refresh_hangar()
 
 
 ## Ajustes: en el hangar, su cuadro de control de la pared, de cerca; sin

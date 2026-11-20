@@ -267,6 +267,29 @@ func garage_test() -> void:
 	await get_tree().create_timer(0.8).timeout
 	print("GARAJE clic en la primera bahia: activo=%d" % profile.active)
 	await shot("base_cambia_de_robot")
+	# La ficha del robot: desmontarlo pide dos pulsaciones, sin ventanas.
+	await _click(stage._sign_rect().get_center())
+	await get_tree().create_timer(0.6).timeout
+	var console := stage.console
+	var remove := console.global_position + console.zone_rect("remove").get_center()
+	await _click(remove)
+	await get_tree().create_timer(0.25).timeout
+	print(
+		(
+			"GARAJE desmontar, primera pulsacion: armado=%s robots=%d"
+			% [console.armed() == "remove", profile.mechs.size()]
+		)
+	)
+	await shot("desmontar_armado")
+	await _click(remove)
+	await get_tree().create_timer(0.6).timeout
+	print(
+		(
+			"GARAJE desmontar, segunda pulsacion: robots=%d abierto='%s'"
+			% [profile.mechs.size(), hangar.current_page()]
+		)
+	)
+	await shot("desmontado")
 	# Pulsar el hangar vacio apaga el proyector.
 	main.open_acquire()
 	await get_tree().create_timer(0.4).timeout
@@ -322,7 +345,7 @@ func settings_test() -> void:
 	# Salir pide dos pulsaciones: aqui solo la primera.
 	await _click(console.global_position + console.zone_rect("quit").get_center())
 	await get_tree().create_timer(0.25).timeout
-	print("AJUSTES salir armado: %s" % console._quit_armed)
+	print("AJUSTES salir armado: %s" % (console.armed() == "quit"))
 	await shot("ajustes_salir")
 	await _click(Vector2(stage.size.x * 0.33, stage.size.y * 0.4))
 	await get_tree().create_timer(0.5).timeout

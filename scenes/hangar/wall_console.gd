@@ -9,7 +9,8 @@ extends Control
 ##   para subirla;
 ## - habilidades: las tres ramas del arbol, de abajo arriba; las aprendidas
 ##   encendidas, la siguiente de cada rama latiendo; se pulsa para aprenderla;
-## - robot: la ficha del robot que usas y, si tienes mas de uno, desmontarlo;
+## - robot: la ficha del robot que usas y, si tienes mas de uno, desmontarlo
+##   (dos pulsaciones);
 ## - ajustes (el cuadro de control de la pared): la velocidad de las
 ##   animaciones, la pantalla completa, el volumen de cada canal (se pulsa o
 ##   se arrastra su barra) y salir del juego, que pide dos pulsaciones.
@@ -66,8 +67,8 @@ var _since_draw := 0.0
 var _hover := ""
 ## Barra de volumen que se esta arrastrando ("" = ninguna).
 var _dragging := ""
-## Salir del juego esta armado: la siguiente pulsacion sale.
-var _quit_armed := false
+## Tecla armada ("quit" o "remove"): la siguiente pulsacion la cumple.
+var _armed := ""
 var _zones: Dictionary[String, Rect2] = {}
 var _grow: Tween
 
@@ -112,7 +113,7 @@ func open(p_state: Dictionary, from: Rect2, to: Rect2, instant: bool = false) ->
 		size = _from.size.lerp(_to.size, _open)
 		return
 	_hover = ""
-	_quit_armed = false
+	_armed = ""
 	visible = true
 	_open = 0.0
 	Sfx.play("ui_abrir")
@@ -245,7 +246,7 @@ func _gui_input(event: InputEvent) -> void:
 	var zone := zone_at(click.position)
 	if zone.begins_with("vol:"):
 		_dragging = zone
-		_quit_armed = false
+		_armed = ""
 		_set_volume(zone, click.position.x)
 		return
 	press(zone)
@@ -280,24 +281,32 @@ func press(zone: String) -> void:
 			skill_picked.emit(str(node["id"]))
 		else:
 			Sfx.play("ui_cerrar")
-	elif zone == "remove":
-		remove_pressed.emit()
 	elif zone.begins_with("speed:"):
 		setting_changed.emit("speed", int(zone.trim_prefix("speed:")))
 		Sfx.play("ui_clic")
 	elif zone == "full":
 		setting_changed.emit("fullscreen", not bool(state.get("fullscreen", false)))
 		Sfx.play("ui_clic")
-	if zone == "quit":
-		if _quit_armed:
+	# Salir del juego y desmontar el robot piden dos pulsaciones: la primera
+	# solo deja la tecla armada.
+	if zone == "quit" or zone == "remove":
+		if _armed != zone:
+			_armed = zone
+			Sfx.play("ui_habilidad")
+		elif zone == "quit":
+			_armed = ""
 			quit_pressed.emit()
 		else:
-			# La primera pulsacion solo lo deja armado.
-			_quit_armed = true
-			Sfx.play("ui_habilidad")
+			_armed = ""
+			remove_pressed.emit()
 	else:
-		_quit_armed = false
+		_armed = ""
 	queue_redraw()
+
+
+## La tecla que esta armada ("quit", "remove" o "").
+func armed() -> String:
+	return _armed
 
 
 func _row(id: String) -> Dictionary:
@@ -597,21 +606,8 @@ func _draw_robot(glass: Rect2, alpha: float) -> void:
 	)
 	if not _zones.has("remove"):
 		return
-	var rect := _zones["remove"]
-	var hover := _hover == "remove"
-	var plate := TechStyle.plate(Color("2a1a1c"), BAD if hover else Color("7a4040"), 0.0, 6.0)
-	plate.groove = false
-	plate.bolts = false
-	plate.glow = 0.5 if hover else 0.0
-	plate.draw(get_canvas_item(), rect)
-	_text(
-		rect.position + Vector2(0, 20),
-		Txt.t("robots_remove"),
-		rect.size.x,
-		13,
-		Color.WHITE if hover else BAD,
-		alpha,
-		HORIZONTAL_ALIGNMENT_CENTER
+	_draw_danger_key(
+		"remove", _zones["remove"], Txt.t("robots_remove"), Txt.t("robots_remove_again"), alpha
 	)
 
 
@@ -736,17 +732,26 @@ func _draw_volume(entry: Dictionary, bar: Rect2, left: float, alpha: float) -> v
 
 ## Salir del juego: una tecla roja; armada, pide la segunda pulsacion.
 func _draw_quit(rect: Rect2, alpha: float) -> void:
-	var hover := _hover == "quit"
+	_draw_danger_key("quit", rect, Txt.t("quit_game"), Txt.t("quit_confirm"), alpha)
+
+
+## Una tecla roja de las que piden dos pulsaciones: `again` es lo que dice
+## cuando ya esta armada.
+func _draw_danger_key(
+	zone: String, rect: Rect2, label: String, again: String, alpha: float
+) -> void:
+	var hover := _hover == zone
+	var ready := _armed == zone
 	var plate := TechStyle.plate(
-		Color("2a1a1c"), BAD if hover or _quit_armed else Color("7a4040"), 0.0, 6.0
+		Color("2a1a1c"), BAD if hover or ready else Color("7a4040"), 0.0, 6.0
 	)
 	plate.groove = false
 	plate.bolts = false
-	plate.glow = 0.5 if hover or _quit_armed else 0.0
+	plate.glow = 0.5 if hover or ready else 0.0
 	plate.draw(get_canvas_item(), rect)
-	var label := Txt.t("quit_confirm") if _quit_armed else Txt.t("quit_game")
 	var tone := Color.WHITE if hover else BAD
-	if _quit_armed:
+	if ready:
+		label = again
 		tone = Color(GOLD, 0.7 + 0.3 * sin(_time * 8.0))
 	_text(
 		rect.position + Vector2(0, 20),

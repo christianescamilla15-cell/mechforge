@@ -432,8 +432,13 @@ func test_la_ficha_del_robot_solo_deja_desmontar_si_hay_otro() -> void:
 	state = _brief.robot(profile, "Horno")
 	assert_true(bool(state["can_remove"]))
 	console.state = state
+	# Desmontarlo pide dos pulsaciones, sin ninguna ventana.
+	console._gui_input(_click(console.zone_rect("remove").get_center()))
+	assert_eq(_counts["remove"], 0, "la primera solo lo deja armado")
+	assert_eq(console.armed(), "remove")
 	console._gui_input(_click(console.zone_rect("remove").get_center()))
 	assert_eq(_counts["remove"], 1)
+	assert_eq(console.armed(), "")
 
 
 func test_mientras_crece_la_pantalla_no_se_pulsa() -> void:

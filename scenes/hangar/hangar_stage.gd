@@ -319,7 +319,7 @@ func console_rects(kind: String) -> Array[Rect2]:
 			]
 	var plate := _sign_rect()
 	var wide := maxf(plate.size.x, 300.0)
-	return [plate, Rect2(plate.get_center().x - wide * 0.5, plate.end.y + 6.0, wide, 170.0)]
+	return [plate, Rect2(plate.get_center().x - wide * 0.5, plate.end.y + 6.0, wide, 198.0)]
 
 
 ## Enciende el proyector de la bahia vacia que se pulso (o de la primera

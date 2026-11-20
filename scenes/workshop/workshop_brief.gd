@@ -329,13 +329,14 @@ func skill_tree(profile: PlayerProfile) -> Dictionary:
 func robot(profile: PlayerProfile, robot_name: String) -> Dictionary:
 	var entry: Dictionary = profile.mechs[profile.active]
 	var design := str(entry.get("design", ""))
+	var several := profile.mechs.size() > 1
 	return {
 		"kind": "robot",
 		"title": robot_name,
 		"design":
 		Txt.t("robot_design", [library.display_name(design)]) if library.specs.has(design) else "",
-		"hint": Txt.t("robot_page_hint"),
-		"can_remove": profile.mechs.size() > 1,
+		"hint": Txt.t("robot_page_hint") + (" " + Txt.t("robot_remove_note") if several else ""),
+		"can_remove": several,
 	}
 
 
