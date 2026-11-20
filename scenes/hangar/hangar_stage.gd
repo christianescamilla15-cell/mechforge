@@ -13,6 +13,11 @@ extends MechStage
 ##   proyectan en el suelo delante de tu robot (RivalRow); pulsar al primero
 ##   es salir a combatir;
 ## - enchufes que brillan en los huecos de arma vacios del robot;
+## - lo que antes iba en una barra de arriba, repartido por la escena: el
+##   nombre de tu robot en el rotulo que cuelga sobre su bahia (se pulsa para
+##   ver su ficha), sus celdas en la pantalla de la tienda, su nivel en la de
+##   habilidades, sus mejoras en la de mejoras y su peso en la bascula que
+##   hay junto a la plataforma;
 ## - la plataforma del robot es giratoria: arrastrarla (o la rueda del raton)
 ##   lo gira 360 grados (TurntableMech); doble clic lo devuelve al perfil;
 ## - un estante de equipo con los huecos que no se ven en el dibujo (pecho,
@@ -26,6 +31,8 @@ signal missions_pressed
 signal rival_pressed
 signal channel_picked(channel: String)
 signal pick_changed(key: String, step: int)
+## El rotulo de la bahia: la ficha de tu robot.
+signal sign_pressed
 signal bay_pressed(index: int)
 signal background_pressed
 signal dropped_on(slot: String, data: Dictionary)
@@ -61,6 +68,11 @@ const MISSION_DIM_ROBOT := 0.3
 const LAUNCH_SECONDS := 0.85
 const LAUNCH_WALK := 250.0
 
+## Lo que ensenan los rotulos del hangar (lo pone WorkshopScreen):
+## {"name", "problems", "cells", "level", "xp", "xp_next" (-1 = nivel maximo),
+##  "weight", "max_weight", "overload", "upgrades" (de 0 a 1, una por mejora)}.
+var info: Dictionary = {}
+
 ## Cuanto esta el hangar en modo mision: 0 = el taller, 1 = en penumbra con
 ## los rivales delante.
 var mission := 0.0:
@@ -90,6 +102,7 @@ var _terminal_rects: Dictionary[String, Rect2] = {}
 var _bay_rects: Array[Rect2] = []
 var _hover_terminal: String = ""
 var _hover_bay: int = -2
+var _hover_sign := false
 var _font: Font
 var _turntable := TurntableMech.new()
 ## Lo que ocupa el robot en el taller (para las capas del giro).
@@ -434,6 +447,28 @@ func _draw() -> void:
 	HangarArt.draw_light_dust(self, Rect2(Vector2.ZERO, size), center, _floor_y, _time)
 	if _mech.build != null:
 		_draw_turn_marks(Vector2(center, _floor_y))
+	if str(info.get("name", "")) != "":
+		HangarProps.bay_sign(
+			self,
+			_font,
+			_sign_rect(),
+			str(info["name"]),
+			str(info.get("problems", "")),
+			_hover_sign,
+			_time
+		)
+	if _mech.build != null and info.has("weight"):
+		var top := int(info.get("max_weight", 1000))
+		HangarProps.scale(
+			self,
+			_font,
+			_scale_rect(),
+			_floor_y,
+			int(info["weight"]),
+			top,
+			top + int(info.get("overload", 0)),
+			_time
+		)
 
 
 ## Lo quieto del hangar, sobre `c`: la textura o, mientras no esta, el
@@ -442,7 +477,7 @@ func _draw_still(c: CanvasItem) -> void:
 	var rect := Rect2(Vector2.ZERO, size)
 	HangarArt.draw_wall(c, rect, _floor_y, 1.0)
 	HangarArt.draw_gantry(c, rect, 1.0)
-	_draw_back_row(c)
+	HangarProps.back_row(c, size, _bay_floor(), BAY_X, _font)
 	for terminal in TERMINALS:
 		if _terminal_rects.has(terminal):
 			_draw_terminal_still(c, terminal, _terminal_rects[terminal])
@@ -450,12 +485,12 @@ func _draw_still(c: CanvasItem) -> void:
 	_draw_cable(c, Vector2(board.position.x + board.size.x * 0.8, board.end.y))
 	var center := _platform_center()
 	HangarArt.draw_floor(c, rect, _floor_y, Vector2(center, _floor_y - size.y * 0.9))
-	_draw_floor_marks(c, center)
+	HangarProps.floor_marks(c, size, _floor_y, center, _font)
 	HangarArt.draw_light_cone(c, rect, center, _floor_y)
 	if _mech.build != null:
 		HangarArt.draw_platform(c, Vector2(center, _floor_y), _platform_width)
-	_draw_props(c)
-	_draw_target_stand(c)
+	HangarProps.clutter(c, size, _floor_y)
+	HangarProps.target_stand(c, _world.position + _target_point() * _world.scale.x, _floor_y)
 	_draw_shelf(c)
 	HangarArt.draw_vignette(c, rect, 1.2)
 
@@ -482,6 +517,20 @@ func _refresh_still() -> void:
 	_still.render_target_update_mode = SubViewport.UPDATE_ONCE
 	# Se pinta en el siguiente cuadro: hasta entonces lo quieto va directo.
 	_still_wait = 2
+
+
+## El rotulo de la bahia de tu robot, colgado de la viga sobre el.
+func _sign_rect() -> Rect2:
+	var label := str(info.get("name", "")).to_upper()
+	var wide := _font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, 16).x
+	var width := clampf(wide + 86.0, 190.0, size.x * 0.27)
+	return Rect2(_platform_center() - width * 0.5, 30.0, width, 30.0)
+
+
+## La pantalla de la bascula: en un poste, a la izquierda de la plataforma.
+func _scale_rect() -> Rect2:
+	var left := _platform_center() - _platform_width * 0.5
+	return Rect2(left - 96.0, _floor_y - 78.0, 88.0, 42.0)
 
 
 ## Centro de la plataforma del robot, en la pantalla: bajo sus piernas.
@@ -522,45 +571,6 @@ func _draw_turn_marks(feet: Vector2) -> void:
 		draw_line(feet + out * reach, feet + out * 0.97, color, 2.5 if k == 0 else 1.5)
 
 
-## Fila del fondo: una tarima con tres bahias, cada una con sus columnas, su
-## numero y su plataforma. Su luz y su holograma van aparte (se mueven).
-func _draw_back_row(c: CanvasItem) -> void:
-	var y := _bay_floor()
-	var deck := Rect2(0, y - 4.0, size.x, 12.0)
-	c.draw_rect(deck, Color("1a2533"))
-	c.draw_line(deck.position, Vector2(deck.end.x, deck.position.y), Color(1, 1, 1, 0.12), 1.0)
-	c.draw_line(Vector2(0, deck.end.y), deck.end, Color(0, 0, 0, 0.5), 2.0)
-	for i in BAY_X.size():
-		var x := size.x * BAY_X[i]
-		var w := size.y * 0.2
-		var top := y - size.y * 0.36
-		# Columnas con sus franjas y una viga con el numero de la bahia.
-		for side: float in [-1.0, 1.0]:
-			var col := Rect2(x + side * w - 5.0, top, 10.0, y - top)
-			c.draw_rect(col, Color("141c27"))
-			c.draw_line(col.position, Vector2(col.position.x, col.end.y), Color(1, 1, 1, 0.08), 1.0)
-			for k in 4:
-				var band_y := top + (y - top) * (0.2 + 0.2 * k)
-				c.draw_rect(
-					Rect2(col.position.x, band_y, 10.0, 3.0), HangarArt.HAZARD_A.darkened(0.55)
-				)
-		var beam := Rect2(x - w - 5.0, top - 12.0, w * 2.0 + 10.0, 12.0)
-		c.draw_rect(beam, Color("101721"))
-		c.draw_line(beam.position, Vector2(beam.end.x, beam.position.y), Color(1, 1, 1, 0.1), 1.0)
-		var plate := Rect2(x - 16.0, top - 11.0, 32.0, 10.0)
-		c.draw_rect(plate, Color("d9a520").darkened(0.35))
-		c.draw_string(
-			_font,
-			plate.position + Vector2(5, 8.5),
-			"%02d" % (i + 2),
-			HORIZONTAL_ALIGNMENT_LEFT,
-			-1,
-			9,
-			Color("10151c")
-		)
-		HangarArt.draw_platform(c, Vector2(x, y), w * 1.1)
-
-
 ## Lo que se mueve en las bahias: su lamparita (verde con robot, ambar
 ## vacia), el marco al pasar el raton y el holograma de las vacias.
 func _draw_bays_live() -> void:
@@ -585,37 +595,16 @@ func _draw_bays_live() -> void:
 			var label := (
 				str(bays[i]["name"]) if mine and i < bays.size() else Txt.t("robots_acquire")
 			)
-			_draw_hologram(Vector2(x, y), size.y * 0.24, hover, label)
-
-
-## Holograma de una bahia vacia: un cilindro de luz con rejilla y un "+".
-func _draw_hologram(feet: Vector2, height: float, hover: bool, label: String) -> void:
-	var w := height * 0.32
-	var alpha := 0.55 if hover else 0.32
-	var flicker := 0.85 + 0.15 * sin(_time * 9.0)
-	var color := Color(COLOR_SOCKET, alpha * flicker)
-	draw_rect(
-		Rect2(feet.x - w, feet.y - height, w * 2.0, height), Color(COLOR_SOCKET, 0.05 * flicker)
-	)
-	var k := 0.0
-	while k < height:
-		var y := feet.y - k
-		draw_line(Vector2(feet.x - w, y), Vector2(feet.x + w, y), Color(color, color.a * 0.35), 1.0)
-		k += 9.0
-	draw_line(Vector2(feet.x - w, feet.y - height), Vector2(feet.x - w, feet.y), color, 1.5)
-	draw_line(Vector2(feet.x + w, feet.y - height), Vector2(feet.x + w, feet.y), color, 1.5)
-	var mid := Vector2(feet.x, feet.y - height * 0.55)
-	draw_line(mid - Vector2(12, 0), mid + Vector2(12, 0), color, 3.0)
-	draw_line(mid - Vector2(0, 12), mid + Vector2(0, 12), color, 3.0)
-	_text(mid + Vector2(-w, 26), label, w * 2.0, 11, Color(COLOR_TEXT, alpha + 0.2), true)
+			HangarProps.hologram(self, Vector2(x, y), size.y * 0.24, hover, label, _time, _font)
 
 
 ## Una terminal de pared, lo quieto: marco con relieve, cristal con sus
 ## lineas de barrido, su nombre y el cable que baja a la pared.
 func _draw_terminal_still(c: CanvasItem, terminal: String, rect: Rect2) -> void:
 	var screen := HangarArt.draw_screen_still(c, rect)
-	_text_on(
+	HangarProps.text(
 		c,
+		_font,
 		screen.position + Vector2(8, 15),
 		Txt.t("terminal_" + terminal),
 		screen.size.x - 16.0,
@@ -630,13 +619,29 @@ func _draw_terminal_still(c: CanvasItem, terminal: String, rect: Rect2) -> void:
 func _draw_terminal_live(terminal: String, rect: Rect2) -> void:
 	var screen := HangarArt.draw_screen_live(self, rect, _hover_terminal == terminal, _time)
 	var art := Rect2(screen.position + Vector2(8, 22), screen.size - Vector2(16, 30))
+	var foot := Vector2(screen.position.x + 8.0, screen.end.y - 8.0)
+	var wide := screen.size.x - 16.0
 	match terminal:
 		"tienda":
-			_art_store(art)
+			# Abajo, tus celdas.
+			art.size.y -= 16.0
+			HangarProps.store_art(self, art)
+			HangarProps.cells_line(self, _font, foot, wide, int(info.get("cells", 0)))
 		"mejoras":
-			_art_upgrades(art)
+			HangarProps.upgrades_art(self, art, info.get("upgrades", []), _time)
 		"habilidades":
-			_art_skills(art)
+			# Abajo, tu nivel y lo que llevas del siguiente.
+			art.size.y -= 16.0
+			HangarProps.skills_art(self, art)
+			HangarProps.level_line(
+				self,
+				_font,
+				foot,
+				wide,
+				int(info.get("level", 1)),
+				int(info.get("xp", 0)),
+				int(info.get("xp_next", -1))
+			)
 	var led_at := Vector2(rect.end.x - 14.0, rect.position.y + 6.0)
 	draw_circle(led_at, 2.4, Color("55ff9a", 0.4 + 0.4 * sin(_time * 4.0 + rect.position.x)))
 
@@ -646,111 +651,20 @@ func _draw_cable(c: CanvasItem, from: Vector2) -> void:
 	c.draw_line(from, from + Vector2(6.0, 28.0), Color("0e141c"), 3.0)
 
 
-## Armas colgadas en un expositor.
-func _art_store(art: Rect2) -> void:
-	for i in 3:
-		var y := art.position.y + art.size.y * (0.22 + 0.3 * i)
-		var x := art.position.x + 6.0
-		draw_rect(Rect2(x, y - 4.0, art.size.x * 0.7, 8.0), Color(COLOR_SCREEN_LINE, 0.55))
-		draw_rect(
-			Rect2(x + art.size.x * 0.7, y - 2.0, art.size.x * 0.18, 4.0),
-			Color(COLOR_SCREEN_LINE, 0.8)
-		)
-		draw_rect(Rect2(x + 4.0, y + 4.0, 8.0, 7.0), Color(COLOR_SCREEN_LINE, 0.4))
-	draw_line(
-		art.position + Vector2(2, 0),
-		Vector2(art.position.x + 2, art.end.y),
-		Color(COLOR_SCREEN_LINE, 0.3),
-		1.0
-	)
-
-
-## Barras que suben, como medidores.
-func _art_upgrades(art: Rect2) -> void:
-	var bars := 6
-	var w := art.size.x / bars
-	for i in bars:
-		var fill := 0.35 + 0.55 * absf(sin(i * 1.7 + _time * 0.6))
-		var h := art.size.y * 0.85 * fill
-		var bar := Rect2(art.position.x + i * w + 3.0, art.end.y - h, w - 6.0, h)
-		draw_rect(bar, Color(COLOR_SCREEN_LINE, 0.5))
-		draw_rect(Rect2(bar.position, Vector2(bar.size.x, 3.0)), Color(COLOR_TEXT, 0.9))
-
-
-## Un arbol de nodos conectados.
-func _art_skills(art: Rect2) -> void:
-	var root := Vector2(art.get_center().x, art.end.y - 6.0)
-	var color := Color(COLOR_SCREEN_LINE, 0.65)
-	for branch in 3:
-		var tip := Vector2(
-			art.position.x + art.size.x * (0.18 + 0.32 * branch), art.position.y + 8.0
-		)
-		var mid := root.lerp(tip, 0.5)
-		draw_line(root, mid, color, 2.0)
-		draw_line(mid, tip, color, 2.0)
-		for p in [mid, tip]:
-			draw_circle(p, 5.0, Color(COLOR_SCREEN, 1.0))
-			draw_arc(p, 5.0, 0, TAU, 12, color, 1.5)
-	draw_circle(root, 6.0, Color(COLOR_TEXT, 0.9))
-
-
-## Marcas pintadas en el suelo: el numero del robot y lineas de seguridad.
-func _draw_floor_marks(c: CanvasItem, center: float) -> void:
-	var y := _floor_y + (size.y - _floor_y) * 0.25
-	var stripe := Color(HangarArt.HAZARD_A, 0.25)
-	c.draw_line(Vector2(center - size.x * 0.22, y), Vector2(center - size.x * 0.12, y), stripe, 3.0)
-	c.draw_line(Vector2(center + size.x * 0.12, y), Vector2(center + size.x * 0.22, y), stripe, 3.0)
-	_text_on(
-		c,
-		Vector2(center - 20.0, _floor_y + (size.y - _floor_y) * 0.16),
-		"01",
-		40.0,
-		14,
-		Color(HangarArt.HAZARD_A, 0.35),
-		true
-	)
-
-
-## Cosas del taller: una caja de herramientas, unas cajas y una manguera.
-func _draw_props(c: CanvasItem) -> void:
-	var y := _floor_y + 10.0
-	var box := Rect2(size.x * 0.635, y - 30.0, 52.0, 30.0)
-	c.draw_rect(box.grow(1.0), Color(0, 0, 0, 0.5))
-	c.draw_rect(box, Color("8c2f2a"))
-	c.draw_rect(Rect2(box.position, Vector2(box.size.x, 7.0)), Color("a63b33"))
-	c.draw_line(
-		box.position + Vector2(0, 14),
-		Vector2(box.end.x, box.position.y + 14),
-		Color(0, 0, 0, 0.4),
-		1.0
-	)
-	c.draw_rect(Rect2(box.position + Vector2(18, -6), Vector2(16, 6)), Color("2b2b2b"), false, 2.0)
-	for k in 2:
-		var crate := Rect2(size.x * (0.665 + 0.045 * k), y - 44.0 + k * 14.0, 44.0, 44.0 - k * 14.0)
-		c.draw_rect(crate, Color("4a3a24").darkened(0.1 * k))
-		c.draw_rect(crate, Color("2a2014"), false, 2.0)
-		c.draw_line(crate.position, crate.end, Color("2a2014"), 2.0)
-		c.draw_line(
-			Vector2(crate.end.x, crate.position.y),
-			Vector2(crate.position.x, crate.end.y),
-			Color("2a2014"),
-			2.0
-		)
-	var hose := PackedVector2Array()
-	for i in 12:
-		var t := float(i) / 11.0
-		hose.append(Vector2(size.x * (0.6 + 0.08 * t), y + 6.0 + sin(t * PI * 2.0) * 5.0))
-	c.draw_polyline(hose, Color("1d1d1d"), 4.0, true)
-
-
 ## Estante de equipo: una placa con su rotulo; los huecos van encima.
 func _draw_shelf(c: CanvasItem) -> void:
 	var shelf := _shelf_rect()
 	var style := TechStyle.plate(Color("161e2a"), Color("3c4c62"), 0.0, 8.0)
 	style.groove = false
 	style.draw(c.get_canvas_item(), shelf)
-	_text_on(
-		c, shelf.position + Vector2(10, -4), Txt.t("rack_title"), shelf.size.x, 11, Color("9aa7b8")
+	HangarProps.text(
+		c,
+		_font,
+		shelf.position + Vector2(10, -4),
+		Txt.t("rack_title"),
+		shelf.size.x,
+		11,
+		Color("9aa7b8")
 	)
 
 
@@ -777,22 +691,6 @@ func _target_point() -> Vector2:
 	return Vector2((size.x * 0.655 - _world.position.x) / _world.scale.x, -180.0)
 
 
-## Poste de la diana, desde el suelo.
-func _draw_target_stand(c: CanvasItem) -> void:
-	var target := _world.position + _target_point() * _world.scale.x
-	var base := Vector2(target.x, _floor_y + 4.0)
-	c.draw_line(Vector2(base.x, target.y + 30.0), base, Color("2a3442"), 5.0)
-	c.draw_line(
-		Vector2(base.x - 1.5, target.y + 30.0),
-		Vector2(base.x - 1.5, base.y),
-		Color(1, 1, 1, 0.08),
-		1.0
-	)
-	c.draw_rect(Rect2(base.x - 18.0, base.y - 4.0, 36.0, 6.0), Color("1c2430"))
-	c.draw_circle(target, 44.0, Color("1a2230"))
-	c.draw_arc(target, 44.0, 0, TAU, 32, Color("3a4656"), 3.0)
-
-
 ## Punto del enchufe de un hueco de arma, en el mundo del taller.
 func socket_point(slot: String) -> Vector2:
 	return _mech.transform * _mech.slot_socket(slot)
@@ -807,21 +705,7 @@ func slot_screen_point(slot: String) -> Vector2:
 func _text(
 	at: Vector2, text: String, width: float, font_size: int, color: Color, centered := false
 ) -> void:
-	_text_on(self, at, text, width, font_size, color, centered)
-
-
-func _text_on(
-	c: CanvasItem,
-	at: Vector2,
-	text: String,
-	width: float,
-	font_size: int,
-	color: Color,
-	centered := false
-) -> void:
-	var align := HORIZONTAL_ALIGNMENT_CENTER if centered else HORIZONTAL_ALIGNMENT_LEFT
-	c.draw_string(_font, at + Vector2(1, 1), text, align, width, font_size, Color(0, 0, 0, 0.6))
-	c.draw_string(_font, at, text, align, width, font_size, color)
+	HangarProps.text(self, _font, at, text, width, font_size, color, centered)
 
 
 # --- Raton -------------------------------------------------------------------
@@ -842,6 +726,10 @@ func slot_at(at: Vector2) -> String:
 			if world.distance_to(socket_point(socket)) <= radius:
 				return socket
 	return ""
+
+
+func _on_sign(at: Vector2) -> bool:
+	return str(info.get("name", "")) != "" and _sign_rect().has_point(at)
 
 
 func _terminal_at(at: Vector2) -> String:
@@ -892,7 +780,12 @@ func _gui_input(event: InputEvent) -> void:
 	if motion != null:
 		var on_rival := _mission_on and _row.front_has_point(motion.position)
 		_row.hover = on_rival
-		var terminal := "" if on_rival else _terminal_at(motion.position)
+		var on_sign := not on_rival and _on_sign(motion.position)
+		if on_sign != _hover_sign:
+			_hover_sign = on_sign
+			if on_sign:
+				Sfx.play("ui_tic")
+		var terminal := "" if on_rival or on_sign else _terminal_at(motion.position)
 		var bay := _bay_at(motion.position) if terminal == "" and not on_rival else -2
 		if terminal != _hover_terminal or bay != _hover_bay:
 			_hover_terminal = terminal
@@ -908,7 +801,13 @@ func _gui_input(event: InputEvent) -> void:
 			if platform
 			else (
 				Control.CURSOR_POINTING_HAND
-				if terminal != "" or bay >= 0 or on_rival or slot_at(motion.position) != ""
+				if (
+					terminal != ""
+					or bay >= 0
+					or on_rival
+					or on_sign
+					or slot_at(motion.position) != ""
+				)
 				else Control.CURSOR_ARROW
 			)
 		)
@@ -918,6 +817,9 @@ func _gui_input(event: InputEvent) -> void:
 	if click != null and click.pressed and click.button_index == MOUSE_BUTTON_LEFT:
 		if _mission_on and _row.front_has_point(click.position):
 			rival_pressed.emit()
+			return
+		if _on_sign(click.position):
+			sign_pressed.emit()
 			return
 		var terminal := _terminal_at(click.position)
 		if terminal != "":

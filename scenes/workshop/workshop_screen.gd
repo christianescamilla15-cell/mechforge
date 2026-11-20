@@ -14,9 +14,10 @@ extends Control
 ## - el estante de equipo bajo el robot: pecho, especiales, asistente y
 ##   modulos.
 ## Lo que se toca abre un cajon que se desliza desde la derecha; pulsar el
-## hangar vacio o Esc lo cierra. Arriba, una barra con tu robot, tus celdas,
-## tu nivel, la zona, el peso y los ajustes. Lee y cambia el perfil a traves
-## de MainScreen, que lo guarda.
+## hangar vacio o Esc lo cierra. No hay barra de estado: tu robot, tus
+## celdas, tu nivel y el peso van en la propia escena (HangarStage.info); solo
+## queda el engrane de los ajustes en una esquina. Lee y cambia el perfil a
+## traves de MainScreen, que lo guarda.
 
 signal closed
 
@@ -53,12 +54,6 @@ var _channel: String = ""
 var _launching := false
 var _store_group: String = "todo"
 var _stage: HangarStage
-var _robot_button: Button
-var _top_info: Label
-var _xp: ProgressBar
-var _weight: ProgressBar
-var _weight_label: Label
-var _problems: Label
 var _toast: Label
 var _drawer: PanelContainer
 var _drawer_title: Label
@@ -82,6 +77,7 @@ func _ready() -> void:
 	_stage.rival_pressed.connect(_on_rival_pressed)
 	_stage.channel_picked.connect(open_missions)
 	_stage.pick_changed.connect(_on_pick_changed)
+	_stage.sign_pressed.connect(show_page.bind("robot"))
 	_build_rack()
 	_build_hud()
 	_build_drawer()
@@ -120,61 +116,25 @@ func _build_rack() -> void:
 		_stage.rack[slot] = cell
 
 
-## Barra de arriba: tu robot (abre su cajon), celdas, nivel con su barra,
-## zona, peso con sus avisos y el engrane de los ajustes.
+## Lo unico que queda fuera de la escena: el engrane de los ajustes, en una
+## esquina, y el aviso pasajero.
 func _build_hud() -> void:
-	var bar := PanelContainer.new()
-	var style := TechStyle.plate(Color(0.07, 0.1, 0.14, 0.92), Color("3c4c62"), 6.0, 8.0)
-	style.groove = false
-	bar.add_theme_stylebox_override("panel", style)
-	bar.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
-	bar.offset_left = 8
-	bar.offset_right = -8
-	bar.offset_top = 6
-	add_child(bar)
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 16)
-	bar.add_child(row)
-	_robot_button = Button.new()
-	_robot_button.flat = true
-	_robot_button.add_theme_font_size_override("font_size", 19)
-	_robot_button.add_theme_color_override("font_color", COLOR_GOLD)
-	_robot_button.tooltip_text = Txt.t("hud_robot_hint")
-	_robot_button.pressed.connect(show_page.bind("robot"))
-	row.add_child(_robot_button)
-	_top_info = _label(row, "", 15, COLOR_CELLS)
-	var xp_box := VBoxContainer.new()
-	xp_box.custom_minimum_size = Vector2(120, 0)
-	xp_box.add_theme_constant_override("separation", 0)
-	row.add_child(xp_box)
-	_label(xp_box, Txt.t("hud_xp"), 10, COLOR_MUTED)
-	_xp = ProgressBar.new()
-	_xp.show_percentage = false
-	_xp.custom_minimum_size = Vector2(0, 8)
-	xp_box.add_child(_xp)
-	var weight := VBoxContainer.new()
-	weight.custom_minimum_size = Vector2(200, 0)
-	weight.add_theme_constant_override("separation", 0)
-	row.add_child(weight)
-	_weight_label = _label(weight, "", 11, COLOR_MUTED)
-	_weight = ProgressBar.new()
-	_weight.show_percentage = false
-	_weight.custom_minimum_size = Vector2(0, 8)
-	weight.add_child(_weight)
-	_problems = _label(row, "", 13, COLOR_BAD)
-	_problems.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_problems.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	var gear := Button.new()
 	gear.text = "⚙"
 	gear.tooltip_text = Txt.t("settings_open")
-	gear.custom_minimum_size = Vector2(40, 34)
+	gear.focus_mode = Control.FOCUS_NONE
 	gear.add_theme_font_size_override("font_size", 18)
+	gear.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+	gear.offset_left = -46
+	gear.offset_right = -10
+	gear.offset_top = 8
+	gear.offset_bottom = 40
 	gear.pressed.connect(main.open_settings)
-	row.add_child(gear)
+	add_child(gear)
 	# Aviso pasajero (lo que se cobro en el ultimo combate, etc.).
 	_toast = Label.new()
 	_toast.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
-	_toast.position.y = 58
+	_toast.position.y = 96
 	_toast.add_theme_font_size_override("font_size", 17)
 	_toast.add_theme_color_override("font_color", COLOR_GOLD)
 	_toast.add_theme_color_override("font_outline_color", Color.BLACK)
@@ -192,7 +152,7 @@ func _build_drawer() -> void:
 	_drawer.add_theme_stylebox_override("panel", style)
 	_drawer.set_anchors_and_offsets_preset(Control.PRESET_RIGHT_WIDE)
 	_drawer.offset_left = -DRAWER_WIDTH
-	_drawer.offset_top = 58
+	_drawer.offset_top = 46
 	_drawer.offset_bottom = -8
 	_drawer.offset_right = -8
 	_drawer.visible = false
@@ -264,21 +224,22 @@ func refresh() -> void:
 		_stage.show_mission(main.mission_state(_channel))
 	_stage.set_bays(_bays())
 	var level := main._player_level()
-	_robot_button.text = main.robot_name(main._profile.active) + "  ▾"
-	var zone := mini(main._profile.zone, main._campaign.zone_count() - 1)
-	_top_info.text = Txt.t(
-		"hud_info", [main._profile.gold, level, zone + 1, main._campaign.zone_name(zone)]
-	)
-	var next := main._progression.next_level_xp(main._profile.xp)
-	_xp.max_value = maxi(next, 1)
-	_xp.value = main._profile.xp if next >= 0 else 1
-	var max_weight := main._rules.max_weight
-	_weight.max_value = max_weight + main._rules.overload
-	_weight.value = build.total_weight()
-	_weight_label.text = Txt.t("mech_weight", [build.total_weight(), max_weight])
-	_weight.modulate = COLOR_BAD if build.total_weight() > max_weight else Color.WHITE
 	var problems := build.validate(main._rules)
-	_problems.text = "" if problems.is_empty() else Txt.t("mech_problems", [", ".join(problems)])
+	var upgrades: Array[float] = []
+	for track in main._shop.track_ids():
+		upgrades.append(float(main._profile.level_of(track)) / maxf(main._shop.max_level(), 1.0))
+	_stage.info = {
+		"name": main.robot_name(main._profile.active),
+		"problems": "" if problems.is_empty() else Txt.t("mech_problems", [", ".join(problems)]),
+		"cells": main._profile.gold,
+		"level": level,
+		"xp": main._profile.xp,
+		"xp_next": main._progression.next_level_xp(main._profile.xp),
+		"weight": build.total_weight(),
+		"max_weight": main._rules.max_weight,
+		"overload": main._rules.overload,
+		"upgrades": upgrades,
+	}
 	for slot: String in _stage.rack:
 		_refresh_cell(_stage.rack[slot], level)
 	_refresh_summary(build)
