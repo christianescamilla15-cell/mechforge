@@ -73,10 +73,11 @@ var facing: int = 1
 ## hueco sin que el mech se quede flotando.
 var ghost_slots: Array[String] = []
 ## Solo se dibuja esta capa del robot ("" = todas), para el giro del hangar
-## (TurntableMech): "far" (armas del lado lejano), "far_leg", "body" (torso,
-## canon de pecho y piernas de una pieza), "near_leg", "near" (armas del lado
-## cercano) y "float" (asistente o dron). Una capa suelta no se apaga por
-## estar detras: eso lo decide quien la gira.
+## (TurntableMech): "far" y "far_top" (armas de brazo y de hombro del lado
+## lejano), "far_leg", "body" (torso y piernas de una pieza), "chest" (canon
+## de pecho), "near_leg", "near_top" y "near" (armas del lado cercano) y
+## "float" (asistente o dron). Una capa suelta no se apaga por estar detras:
+## eso lo decide quien la gira.
 var only_layer: String = ""
 var heat_ratio: float = 0.0
 var shut_down: bool = false
@@ -409,7 +410,7 @@ func destroy(seconds: float) -> Tween:
 func _draw_sprites(dim: float) -> void:
 	var tint := _body_tint(dim)
 	# Vivo: respira; andando: rebota; apagado: se desploma hacia delante.
-	var breath := 0.0 if (shut_down or _dead) else sin(_time * 2.2) * 1.6
+	var breath := _breath()
 	var lift := _draw_legs(_ghost_tint(tint, "legs"))
 	var body := Vector2(_slump * 9.0, breath + lift + _slump * 13.0)
 	# El cuerpo se inclina sobre la cintura.
@@ -419,12 +420,12 @@ func _draw_sprites(dim: float) -> void:
 	# parezca que viene de dentro.
 	var cannon_at := body + Vector2((1.0 - _deploy) * -RETRACT - _recoil, 0.0)
 	var cannon_tint := Color(tint.r, tint.g, tint.b, clampf(_deploy * 1.5, 0.0, 1.0))
-	if has_cannon() and _deploy > 0.0 and _deploy < 1.0 and _layer("body"):
+	if has_cannon() and _deploy > 0.0 and _deploy < 1.0 and _layer("chest"):
 		_sprites.draw_piece(
 			self, CHEST_SET, "chest", _cannon_item().element, cannon_tint, cannon_at
 		)
 	# El brazo y el hombro del lado lejano van detras del torso.
-	if _layer("far"):
+	if _layer("far") or _layer("far_top"):
 		_draw_weapons(tint, body, true)
 	var torso := _sprites.piece_rect(_sprites.torso_set, "torso", body)
 	if _layer("body"):
@@ -433,9 +434,9 @@ func _draw_sprites(dim: float) -> void:
 			self, _sprites.torso_set, "torso", build.torso.element, torso_tint, body
 		)
 		MechWear.draw_marks(self, torso, health_ratio, _wear_salt())
-		if has_cannon() and _deploy >= 1.0:
-			_sprites.draw_piece(self, CHEST_SET, "chest", _cannon_item().element, tint, cannon_at)
-	if _layer("near"):
+	if has_cannon() and _deploy >= 1.0 and _layer("chest"):
+		_sprites.draw_piece(self, CHEST_SET, "chest", _cannon_item().element, tint, cannon_at)
+	if _layer("near") or _layer("near_top"):
 		_draw_weapons(tint, body, false)
 	if _layer("body"):
 		_draw_condition(torso)
@@ -474,6 +475,33 @@ func _draw_sprites(dim: float) -> void:
 ## True si sus piernas son de una pieza (orugas, ruedas o levitar).
 func has_rigid_legs() -> bool:
 	return _rig == null
+
+
+## Juego de sprites de su torso y de sus piernas ("" sin arte o si es un
+## jefe, que lleva su cuerpo entero).
+func torso_set() -> String:
+	return "" if _sprites == null or _sprites.is_boss else _sprites.torso_set
+
+
+func legs_set() -> String:
+	return "" if _sprites == null or _sprites.is_boss else _sprites.legs_set
+
+
+## Cuanto sube todo el dibujo en reposo por levitar (negativo = hacia arriba).
+func rest_lift() -> float:
+	return -HOVER_HEIGHT if _locomotion == "hover" else 0.0
+
+
+## Lo que se mueve ahora mismo el dibujo respecto a su reposo, en sus
+## unidades: x = las piernas (al flotar), y = el cuerpo (flotar y respirar).
+func sway() -> Vector2:
+	var floating := -sin(_time * 2.6) * 3.0 if _locomotion == "hover" else 0.0
+	return Vector2(floating, floating + _breath())
+
+
+## Vivo, respira: cuanto sube y baja el cuerpo.
+func _breath() -> float:
+	return 0.0 if (shut_down or _dead) else sin(_time * 2.2) * 1.6
 
 
 ## True si esta capa se dibuja (ver `only_layer`).
@@ -630,6 +658,9 @@ func _draw_weapons(tint: Color, body: Vector2, far: bool) -> void:
 	for slot: String in _weapon_slots():
 		var mounted := _mount_of(slot)
 		if mounted.is_empty() or mounted["far"] != far:
+			continue
+		# Por capas, las de hombro van aparte de las de brazo.
+		if only_layer != "" and slot.begins_with("top") != only_layer.ends_with("_top"):
 			continue
 		var kick := Vector2(-_recoil, 0.0) if slot == _fired_slot else Vector2.ZERO
 		var at: Vector2 = body + mounted["at"] + kick

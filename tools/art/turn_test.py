@@ -26,8 +26,15 @@ atras (la lente) a los dos bordes, con sus colores. Y solo se repinta la
 envolvente de la figura: con medio lienzo libre el modelo dibuja figuras de
 mas (segunda tanda).
 
+La espalda (pedido del usuario el 2026-11-20, para el giro de 360 grados del
+hangar: "se ve incompleto en 90 grados") sale de la vista de frente ya
+elegida, con --back-of: su misma silueta, en espejo, repintada "desde
+atras" con su contorno como control. Asi la espalda ocupa exactamente lo
+mismo que el frente y casa con el en el giro (scenes/hangar/turntable_mech.gd).
+
 Las imagenes van a art_raw/parts/frente/<tanda>_<semilla>.png (la hoja
-entera) y <tanda>_<semilla>_frente.png (solo la vista de frente).
+entera) y <tanda>_<semilla>_frente.png (solo la vista de frente; con
+--back-of, <tanda>_<semilla>_espalda.png).
 Uso:
   tools/art/run.ps1 tools/art/turn_test.py --torso art_raw/parts/lote_ligero/torso_13.png \
       --legs docs/reference/art/elegidos/ligero/robot_18.png --tag t13p18 --seeds 1 2 3 4
@@ -42,7 +49,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 import torch
-from PIL import Image, ImageFilter
+from PIL import Image, ImageFilter, ImageOps
 
 import blockout
 import cut_body
@@ -60,6 +67,14 @@ SUBJECT = "reference sheet, multiple views, turnaround, from side, straight-on, 
 COLORS = "white armor, steel grey armor"
 # El negativo del estilo prohibe "multiple views": aqui hace falta.
 NEGATIVE = style.NEGATIVE.replace("multiple views, ", "") + ", " + style.BODY_NEGATIVE + ", arms, hands, back view"
+SUBJECT_BACK = "reference sheet, multiple views, turnaround, from side, from behind, back view, full body, standing"
+# Lo que delata una vista de frente va delante: el negativo se corta a los 77
+# tokens (con todo BODY_NEGATIVE detras eran 83 y se perdia justo esto).
+NEGATIVE_BACK = (
+    "face, eyes, visor, facing viewer, "
+    + style.NEGATIVE.replace("multiple views, ", "")
+    + ", wings, sword, laser, firing, holding weapon, arms, hands"
+)
 
 
 def side_view(torso, legs, hip_row):
@@ -156,6 +171,8 @@ def main():
     parser.add_argument("--front", type=Path, help="vista de frente ya elegida: solo se repinta --zone")
     parser.add_argument("--front-hip", type=int, help="fila del aro en la vista de frente (en su panel)")
     parser.add_argument("--zone", choices=["torso", "legs"], help="con --front: que parte se repinta")
+    parser.add_argument("--back-of", type=Path, help="vista de frente ya elegida: se dibuja su espalda")
+    parser.add_argument("--back-words", default="", help="con --back-of: lo que se ve por detras (en ingles)")
     parser.add_argument("--tag", required=True)
     parser.add_argument("--seeds", type=int, nargs="+", default=[1, 2, 3, 4])
     parser.add_argument("--strength", type=float, default=0.85, help="1 = no queda nada del perfil desplegado")
@@ -181,7 +198,14 @@ def main():
     )
     envelope = cv2.dilate(front_mask.astype(np.uint8), np.ones((args.margin * 2 + 1,) * 2, np.uint8)) * 255
     mask = np.zeros((PANEL, PANEL * 2), dtype=np.uint8)
-    if args.front:
+    if args.back_of:
+        # La espalda ocupa lo mismo que el frente, en espejo.
+        front = ImageOps.mirror(Image.open(args.back_of).convert("RGB").resize((PANEL, PANEL), Image.LANCZOS))
+        sheet.paste(front, (PANEL, 0))
+        front_mask = cutout.drop_holes(front, cutout.clean_figure(front))
+        envelope = cv2.dilate(front_mask.astype(np.uint8), np.ones((args.margin * 2 + 1,) * 2, np.uint8)) * 255
+        mask[:, PANEL:] = envelope
+    elif args.front:
         sheet.paste(Image.open(args.front).convert("RGB").resize((PANEL, PANEL), Image.LANCZOS), (PANEL, 0))
         row = args.front_hip
         if args.zone == "torso":
@@ -207,6 +231,13 @@ def main():
 
     pipe = sd.load_pipeline("fp8", controlled="inpaint")
     prompt = style.prompt(SUBJECT, COLORS)
+    negative = NEGATIVE
+    suffix = "frente"
+    if args.back_of:
+        subject = SUBJECT_BACK + (", " + args.back_words if args.back_words else "")
+        prompt = style.prompt(subject, COLORS)
+        negative = NEGATIVE_BACK
+        suffix = "espalda"
     tokens = len(pipe.tokenizer(prompt).input_ids)
     if tokens > 77:
         raise SystemExit("prompt de %d tokens (> 77): se perderia el final" % tokens)
@@ -214,7 +245,7 @@ def main():
         started = time.time()
         image = pipe(
             prompt=prompt,
-            negative_prompt=NEGATIVE,
+            negative_prompt=negative,
             image=sheet,
             mask_image=mask_image,
             strength=args.strength,
@@ -230,7 +261,7 @@ def main():
         ).images[0]
         name = "%s_%d" % (args.tag, seed)
         image.save(OUT / (name + ".png"))
-        image.crop((PANEL, 0, PANEL * 2, PANEL)).save(OUT / (name + "_frente.png"))
+        image.crop((PANEL, 0, PANEL * 2, PANEL)).save(OUT / ("%s_%s.png" % (name, suffix)))
         print("ok  %s.png  %.0f s  pico VRAM %.1f GB" % (name, time.time() - started, sd.peak_vram_gb()), flush=True)
     print("LISTO en", OUT)
 

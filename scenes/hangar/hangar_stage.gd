@@ -36,8 +36,9 @@ const COLOR_SCREEN_LINE := Color("3fd0e6")
 const COLOR_TEXT := Color("bfefff")
 const COLOR_SOCKET := Color("57d3ff")
 const SOCKET_RADIUS := 13.0
-## Giro por pixel arrastrado, por muesca de la rueda, y a cuanto del perfil
-## el robot vuelve solo a el al soltar.
+## Giro por pixel arrastrado, por muesca de la rueda, y a cuanto de una
+## vista dibujada (de perfil, de espalda, del otro perfil o de frente) el
+## robot se coloca solo en ella al soltar.
 const TURN_PER_PIXEL := TAU / 620.0
 const TURN_PER_NOTCH := TAU / 16.0
 const TURN_SNAP := deg_to_rad(9.0)
@@ -699,9 +700,11 @@ func _turn_input(button: InputEventMouseButton) -> bool:
 	if button.button_index == MOUSE_BUTTON_LEFT and not button.pressed and _turning:
 		_turning = false
 		queue_redraw()
-		# Casi de perfil: vuelve solo, para poder tocar sus piezas.
-		if absf(wrapf(turn, -PI, PI)) < TURN_SNAP:
-			turn_to(0.0, 0.18)
+		# Casi en una vista dibujada: se coloca en ella (de perfil, ademas,
+		# se pueden tocar sus piezas).
+		var quarter := snappedf(turn, PI / 2.0)
+		if absf(wrapf(turn - quarter, -PI, PI)) < TURN_SNAP:
+			turn_to(quarter, 0.18)
 		return true
 	if not button.pressed or not _grabs_platform(button.position):
 		return false

@@ -107,6 +107,10 @@ func _ready() -> void:
 		if _args.has("legs"):
 			_profile.owned.append(_args["legs"])
 			_profile.build["legs"] = _args["legs"]
+		# --torso=<id>: otro torso (cada uno tiene su dibujo).
+		if _args.has("torso"):
+			_profile.owned.append(_args["torso"])
+			_profile.build["torso"] = _args["torso"]
 		# --xp=<n> y --chest=<id>: un perfil con huecos abiertos y arma de pecho.
 		if _args.has("xp"):
 			_profile.xp = int(_args["xp"])
@@ -149,6 +153,11 @@ func _ready() -> void:
 		# --turn=<grados>: el robot del hangar, girado.
 		if _args.has("turn") and _menu is WorkshopScreen:
 			(_menu as WorkshopScreen).turn_robot(float(_args["turn"]))
+		# --fps: cuadros por segundo tras tres segundos (con --disable-vsync
+		# delante de "++" se ve lo que da de si el giro).
+		if _args.has("fps"):
+			await get_tree().create_timer(3.0).timeout
+			print("FPS %d" % Engine.get_frames_per_second())
 		await get_tree().create_timer(0.6).timeout
 		await _live_test().shot("menu")
 		get_tree().quit(0)
