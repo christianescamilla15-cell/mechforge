@@ -28,7 +28,7 @@ if (-not $Rest -or $Rest.Count -eq 0) {
 $taskName = 'NexusForge-TranscriptionWatcher'
 $watcherLog = 'C:\Users\DANNY\Syncthing\watcher.log'
 # Scripts que no usan la GPU: no hace falta pausar nada.
-$cpuOnly = @('download_models.py', 'contact_sheet.py', 'blockout.py', 'cut_body.py', 'export_assist.py', 'export_weapons.py')
+$cpuOnly = @('download_models.py', 'contact_sheet.py', 'blockout.py', 'cut_body.py', 'export_assist.py', 'export_weapons.py', 'export_parts.py', 'extract_overlay.py', 'recolor.py')
 $scriptName = Split-Path -Leaf $Rest[0]
 $pausedWatcher = $false
 
