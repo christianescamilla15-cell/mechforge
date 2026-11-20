@@ -239,6 +239,19 @@ Causa: la armería llega al máximo hacia la zona 4 y los rivales no tienen nada
 - **Sonido y música** (pedido del usuario, 2026-11-18): GDD §12.3. 75 archivos CC0 o sintetizados en `assets/audio/` con sus créditos, `data/sounds.json`, `scenes/audio/sfx.gd` y `tools/audio/curate.py` (lo rehace desde los paquetes, con `--fetch` los baja). `--record-audio` en la prueba en vivo graba lo que sale y lo que se pidió. 7 tests nuevos.
 - **Bloqueos de la progresión** (el usuario pidió revisarlos): todo estaba limitado por zona y nivel salvo la armería, que solo pedía dinero (llenarla costaba 30 600 celdas). Ahora tiene tope 9 en las zonas 1 y 2 (GDD §9.2). tests/unit/test_progress_locks.gd gasta 100 000 celdas en la zona 1 y comprueba cada tope. El simulador de economía respeta el tope (`--armory-cap` para probar otros).
 
+**Rendimiento del hangar (2026-11-20):** al medir el modo misión salió que el hangar, la pantalla en la que más se está, iba a unos 37 cuadros por segundo sin límite (el combate va a más de 138), también de perfil y sin tocar nada. Medido quitando cosas de una en una (`--menu-shot=menu --real-profile --fps`, con `--disable-vsync` delante de `++`; RTX 4050, ventana de 1600×900):
+- el fondo de la base (`HangarBackdrop`) se seguía pintando entero cada cuadro **detrás** del hangar, que lo tapa del todo: 8 ms. Ahora solo se pinta al elegir el primer robot;
+- `HangarStage._draw` rehacía cada cuadro la pared, la viga, las bahías, las pantallas, el suelo, la plataforma y el estante: 9 ms. Ahora lo quieto se pinta una vez en una textura (`_still`, un SubViewport a los píxeles de la ventana) y solo se rehace si cambia el tamaño, el suelo o la plataforma; cada cuadro se pinta solo lo que se mueve (franjas de las pantallas, ledes, hologramas, polvo, muescas del giro). El fondo quieto sale idéntico píxel a píxel al de antes; el único cambio a la vista es que el holograma de una bahía vacía ya no queda cortado por la columna de la bahía de al lado;
+- el monitor de misiones se repinta unas 30 veces por segundo y su cámara es una imagen quieta; en la fila, solo respira el rival que toca.
+
+| Cuadros por segundo, sin límite | antes | ahora |
+|---|---|---|
+| Hangar, robot de perfil | 37 | 136 |
+| Robot girado (120°) | 35 | 118 |
+| Modo misión (4 rivales) | 32 | 117 |
+
+Son medidas sueltas de tres segundos (varían ±10 de una a otra). Con el monitor de 144 Hz ya no queda por debajo de la mitad del refresco.
+
 ## Herramientas
 | Herramienta | Estado | Para qué |
 |---|---|---|

@@ -203,6 +203,14 @@ static func draw_lamp(canvas: CanvasItem, at: Vector2, scale: float = 1.0) -> vo
 static func draw_light(
 	canvas: CanvasItem, rect: Rect2, center_x: float, floor_y: float, time: float
 ) -> void:
+	draw_light_cone(canvas, rect, center_x, floor_y)
+	draw_light_dust(canvas, rect, center_x, floor_y, time)
+
+
+## El cono de luz, que no se mueve.
+static func draw_light_cone(
+	canvas: CanvasItem, rect: Rect2, center_x: float, floor_y: float
+) -> void:
 	for i in 5:
 		var spread := (40.0 + i * 30.0) * rect.size.y / 560.0
 		var top := 12.0 + i * 3.0
@@ -215,6 +223,12 @@ static func draw_light(
 			]
 		)
 		canvas.draw_colored_polygon(light, Color(0.6, 0.78, 1.0, 0.045))
+
+
+## El polvo que flota en la luz.
+static func draw_light_dust(
+	canvas: CanvasItem, rect: Rect2, center_x: float, floor_y: float, time: float
+) -> void:
 	var height := floor_y - rect.position.y
 	for i in 18:
 		var salt := float(i) * 12.9898
@@ -240,14 +254,17 @@ static func draw_platform(canvas: CanvasItem, feet: Vector2, width: float) -> vo
 	_ellipse(canvas, feet + Vector2(0, 1), rx * 0.62, ry * 0.55, Color(0, 0, 0, 0.5))
 
 
-## Una pantalla de pared: marco con relieve y, dentro, el cristal con su
-## degradado, sus lineas de barrido y una franja de luz que baja (`time`).
-## Devuelve el rectangulo del cristal, para dibujar encima.
+## Una pantalla de pared entera: lo quieto y lo que se mueve. Devuelve el
+## rectangulo del cristal, para dibujar encima.
 static func draw_screen(canvas: CanvasItem, rect: Rect2, hover: bool, time: float) -> Rect2:
-	var frame := TechStyle.plate(
-		Color("1c2533"), Color("ffd36b") if hover else Color("4f6380"), 0.0, 8.0
-	)
-	frame.glow = 0.7 if hover else 0.0
+	draw_screen_still(canvas, rect)
+	return draw_screen_live(canvas, rect, hover, time)
+
+
+## Lo quieto de una pantalla de pared: marco con relieve y, dentro, el
+## cristal con su degradado y sus lineas de barrido. Devuelve el cristal.
+static func draw_screen_still(canvas: CanvasItem, rect: Rect2) -> Rect2:
+	var frame := TechStyle.plate(Color("1c2533"), Color("4f6380"), 0.0, 8.0)
 	frame.draw(canvas.get_canvas_item(), rect)
 	var screen := rect.grow(-9.0)
 	var steps := 8
@@ -259,7 +276,7 @@ static func draw_screen(canvas: CanvasItem, rect: Rect2, hover: bool, time: floa
 			screen.size.x,
 			screen.size.y / steps + 1.0
 		)
-		canvas.draw_rect(band, SCREEN.lightened(0.08 * (1.0 - t) + (0.06 if hover else 0.0)))
+		canvas.draw_rect(band, SCREEN.lightened(0.08 * (1.0 - t)))
 	var line := 0.0
 	while line < screen.size.y:
 		canvas.draw_line(
@@ -269,6 +286,19 @@ static func draw_screen(canvas: CanvasItem, rect: Rect2, hover: bool, time: floa
 			1.0
 		)
 		line += 3.0
+	return screen
+
+
+## Lo que se mueve en una pantalla: la franja de luz que baja (`time`) y, al
+## pasar el raton, el cristal mas claro y el marco encendido.
+static func draw_screen_live(canvas: CanvasItem, rect: Rect2, hover: bool, time: float) -> Rect2:
+	var screen := rect.grow(-9.0)
+	if hover:
+		canvas.draw_rect(screen, Color(SCREEN_LINE, 0.07))
+		for i in 3:
+			var halo := rect.grow(1.0 + i * 2.0)
+			canvas.draw_rect(halo, Color(1.0, 0.83, 0.42, 0.16 - 0.04 * i), false, 2.0)
+		canvas.draw_rect(rect, Color("ffd36b"), false, 2.0)
 	var sweep := screen.position.y + fposmod(time * 40.0, screen.size.y - 6.0)
 	canvas.draw_rect(Rect2(screen.position.x, sweep, screen.size.x, 6.0), Color(SCREEN_LINE, 0.08))
 	return screen

@@ -50,6 +50,9 @@ var _arena_seed: int = 0
 var _return: Dictionary = {}
 ## Telon negro entre el hangar y el combate.
 var _curtain: ColorRect
+## El hangar de fondo: solo se ve al elegir el primer robot (el hangar de
+## verdad y el combate lo tapan, y pintarlo costaba cuadros).
+var _backdrop := HangarBackdrop.new()
 ## Combate en curso: {"mode" ("campaign", "arena" o "free"), "items" (el
 ## mech del jugador, formato de builds.json), "name", "enemy", "enemy_tier",
 ## "enemy_level", "difficulty", "seed"} y, en el combate libre, "player_tier"
@@ -65,7 +68,7 @@ func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	# Toda la interfaz con relieve, y el hangar al fondo.
 	theme = Look.theme()
-	add_child(HangarBackdrop.new())
+	add_child(_backdrop)
 	# El sonido va primero: asi oye los botones de todo lo que se cree despues.
 	add_child(Sfx.new())
 	# En el juego la nave deja bonificaciones en la arena (GDD 2.8), hay
@@ -206,6 +209,7 @@ func _show_menu() -> void:
 	Sfx.music("base")
 	var back := _return
 	_return = {}
+	_backdrop.set_shown(not _profile.has_mech())
 	if _profile.has_mech():
 		var hangar := WorkshopScreen.new()
 		hangar.main = self
@@ -595,6 +599,7 @@ func _start_battle(spec: Dictionary) -> void:
 	_spec = spec
 	# Al volver, el hangar sigue en el canal del que se salio.
 	_return = {"channel": spec["mode"], "how": "enter"}
+	_backdrop.set_shown(false)
 	if _menu != null:
 		_menu.queue_free()
 		_menu = null

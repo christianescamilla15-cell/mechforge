@@ -73,6 +73,9 @@ class Rival:
 	var scan := 1.0
 	## Lo que mide de alto con su asistente, sin agrandar ni encoger.
 	var height := 200.0
+	## Como estaba la ultima vez que se coloco (para no recolocar lo quieto).
+	var placed_depth := -1.0
+	var placed_alpha := -1.0
 
 
 ## El raton esta sobre el primero.
@@ -127,8 +130,8 @@ func layout(p_size: Vector2, p_floor_y: float, p_zoom: float, p_ceiling: float =
 	_zoom = p_zoom
 	_ceiling = p_ceiling
 	for rival in _rivals + _leaving:
-		_apply(rival)
-	queue_redraw()
+		rival.placed_depth = -1.0
+	_place_all()
 
 
 ## Pone la fila. `how`: "enter" (se encienden uno tras otro), "advance" (el
@@ -298,7 +301,18 @@ func _process(delta: float) -> void:
 	_time += delta
 	if _rivals.is_empty() and _leaving.is_empty():
 		return
-	_place_all()
+	# Solo se recoloca lo que se mueve o se esta encendiendo; el resto late.
+	var moving := false
+	for rival in _rivals + _leaving:
+		if rival.depth != rival.placed_depth or rival.alpha != rival.placed_alpha:
+			moving = true
+		elif rival.alpha < 0.999:
+			moving = true
+	if moving:
+		_place_all()
+	else:
+		queue_redraw()
+		_fx.queue_redraw()
 
 
 func _place_all() -> void:
@@ -352,6 +366,10 @@ func _apply(rival: Rival) -> void:
 	var view := rival.view
 	if not is_instance_valid(view):
 		return
+	rival.placed_depth = rival.depth
+	rival.placed_alpha = rival.alpha
+	# El que toca respira; los de la sombra, apenas siluetas, se quedan quietos.
+	view.set_process(rival.depth < 0.5)
 	var last := SLOT_SHADE.size() - 1
 	var d := clampf(rival.depth, 0.0, float(last))
 	var i := int(d)

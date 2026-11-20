@@ -19,6 +19,7 @@ signal pick_changed(key: String, step: int)
 
 const FEED_WIDTH := 92.0
 const TAB_HEIGHT := 22.0
+const REDRAW_SECONDS := 1.0 / 30.0
 const GOLD := Color("ffe27a")
 const BAD := Color("ff8a7a")
 const MUTED := Color("7fb5c4")
@@ -42,6 +43,7 @@ var open := 0.0:
 
 var _font: Font
 var _time := 0.0
+var _since_draw := 0.0
 ## Zona bajo el raton: "", "board", "tab:<canal>" o "pick:<clave>:<paso>".
 var _hover := ""
 var _zones: Dictionary[String, Rect2] = {}
@@ -65,9 +67,14 @@ func _ready() -> void:
 	_sync_feed()
 
 
+## Lo que late en el monitor (la franja, las luces, el led) va despacio: con
+## repintarlo unas 30 veces por segundo sobra.
 func _process(delta: float) -> void:
 	_time += delta
-	queue_redraw()
+	_since_draw += delta
+	if _since_draw >= REDRAW_SECONDS or _flash > 0.0:
+		_since_draw = 0.0
+		queue_redraw()
 
 
 ## Destello de la luz del combate recien ganado.
@@ -163,6 +170,8 @@ func _sync_feed() -> void:
 			_feed.setup(build, -1)
 			if build.chest != null:
 				_feed.show_deployed()
+			# Es una imagen de camara: quieta, con las lineas de la pantalla.
+			_feed.set_process(false)
 	if _feed == null:
 		return
 	_feed.place(Vector2(feed.size.x * 0.56, feed.size.y - 5.0))

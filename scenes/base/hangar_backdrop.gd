@@ -14,6 +14,12 @@ func _ready() -> void:
 	show_behind_parent = true
 
 
+## Solo se pinta mientras se ve: el hangar y el combate lo tapan entero.
+func set_shown(shown: bool) -> void:
+	visible = shown
+	set_process(shown)
+
+
 func _process(delta: float) -> void:
 	_time += delta
 	queue_redraw()
