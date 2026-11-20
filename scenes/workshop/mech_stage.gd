@@ -260,7 +260,7 @@ func _get_drag_data(at: Vector2) -> Variant:
 	var item := _item_in(slot)
 	if item == null:
 		return null
-	set_drag_preview(PartCard.drag_preview(item))
+	set_drag_preview(PartIcon.drag_preview(item))
 	return {"id": item.id, "type": item.type, "from_slot": slot}
 
 

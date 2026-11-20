@@ -13,6 +13,12 @@ const SOCKET := Color("57d3ff")
 const GOLD := Color("ffd36b")
 const BAD := Color("ff7d6b")
 const DIM := Color("7fb5c4")
+const GOOD := Color("7dff9b")
+## Cuanto oscurece el hangar el modo mision (menos sobre tu robot) y cuanto
+## una pantalla de cerca.
+const MISSION_DIM := 0.7
+const MISSION_DIM_ROBOT := 0.3
+const FLAT_DIM := 0.55
 ## A partir de que parte del peso maximo la bascula avisa en dorado.
 const WEIGHT_WARN := 0.92
 
@@ -325,8 +331,10 @@ static func scale(
 	weight: int,
 	top: int,
 	limit: int,
-	time: float
+	time: float,
+	delta: int = 0
 ) -> void:
+	weight += delta
 	var color := SCREEN_LINE
 	if weight > top:
 		color = Color(BAD, 0.7 + 0.3 * sin(time * 7.0))
@@ -359,8 +367,18 @@ static func scale(
 		Txt.t("hud_weight_value", [weight, top]),
 		glass.size.x - 8.0,
 		11,
-		color if weight > top else SCREEN_TEXT
+		color if weight > top or delta != 0 else SCREEN_TEXT
 	)
+	if delta != 0:
+		c.draw_string(
+			font,
+			glass.position + Vector2(0, 10),
+			"%+d" % delta,
+			HORIZONTAL_ALIGNMENT_RIGHT,
+			glass.size.x - 4.0,
+			9,
+			GOOD if delta < 0 else GOLD
+		)
 	var bar := Rect2(glass.position.x + 5.0, glass.end.y - 8.0, glass.size.x - 10.0, 4.0)
 	c.draw_rect(bar, Color(0, 0, 0, 0.5))
 	var span := maxf(float(limit), 1.0)
@@ -372,3 +390,84 @@ static func scale(
 	c.draw_line(
 		Vector2(mark, bar.position.y - 2.0), Vector2(mark, bar.end.y + 2.0), SCREEN_TEXT, 1.0
 	)
+
+
+# --- La luz -----------------------------------------------------------------------
+
+
+## La penumbra del hangar. En el modo mision (`mission`, de 0 a 1) baja mas
+## a los lados que sobre tu robot (`center`), que sigue bajo su foco; con una
+## pantalla de cerca (`flat`), baja por igual. Al salir a combatir, la
+## alarma (`alarm`) lo tine todo de rojo a golpes y dos balizas barren el
+## techo.
+static func dim(
+	c: CanvasItem, size: Vector2, center: float, floor_y: float, levels: Vector3, time: float
+) -> void:
+	var mission := levels.x
+	var alarm := levels.y
+	var flat := levels.z
+	if flat > 0.001:
+		c.draw_rect(Rect2(Vector2.ZERO, size), Color(0.01, 0.02, 0.05, FLAT_DIM * flat))
+	if mission > 0.001:
+		var reach := size.x * 0.17
+		var columns: Array[float] = [0.0, center - reach, center, center + reach, size.x]
+		var alphas: Array[float] = [
+			MISSION_DIM, MISSION_DIM * 0.9, MISSION_DIM_ROBOT, MISSION_DIM * 0.85, MISSION_DIM
+		]
+		for i in columns.size() - 1:
+			var from := Color(0.01, 0.02, 0.05, alphas[i] * mission)
+			var to := Color(0.01, 0.02, 0.05, alphas[i + 1] * mission)
+			c.draw_polygon(
+				PackedVector2Array(
+					[
+						Vector2(columns[i], 0),
+						Vector2(columns[i + 1], 0),
+						Vector2(columns[i + 1], size.y),
+						Vector2(columns[i], size.y)
+					]
+				),
+				PackedColorArray([from, to, to, from])
+			)
+	if alarm <= 0.0:
+		return
+	var beat := 0.4 + 0.6 * absf(sin(time * 9.0))
+	c.draw_rect(Rect2(Vector2.ZERO, size), Color(0.95, 0.1, 0.05, 0.22 * alarm * beat))
+	for side: float in [0.2, 0.8]:
+		var lamp := Vector2(size.x * side, size.y * 0.1)
+		var sweep := sin(time * 7.0 + side * 9.0) * size.x * 0.22
+		var cone := PackedVector2Array(
+			[
+				lamp + Vector2(-6, 0),
+				lamp + Vector2(6, 0),
+				Vector2(lamp.x + sweep + size.x * 0.1, floor_y),
+				Vector2(lamp.x + sweep - size.x * 0.1, floor_y)
+			]
+		)
+		c.draw_colored_polygon(cone, Color(1.0, 0.2, 0.1, 0.16 * alarm))
+		c.draw_circle(lamp, 7.0, Color(1.0, 0.3, 0.2, 0.9 * alarm * beat))
+
+
+## Muescas de la plataforma giratoria (`feet`, de ancho `width`): dan la
+## vuelta con el robot (`turn`); la larga marca hacia donde mira. Con `live`
+## (el raton encima o girandola) el borde se enciende.
+static func turn_marks(c: CanvasItem, feet: Vector2, width: float, turn: float, live: bool) -> void:
+	var rx := width * 0.5
+	var ry := maxf(width * 0.09, 4.0)
+	if live:
+		for i in 48:
+			var a0 := TAU * i / 48.0
+			var a1 := TAU * (i + 1) / 48.0
+			c.draw_line(
+				feet + Vector2(cos(a0) * rx, sin(a0) * ry),
+				feet + Vector2(cos(a1) * rx, sin(a1) * ry),
+				Color(SOCKET, 0.95),
+				3.0
+			)
+	for k in 12:
+		# De perfil el robot mira a la derecha; al girar se aleja de quien mira.
+		var a := -turn + TAU * k / 12.0
+		var out := Vector2(cos(a) * rx, sin(a) * ry)
+		var reach := 0.78 if k == 0 else 0.9
+		var alpha := (0.9 if k == 0 else 0.4) * (1.0 if sin(a) > -0.2 else 0.55)
+		var color := Color(Color("ffe27a") if k == 0 else SOCKET, alpha if live else alpha * 0.7)
+		c.draw_line(feet + out * reach, feet + out * 0.97, color, 2.5 if k == 0 else 1.5)

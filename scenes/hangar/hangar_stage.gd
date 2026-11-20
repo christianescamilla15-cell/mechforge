@@ -6,8 +6,11 @@ extends MechStage
 ## (MechStage) anade:
 ## - tus otros robots en tres bahias al fondo, mas pequenos y en penumbra
 ##   (un clic y pasas a usarlo; una bahia vacia es para adquirir uno);
-## - tres terminales en la pared (tienda, mejoras y habilidades) que se
-##   iluminan al pasar y abren su panel;
+## - tres pantallas en la pared: la de la tienda saca el tablero de piezas
+##   y las de mejoras y habilidades se usan ahi mismo, de cerca (WallConsole);
+## - el tablero de piezas (PartsRack): al elegir un hueco entra rodando a la
+##   derecha con las piezas que caben en el, las tuyas y las de la tienda, y
+##   la lectura del robot; la diana prueba el arma del hueco;
 ## - el monitor de misiones (MissionBoard): el cuadro de campana. Al pulsarlo
 ##   el hangar pasa al modo mision: se queda en penumbra y los rivales se
 ##   proyectan en el suelo delante de tu robot (RivalRow); pulsar al primero
@@ -20,9 +23,9 @@ extends MechStage
 ##   hay junto a la plataforma;
 ## - la plataforma del robot es giratoria: arrastrarla (o la rueda del raton)
 ##   lo gira 360 grados (TurntableMech); doble clic lo devuelve al perfil;
-## - un estante de equipo con los huecos que no se ven en el dibujo (pecho,
-##   especiales, asistente y modulos), con huecos de verdad (SlotCell).
-## Pulsar el hangar vacio cierra el panel abierto.
+## - un banco de equipo con los huecos que no se ven en el dibujo (pecho,
+##   especiales, asistente y modulos): cunas con su pieza dentro (SlotCell).
+## Pulsar el hangar vacio recoge lo que este abierto.
 
 signal terminal_pressed(terminal: String)
 ## El monitor de misiones, con el modo mision apagado.
@@ -33,6 +36,8 @@ signal channel_picked(channel: String)
 signal pick_changed(key: String, step: int)
 ## El rotulo de la bahia: la ficha de tu robot.
 signal sign_pressed
+## La diana, con un arma que se puede probar en el hueco elegido.
+signal target_pressed
 signal bay_pressed(index: int)
 signal background_pressed
 signal dropped_on(slot: String, data: Dictionary)
@@ -59,19 +64,28 @@ const SOCKET_RADIUS := 13.0
 const TURN_PER_PIXEL := TAU / 620.0
 const TURN_PER_NOTCH := TAU / 16.0
 const TURN_SNAP := deg_to_rad(9.0)
-## Modo mision: lo que tarda en bajar la luz y cuanto oscurece el hangar
-## (menos sobre tu robot).
+## Modo mision: lo que tarda en bajar la luz.
 const MISSION_SECONDS := 0.35
-const MISSION_DIM := 0.7
-const MISSION_DIM_ROBOT := 0.3
+## Radio de la diana al tocarla.
+const TARGET_RADIUS := 40.0
 ## Salir a combatir: lo que dura y lo que anda tu robot (unidades del dibujo).
 const LAUNCH_SECONDS := 0.85
 const LAUNCH_WALK := 250.0
 
 ## Lo que ensenan los rotulos del hangar (lo pone WorkshopScreen):
 ## {"name", "problems", "cells", "level", "xp", "xp_next" (-1 = nivel maximo),
-##  "weight", "max_weight", "overload", "upgrades" (de 0 a 1, una por mejora)}.
+##  "weight", "max_weight", "overload", "upgrades" (de 0 a 1, una por mejora)
+##  y "weight_delta" (lo que cambiaria el peso con la pieza bajo el raton)}.
 var info: Dictionary = {}
+## El tablero de piezas y la pantalla de cerca: WorkshopScreen les da lo que
+## ensenan y oye lo que se pulsa en ellos.
+var parts_rack := PartsRack.new()
+var console := WallConsole.new()
+## El hueco elegido lleva un arma que se puede probar: la diana se enciende.
+var can_test := false:
+	set(value):
+		can_test = value
+		_overlay.queue_redraw()
 
 ## Cuanto esta el hangar en modo mision: 0 = el taller, 1 = en penumbra con
 ## los rivales delante.
@@ -103,6 +117,7 @@ var _bay_rects: Array[Rect2] = []
 var _hover_terminal: String = ""
 var _hover_bay: int = -2
 var _hover_sign := false
+var _hover_target := false
 var _font: Font
 var _turntable := TurntableMech.new()
 ## Lo que ocupa el robot en el taller (para las capas del giro).
@@ -144,6 +159,9 @@ func _ready() -> void:
 	_board.opened.connect(func() -> void: missions_pressed.emit())
 	_board.channel_picked.connect(func(channel: String) -> void: channel_picked.emit(channel))
 	_board.pick_changed.connect(func(key: String, step: int) -> void: pick_changed.emit(key, step))
+	add_child(parts_rack)
+	add_child(console)
+	mouse_exited.connect(_clear_hover)
 	_mech.footstep.connect(_on_footstep)
 	_world.add_child(_turntable)
 	_world.move_child(_turntable, _mech.get_index() + 1)
@@ -242,8 +260,8 @@ func _process(delta: float) -> void:
 	if _still_wait > 0:
 		_still_wait -= 1
 		_still_ready = _still_wait == 0
-	# La alarma late: su tinte se repinta cada cuadro.
-	if _alarm > 0.0:
+	# La alarma late y la pantalla de cerca crece: su penumbra se repinta.
+	if _alarm > 0.0 or console.visible:
 		_dim.queue_redraw()
 
 
@@ -252,48 +270,54 @@ func _on_footstep(_at: Vector2) -> void:
 		Sfx.play("paso")
 
 
-## La penumbra del modo mision: mas clara sobre tu robot, que sigue bajo su
-## foco. Al salir a combatir, la alarma lo tine todo de rojo.
+## La penumbra del hangar: el modo mision, una pantalla de cerca y la
+## alarma de salir a combatir.
 func _draw_dim() -> void:
-	if mission <= 0.001 and _alarm <= 0.001:
-		return
-	var center := _platform_center()
-	var reach := size.x * 0.17
-	var columns: Array[float] = [0.0, center - reach, center, center + reach, size.x]
-	var alphas: Array[float] = [
-		MISSION_DIM, MISSION_DIM * 0.9, MISSION_DIM_ROBOT, MISSION_DIM * 0.85, MISSION_DIM
-	]
-	for i in columns.size() - 1:
-		var from := Color(0.01, 0.02, 0.05, alphas[i] * mission)
-		var to := Color(0.01, 0.02, 0.05, alphas[i + 1] * mission)
-		_dim.draw_polygon(
-			PackedVector2Array(
-				[
-					Vector2(columns[i], 0),
-					Vector2(columns[i + 1], 0),
-					Vector2(columns[i + 1], size.y),
-					Vector2(columns[i], size.y)
-				]
-			),
-			PackedColorArray([from, to, to, from])
-		)
-	if _alarm > 0.0:
-		# La alarma: todo se tine de rojo a golpes y dos balizas barren el techo.
-		var beat := 0.4 + 0.6 * absf(sin(_time * 9.0))
-		_dim.draw_rect(Rect2(Vector2.ZERO, size), Color(0.95, 0.1, 0.05, 0.22 * _alarm * beat))
-		for side: float in [0.2, 0.8]:
-			var lamp := Vector2(size.x * side, size.y * 0.1)
-			var sweep := sin(_time * 7.0 + side * 9.0) * size.x * 0.22
-			var cone := PackedVector2Array(
-				[
-					lamp + Vector2(-6, 0),
-					lamp + Vector2(6, 0),
-					Vector2(lamp.x + sweep + size.x * 0.1, _floor_y),
-					Vector2(lamp.x + sweep - size.x * 0.1, _floor_y)
-				]
-			)
-			_dim.draw_colored_polygon(cone, Color(1.0, 0.2, 0.1, 0.16 * _alarm))
-			_dim.draw_circle(lamp, 7.0, Color(1.0, 0.3, 0.2, 0.9 * _alarm * beat))
+	var levels := Vector3(mission, _alarm, console.shown())
+	HangarProps.dim(_dim, size, _platform_center(), _floor_y, levels, _time)
+
+
+# --- El tablero y las pantallas de cerca ---------------------------------------
+
+
+## Acerca una pantalla de la pared (o el rotulo del robot): crece desde su
+## sitio y el hangar se oscurece detras.
+func show_console(state: Dictionary, instant: bool = false) -> void:
+	var rects := console_rects(str(state.get("kind", "")))
+	console.open(state, rects[0], rects[1], instant)
+
+
+func hide_console() -> void:
+	console.close()
+
+
+## Sitio de una pantalla en la pared y el que ocupa de cerca.
+func console_rects(kind: String) -> Array[Rect2]:
+	match kind:
+		"mejoras":
+			return [
+				_terminal_rects.get(kind, Rect2()),
+				Rect2(size.x * 0.03, size.y * 0.085, size.x * 0.37, size.y * 0.63)
+			]
+		"habilidades":
+			return [
+				_terminal_rects.get(kind, Rect2()),
+				Rect2(size.x * 0.585, size.y * 0.085, size.x * 0.4, size.y * 0.63)
+			]
+	var plate := _sign_rect()
+	var wide := maxf(plate.size.x, 300.0)
+	return [plate, Rect2(plate.get_center().x - wide * 0.5, plate.end.y + 6.0, wide, 170.0)]
+
+
+## Lo que ocupa la diana en la pantalla.
+func target_rect() -> Rect2:
+	var at := _world.position + _target_point() * _world.scale.x
+	var reach := TARGET_RADIUS * _world.scale.x
+	return Rect2(at - Vector2(reach, reach), Vector2(reach, reach) * 2.0)
+
+
+func _on_target(at: Vector2) -> bool:
+	return can_test and not _mission_on and not is_turned() and target_rect().has_point(at)
 
 
 ## Ensena el robot girado (con sus capas) o el de siempre si esta de perfil.
@@ -370,7 +394,11 @@ func _layout() -> void:
 	}
 	_board.position = Vector2(size.x * 0.72, size.y * 0.07)
 	_board.size = Vector2(size.x * 0.255, size.y * 0.27)
-	_row.layout(size, _floor_y, _world.scale.x, _board.position.y + _board.size.y + 4.0)
+	var under_board := _board.position.y + _board.size.y
+	_row.layout(size, _floor_y, _world.scale.x, under_board + 4.0)
+	parts_rack.home = Rect2(
+		size.x * 0.692, under_board + 10.0, size.x * 0.3, size.y - under_board - 20.0
+	)
 	_bay_rects.clear()
 	for i in BAY_X.size():
 		var feet := Vector2(size.x * BAY_X[i], _bay_floor())
@@ -385,7 +413,7 @@ func _layout() -> void:
 		view.place(feet)
 		view.set_facing(1)
 		view.scale *= factor
-	# Estante: dos filas bajo el robot.
+	# El banco: dos filas de cunas bajo el robot.
 	var shelf := _shelf_rect()
 	var row_h := (shelf.size.y - 14.0) / 2.0
 	for row in 2:
@@ -446,7 +474,8 @@ func _draw() -> void:
 	var center := _platform_center()
 	HangarArt.draw_light_dust(self, Rect2(Vector2.ZERO, size), center, _floor_y, _time)
 	if _mech.build != null:
-		_draw_turn_marks(Vector2(center, _floor_y))
+		var live := _hover_platform or _turning
+		HangarProps.turn_marks(self, Vector2(center, _floor_y), _platform_width, turn, live)
 	if str(info.get("name", "")) != "":
 		HangarProps.bay_sign(
 			self,
@@ -467,7 +496,8 @@ func _draw() -> void:
 			int(info["weight"]),
 			top,
 			top + int(info.get("overload", 0)),
-			_time
+			_time,
+			int(info.get("weight_delta", 0))
 		)
 
 
@@ -541,34 +571,6 @@ func _platform_center() -> float:
 	if legs.size == Vector2.ZERO:
 		return _world.position.x
 	return _world.position.x + legs.get_center().x * _world.scale.x
-
-
-## Muescas de la plataforma giratoria: dan la vuelta con el robot; la larga
-## marca hacia donde mira. Al pasar el raton o girarla, el borde se enciende.
-func _draw_turn_marks(feet: Vector2) -> void:
-	var rx := _platform_width * 0.5
-	var ry := maxf(_platform_width * 0.09, 4.0)
-	var live := _hover_platform or _turning
-	if live:
-		for i in 48:
-			var a0 := TAU * i / 48.0
-			var a1 := TAU * (i + 1) / 48.0
-			draw_line(
-				feet + Vector2(cos(a0) * rx, sin(a0) * ry),
-				feet + Vector2(cos(a1) * rx, sin(a1) * ry),
-				Color(COLOR_SOCKET, 0.95),
-				3.0
-			)
-	for k in 12:
-		# De perfil el robot mira a la derecha; al girar se aleja de quien mira.
-		var a := -turn + TAU * k / 12.0
-		var out := Vector2(cos(a) * rx, sin(a) * ry)
-		var reach := 0.78 if k == 0 else 0.9
-		var alpha := (0.9 if k == 0 else 0.4) * (1.0 if sin(a) > -0.2 else 0.55)
-		var color := Color(
-			COLOR_SELECTED if k == 0 else COLOR_SOCKET, alpha if live else alpha * 0.7
-		)
-		draw_line(feet + out * reach, feet + out * 0.97, color, 2.5 if k == 0 else 1.5)
 
 
 ## Lo que se mueve en las bahias: su lamparita (verde con robot, ambar
@@ -672,6 +674,29 @@ func _draw_overlay() -> void:
 	super._draw_overlay()
 	if _mech.build == null or is_turned() or _mission_on:
 		return
+	if can_test:
+		# La diana llama: un aro que late y, debajo, que hace.
+		var target := _target_point()
+		var beat := 0.5 + 0.5 * sin(_time * 4.0)
+		var glow := 1.0 if _hover_target else 0.45
+		_overlay.draw_arc(
+			target,
+			40.0 + 4.0 * beat,
+			0,
+			TAU,
+			32,
+			Color(COLOR_SELECTED, glow * (0.9 - 0.5 * beat)),
+			2.0
+		)
+		_overlay.draw_string(
+			_font,
+			target + Vector2(-60, 58),
+			Txt.t("target_test"),
+			HORIZONTAL_ALIGNMENT_CENTER,
+			120.0,
+			13,
+			Color(COLOR_SELECTED, 0.55 + 0.45 * glow)
+		)
 	# Enchufes de los huecos de arma vacios: un anillo que late.
 	for slot: String in ["side0", "side1", "side2", "side3", "top0", "top1"]:
 		if _item_in(slot) != null:
@@ -726,6 +751,20 @@ func slot_at(at: Vector2) -> String:
 			if world.distance_to(socket_point(socket)) <= radius:
 				return socket
 	return ""
+
+
+## El raton salio del hangar (o paso al tablero, a una cuna o a una pantalla
+## de cerca): nada queda encendido.
+func _clear_hover() -> void:
+	_hover_terminal = ""
+	_hover_bay = -2
+	_hover_sign = false
+	_hover_target = false
+	_hover_platform = false
+	_row.hover = false
+	if hover_slot != "":
+		hover_slot = ""
+	_overlay.queue_redraw()
 
 
 func _on_sign(at: Vector2) -> bool:
@@ -785,6 +824,12 @@ func _gui_input(event: InputEvent) -> void:
 			_hover_sign = on_sign
 			if on_sign:
 				Sfx.play("ui_tic")
+		var on_target := not on_rival and not on_sign and _on_target(motion.position)
+		if on_target != _hover_target:
+			_hover_target = on_target
+			_overlay.queue_redraw()
+			if on_target:
+				Sfx.play("ui_tic")
 		var terminal := "" if on_rival or on_sign else _terminal_at(motion.position)
 		var bay := _bay_at(motion.position) if terminal == "" and not on_rival else -2
 		if terminal != _hover_terminal or bay != _hover_bay:
@@ -806,6 +851,7 @@ func _gui_input(event: InputEvent) -> void:
 					or bay >= 0
 					or on_rival
 					or on_sign
+					or on_target
 					or slot_at(motion.position) != ""
 				)
 				else Control.CURSOR_ARROW
@@ -820,6 +866,9 @@ func _gui_input(event: InputEvent) -> void:
 			return
 		if _on_sign(click.position):
 			sign_pressed.emit()
+			return
+		if _on_target(click.position):
+			target_pressed.emit()
 			return
 		var terminal := _terminal_at(click.position)
 		if terminal != "":

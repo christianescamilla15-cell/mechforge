@@ -43,6 +43,9 @@ var _battle: BattleScreen
 var _last: Dictionary = {}
 ## Arma lo que ensenan el monitor de misiones y la fila de rivales.
 var _brief := MissionBrief.new()
+## Arma lo que ensena el taller del hangar: el tablero de piezas, las
+## pantallas de mejoras y habilidades y la lectura del robot.
+var _bench := WorkshopBrief.new()
 ## Semilla del rival de la arena: el que se ve en el hangar es el que sale.
 var _arena_seed: int = 0
 ## Como vuelve el hangar de un combate: {"channel", "how", "beaten"}
@@ -88,6 +91,15 @@ func _ready() -> void:
 	_brief.chassis = _chassis
 	_brief.campaign = _campaign
 	_brief.shop = _shop
+	_bench.rules = _rules
+	_bench.catalog = _catalog
+	_bench.library = _library
+	_bench.campaign = _campaign
+	_bench.workshop = _workshop
+	_bench.garage = _garage
+	_bench.shop = _shop
+	_bench.skills = _skills
+	_bench.progression = _progression
 	_arena_seed = randi()
 	if _args.has("showcase"):
 		# Muestra de movimientos para revisar animaciones (tools/clip.ps1 -Showcase).
@@ -154,9 +166,12 @@ func _ready() -> void:
 		elif _args["menu-shot"] == "misiones":
 			_live_test().missions_test()
 			return
-		elif _args["menu-shot"] in ["tienda", "mejoras", "habilidades"]:
-			# El taller abierto en ese espacio.
-			open_workshop().show_page(_args["menu-shot"])
+		elif _args["menu-shot"] in ["pieza", "tienda", "mejoras", "habilidades", "robot"]:
+			# El hangar con eso abierto (--slot=<hueco>: el hueco elegido).
+			var hangar := open_workshop()
+			if _args.has("slot"):
+				hangar._selected = _args["slot"]
+			hangar.show_page(_args["menu-shot"])
 		elif _args["menu-shot"] == "giro":
 			# El robot dando la vuelta entera sobre su plataforma, cuadro a
 			# cuadro (--step=<grados>, 10 si no se dice).
@@ -479,7 +494,7 @@ func _element_name(id: String) -> String:
 
 ## Clase de la zona en la que esta el jugador.
 func _zone_tier() -> int:
-	return _campaign.tier_of(mini(_profile.zone, _campaign.zone_count() - 1))
+	return _bench.zone_tier(_profile)
 
 
 ## Nombre del robot que usa.
@@ -508,15 +523,11 @@ func _player_build() -> MechBuild:
 ## Un robot armado con las piezas del jugador (su clase y nivel), sus
 ## habilidades y su armeria, para verlo y medirlo.
 func _robot_build(spec: Dictionary) -> MechBuild:
-	var build := _catalog.make_build(spec, _rules, ItemDef.Tier.COMMON, 0, _profile.parts)
-	_progression.apply_locks(build, _player_level())
-	build.skills = _skills.effects_for(_profile.skills)
-	build.upgrades = _shop.upgrades_for(_profile.shop_levels)
-	return build
+	return _bench.build_of(_profile, spec)
 
 
 func _player_level() -> int:
-	return _progression.level_for(_profile.xp)
+	return _bench.level(_profile)
 
 
 ## Piezas del mech armado del jugador que tienen clase y nivel propios (sus
@@ -535,14 +546,12 @@ func _player_items() -> Array[String]:
 
 ## Clase del robot de asistencia del jugador; -1 si no lo lleva.
 func _assist_tier() -> int:
-	if not _profile.build.has("assist"):
-		return -1
-	return _profile.part(ItemDef.ASSIST_PROGRESS)["tier"]
+	return _bench.assist_tier(_profile)
 
 
 ## Tope de la armeria en la zona en la que esta el jugador.
 func _armory_cap() -> int:
-	return _campaign.armory_cap(mini(_profile.zone, _campaign.zone_count() - 1), _shop)
+	return _bench.armory_cap(_profile)
 
 
 ## Un combate de arena, contra el rival que se ve en el hangar (el de la

@@ -1,46 +1,33 @@
 class_name WorkshopScreen
 extends Control
-## El hangar: la pantalla de inicio, inmersiva y con los menos botones posibles
-## (pedido del usuario el 2026-11-18). Es el taller y la armeria a la vez,
-## todo dentro de la escena (HangarStage):
+## El hangar: la pantalla de inicio, inmersiva y "casi como si no existiera
+## un menu" (pedidos del usuario del 2026-11-18 y el 2026-11-20). Es el
+## taller y la armeria a la vez, todo dentro de la escena (HangarStage):
 ## - tu robot en el centro: un clic en una pieza (o en el enchufe de un hueco
-##   vacio) la elige; las piezas se arrastran al robot y del robot;
+##   vacio) elige su hueco y saca el tablero de piezas (PartsRack): cuelgan
+##   las tuyas y, como hologramas con su precio, las de la tienda. Se pulsan
+##   o se arrastran al robot; al pie del tablero va la lectura del robot con
+##   lo que cambiaria, y la diana prueba el arma del hueco;
+## - el banco de equipo bajo el robot: las cunas de pecho, especiales,
+##   asistente y modulos, que se eligen igual;
 ## - tus otros robots en las bahias del fondo: un clic y pasas a usarlo; una
 ##   bahia vacia es para adquirir otro;
-## - las terminales de la pared: tienda, mejoras y habilidades;
+## - las pantallas de la pared: la de la tienda saca el tablero con la
+##   tienda delante; las de mejoras y habilidades se usan ahi mismo, de
+##   cerca (WallConsole); el rotulo de tu robot ensena su ficha;
 ## - el monitor de misiones: al pulsarlo el hangar se queda en penumbra y los
-##   rivales se proyectan delante de tu robot (HangarStage, RivalRow); pulsar
-##   al primero es salir a combatir. No hay cajon ni botones;
-## - el estante de equipo bajo el robot: pecho, especiales, asistente y
-##   modulos.
-## Lo que se toca abre un cajon que se desliza desde la derecha; pulsar el
-## hangar vacio o Esc lo cierra. No hay barra de estado: tu robot, tus
-## celdas, tu nivel y el peso van en la propia escena (HangarStage.info); solo
-## queda el engrane de los ajustes en una esquina. Lee y cambia el perfil a
-## traves de MainScreen, que lo guarda.
+##   rivales se proyectan delante de tu robot (RivalRow); pulsar al primero
+##   es salir a combatir.
+## No hay cajon, ni listas, ni barra de estado: pulsar el hangar vacio o Esc
+## recoge lo que este abierto, y fuera de la escena solo queda el engrane de
+## los ajustes. Lo que se ensena lo arma WorkshopBrief; lee y cambia el
+## perfil a traves de MainScreen, que lo guarda.
 
 signal closed
 
-const DRAWER_WIDTH := 420.0
-const SLIDE_SECONDS := 0.3
-## Cajones que muestran el resumen del robot (para ver lo que cambia).
-const WITH_SUMMARY: Array[String] = ["pieza", "tienda", "mejoras", "robot"]
-const COLOR_MUTED := Color("9aa7b8")
-const COLOR_GOOD := Color("7dff9b")
-const COLOR_BAD := Color("ff7d7d")
-const COLOR_CELLS := Color("7fe3ff")
+## Lo que se puede abrir por su nombre (show_page).
+const CONSOLES: Array[String] = ["mejoras", "habilidades", "robot"]
 const COLOR_GOLD := Color("ffd36b")
-const SUMMARY_KEYS: Array[String] = [
-	"weight",
-	"health",
-	"energy_cap",
-	"energy_regen",
-	"heat_cap",
-	"cooling",
-	"res_physical",
-	"res_heat",
-	"res_energy"
-]
 
 var main: MainScreen
 
@@ -48,18 +35,16 @@ var _selected: String = "side0"
 var _hover_id: String = ""
 ## Hueco con el que se compara la pieza bajo el raton.
 var _hover_slot: String = ""
-var _page: String = ""
+## El tablero de piezas esta fuera; y si ensena la tienda delante.
+var _arming := false
+var _store_first := false
+## Pantalla que esta de cerca: "mejoras", "habilidades", "robot" o "".
+var _console: String = ""
 ## Canal del modo mision ("campaign", "arena" o "free"); "" = apagado.
 var _channel: String = ""
 var _launching := false
-var _store_group: String = "todo"
 var _stage: HangarStage
 var _toast: Label
-var _drawer: PanelContainer
-var _drawer_title: Label
-var _summary: GridContainer
-var _page_scroll: ScrollContainer
-var _page_box: VBoxContainer
 
 
 func _ready() -> void:
@@ -78,9 +63,19 @@ func _ready() -> void:
 	_stage.channel_picked.connect(open_missions)
 	_stage.pick_changed.connect(_on_pick_changed)
 	_stage.sign_pressed.connect(show_page.bind("robot"))
-	_build_rack()
+	_stage.target_pressed.connect(test_fire)
+	var rack := _stage.parts_rack
+	rack.chosen.connect(_on_rack_chosen)
+	rack.bought.connect(buy)
+	rack.hovered.connect(hover_item)
+	rack.upgrade_pressed.connect(upgrade_selected)
+	rack.unmounted.connect(clear_slot)
+	var console := _stage.console
+	console.upgrade_picked.connect(buy_upgrade)
+	console.skill_picked.connect(learn)
+	console.remove_pressed.connect(func() -> void: main.ask_remove_robot(main._profile.active))
+	_build_bench()
 	_build_hud()
-	_build_drawer()
 	refresh()
 
 
@@ -89,8 +84,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 		if _launching:
 			return
-		if _page != "":
-			close_drawer()
+		if current_page() != "":
+			close_panels()
 		elif _channel != "":
 			close_missions()
 		else:
@@ -100,17 +95,15 @@ func _unhandled_input(event: InputEvent) -> void:
 # --- Construccion ------------------------------------------------------------
 
 
-## Los huecos del estante (los que no se ven en el dibujo del robot).
-func _build_rack() -> void:
+## Las cunas del banco (los huecos que no se ven en el dibujo del robot).
+func _build_bench() -> void:
 	for slot in HangarStage.RACK_TOP + HangarStage.RACK_BOTTOM:
 		var cell := SlotCell.new()
 		cell.slot = slot
-		cell.compact = true
 		cell.accepts = Garage.slot_type(slot)
 		cell.title = slot_title(slot)
 		cell.picked.connect(_on_part_picked)
 		cell.dropped.connect(_on_cell_dropped)
-		cell.cleared.connect(clear_slot)
 		cell.hovered.connect(_on_cell_hovered)
 		_stage.add_child(cell)
 		_stage.rack[slot] = cell
@@ -141,55 +134,8 @@ func _build_hud() -> void:
 	_toast.add_theme_constant_override("outline_size", 6)
 	_toast.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_toast.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_toast.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_toast)
-
-
-## El cajon de la derecha: titulo con su X, el resumen del robot y la pagina.
-func _build_drawer() -> void:
-	_drawer = PanelContainer.new()
-	var style := TechStyle.plate(Color(0.07, 0.1, 0.15, 0.96), COLOR_GOLD, 12.0, 12.0)
-	style.glow = 0.25
-	_drawer.add_theme_stylebox_override("panel", style)
-	_drawer.set_anchors_and_offsets_preset(Control.PRESET_RIGHT_WIDE)
-	_drawer.offset_left = -DRAWER_WIDTH
-	_drawer.offset_top = 46
-	_drawer.offset_bottom = -8
-	_drawer.offset_right = -8
-	_drawer.visible = false
-	add_child(_drawer)
-	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 6)
-	_drawer.add_child(box)
-	var head := HBoxContainer.new()
-	box.add_child(head)
-	_drawer_title = _label(head, "", 22)
-	_drawer_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var close := Button.new()
-	close.text = "×"
-	close.flat = true
-	close.add_theme_font_size_override("font_size", 22)
-	close.tooltip_text = Txt.t("settings_close")
-	close.pressed.connect(close_drawer)
-	head.add_child(close)
-	_summary = GridContainer.new()
-	_summary.columns = 6
-	_summary.add_theme_constant_override("h_separation", 8)
-	box.add_child(_summary)
-	_page_scroll = ScrollContainer.new()
-	_page_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_page_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	# Soltar aqui una pieza montada la quita.
-	_page_scroll.set_drag_forwarding(
-		Callable(),
-		func(_at: Vector2, data: Variant) -> bool:
-			return data is Dictionary and data.has("from_slot"),
-		func(_at: Vector2, data: Variant) -> void: clear_slot(data["from_slot"])
-	)
-	box.add_child(_page_scroll)
-	_page_box = VBoxContainer.new()
-	_page_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_page_box.add_theme_constant_override("separation", 5)
-	_page_scroll.add_child(_page_box)
 
 
 # --- Estado ------------------------------------------------------------------
@@ -202,12 +148,14 @@ func turn_robot(degrees: float) -> void:
 
 ## Vuelve a pintar todo con el perfil actual.
 func refresh() -> void:
-	var build := _build_from(main._profile.build)
+	var brief := main._bench
+	var profile := main._profile
+	var build := main._robot_build(profile.build)
 	var ghosts: Array[String] = []
 	var shown := build
 	if build.torso == null or build.legs == null:
 		# Sin torso o sin piernas se ve el hueco: una pieza fantasma en su sitio.
-		shown = _build_from(main._profile.build)
+		shown = main._robot_build(profile.build)
 		if shown.torso == null:
 			shown.torso = _placeholder(ItemDef.Type.TORSO)
 			ghosts.append("torso")
@@ -215,7 +163,7 @@ func refresh() -> void:
 			shown.legs = _placeholder(ItemDef.Type.LEGS)
 			ghosts.append("legs")
 	_stage.show_build(shown, ghosts)
-	_stage.selected_slot = _selected if _page == "pieza" else ""
+	_stage.selected_slot = _selected if _arming else ""
 	# El monitor de misiones siempre ensena la campana; en el modo mision, su
 	# canal, con la fila de rivales delante.
 	if _channel == "":
@@ -223,28 +171,58 @@ func refresh() -> void:
 	else:
 		_stage.show_mission(main.mission_state(_channel))
 	_stage.set_bays(_bays())
-	var level := main._player_level()
+	for slot: String in _stage.rack:
+		_refresh_cell(_stage.rack[slot])
+	_refresh_info()
+	# El tablero de piezas, con lo del hueco elegido.
+	if _arming:
+		var state := brief.rack(profile, _selected, _store_first)
+		_stage.parts_rack.open(state)
+		_stage.can_test = bool(state["can_test"])
+	else:
+		_stage.parts_rack.close()
+		_stage.can_test = false
+	if _console != "":
+		_stage.show_console(_console_state())
+	else:
+		_stage.hide_console()
+
+
+## Lo que ensenan los rotulos de la escena (tu robot, tus celdas, tu nivel
+## y el peso) y la lectura del robot del tablero.
+func _refresh_info() -> void:
+	var brief := main._bench
+	var profile := main._profile
+	var build := main._robot_build(profile.build)
 	var problems := build.validate(main._rules)
 	var upgrades: Array[float] = []
 	for track in main._shop.track_ids():
-		upgrades.append(float(main._profile.level_of(track)) / maxf(main._shop.max_level(), 1.0))
+		upgrades.append(float(profile.level_of(track)) / maxf(main._shop.max_level(), 1.0))
+	var reading := brief.diagnostic(profile, _hover_id, _hover_slot)
 	_stage.info = {
-		"name": main.robot_name(main._profile.active),
+		"name": main.robot_name(profile.active),
 		"problems": "" if problems.is_empty() else Txt.t("mech_problems", [", ".join(problems)]),
-		"cells": main._profile.gold,
-		"level": level,
-		"xp": main._profile.xp,
-		"xp_next": main._progression.next_level_xp(main._profile.xp),
-		"weight": build.total_weight(),
+		"cells": profile.gold,
+		"level": brief.level(profile),
+		"xp": profile.xp,
+		"xp_next": main._progression.next_level_xp(profile.xp),
+		"weight": int(reading["weight"]),
+		"weight_delta": int(reading["weight_delta"]) if _arming else 0,
 		"max_weight": main._rules.max_weight,
 		"overload": main._rules.overload,
 		"upgrades": upgrades,
 	}
-	for slot: String in _stage.rack:
-		_refresh_cell(_stage.rack[slot], level)
-	_refresh_summary(build)
-	if _page != "":
-		_fill_page()
+	_stage.parts_rack.stats = reading["rows"]
+
+
+func _console_state() -> Dictionary:
+	var brief := main._bench
+	match _console:
+		"mejoras":
+			return brief.upgrades(main._profile)
+		"habilidades":
+			return brief.skill_tree(main._profile)
+	return brief.robot(main._profile, main.robot_name(main._profile.active))
 
 
 ## Las tres bahias: tus otros robots (un armazon vacio se ve como bahia
@@ -262,55 +240,14 @@ func _bays() -> Array[Dictionary]:
 	return out
 
 
-func _refresh_cell(cell: SlotCell, level: int) -> void:
+func _refresh_cell(cell: SlotCell) -> void:
+	var brief := main._bench
 	var id := Garage.get_slot(main._profile.build, cell.slot)
-	cell.item = _resolved(id)
-	cell.selected = cell.slot == _selected and _page == "pieza"
-	cell.locked_text = _lock_reason(cell.slot, level)
-	cell.progress_text = _progress_text(cell.item)
+	cell.item = brief.resolved(main._profile, id)
+	cell.selected = cell.slot == _selected and _arming
+	cell.locked_text = brief.lock_reason(main._profile, cell.slot)
+	cell.progress_text = brief.progress_text(main._profile, cell.item)
 	cell.refresh()
-
-
-## Por que un hueco esta cerrado ("" si esta abierto).
-func _lock_reason(slot: String, level: int) -> String:
-	if not main._progression.is_unlocked(slot, level):
-		return Txt.t("slot_locked", [main._progression.unlock_level(slot)])
-	if slot == "drone_low" and main._assist_tier() < main._rules.assist_second_weapon_tier:
-		return Txt.t("slot_second_weapon")
-	return ""
-
-
-## Una pieza con la clase y el nivel que tiene el jugador.
-func _resolved(id: String) -> ItemDef:
-	var def := main._catalog.get_item(id) if id != "" else null
-	if def == null:
-		return null
-	var p := main._profile.part(def.progress_id())
-	if def.type == ItemDef.Type.DRONE and main._profile.build.has("assist"):
-		# Las armas del asistente suben con el, sin salirse de su rango.
-		var assist := main._profile.part(ItemDef.ASSIST_PROGRESS)
-		var tier := clampi(assist["tier"], def.tier_min, def.tier_max)
-		var level: int = assist["level"]
-		if tier < assist["tier"]:
-			level = main._rules.tier_max_level[tier]
-		elif tier > assist["tier"]:
-			level = 0
-		p = {"tier": tier, "level": level}
-	return ItemScaling.resolve(def, main._rules, p["tier"], p["level"])
-
-
-func _progress_text(item: ItemDef) -> String:
-	if item == null:
-		return ""
-	if item.type == ItemDef.Type.DRONE and main._profile.build.has("assist"):
-		return Txt.t("part_follows_assist")
-	var p := main._profile.part(item.progress_id())
-	var top: int = main._rules.tier_max_level[p["tier"]]
-	return Txt.t("part_level", [Txt.TIER_NAMES[p["tier"]], p["level"], top])
-
-
-func _build_from(spec: Dictionary) -> MechBuild:
-	return main._robot_build(spec)
 
 
 ## Pieza con la que se dibuja un torso o unas piernas que faltan.
@@ -322,67 +259,69 @@ func _placeholder(type: ItemDef.Type) -> ItemDef:
 	return main._catalog.by_type(type)[0]
 
 
-func _refresh_summary(build: MechBuild) -> void:
-	for child in _summary.get_children():
-		child.queue_free()
-	_summary.visible = _page in WITH_SUMMARY
-	if not _summary.visible:
-		return
-	var now := build.summary(main._rules)
-	var then := now
-	if _hover_id != "" and _hover_slot != "":
-		var spec: Dictionary = main._profile.build.duplicate(true)
-		Garage.set_slot(spec, _hover_slot, _hover_id)
-		then = _build_from(spec).summary(main._rules)
-	for key in SUMMARY_KEYS:
-		var name_key := "stat_weight_total" if key == "weight" else "stat_" + key
-		_label(_summary, Txt.t(name_key), 11, COLOR_MUTED)
-		var value := _label(_summary, str(now[key]), 13)
-		var delta: int = int(then[key]) - int(now[key])
-		if delta != 0:
-			value.text += " %+d" % delta
-			# Mas de todo es mejor, salvo mas peso.
-			var better := delta < 0 if key == "weight" else delta > 0
-			value.add_theme_color_override("font_color", COLOR_GOOD if better else COLOR_BAD)
+# --- Lo que se abre ------------------------------------------------------------
 
 
-# --- El cajon -------------------------------------------------------------------
-
-
-## Abre (o cambia) el cajon de la derecha con una pagina: "pieza", "tienda",
-## "mejoras", "habilidades" o "robot". "misiones" no es un cajon: pone el
-## hangar en modo mision.
+## Abre algo del hangar por su nombre: "pieza" (el tablero de piezas del
+## hueco elegido), "tienda" (el tablero con la tienda delante), "mejoras",
+## "habilidades" o "robot" (su pantalla, de cerca) o "misiones" (el modo
+## mision).
 func show_page(page: String) -> void:
 	if page == "misiones":
 		open_missions()
-		return
+	elif page in CONSOLES:
+		open_console(page)
+	else:
+		open_parts(page == "tienda")
+
+
+## Saca el tablero de piezas del hueco elegido.
+func open_parts(store_first: bool = false) -> void:
 	if _launching:
 		return
 	close_missions()
-	var opening := _page == ""
-	_page = page
-	_hover_id = ""
-	_drawer_title.text = Txt.t("drawer_" + page)
-	_drawer.visible = true
-	refresh()
-	_page_scroll.scroll_vertical = 0
-	if opening:
+	_console = ""
+	if not _arming:
 		Sfx.play("ui_pagina")
-		_drawer.position.x = size.x
-		var slide := create_tween().set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-		slide.tween_property(_drawer, "position:x", size.x - DRAWER_WIDTH - 8.0, SLIDE_SECONDS)
-
-
-## Cierra el cajon deslizandolo hacia fuera.
-func close_drawer() -> void:
-	if _page == "":
-		return
-	_page = ""
-	Sfx.play("ui_cerrar")
-	var slide := create_tween().set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
-	slide.tween_property(_drawer, "position:x", size.x, SLIDE_SECONDS * 0.8)
-	slide.tween_callback(func() -> void: _drawer.visible = _page != "")
+	_arming = true
+	_store_first = store_first
+	_hover_id = ""
+	_hover_slot = ""
 	refresh()
+
+
+## Acerca una pantalla de la pared: "mejoras", "habilidades" o "robot".
+func open_console(kind: String) -> void:
+	if _launching or not kind in CONSOLES:
+		return
+	close_missions()
+	_arming = false
+	_console = kind
+	_hover_id = ""
+	_hover_slot = ""
+	refresh()
+
+
+## Recoge el tablero de piezas y la pantalla que este de cerca.
+func close_panels() -> void:
+	if current_page() == "":
+		return
+	_arming = false
+	_console = ""
+	_hover_id = ""
+	_hover_slot = ""
+	Sfx.play("ui_cerrar")
+	refresh()
+
+
+## Lo que esta abierto: "pieza", "tienda", "mejoras", "habilidades", "robot"
+## o "".
+func current_page() -> String:
+	if _console != "":
+		return _console
+	if _arming:
+		return "tienda" if _store_first else "pieza"
+	return ""
 
 
 # --- Modo mision -------------------------------------------------------------------
@@ -399,7 +338,7 @@ func open_missions(
 		return
 	if not channel in MissionBrief.CHANNELS:
 		channel = "campaign"
-	close_drawer()
+	close_panels()
 	_channel = channel
 	_stage.show_mission(main.mission_state(channel), how, beaten)
 
@@ -419,7 +358,7 @@ func missions_channel() -> String:
 
 
 func _on_background_pressed() -> void:
-	close_drawer()
+	close_panels()
 	close_missions()
 
 
@@ -450,136 +389,15 @@ func _on_rival_pressed() -> void:
 	main.start_mission(_channel)
 
 
-## Tienda, con un grupo de piezas ("" = el del hueco elegido).
-func show_store(group: String) -> void:
-	_store_group = group if group != "" else ArmoryPages.group_of(Garage.slot_type(_selected))
-	show_page("tienda")
-
-
-func current_page() -> String:
-	return _page
-
-
-func _fill_page() -> void:
-	for child in _page_box.get_children():
-		child.queue_free()
-	match _page:
-		"pieza":
-			_fill_part_page(_page_box)
-		"tienda":
-			ArmoryPages.store(self, _page_box, _store_group)
-		"mejoras":
-			ArmoryPages.upgrades(self, _page_box)
-		"habilidades":
-			ArmoryPages.skills(self, _page_box)
-		"robot":
-			_fill_robot_page(_page_box)
-
-
-## Pagina Pieza: la del hueco elegido y las tuyas que caben en el.
-func _fill_part_page(box: VBoxContainer) -> void:
-	var id := Garage.get_slot(main._profile.build, _selected)
-	var item := _resolved(id)
-	var head := slot_title(_selected) + " · "
-	head += item.display_name if item != null else Txt.t("slot_empty")
-	_label(box, head, 17).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	var locked := _lock_reason(_selected, main._player_level())
-	if locked != "":
-		_label(box, Txt.t("workshop_locked", [locked]), 14, COLOR_MUTED)
-		return
-	if item == null:
-		_label(box, Txt.t("workshop_empty_hint"), 13, COLOR_MUTED)
-	else:
-		var stats := _label(box, item_stats(item, false), 13, COLOR_MUTED)
-		stats.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		var row := HBoxContainer.new()
-		row.add_theme_constant_override("separation", 6)
-		box.add_child(row)
-		_add_upgrade_button(row, item)
-		if item.deals_damage() and item.fx != "":
-			_button(row, Txt.t("workshop_test"), test_fire)
-		_button(row, Txt.t("workshop_remove"), clear_slot.bind(_selected))
-	box.add_child(HSeparator.new())
-	_fill_owned(box, id)
-	var to_store := _button(box, Txt.t("workshop_to_store"), show_store.bind(""))
-	to_store.custom_minimum_size = Vector2(0, 40)
-
-
-## Pagina del robot que usas: su nombre, su diseno y desmontarlo.
-func _fill_robot_page(box: VBoxContainer) -> void:
-	var index := main._profile.active
-	_label(box, main.robot_name(index), 18)
-	var robot: Dictionary = main._profile.mechs[index]
-	var design := str(robot.get("design", ""))
-	if main._library.specs.has(design):
-		var line := Txt.t("robot_design", [main._library.display_name(design)])
-		_label(box, line, 13, COLOR_MUTED)
-	var hint := _label(box, Txt.t("robot_page_hint"), 13, COLOR_MUTED)
-	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	if main._profile.mechs.size() > 1:
-		var remove := _button(box, Txt.t("robots_remove"), main.ask_remove_robot.bind(index))
-		remove.custom_minimum_size = Vector2(0, 40)
-
-
-## Subir de nivel, transformar o el tope que lo para.
-func _add_upgrade_button(row: HBoxContainer, item: ItemDef) -> void:
-	if item.type == ItemDef.Type.DRONE and main._profile.build.has("assist"):
-		return
-	var key := item.progress_id()
-	var p := main._profile.part(key)
-	var max_tier := main._zone_tier()
-	var cap_level := main._campaign.level_cap(main._profile.zone)
-	var profile := main._profile
-	if p["level"] < main._rules.tier_max_level[p["tier"]]:
-		var reason := profile.why_cant_level(main._workshop, main._rules, key, max_tier, cap_level)
-		var cost := main._workshop.level_cost(main._rules, p["tier"], p["level"])
-		var level_up := _button(row, Txt.t("part_level_up", [cost]), level_up_selected)
-		level_up.disabled = reason != ""
-		level_up.tooltip_text = reason
-		if reason == "la zona no deja subirla mas":
-			level_up.text = Txt.t("part_zone_max")
-		return
-	var item_max := main._catalog.get_item(item.id).tier_max
-	var why := profile.why_cant_transform(main._workshop, main._rules, key, max_tier, item_max)
-	var label := Txt.t("part_transform", [main._workshop.transform_cost(p["tier"])])
-	if p["tier"] == ItemDef.Tier.MYTHIC:
-		label = Txt.t("part_unique")
-	if not why in ["", "faltan celdas"]:
-		label = Txt.t("part_zone_max" if why.contains("zona") else "shop_max")
-	var transform := _button(row, label, transform_selected)
-	transform.disabled = why != ""
-	transform.tooltip_text = why
-
-
-func _fill_owned(box: VBoxContainer, mounted: String) -> void:
-	_label(box, Txt.t("workshop_owned"), 14, COLOR_MUTED)
-	var owned := Garage.owned_for(main._profile, main._catalog, _selected)
-	if owned.is_empty():
-		_label(box, Txt.t("workshop_none"), 13, COLOR_MUTED)
-	for id in owned:
-		var item := _resolved(id)
-		var card := PartCard.new()
-		card.item = item
-		card.mounted = id == mounted
-		card.detail = _progress_text(item)
-		if card.mounted:
-			card.detail += " · " + Txt.t("workshop_mounted")
-		card.stats = item_stats(item, false)
-		card.chosen.connect(equip_selected)
-		card.hovered.connect(hover_item)
-		box.add_child(card)
-
-
 # --- Acciones ----------------------------------------------------------------
 
 
-## Elige un hueco: se marca en el robot y el cajon ensena su pieza.
+## Elige un hueco: se marca en el robot y sale el tablero con sus piezas.
 func pick(slot: String) -> void:
 	if not slot in Garage.SLOTS:
 		return
 	_selected = slot
-	_hover_id = ""
-	show_page("pieza")
+	open_parts(_store_first and _arming)
 
 
 func _on_part_picked(slot: String) -> void:
@@ -594,25 +412,38 @@ func _on_bay_pressed(index: int) -> void:
 		main.use_robot(index)
 
 
+## Una pieza tuya pulsada en el tablero: se monta en el hueco elegido; la
+## que ya esta ahi, se quita.
+func _on_rack_chosen(id: String) -> void:
+	if Garage.get_slot(main._profile.build, _selected) == id:
+		clear_slot(_selected)
+	else:
+		equip(_selected, id)
+
+
 ## Monta una pieza en el hueco elegido.
 func equip_selected(id: String) -> void:
 	equip(_selected, id)
 
 
 func equip(slot: String, id: String) -> void:
-	if _lock_reason(slot, main._player_level()) != "":
+	var locked := main._bench.lock_reason(main._profile, slot)
+	if locked != "":
+		Sfx.play("ui_cerrar")
+		toast(Txt.t("workshop_locked", [locked]))
 		return
 	if Garage.equip(main._profile, main._catalog, slot, id) != "":
 		return
 	_selected = slot
 	_hover_id = ""
+	_hover_slot = ""
 	main._save()
 	Sfx.play("taller_montar")
-	if _page == "":
-		show_page("pieza")
-	else:
+	if _arming:
 		refresh()
-	var item := _resolved(id)
+	else:
+		open_parts()
+	var item := main._bench.resolved(main._profile, id)
 	if item != null:
 		_stage.flash(slot, SlotCell.TIER_COLORS[item.tier])
 
@@ -628,8 +459,21 @@ func clear_slot(slot: String) -> void:
 	refresh()
 
 
+## La tecla del lector del tablero: sube de nivel o transforma la pieza del
+## hueco elegido, lo que le toque.
+func upgrade_selected() -> void:
+	var item := _selected_item()
+	if item == null:
+		return
+	var key := main._bench.upgrade_key(main._profile, item)
+	if str(key.get("action", "")) == "transform":
+		transform_selected()
+	else:
+		level_up_selected()
+
+
 func level_up_selected() -> void:
-	var item := _resolved(Garage.get_slot(main._profile.build, _selected))
+	var item := _selected_item()
 	if item == null:
 		return
 	var cap := main._campaign.level_cap(main._profile.zone)
@@ -643,7 +487,7 @@ func level_up_selected() -> void:
 
 
 func transform_selected() -> void:
-	var item := _resolved(Garage.get_slot(main._profile.build, _selected))
+	var item := _selected_item()
 	if item == null:
 		return
 	var item_max := main._catalog.get_item(item.id).tier_max
@@ -656,12 +500,16 @@ func transform_selected() -> void:
 	main._save()
 	Sfx.play("ui_transformar")
 	refresh()
-	var now := _resolved(item.id)
+	var now := main._bench.resolved(main._profile, item.id)
 	_stage.flash(_selected, SlotCell.TIER_COLORS[now.tier])
 
 
+func _selected_item() -> ItemDef:
+	return main._bench.resolved(main._profile, Garage.get_slot(main._profile.build, _selected))
+
+
 ## Compra una pieza de la tienda. Si el hueco donde iria esta vacio, la
-## monta; si no, queda en tus piezas.
+## monta; si no, queda colgada entre las tuyas.
 func buy(id: String) -> void:
 	if not _pay(id):
 		return
@@ -684,11 +532,7 @@ func _pay(id: String) -> bool:
 ## Hueco donde iria una pieza: el elegido si le cabe, o el primero libre de su
 ## tipo que tu nivel ya abra.
 func _slot_for(id: String) -> String:
-	var locked: Array[String] = []
-	for slot in Garage.SLOTS:
-		if _lock_reason(slot, main._player_level()) != "":
-			locked.append(slot)
-	return Garage.drop_slot(main._profile.build, main._catalog, id, _selected, locked)
+	return main._bench.slot_for(main._profile, id, _selected)
 
 
 ## Sube una de las mejoras permanentes, con el tope de la zona.
@@ -709,19 +553,9 @@ func learn(id: String) -> void:
 	refresh()
 
 
-## Una pieza de la tienda elegida: se marca en el robot el hueco donde iria.
-func focus_item(id: String) -> void:
-	var slot := _slot_for(id)
-	if slot == "":
-		return
-	_selected = slot
-	_stage.selected_slot = slot
-	_stage.hover_slot = slot
-
-
 ## Dispara el arma del hueco elegido contra la diana.
 func test_fire() -> void:
-	var item := _resolved(Garage.get_slot(main._profile.build, _selected))
+	var item := _selected_item()
 	if item == null or item.fx == "":
 		return
 	_stage.test_fire(_selected, item.fx, ShotFx.ammo_color(item.element))
@@ -758,13 +592,14 @@ func _on_stage_dropped(data: Dictionary) -> void:
 	equip(slot, data["id"])
 
 
-## Pasar el raton por una pieza: el resumen ensena cuanto cambia el robot con
-## ella en el hueco donde iria, y ese hueco se marca en el dibujo.
+## Pasar el raton por una pieza del tablero: la lectura del robot ensena
+## cuanto cambia con ella en el hueco donde iria, y ese hueco se marca en el
+## dibujo.
 func hover_item(id: String, inside: bool) -> void:
 	_hover_id = id if inside else ""
 	_hover_slot = _slot_for(id) if inside else ""
 	_stage.hover_slot = _hover_slot
-	_refresh_summary(_build_from(main._profile.build))
+	_refresh_info()
 
 
 func _on_cell_hovered(slot: String, inside: bool) -> void:
@@ -776,50 +611,9 @@ func _on_cell_hovered(slot: String, inside: bool) -> void:
 
 ## Nombre de un hueco: "Lateral 1", "Torso"...
 static func slot_title(slot: String) -> String:
-	var base := slot.rstrip("0123456789")
-	var digits := slot.trim_prefix(base)
-	var number := " %d" % (int(digits) + 1) if digits != "" else ""
-	return Txt.t("slot_" + base) + number
+	return WorkshopBrief.slot_title(slot)
 
 
 ## Lo que hace una pieza, en una linea (o en varias con `long`).
 static func item_stats(item: ItemDef, long: bool) -> String:
-	var parts: Array[String] = []
-	if item.deals_damage():
-		parts.append(Txt.t("stat_damage", [item.dmg_min, item.dmg_max]))
-		parts.append(Txt.t("range", [item.range_min, item.range_max]))
-		if item.energy_cost > 0:
-			parts.append(Txt.t("cost_energy", [item.energy_cost]))
-		if item.heat_cost > 0:
-			parts.append(Txt.t("cost_heat", [item.heat_cost]))
-		if item.uses > 0:
-			parts.append(Txt.t("uses", [item.uses]))
-	for key in ["health", "energy_cap", "energy_regen", "heat_cap", "cooling"]:
-		var value: int = item.get(key)
-		if value != 0:
-			parts.append("%s %+d" % [Txt.t("stat_" + key), value])
-	var res := [item.res_physical, item.res_heat, item.res_energy]
-	if res.max() > 0:
-		parts.append("%s %d/%d/%d" % [Txt.t("resist"), res[0], res[1], res[2]])
-	if item.weight > 0:
-		parts.append(Txt.t("stat_weight", [item.weight]))
-	return ("\n" if long else " · ").join(parts)
-
-
-func _label(parent: Node, text: String, font_size: int, color := Color.WHITE) -> Label:
-	var label := Label.new()
-	label.text = text
-	label.add_theme_font_size_override("font_size", font_size)
-	if color != Color.WHITE:
-		label.add_theme_color_override("font_color", color)
-	parent.add_child(label)
-	return label
-
-
-func _button(parent: Node, text: String, action: Callable) -> Button:
-	var button := Button.new()
-	button.text = text
-	button.custom_minimum_size = Vector2(0, 34)
-	button.pressed.connect(action)
-	parent.add_child(button)
-	return button
+	return WorkshopBrief.item_stats(item, long)

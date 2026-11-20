@@ -1,13 +1,15 @@
 class_name SlotCell
-extends PanelContainer
-## Un hueco del taller (WorkshopScreen): la pieza montada, con su dibujo, su
-## nombre, su clase y su nivel, o vacio. Se pulsa para elegirlo; acepta piezas
-## arrastradas de su tipo; su pieza se arrastra a otro hueco (se cambian) o
-## fuera (se quita); la X lo deja vacio.
+extends Control
+## Una cuna del banco de equipo del hangar (HangarStage): un hueco de los
+## que no se ven en el dibujo del robot (pecho, especiales, asistente y
+## modulos), con su pieza puesta dentro, dibujada, no escrita. Hundida y
+## vacia si no lleva nada; con candado si tu nivel aun no la abre. Se pulsa
+## para elegir el hueco; acepta piezas arrastradas de su tipo; su pieza se
+## arrastra a otra cuna (se cambian) o al panel de piezas (se quita). Al
+## pasar el raton ensena en una etiqueta que pieza es.
 
 signal picked(slot: String)
 signal dropped(slot: String, data: Dictionary)
-signal cleared(slot: String)
 signal hovered(slot: String, inside: bool)
 
 ## Color de cada clase, de Basica a Unica.
@@ -24,6 +26,8 @@ const COLOR_EMPTY := Color("2a3647")
 const COLOR_SELECTED := Color("ffe27a")
 const COLOR_DROP := Color("7dff9b")
 const COLOR_MUTED := Color("9aa7b8")
+## Alto de la franja de abajo, con el nombre del hueco.
+const LABEL_HEIGHT := 12.0
 
 var slot: String = ""
 var accepts: ItemDef.Type = ItemDef.Type.SIDE
@@ -34,109 +38,138 @@ var progress_text: String = ""
 ## Por que esta cerrado ("Nivel 10"); "" si esta abierto.
 var locked_text: String = ""
 var selected: bool = false
-var compact: bool = false
 
 var _drop_glow: bool = false
-var _icon: PartIcon
-var _name: Label
-var _detail: Label
-var _clear: Button
+var _hover: bool = false
+var _font: Font
 
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
-	custom_minimum_size = Vector2(60, 34) if compact else Vector2(110, 78)
-	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 0)
-	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(box)
-	# Cabecera: el nombre del hueco y la X para dejarlo vacio.
-	var header := HBoxContainer.new()
-	header.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	box.add_child(header)
-	var head := Label.new()
-	head.text = title
-	head.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	head.add_theme_font_size_override("font_size", 11)
-	head.add_theme_color_override("font_color", COLOR_MUTED)
-	head.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	header.add_child(head)
-	_clear = Button.new()
-	_clear.text = "×"
-	_clear.flat = true
-	_clear.focus_mode = Control.FOCUS_NONE
-	_clear.custom_minimum_size = Vector2(18, 16)
-	_clear.add_theme_font_size_override("font_size", 14)
-	_clear.add_theme_constant_override("h_separation", 0)
-	_clear.tooltip_text = Txt.t("workshop_clear")
-	_clear.pressed.connect(func() -> void: cleared.emit(slot))
-	header.add_child(_clear)
-	_icon = PartIcon.new()
-	_icon.custom_minimum_size = Vector2(0, 18 if compact else 38)
-	_icon.size_flags_vertical = (
-		Control.SIZE_SHRINK_CENTER if compact else Control.SIZE_EXPAND_FILL
-	)
-	_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	box.add_child(_icon)
-	_name = Label.new()
-	_name.add_theme_font_size_override("font_size", 11)
-	_name.clip_text = true
-	_name.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	_name.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	box.add_child(_name)
-	_detail = Label.new()
-	_detail.add_theme_font_size_override("font_size", 10)
-	_detail.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	box.add_child(_detail)
-	mouse_entered.connect(func() -> void: hovered.emit(slot, true))
-	mouse_exited.connect(func() -> void: hovered.emit(slot, false))
-	refresh()
+	mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	_font = get_theme_default_font()
+	mouse_entered.connect(_set_hover.bind(true))
+	mouse_exited.connect(_set_hover.bind(false))
+	resized.connect(queue_redraw)
 
 
-## Vuelve a pintar el hueco con su pieza, su estado y si esta elegido.
+func _set_hover(inside: bool) -> void:
+	_hover = inside
+	hovered.emit(slot, inside)
+	queue_redraw()
+
+
+## Vuelve a pintar la cuna con su pieza, su estado y si esta elegida.
 func refresh() -> void:
-	if _name == null:
-		return
-	_icon.texture = MechSprites.icon_for(item) if item != null else null
-	# En los huecos pequenos el dibujo solo ocupa sitio si lo hay.
-	# En el estante solo el nombre del hueco y el de la pieza: no cabe mas.
-	_icon.visible = not compact
-	_icon.alpha = 1.0 if locked_text == "" else 0.3
+	queue_redraw()
+
+
+## Lo que dice su etiqueta: la pieza y su clase, que esta vacia o por que
+## esta cerrada.
+func tag_lines() -> Array[String]:
 	if locked_text != "":
-		_name.text = locked_text
-		_name.add_theme_color_override("font_color", COLOR_MUTED)
+		return [title, locked_text]
+	if item == null:
+		return [title, Txt.t("slot_empty")]
+	return [item.display_name, progress_text]
+
+
+func _draw() -> void:
+	var rect := Rect2(Vector2.ZERO, size)
+	_style().draw(get_canvas_item(), rect)
+	var well := Rect2(rect.position + Vector2(4, 3), rect.size - Vector2(8, LABEL_HEIGHT + 4.0))
+	if locked_text != "":
+		# Cerrada: el candado y desde cuando se abre.
+		var r := minf(well.size.y * 0.3, 8.0)
+		_draw_padlock(Vector2(well.position.x + r + 6.0, well.get_center().y + 1.0), r)
+		draw_string(
+			_font,
+			Vector2(well.position.x + r * 2.0 + 12.0, well.get_center().y + 4.0),
+			locked_text,
+			HORIZONTAL_ALIGNMENT_LEFT,
+			well.size.x - r * 2.0 - 14.0,
+			9,
+			Color(COLOR_MUTED, 0.75)
+		)
 	elif item == null:
-		_name.text = Txt.t("slot_empty")
-		_name.add_theme_color_override("font_color", COLOR_MUTED)
+		# Vacia: la huella de la pieza que falta.
+		var mid := well.get_center()
+		var arm := minf(well.size.y * 0.24, 7.0)
+		var faint := Color(COLOR_MUTED, 0.75 if _hover or _drop_glow else 0.3)
+		draw_line(mid - Vector2(arm, 0), mid + Vector2(arm, 0), faint, 1.5)
+		draw_line(mid - Vector2(0, arm), mid + Vector2(0, arm), faint, 1.5)
+		draw_arc(mid, arm * 1.9, 0, TAU, 20, Color(faint, faint.a * 0.6), 1.0)
 	else:
-		_name.text = item.display_name
-		_name.add_theme_color_override("font_color", Color.WHITE)
-	_detail.text = progress_text if item != null else ""
-	if item != null:
-		_detail.add_theme_color_override("font_color", TIER_COLORS[item.tier])
-	_detail.visible = not compact
-	_clear.visible = item != null and locked_text == ""
-	tooltip_text = item.display_name if item != null else title
-	add_theme_stylebox_override("panel", _style())
-
-
-## Placa en relieve: el borde del color de la clase de su pieza; vacia,
-## hundida; brilla verde si cabe la pieza que se arrastra y dorada si esta
-## elegida.
-func _style() -> TechStyle:
-	var accent := TIER_COLORS[item.tier] if item != null else COLOR_EMPTY
-	var style := TechStyle.plate(
-		COLOR_BACK if item != null else COLOR_BACK.darkened(0.25),
-		accent,
-		5.0,
-		6.0 if compact else 8.0
+		PartIcon.paint(self, well, item)
+	# Abajo, grabado, el nombre del hueco; con pieza, la luz de su clase.
+	var label_at := Vector2(5.0, size.y - 3.5)
+	var label_color := COLOR_SELECTED if selected else Color(COLOR_MUTED, 0.9 if _hover else 0.62)
+	draw_string(
+		_font, label_at, title.to_upper(), HORIZONTAL_ALIGNMENT_LEFT, size.x - 14.0, 8, label_color
 	)
-	style.groove = not compact
-	style.bolts = not compact
-	style.sunken = item == null
+	if item != null and locked_text == "":
+		draw_circle(Vector2(size.x - 7.0, size.y - 7.0), 2.2, TIER_COLORS[item.tier])
+	if _hover and not _drop_glow:
+		_draw_tag()
+
+
+## Etiqueta que sale encima al pasar el raton.
+func _draw_tag() -> void:
+	var lines := tag_lines()
+	var wide := 0.0
+	for i in lines.size():
+		var font_size := 12 if i == 0 else 10
+		wide = maxf(
+			wide, _font.get_string_size(lines[i], HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+		)
+	var box := Rect2(0, 0, wide + 16.0, 34.0 if lines[1] != "" else 22.0)
+	box.position = Vector2(clampf((size.x - box.size.x) * 0.5, -40.0, 40.0), -box.size.y - 5.0)
+	var plate := TechStyle.plate(Color(0.05, 0.09, 0.13, 0.96), Color("3fd0e6"), 0.0, 5.0)
+	plate.groove = false
+	plate.bolts = false
+	plate.draw(get_canvas_item(), box)
+	draw_line(
+		Vector2(size.x * 0.5, box.end.y), Vector2(size.x * 0.5, 0.0), Color("3fd0e6", 0.7), 1.0
+	)
+	draw_string(
+		_font,
+		box.position + Vector2(8, 15),
+		lines[0],
+		HORIZONTAL_ALIGNMENT_LEFT,
+		-1,
+		12,
+		Color.WHITE
+	)
+	if lines[1] != "":
+		var tone := TIER_COLORS[item.tier] if item != null and locked_text == "" else COLOR_MUTED
+		draw_string(
+			_font, box.position + Vector2(8, 28), lines[1], HORIZONTAL_ALIGNMENT_LEFT, -1, 10, tone
+		)
+
+
+func _draw_padlock(at: Vector2, r: float) -> void:
+	var color := Color(COLOR_MUTED, 0.55)
+	draw_arc(at + Vector2(0, -r * 0.5), r * 0.62, PI, TAU, 12, color, 2.0)
+	draw_rect(Rect2(at + Vector2(-r, -r * 0.5), Vector2(r * 2.0, r * 1.6)), color)
+	draw_circle(at + Vector2(0, r * 0.3), r * 0.26, COLOR_BACK)
+
+
+## Placa hundida: el borde del color de la clase de su pieza; brilla verde
+## si cabe la pieza que se arrastra y dorada si esta elegida.
+func _style() -> TechStyle:
+	var accent := TIER_COLORS[item.tier].darkened(0.15) if item != null else COLOR_EMPTY
+	var style := TechStyle.plate(
+		COLOR_BACK if item != null else COLOR_BACK.darkened(0.3), accent, 0.0, 6.0
+	)
+	style.groove = false
+	style.bolts = false
+	style.sunken = true
+	style.shadow = 2.0
 	if locked_text != "":
 		style.accent = COLOR_EMPTY.darkened(0.3)
-		style.shadow = 1.0
+	elif _hover:
+		style.accent = accent.lightened(0.35)
+		style.glow = 0.3
 	if _drop_glow:
 		style.accent = COLOR_DROP
 		style.accent_width = 2.5
@@ -155,11 +188,11 @@ func _gui_input(event: InputEvent) -> void:
 		accept_event()
 
 
-## Arrastrar la pieza montada: a otro hueco de su tipo (se cambian) o fuera.
+## Arrastrar la pieza montada: a otra cuna de su tipo (se cambian) o fuera.
 func _get_drag_data(_at: Vector2) -> Variant:
 	if item == null or locked_text != "":
 		return null
-	set_drag_preview(PartCard.drag_preview(item))
+	set_drag_preview(PartIcon.drag_preview(item))
 	return {"id": item.id, "type": item.type, "from_slot": slot}
 
 
@@ -179,10 +212,10 @@ func accepts_data(data: Variant) -> bool:
 
 
 func _notification(what: int) -> void:
-	# Mientras se arrastra una pieza, brillan los huecos donde cabe.
+	# Mientras se arrastra una pieza, brillan las cunas donde cabe.
 	if what == NOTIFICATION_DRAG_BEGIN:
 		_drop_glow = accepts_data(get_viewport().gui_get_drag_data())
-		refresh()
+		queue_redraw()
 	elif what == NOTIFICATION_DRAG_END:
 		_drop_glow = false
-		refresh()
+		queue_redraw()
