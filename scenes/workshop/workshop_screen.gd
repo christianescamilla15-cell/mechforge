@@ -15,19 +15,20 @@ extends Control
 ##   vacio o un diseno ya armado, que se adquiere pulsandolo dos veces;
 ## - las pantallas de la pared: la de la tienda saca el tablero con la
 ##   tienda delante; las de mejoras y habilidades se usan ahi mismo, de
-##   cerca (WallConsole); el rotulo de tu robot ensena su ficha;
+##   cerca (WallConsole); el rotulo de tu robot ensena su ficha y el
+##   cuadro de control de la esquina, los ajustes;
 ## - el monitor de misiones: al pulsarlo el hangar se queda en penumbra y los
 ##   rivales se proyectan delante de tu robot (RivalRow); pulsar al primero
 ##   es salir a combatir.
-## No hay cajon, ni listas, ni barra de estado: pulsar el hangar vacio o Esc
-## recoge lo que este abierto, y fuera de la escena solo queda el engrane de
-## los ajustes. Lo que se ensena lo arma WorkshopBrief; lee y cambia el
-## perfil a traves de MainScreen, que lo guarda.
+## No hay cajon, ni listas, ni barra de estado, ni botones fuera de la
+## escena: pulsar el hangar vacio o Esc recoge lo que este abierto (y Esc, sin
+## nada abierto, acerca los ajustes). Lo que se ensena lo arma WorkshopBrief;
+## lee y cambia el perfil a traves de MainScreen, que lo guarda.
 
 signal closed
 
 ## Lo que se puede abrir por su nombre (show_page).
-const CONSOLES: Array[String] = ["mejoras", "habilidades", "robot"]
+const CONSOLES: Array[String] = ["mejoras", "habilidades", "robot", "ajustes"]
 const COLOR_GOLD := Color("ffd36b")
 
 var main: MainScreen
@@ -77,6 +78,8 @@ func _ready() -> void:
 	console.upgrade_picked.connect(buy_upgrade)
 	console.skill_picked.connect(learn)
 	console.remove_pressed.connect(func() -> void: main.ask_remove_robot(main._profile.active))
+	console.setting_changed.connect(_on_setting_changed)
+	console.quit_pressed.connect(func() -> void: get_tree().quit(0))
 	_stage.projector.bought.connect(_on_offer_bought)
 	_build_bench()
 	_build_hud()
@@ -93,7 +96,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		elif _channel != "":
 			close_missions()
 		else:
-			main.open_settings()
+			show_page("ajustes")
 
 
 # --- Construccion ------------------------------------------------------------
@@ -113,22 +116,9 @@ func _build_bench() -> void:
 		_stage.rack[slot] = cell
 
 
-## Lo unico que queda fuera de la escena: el engrane de los ajustes, en una
-## esquina, y el aviso pasajero.
+## Lo unico que queda fuera de la escena: el aviso pasajero (lo que se cobro
+## en el ultimo combate, etc.).
 func _build_hud() -> void:
-	var gear := Button.new()
-	gear.text = "⚙"
-	gear.tooltip_text = Txt.t("settings_open")
-	gear.focus_mode = Control.FOCUS_NONE
-	gear.add_theme_font_size_override("font_size", 18)
-	gear.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
-	gear.offset_left = -46
-	gear.offset_right = -10
-	gear.offset_top = 8
-	gear.offset_bottom = 40
-	gear.pressed.connect(main.open_settings)
-	add_child(gear)
-	# Aviso pasajero (lo que se cobro en el ultimo combate, etc.).
 	_toast = Label.new()
 	_toast.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
 	_toast.position.y = 96
@@ -230,7 +220,16 @@ func _console_state() -> Dictionary:
 			return brief.upgrades(main._profile)
 		"habilidades":
 			return brief.skill_tree(main._profile)
+		"ajustes":
+			return WallConsole.settings_state(main._settings, true)
 	return brief.robot(main._profile, main.robot_name(main._profile.active))
+
+
+## Un ajuste cambiado en el cuadro de control: se aplica y se guarda, y la
+## pantalla ensena como queda.
+func _on_setting_changed(key: String, value: Variant) -> void:
+	main.change_setting(key, value)
+	_stage.console.state = _console_state()
 
 
 ## Las tres bahias: tus otros robots (un armazon vacio se ve como bahia
@@ -299,7 +298,8 @@ func open_parts(store_first: bool = false) -> void:
 	refresh()
 
 
-## Acerca una pantalla de la pared: "mejoras", "habilidades" o "robot".
+## Acerca una pantalla de la pared: "mejoras", "habilidades", "robot" o
+## "ajustes".
 func open_console(kind: String) -> void:
 	if _launching or not kind in CONSOLES:
 		return

@@ -9,7 +9,10 @@ extends Control
 ##   para subirla;
 ## - habilidades: las tres ramas del arbol, de abajo arriba; las aprendidas
 ##   encendidas, la siguiente de cada rama latiendo; se pulsa para aprenderla;
-## - robot: la ficha del robot que usas y, si tienes mas de uno, desmontarlo.
+## - robot: la ficha del robot que usas y, si tienes mas de uno, desmontarlo;
+## - ajustes (el cuadro de control de la pared): la velocidad de las
+##   animaciones, la pantalla completa, el volumen de cada canal (se pulsa o
+##   se arrastra su barra) y salir del juego, que pide dos pulsaciones.
 ## Al cerrarla vuelve a su sitio en la pared.
 ##
 ## Ensena un estado (WorkshopBrief) y avisa de lo que se pulsa; no decide
@@ -18,6 +21,10 @@ extends Control
 signal upgrade_picked(track: String)
 signal skill_picked(id: String)
 signal remove_pressed
+## Un ajuste cambiado: "speed" (indice), "fullscreen" (bool) o
+## "volume:<canal>" (de 0 a 1).
+signal setting_changed(key: String, value: Variant)
+signal quit_pressed
 
 const GROW_SECONDS := 0.26
 ## Lo que late en la pantalla va despacio: unas 30 veces por segundo.
@@ -31,9 +38,12 @@ const TEXT := Color("bfefff")
 const PAD := 16.0
 const HEAD := 46.0
 const FOOT := 58.0
+## Segmentos de una barra de volumen (cada uno, un 5 %).
+const VOLUME_STEPS := 20
 
-## Lo que ensena. Siempre lleva "kind" ("mejoras", "habilidades" o "robot")
-## y "title"; el resto depende de la pantalla (ver WorkshopBrief).
+## Lo que ensena. Siempre lleva "kind" ("mejoras", "habilidades", "robot" o
+## "ajustes") y "title"; el resto depende de la pantalla (ver WorkshopBrief
+## y settings_state).
 var state: Dictionary = {}:
 	set(value):
 		state = value
@@ -54,6 +64,10 @@ var _font: Font
 var _time := 0.0
 var _since_draw := 0.0
 var _hover := ""
+## Barra de volumen que se esta arrastrando ("" = ninguna).
+var _dragging := ""
+## Salir del juego esta armado: la siguiente pulsacion sale.
+var _quit_armed := false
 var _zones: Dictionary[String, Rect2] = {}
 var _grow: Tween
 
@@ -98,6 +112,7 @@ func open(p_state: Dictionary, from: Rect2, to: Rect2, instant: bool = false) ->
 		size = _from.size.lerp(_to.size, _open)
 		return
 	_hover = ""
+	_quit_armed = false
 	visible = true
 	_open = 0.0
 	Sfx.play("ui_abrir")
@@ -177,6 +192,28 @@ func _layout_zones() -> void:
 				_zones["remove"] = Rect2(
 					glass.position.x + PAD, glass.end.y - 40.0, glass.size.x - PAD * 2.0, 30.0
 				)
+		"ajustes":
+			_layout_settings(glass)
+
+
+## Zonas de los ajustes: una por velocidad, el interruptor de la pantalla
+## completa, la barra de cada canal y salir.
+func _layout_settings(glass: Rect2) -> void:
+	var left := glass.position.x + PAD
+	var wide := glass.size.x - PAD * 2.0
+	var top := glass.position.y + HEAD + 20.0
+	var speeds: Array = state.get("speeds", [])
+	var each := wide / maxf(speeds.size(), 1.0)
+	for i in speeds.size():
+		_zones["speed:%d" % i] = Rect2(left + i * each, top, each - 4.0, 28.0)
+	_zones["full"] = Rect2(left, top + 42.0, wide, 28.0)
+	var volumes: Array = state.get("volumes", [])
+	for i in volumes.size():
+		_zones["vol:" + str(volumes[i]["bus"])] = Rect2(
+			left + wide * 0.36, top + 86.0 + i * 32.0, wide * 0.5, 22.0
+		)
+	if bool(state.get("quit", false)):
+		_zones["quit"] = Rect2(left, glass.end.y - FOOT - 40.0, wide, 30.0)
 
 
 ## Centro de un nodo del arbol: cada rama es una columna que sube en zigzag.
@@ -194,12 +231,39 @@ func _gui_input(event: InputEvent) -> void:
 	var motion := event as InputEventMouseMotion
 	if motion != null:
 		_set_hover(zone_at(motion.position))
+		# Arrastrar una barra de volumen la lleva con el raton.
+		if _dragging != "" and motion.button_mask & MOUSE_BUTTON_MASK_LEFT != 0:
+			_set_volume(_dragging, motion.position.x)
 		return
 	var click := event as InputEventMouseButton
-	if click == null or not click.pressed or click.button_index != MOUSE_BUTTON_LEFT:
+	if click == null or click.button_index != MOUSE_BUTTON_LEFT:
+		return
+	if not click.pressed:
+		_dragging = ""
 		return
 	accept_event()
-	press(zone_at(click.position))
+	var zone := zone_at(click.position)
+	if zone.begins_with("vol:"):
+		_dragging = zone
+		_quit_armed = false
+		_set_volume(zone, click.position.x)
+		return
+	press(zone)
+
+
+## Pone el volumen de una barra segun donde esta el raton, de 5 en 5 %.
+func _set_volume(zone: String, x: float) -> void:
+	var bar: Rect2 = zone_rect(zone)
+	if bar.size.x <= 0.0:
+		return
+	var share := clampf((x - bar.position.x) / bar.size.x, 0.0, 1.0)
+	var value := roundf(share * VOLUME_STEPS) / VOLUME_STEPS
+	var bus := zone.trim_prefix("vol:")
+	for entry: Dictionary in state.get("volumes", []):
+		if str(entry["bus"]) == bus and is_equal_approx(float(entry["value"]), value):
+			return
+	setting_changed.emit("volume:" + bus, value)
+	Sfx.play("ui_tic")
 
 
 ## Pulsa una zona.
@@ -218,6 +282,22 @@ func press(zone: String) -> void:
 			Sfx.play("ui_cerrar")
 	elif zone == "remove":
 		remove_pressed.emit()
+	elif zone.begins_with("speed:"):
+		setting_changed.emit("speed", int(zone.trim_prefix("speed:")))
+		Sfx.play("ui_clic")
+	elif zone == "full":
+		setting_changed.emit("fullscreen", not bool(state.get("fullscreen", false)))
+		Sfx.play("ui_clic")
+	if zone == "quit":
+		if _quit_armed:
+			quit_pressed.emit()
+		else:
+			# La primera pulsacion solo lo deja armado.
+			_quit_armed = true
+			Sfx.play("ui_habilidad")
+	else:
+		_quit_armed = false
+	queue_redraw()
 
 
 func _row(id: String) -> Dictionary:
@@ -274,6 +354,8 @@ func _draw() -> void:
 			_draw_skills(glass, alpha)
 		"robot":
 			_draw_robot(glass, alpha)
+		"ajustes":
+			_draw_settings(glass, alpha)
 
 
 func _text(
@@ -528,6 +610,150 @@ func _draw_robot(glass: Rect2, alpha: float) -> void:
 		rect.size.x,
 		13,
 		Color.WHITE if hover else BAD,
+		alpha,
+		HORIZONTAL_ALIGNMENT_CENTER
+	)
+
+
+# --- Ajustes ----------------------------------------------------------------------
+
+
+## Lo que ensena la pantalla de ajustes para estos ajustes del jugador.
+## `with_quit`: con la tecla de salir del juego.
+static func settings_state(settings: GameSettings, with_quit: bool) -> Dictionary:
+	var speeds: Array[String] = []
+	for i in GameSettings.SPEEDS.size():
+		speeds.append(Txt.t("settings_speed_%d" % i))
+	var volumes: Array[Dictionary] = []
+	for bus in GameSettings.BUSES:
+		(
+			volumes
+			. append(
+				{
+					"bus": bus,
+					"name": Txt.t("settings_volume_%s" % bus.to_lower()),
+					"value": float(settings.volumes[bus]),
+				}
+			)
+		)
+	return {
+		"kind": "ajustes",
+		"title": Txt.t("settings_title").to_upper(),
+		"speed": settings.speed_index,
+		"speeds": speeds,
+		"fullscreen": settings.fullscreen,
+		"volumes": volumes,
+		"quit": with_quit,
+	}
+
+
+func _draw_settings(glass: Rect2, alpha: float) -> void:
+	var left := glass.position.x + PAD
+	_text(
+		Vector2(left, glass.position.y + HEAD + 12.0),
+		Txt.t("settings_speed"),
+		320.0,
+		11,
+		MUTED,
+		alpha
+	)
+	var speeds: Array = state.get("speeds", [])
+	for i in speeds.size():
+		var zone := "speed:%d" % i
+		_draw_choice(_zones[zone], str(speeds[i]), i == int(state.get("speed", 0)), zone, alpha)
+	# La pantalla completa: un interruptor.
+	var full: Rect2 = _zones["full"]
+	var on := bool(state.get("fullscreen", false))
+	if _hover == "full":
+		draw_rect(full, Color(LINE, 0.1 * alpha))
+	_text(
+		Vector2(left, full.get_center().y + 5.0),
+		Txt.t("settings_fullscreen"),
+		300.0,
+		13,
+		TEXT,
+		alpha
+	)
+	var track := Rect2(full.end.x - 62.0, full.get_center().y - 10.0, 56.0, 20.0)
+	draw_rect(track, Color(0, 0, 0, 0.55 * alpha))
+	draw_rect(track, Color(LINE if on else MUTED, 0.9 * alpha), false, 1.5)
+	var knob := Rect2(track.position.x + (30.0 if on else 3.0), track.position.y + 3.0, 23.0, 14.0)
+	draw_rect(knob, Color(LINE if on else MUTED, alpha))
+	for entry: Dictionary in state.get("volumes", []):
+		_draw_volume(entry, _zones["vol:" + str(entry["bus"])], left, alpha)
+	if _zones.has("quit"):
+		_draw_quit(_zones["quit"], alpha)
+	_foot(glass, "", Txt.t("console_settings_hint"), MUTED, alpha)
+
+
+## Una opcion de varias: llena si es la elegida.
+func _draw_choice(rect: Rect2, label: String, chosen: bool, zone: String, alpha: float) -> void:
+	var hover := _hover == zone
+	draw_rect(rect, Color(LINE, (0.85 if chosen else (0.16 if hover else 0.06)) * alpha))
+	draw_rect(
+		rect, Color(GOLD if hover else LINE, (0.9 if hover or chosen else 0.4) * alpha), false, 1.5
+	)
+	var tone := HangarArt.SCREEN.darkened(0.4) if chosen else TEXT
+	draw_string(
+		_font,
+		Vector2(rect.position.x, rect.get_center().y + 4.0),
+		label,
+		HORIZONTAL_ALIGNMENT_CENTER,
+		rect.size.x,
+		11,
+		Color(tone, alpha)
+	)
+
+
+## El volumen de un canal: su nombre, su barra de segmentos y su tanto por
+## ciento.
+func _draw_volume(entry: Dictionary, bar: Rect2, left: float, alpha: float) -> void:
+	var zone := "vol:" + str(entry["bus"])
+	var live := _hover == zone or _dragging == zone
+	var mid := bar.get_center().y
+	_text(
+		Vector2(left, mid + 5.0), str(entry["name"]), bar.position.x - left - 8.0, 13, TEXT, alpha
+	)
+	var level := roundi(float(entry["value"]) * VOLUME_STEPS)
+	var w := bar.size.x / VOLUME_STEPS
+	for i in VOLUME_STEPS:
+		var cell := Rect2(bar.position.x + i * w, mid - 7.0, w - 2.0, 14.0)
+		draw_rect(cell, Color(0, 0, 0, 0.5 * alpha))
+		if i < level:
+			draw_rect(cell, Color(GOLD if live else LINE, 0.9 * alpha))
+		else:
+			draw_rect(cell, Color(LINE, 0.3 * alpha), false, 1.0)
+	_text(
+		Vector2(bar.end.x + 6.0, mid + 5.0),
+		"%d %%" % roundi(float(entry["value"]) * 100.0),
+		52.0,
+		12,
+		GOLD if live else TEXT,
+		alpha,
+		HORIZONTAL_ALIGNMENT_RIGHT
+	)
+
+
+## Salir del juego: una tecla roja; armada, pide la segunda pulsacion.
+func _draw_quit(rect: Rect2, alpha: float) -> void:
+	var hover := _hover == "quit"
+	var plate := TechStyle.plate(
+		Color("2a1a1c"), BAD if hover or _quit_armed else Color("7a4040"), 0.0, 6.0
+	)
+	plate.groove = false
+	plate.bolts = false
+	plate.glow = 0.5 if hover or _quit_armed else 0.0
+	plate.draw(get_canvas_item(), rect)
+	var label := Txt.t("quit_confirm") if _quit_armed else Txt.t("quit_game")
+	var tone := Color.WHITE if hover else BAD
+	if _quit_armed:
+		tone = Color(GOLD, 0.7 + 0.3 * sin(_time * 8.0))
+	_text(
+		rect.position + Vector2(0, 20),
+		label,
+		rect.size.x,
+		13,
+		tone,
 		alpha,
 		HORIZONTAL_ALIGNMENT_CENTER
 	)

@@ -285,6 +285,70 @@ func _empty_bay(stage: HangarStage) -> Vector2:
 	return Vector2.ZERO
 
 
+## Prueba en vivo de los ajustes (`--menu-shot=ajustes`), con el raton y sin
+## guardar nada: pulsar el cuadro de control de la pared, cambiar la
+## velocidad, pulsar y arrastrar un volumen, armar la salida sin salir,
+## cerrar pulsando fuera y volver a abrir con Esc.
+func settings_test() -> void:
+	var hangar := main._menu as WorkshopScreen
+	var stage := hangar._stage
+	var console := stage.console
+	var settings := main._settings
+	var box: Rect2 = stage._terminal_rects["ajustes"]
+	await get_tree().create_timer(0.8).timeout
+	await _move(box.get_center())
+	await get_tree().create_timer(0.3).timeout
+	await shot("cuadro_de_control")
+	await _click(box.get_center())
+	await get_tree().create_timer(0.1).timeout
+	await shot("ajustes_creciendo")
+	await get_tree().create_timer(0.5).timeout
+	print("AJUSTES clic en el cuadro: abierto='%s'" % hangar.current_page())
+	await shot("ajustes")
+	await _click(console.global_position + console.zone_rect("speed:2").get_center())
+	await get_tree().create_timer(0.2).timeout
+	print("AJUSTES velocidad: indice %d (x%.1f)" % [settings.speed_index, main.animation_speed()])
+	var bar := console.zone_rect("vol:Music")
+	var from := (
+		console.global_position + Vector2(bar.position.x + bar.size.x * 0.25, bar.get_center().y)
+	)
+	await _click(from)
+	await get_tree().create_timer(0.2).timeout
+	print("AJUSTES musica tras pulsar: %d %%" % roundi(settings.volumes["Music"] * 100.0))
+	await _drag_at(from, from + Vector2(bar.size.x * 0.4, 0.0))
+	await get_tree().create_timer(0.2).timeout
+	print("AJUSTES musica tras arrastrar: %d %%" % roundi(settings.volumes["Music"] * 100.0))
+	await shot("ajustes_cambiados")
+	# Salir pide dos pulsaciones: aqui solo la primera.
+	await _click(console.global_position + console.zone_rect("quit").get_center())
+	await get_tree().create_timer(0.25).timeout
+	print("AJUSTES salir armado: %s" % console._quit_armed)
+	await shot("ajustes_salir")
+	await _click(Vector2(stage.size.x * 0.33, stage.size.y * 0.4))
+	await get_tree().create_timer(0.5).timeout
+	print("AJUSTES tras pulsar fuera: abierto='%s'" % hangar.current_page())
+	# Esc, sin nada abierto, acerca los ajustes; otra vez, los devuelve.
+	await _key(KEY_ESCAPE)
+	await get_tree().create_timer(0.5).timeout
+	var opened := hangar.current_page()
+	await _key(KEY_ESCAPE)
+	await get_tree().create_timer(0.5).timeout
+	print("AJUSTES Esc: abierto='%s' y otra vez Esc: '%s'" % [opened, hangar.current_page()])
+	await shot("hangar")
+	get_tree().quit(0)
+
+
+## Pulsa y suelta una tecla (eventos de verdad).
+func _key(code: Key) -> void:
+	for pressed: bool in [true, false]:
+		var event := InputEventKey.new()
+		event.keycode = code
+		event.physical_keycode = code
+		event.pressed = pressed
+		Input.parse_input_event(event)
+		await get_tree().process_frame
+
+
 ## Prueba en vivo de la armeria (`--menu-shot=armeria`, con `--real-profile`
 ## sobre la partida de verdad, sin guardar nada): la pantalla de mejoras de
 ## cerca (se sube una con el raton y luego todo lo que deje la zona, para

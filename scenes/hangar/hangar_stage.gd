@@ -8,6 +8,7 @@ extends MechStage
 ##   (un clic y pasas a usarlo; una bahia vacia es para adquirir uno);
 ## - tres pantallas en la pared: la de la tienda saca el tablero de piezas
 ##   y las de mejoras y habilidades se usan ahi mismo, de cerca (WallConsole);
+##   en la esquina, el cuadro de control de los ajustes, que se usa igual;
 ## - el tablero de piezas (PartsRack): al elegir un hueco entra rodando a la
 ##   derecha con las piezas que caben en el, las tuyas y las de la tienda, y
 ##   la lectura del robot; la diana prueba el arma del hueco;
@@ -42,7 +43,9 @@ signal bay_pressed(index: int)
 signal background_pressed
 signal dropped_on(slot: String, data: Dictionary)
 
-const TERMINALS: Array[String] = ["tienda", "mejoras", "habilidades"]
+## Lo que hay en la pared y se pulsa: tres pantallas y el cuadro de control
+## de los ajustes.
+const TERMINALS: Array[String] = ["tienda", "mejoras", "habilidades", "ajustes"]
 ## Huecos del estante: arriba lo especial, abajo los modulos.
 const RACK_TOP: Array[String] = [
 	"chest", "charge", "teleport", "hook", "assist", "drone", "drone_low"
@@ -309,6 +312,11 @@ func console_rects(kind: String) -> Array[Rect2]:
 				_terminal_rects.get(kind, Rect2()),
 				Rect2(size.x * 0.585, size.y * 0.085, size.x * 0.4, size.y * 0.63)
 			]
+		"ajustes":
+			return [
+				_terminal_rects.get(kind, Rect2()),
+				Rect2(size.x * 0.575, size.y * 0.012, size.x * 0.415, size.y * 0.56)
+			]
 	var plate := _sign_rect()
 	var wide := maxf(plate.size.x, 300.0)
 	return [plate, Rect2(plate.get_center().x - wide * 0.5, plate.end.y + 6.0, wide, 170.0)]
@@ -413,6 +421,7 @@ func _layout() -> void:
 		"tienda": Rect2(size.x * 0.025, size.y * 0.085, size.x * 0.135, size.y * 0.2),
 		"mejoras": Rect2(size.x * 0.175, size.y * 0.085, size.x * 0.12, size.y * 0.2),
 		"habilidades": Rect2(size.x * 0.585, size.y * 0.085, size.x * 0.12, size.y * 0.2),
+		"ajustes": Rect2(size.x * 0.944, size.y * 0.012, size.x * 0.046, size.y * 0.05),
 	}
 	_board.position = Vector2(size.x * 0.72, size.y * 0.07)
 	_board.size = Vector2(size.x * 0.255, size.y * 0.27)
@@ -625,6 +634,9 @@ func _draw_bays_live() -> void:
 ## Una terminal de pared, lo quieto: marco con relieve, cristal con sus
 ## lineas de barrido, su nombre y el cable que baja a la pared.
 func _draw_terminal_still(c: CanvasItem, terminal: String, rect: Rect2) -> void:
+	if terminal == "ajustes":
+		HangarProps.control_box(c, rect)
+		return
 	var screen := HangarArt.draw_screen_still(c, rect)
 	HangarProps.text(
 		c,
@@ -641,6 +653,9 @@ func _draw_terminal_still(c: CanvasItem, terminal: String, rect: Rect2) -> void:
 ## Y lo que se mueve: la franja de luz, su dibujo, el led y el brillo al
 ## pasar el raton.
 func _draw_terminal_live(terminal: String, rect: Rect2) -> void:
+	if terminal == "ajustes":
+		HangarProps.control_box_live(self, _font, rect, _hover_terminal == terminal, _time)
+		return
 	var screen := HangarArt.draw_screen_live(self, rect, _hover_terminal == terminal, _time)
 	var art := Rect2(screen.position + Vector2(8, 22), screen.size - Vector2(16, 30))
 	var foot := Vector2(screen.position.x + 8.0, screen.end.y - 8.0)

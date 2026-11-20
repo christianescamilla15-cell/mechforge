@@ -12,6 +12,9 @@ var _chosen: Array[String] = []
 var _bought: Array[String] = []
 var _unmounted: Array[String] = []
 var _picked: Array[String] = []
+## Ajustes cambiados en la pantalla: [clave, valor].
+var _changes: Array = []
+var _pressed: Array[String] = []
 var _counts := {}
 
 
@@ -35,7 +38,9 @@ func before_each() -> void:
 	_bought.clear()
 	_unmounted.clear()
 	_picked.clear()
-	_counts = {"upgrade": 0, "target": 0, "remove": 0}
+	_changes.clear()
+	_pressed.clear()
+	_counts = {"upgrade": 0, "target": 0, "remove": 0, "quit": 0}
 
 
 func _profile(gold: int = 5000) -> PlayerProfile:
@@ -65,6 +70,10 @@ func _console(state: Dictionary) -> WallConsole:
 	console.upgrade_picked.connect(func(id: String) -> void: _picked.append(id))
 	console.skill_picked.connect(func(id: String) -> void: _picked.append(id))
 	console.remove_pressed.connect(func() -> void: _counts["remove"] += 1)
+	console.setting_changed.connect(
+		func(key: String, value: Variant) -> void: _changes.append([key, value])
+	)
+	console.quit_pressed.connect(func() -> void: _counts["quit"] += 1)
 	return console
 
 
@@ -559,6 +568,105 @@ func test_el_proyector_se_enciende_en_la_bahia_vacia_que_se_pulso() -> void:
 	assert_true(stage.projector.get_rect().intersects(stage._bay_rects[1]))
 
 
+# --- Los ajustes, en su cuadro de control ---------------------------------------------
+
+
+func _drag_to(at: Vector2) -> InputEventMouseMotion:
+	var event := InputEventMouseMotion.new()
+	event.position = at
+	event.button_mask = MOUSE_BUTTON_MASK_LEFT
+	return event
+
+
+func _release(at: Vector2) -> InputEventMouseButton:
+	var event := _click(at)
+	event.pressed = false
+	return event
+
+
+func test_la_pantalla_de_ajustes_ensena_los_del_jugador() -> void:
+	var settings := GameSettings.new()
+	settings.speed_index = 2
+	settings.fullscreen = true
+	settings.volumes["Music"] = 0.35
+	var state := WallConsole.settings_state(settings, true)
+	assert_eq(state["kind"], "ajustes")
+	assert_eq(int(state["speed"]), 2)
+	assert_true(bool(state["fullscreen"]))
+	assert_eq((state["speeds"] as Array).size(), GameSettings.SPEEDS.size())
+	assert_eq((state["volumes"] as Array).size(), GameSettings.BUSES.size())
+	for entry: Dictionary in state["volumes"]:
+		assert_almost_eq(float(entry["value"]), settings.volumes[entry["bus"]], 0.001)
+	assert_true(bool(state["quit"]))
+
+
+func test_pulsar_una_velocidad_o_el_interruptor_cambia_el_ajuste() -> void:
+	var console := _console(WallConsole.settings_state(GameSettings.new(), true))
+	console._gui_input(_click(console.zone_rect("speed:3").get_center()))
+	console._gui_input(_click(console.zone_rect("full").get_center()))
+	assert_eq(_changes, [["speed", 3], ["fullscreen", true]])
+
+
+func test_la_barra_de_volumen_se_pulsa_y_se_arrastra() -> void:
+	var settings := GameSettings.new()
+	var console := _console(WallConsole.settings_state(settings, true))
+	var bar := console.zone_rect("vol:Music")
+	var y := bar.get_center().y
+	console._gui_input(_click(Vector2(bar.position.x + bar.size.x * 0.25, y)))
+	assert_eq(_changes.size(), 1)
+	assert_eq(_changes[0][0], "volume:Music")
+	assert_almost_eq(float(_changes[0][1]), 0.25, 0.001)
+	# Arrastrar mas alla del final la deja al maximo; a la izquierda, en silencio.
+	console._gui_input(_drag_to(Vector2(bar.end.x + 40.0, y)))
+	assert_almost_eq(float(_changes[-1][1]), 1.0, 0.001)
+	console._gui_input(_drag_to(Vector2(bar.position.x - 40.0, y)))
+	assert_almost_eq(float(_changes[-1][1]), 0.0, 0.001)
+	# Al soltar deja de seguir al raton.
+	var before := _changes.size()
+	console._gui_input(_release(Vector2(bar.position.x, y)))
+	console._gui_input(_drag_to(Vector2(bar.get_center().x, y)))
+	assert_eq(_changes.size(), before)
+
+
+func test_el_volumen_que_ya_esta_no_se_repite() -> void:
+	var settings := GameSettings.new()
+	settings.volumes["Effects"] = 0.5
+	var console := _console(WallConsole.settings_state(settings, true))
+	var bar := console.zone_rect("vol:Effects")
+	console._gui_input(_click(bar.get_center()))
+	assert_eq(_changes.size(), 0)
+
+
+func test_salir_del_juego_pide_dos_pulsaciones() -> void:
+	var console := _console(WallConsole.settings_state(GameSettings.new(), true))
+	var at := console.zone_rect("quit").get_center()
+	console._gui_input(_click(at))
+	assert_eq(_counts["quit"], 0, "la primera solo lo deja armado")
+	# Tocar otra cosa lo desarma.
+	console._gui_input(_click(console.zone_rect("speed:1").get_center()))
+	console._gui_input(_click(at))
+	assert_eq(_counts["quit"], 0)
+	console._gui_input(_click(at))
+	assert_eq(_counts["quit"], 1)
+	# Donde no se puede salir (sin hangar) no hay tecla.
+	console.state = WallConsole.settings_state(GameSettings.new(), false)
+	assert_eq(console.zone_rect("quit"), Rect2())
+
+
+func test_el_cuadro_de_control_esta_en_la_pared_y_se_pulsa() -> void:
+	var stage := _stage()
+	stage.terminal_pressed.connect(func(terminal: String) -> void: _pressed.append(terminal))
+	var box: Rect2 = stage._terminal_rects["ajustes"]
+	assert_true(Rect2(Vector2.ZERO, stage.size).encloses(box))
+	for other: String in ["tienda", "mejoras", "habilidades"]:
+		assert_false(box.intersects(stage._terminal_rects[other]), "no pisa " + other)
+	stage._gui_input(_click(box.get_center()))
+	assert_eq(_pressed, ["ajustes"] as Array[String])
+	stage.show_console(WallConsole.settings_state(GameSettings.new(), true), true)
+	assert_eq(stage.console.kind(), "ajustes")
+	assert_true(stage.console.get_rect().encloses(box), "crece desde su sitio")
+
+
 # --- En el hangar (HangarStage) ---------------------------------------------------------
 
 
@@ -594,7 +702,7 @@ func test_el_tablero_cuelga_a_la_derecha_sin_tapar_al_robot_ni_el_banco() -> voi
 
 func test_cada_pantalla_crece_desde_su_sitio() -> void:
 	var stage := _stage()
-	for kind: String in ["mejoras", "habilidades", "robot"]:
+	for kind: String in ["mejoras", "habilidades", "robot", "ajustes"]:
 		var rects := stage.console_rects(kind)
 		assert_gt(rects[1].get_area(), rects[0].get_area() * 2.0, kind + " crece")
 		assert_true(Rect2(Vector2.ZERO, stage.size).encloses(rects[1]), kind + " cabe")

@@ -200,6 +200,9 @@ const ES := {
 	"settings_volume_interface": "Interfaz",
 	"settings_close": "Cerrar",
 	"quit_game": "Salir del juego",
+	"quit_confirm": "Pulsa otra vez para salir",
+	"console_settings_hint":
+	"Cada cambio se aplica y se guarda al momento. Pulsa fuera o Esc para cerrar.",
 	"pause_title": "PAUSA",
 	"pause_hint": "Esc para seguir",
 	"pause_resume": "Continuar",

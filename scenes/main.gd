@@ -152,8 +152,15 @@ func _ready() -> void:
 			_profile = PlayerProfile.load_or_new(SAVE_PATH)
 			Garage.ensure_assist(_profile, _catalog)
 		_show_menu()
-		if _args["menu-shot"] == "ajustes":
-			open_settings()
+		if _args["menu-shot"] in ["pieza", "tienda", "mejoras", "habilidades", "robot"]:
+			# El hangar con eso abierto (--slot=<hueco>: el hueco elegido).
+			var hangar := open_workshop()
+			if _args.has("slot"):
+				hangar._selected = _args["slot"]
+			hangar.show_page(_args["menu-shot"])
+		elif _args["menu-shot"] == "ajustes":
+			_live_test().settings_test()
+			return
 		elif _args["menu-shot"] == "taller":
 			_live_test().workshop_test(open_workshop())
 			return
@@ -166,12 +173,6 @@ func _ready() -> void:
 		elif _args["menu-shot"] == "misiones":
 			_live_test().missions_test()
 			return
-		elif _args["menu-shot"] in ["pieza", "tienda", "mejoras", "habilidades", "robot"]:
-			# El hangar con eso abierto (--slot=<hueco>: el hueco elegido).
-			var hangar := open_workshop()
-			if _args.has("slot"):
-				hangar._selected = _args["slot"]
-			hangar.show_page(_args["menu-shot"])
 		elif _args["menu-shot"] == "giro":
 			# El robot dando la vuelta entera sobre su plataforma, cuadro a
 			# cuadro (--step=<grados>, 10 si no se dice).
@@ -337,10 +338,31 @@ func ask_remove_robot(index: int) -> void:
 	dialog.popup_centered()
 
 
-## Ajustes (el engrane del hangar y Esc), con el boton de salir del juego.
+## Ajustes: en el hangar, su cuadro de control de la pared, de cerca; sin
+## hangar (al elegir el primer robot), el panel de siempre.
 func open_settings() -> void:
+	if _menu is WorkshopScreen:
+		(_menu as WorkshopScreen).show_page("ajustes")
+		return
 	var panel := SettingsPanel.open(self, _settings, GameSettings.PATH if _persist else "")
 	panel.show_quit = true
+
+
+## Cambia un ajuste desde el cuadro de control del hangar: "speed" (indice
+## de GameSettings.SPEEDS), "fullscreen" o "volume:<canal>" (de 0 a 1). Se
+## aplica y se guarda al momento.
+func change_setting(key: String, value: Variant) -> void:
+	if key == "speed":
+		_settings.speed_index = clampi(int(value), 0, GameSettings.SPEEDS.size() - 1)
+	elif key == "fullscreen":
+		_settings.fullscreen = bool(value)
+	elif key.begins_with("volume:") and _settings.volumes.has(key.trim_prefix("volume:")):
+		_settings.volumes[key.trim_prefix("volume:")] = clampf(float(value), 0.0, 1.0)
+	else:
+		return
+	_settings.apply()
+	if _persist:
+		_settings.save_to(GameSettings.PATH)
 
 
 ## El hangar (la pantalla de inicio), para quien lo pida por nombre.

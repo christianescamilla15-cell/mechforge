@@ -260,6 +260,67 @@ static func level_line(
 	c.draw_rect(bar, Color(SCREEN_LINE, 0.5), false, 1.0)
 
 
+# --- El cuadro de control ----------------------------------------------------------
+
+
+## El cuadro de control de los ajustes, en la pared: una caja de metal con
+## una rueda dentada y tres mandos deslizantes. Lo quieto.
+static func control_box(c: CanvasItem, rect: Rect2) -> void:
+	var plate := TechStyle.plate(Color("1c2533"), Color("4f6380"), 0.0, 5.0)
+	plate.groove = false
+	plate.draw(c.get_canvas_item(), rect)
+	# El conducto que sube al techo.
+	c.draw_rect(Rect2(rect.get_center().x - 3.0, 0.0, 6.0, rect.position.y), Color("121923"))
+	var well := rect.grow(-5.0)
+	c.draw_rect(well, Color(0, 0, 0, 0.5))
+	# Tres ranuras con su mando, a la derecha.
+	for i in 3:
+		var x := well.position.x + well.size.x * (0.58 + 0.16 * i)
+		c.draw_line(
+			Vector2(x, well.position.y + 4.0), Vector2(x, well.end.y - 4.0), Color("0a0f16"), 3.0
+		)
+
+
+## Y lo que se mueve: la rueda, que gira al pasar el raton, los mandos, el
+## led y, encendido, su nombre debajo.
+static func control_box_live(
+	c: CanvasItem, font: Font, rect: Rect2, hover: bool, time: float
+) -> void:
+	var well := rect.grow(-5.0)
+	var tone := GOLD if hover else SCREEN_LINE
+	var mid := Vector2(well.position.x + well.size.x * 0.27, well.get_center().y)
+	var r := minf(well.size.y * 0.36, well.size.x * 0.2)
+	var turn := time * 1.6 if hover else 0.0
+	for i in 8:
+		var a := turn + TAU * i / 8.0
+		var out := Vector2(cos(a), sin(a))
+		c.draw_line(mid + out * r * 0.7, mid + out * r * 1.3, Color(tone, 0.95), 3.0)
+	c.draw_arc(mid, r * 0.78, 0, TAU, 20, Color(tone, 0.95), 3.0)
+	c.draw_circle(mid, r * 0.26, Color(tone, 0.95))
+	for i in 3:
+		var x := well.position.x + well.size.x * (0.58 + 0.16 * i)
+		var share := 0.5 + 0.3 * sin(i * 2.1 + (time * 2.0 if hover else 0.0))
+		var y := well.position.y + 4.0 + (well.size.y - 8.0) * share
+		c.draw_rect(Rect2(x - 4.0, y - 2.0, 8.0, 4.0), Color(tone, 0.9))
+	if hover:
+		c.draw_rect(rect, GOLD, false, 2.0)
+		# Su nombre, a su izquierda (debajo queda el monitor de misiones).
+		c.draw_string(
+			font,
+			Vector2(rect.position.x - 128.0, rect.get_center().y + 4.0),
+			Txt.t("settings_title").to_upper(),
+			HORIZONTAL_ALIGNMENT_RIGHT,
+			120.0,
+			11,
+			GOLD
+		)
+	c.draw_circle(
+		Vector2(rect.end.x - 5.0, rect.position.y + 5.0),
+		1.8,
+		Color("55ff9a", 0.5 + 0.4 * sin(time * 4.0))
+	)
+
+
 # --- El rotulo y la bascula -------------------------------------------------------
 
 
