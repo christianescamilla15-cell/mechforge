@@ -100,6 +100,23 @@ func fight_at(zone: int, fight: int) -> Dictionary:
 	return zones[zone]["fights"][fight]
 
 
+## La escalera de la zona: el combate que toca y los que le siguen, en
+## orden, con el jefe al final; como mucho `count`. Cada uno es su combate
+## ({"enemy", "level", "difficulty"...}) con "fight" (su numero en la zona) y
+## "boss". Vacia si la campana esta completa o la zona no esta construida.
+func ladder(profile: PlayerProfile, count: int) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	if is_complete(profile) or profile.zone >= zone_count():
+		return out
+	var boss_at := fights_in(profile.zone)
+	for index in range(profile.fight, mini(profile.fight + count, boss_at + 1)):
+		var entry: Dictionary = fight_at(profile.zone, index).duplicate()
+		entry["fight"] = index
+		entry["boss"] = index >= boss_at
+		out.append(entry)
+	return out
+
+
 ## Puntos de habilidad del jefe de esa zona (0 = sin entrenar).
 func boss_skills(zone: int) -> int:
 	return int(zones[mini(zone, zone_count() - 1)]["boss"].get("skills", 0))

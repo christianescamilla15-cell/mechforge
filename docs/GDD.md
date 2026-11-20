@@ -492,6 +492,8 @@ Victorias contra el jefe tras gastar N victorias en la zona, empezando con lo qu
 ## 10. Pantallas
 Menú · Taller (armado con resumen de stats, barra de peso y avisos) · Inventario y fusión · Taller de mejoras · Mapa de campaña · Combate (arena, mechs, botones de acción, previsualización y registro) · Resultados y botín · Ajustes.
 
+**Regla (2026-11-18 y 2026-11-20, del usuario):** todo eso vive dentro de un solo hangar y debe sentirse "casi como si no existiera un menú": lo que se puede hacer es un objeto de la escena (el robot, una bahía, una pantalla de la pared, una proyección) y no un botón ni una lista aparte. El mapa de campaña es el monitor de misiones del hangar y su fila de rivales proyectada delante de tu robot; se sale a combatir pulsando al rival (docs/PLAN.md, F8).
+
 ## 11. Arte: sprites 2D generados con IA, con aspecto propio
 **Objetivo:** que los mechs no se vean genéricos como en el original y que el juego corra holgado en la laptop del usuario (RTX 4050 6 GB, 16 GB de RAM).
 

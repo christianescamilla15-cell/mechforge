@@ -7,8 +7,10 @@ extends Control
 ##   vacio) la elige; las piezas se arrastran al robot y del robot;
 ## - tus otros robots en las bahias del fondo: un clic y pasas a usarlo; una
 ##   bahia vacia es para adquirir otro;
-## - las terminales de la pared: tienda, mejoras, habilidades y misiones (de
-##   ahi se sale a pelear);
+## - las terminales de la pared: tienda, mejoras y habilidades;
+## - el monitor de misiones: al pulsarlo el hangar se queda en penumbra y los
+##   rivales se proyectan delante de tu robot (HangarStage, RivalRow); pulsar
+##   al primero es salir a combatir. No hay cajon ni botones;
 ## - el estante de equipo bajo el robot: pecho, especiales, asistente y
 ##   modulos.
 ## Lo que se toca abre un cajon que se desliza desde la derecha; pulsar el
@@ -46,6 +48,9 @@ var _hover_id: String = ""
 ## Hueco con el que se compara la pieza bajo el raton.
 var _hover_slot: String = ""
 var _page: String = ""
+## Canal del modo mision ("campaign", "arena" o "free"); "" = apagado.
+var _channel: String = ""
+var _launching := false
 var _store_group: String = "todo"
 var _stage: HangarStage
 var _robot_button: Button
@@ -72,7 +77,11 @@ func _ready() -> void:
 	_stage.dropped_on.connect(_on_cell_dropped)
 	_stage.terminal_pressed.connect(show_page)
 	_stage.bay_pressed.connect(_on_bay_pressed)
-	_stage.background_pressed.connect(close_drawer)
+	_stage.background_pressed.connect(_on_background_pressed)
+	_stage.missions_pressed.connect(open_missions)
+	_stage.rival_pressed.connect(_on_rival_pressed)
+	_stage.channel_picked.connect(open_missions)
+	_stage.pick_changed.connect(_on_pick_changed)
 	_build_rack()
 	_build_hud()
 	_build_drawer()
@@ -82,8 +91,12 @@ func _ready() -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel"):
 		get_viewport().set_input_as_handled()
+		if _launching:
+			return
 		if _page != "":
 			close_drawer()
+		elif _channel != "":
+			close_missions()
 		else:
 			main.open_settings()
 
@@ -243,7 +256,12 @@ func refresh() -> void:
 			ghosts.append("legs")
 	_stage.show_build(shown, ghosts)
 	_stage.selected_slot = _selected if _page == "pieza" else ""
-	_stage.mission_lines = main.mission_lines()
+	# El monitor de misiones siempre ensena la campana; en el modo mision, su
+	# canal, con la fila de rivales delante.
+	if _channel == "":
+		_stage.set_board(main.mission_state("campaign"))
+	else:
+		_stage.show_mission(main.mission_state(_channel))
 	_stage.set_bays(_bays())
 	var level := main._player_level()
 	_robot_button.text = main.robot_name(main._profile.active) + "  ▾"
@@ -371,8 +389,15 @@ func _refresh_summary(build: MechBuild) -> void:
 
 
 ## Abre (o cambia) el cajon de la derecha con una pagina: "pieza", "tienda",
-## "mejoras", "habilidades", "misiones" o "robot".
+## "mejoras", "habilidades" o "robot". "misiones" no es un cajon: pone el
+## hangar en modo mision.
 func show_page(page: String) -> void:
+	if page == "misiones":
+		open_missions()
+		return
+	if _launching:
+		return
+	close_missions()
 	var opening := _page == ""
 	_page = page
 	_hover_id = ""
@@ -399,6 +424,71 @@ func close_drawer() -> void:
 	refresh()
 
 
+# --- Modo mision -------------------------------------------------------------------
+
+
+## Pone el hangar en modo mision (o cambia de canal): en penumbra, con los
+## rivales del canal proyectados delante de tu robot. `how` es como aparecen
+## ("enter", "advance" al volver de ganar, "none"); `beaten`, el recien
+## vencido.
+func open_missions(
+	channel: String = "campaign", how: String = "enter", beaten: Dictionary = {}
+) -> void:
+	if _launching:
+		return
+	if not channel in MissionBrief.CHANNELS:
+		channel = "campaign"
+	close_drawer()
+	_channel = channel
+	_stage.show_mission(main.mission_state(channel), how, beaten)
+
+
+## Vuelve al taller.
+func close_missions() -> void:
+	if _channel == "":
+		return
+	_channel = ""
+	Sfx.play("ui_cerrar")
+	_stage.hide_mission()
+	_stage.set_board(main.mission_state("campaign"))
+
+
+func missions_channel() -> String:
+	return _channel
+
+
+func _on_background_pressed() -> void:
+	close_drawer()
+	close_missions()
+
+
+## Una flecha del combate libre en el monitor.
+func _on_pick_changed(key: String, step: int) -> void:
+	main.change_free_pick(key, step)
+	if _channel == "free":
+		_stage.show_mission(main.mission_state("free"))
+
+
+## Se pulso al primero de la fila: salir a combatir. Si tu robot no puede
+## pelear se dice por que; el jefe pide una segunda pulsacion.
+func _on_rival_pressed() -> void:
+	if _launching or _channel == "":
+		return
+	var state := main.mission_state(_channel)
+	if not bool(state["can_fight"]):
+		Sfx.play("ui_cerrar")
+		toast(str(state["problems"]))
+		return
+	if not _stage.confirm_rival():
+		Sfx.play("ui_habilidad")
+		return
+	_launching = true
+	var speed := main.animation_speed()
+	await _stage.launch_out(speed)
+	await main.drop_curtain(0.3 / speed)
+	main.start_mission(_channel)
+
+
 ## Tienda, con un grupo de piezas ("" = el del hueco elegido).
 func show_store(group: String) -> void:
 	_store_group = group if group != "" else ArmoryPages.group_of(Garage.slot_type(_selected))
@@ -421,8 +511,6 @@ func _fill_page() -> void:
 			ArmoryPages.upgrades(self, _page_box)
 		"habilidades":
 			ArmoryPages.skills(self, _page_box)
-		"misiones":
-			main.fill_missions(_page_box)
 		"robot":
 			_fill_robot_page(_page_box)
 

@@ -362,6 +362,111 @@ func workshop_test(workshop: WorkshopScreen) -> void:
 	get_tree().quit(0)
 
 
+## Prueba en vivo del modo mision (`--menu-shot=misiones`, con
+## `--real-profile` sobre la partida de verdad, sin guardar nada): pulsar el
+## monitor, pasar el raton por el rival, la arena, el combate libre con sus
+## flechas, la fila avanzando como al volver de ganar y salir a combatir.
+## Todo con el raton, como lo haria una persona.
+func missions_test() -> void:
+	var hangar := main._menu as WorkshopScreen
+	var stage := hangar._stage
+	var board := stage._board
+	await get_tree().create_timer(0.8).timeout
+	await shot("hangar")
+	if main._args.has("boss"):
+		await _missions_boss_test(hangar)
+		return
+	await _click(board.get_global_rect().get_center())
+	await get_tree().create_timer(0.3).timeout
+	await shot("encendiendo")
+	await get_tree().create_timer(1.3).timeout
+	print("MISION canal=%s fila=%s" % [hangar.missions_channel(), stage._row.shown_ids()])
+	await shot("campana")
+	var rival := stage.global_position + stage._row.front_rect().get_center()
+	await _move(rival)
+	await get_tree().create_timer(0.3).timeout
+	await shot("raton_en_el_rival")
+	await _click(board.global_position + board.zone_rect("tab:arena").get_center())
+	await get_tree().create_timer(1.2).timeout
+	print("MISION canal=%s fila=%s" % [hangar.missions_channel(), stage._row.shown_ids()])
+	await shot("arena")
+	await _click(board.global_position + board.zone_rect("tab:free").get_center())
+	await get_tree().create_timer(1.2).timeout
+	await shot("libre")
+	for zone: String in ["pick:enemy:1", "pick:enemy:1", "pick:tier:1", "pick:difficulty:-1"]:
+		await _click(board.global_position + board.zone_rect(zone).get_center())
+		await get_tree().create_timer(0.15).timeout
+	await get_tree().create_timer(1.0).timeout
+	print("MISION canal=%s fila=%s" % [hangar.missions_channel(), stage._row.shown_ids()])
+	await shot("libre_elegido")
+	await _click(board.global_position + board.zone_rect("tab:campaign").get_center())
+	await get_tree().create_timer(1.0).timeout
+	# Como al volver de ganar: el vencido se apaga y la fila avanza.
+	var beaten: Dictionary = main.mission_state("campaign")["rivals"][0]
+	main._profile.fight += 1
+	hangar.open_missions("campaign", "advance", beaten)
+	for i in 6:
+		await get_tree().create_timer(0.24).timeout
+		await shot("avanza")
+	await get_tree().create_timer(0.6).timeout
+	print("MISION tras ganar: fila=%s" % [stage._row.shown_ids()])
+	await shot("avanzada")
+	# Salir a combatir: pulsar al primero.
+	await _click(stage.global_position + stage._row.front_rect().get_center())
+	await get_tree().create_timer(0.45).timeout
+	await shot("saliendo")
+	await get_tree().create_timer(0.5).timeout
+	await shot("telon")
+	await get_tree().create_timer(1.6).timeout
+	print("MISION combate=%s rival=%s" % [main._battle != null, main._spec.get("enemy", "")])
+	await shot("combate")
+	get_tree().quit(0)
+
+
+## Con `--boss`: delante del jefe de la zona. La primera pulsacion lo deja
+## armado y avisa; pulsar fuera vuelve al taller sin pelear.
+func _missions_boss_test(hangar: WorkshopScreen) -> void:
+	var stage := hangar._stage
+	main._profile.fight = main._campaign.fights_in(main._profile.zone)
+	hangar.refresh()
+	await _click(stage._board.get_global_rect().get_center())
+	await get_tree().create_timer(1.6).timeout
+	print("MISION jefe: fila=%s" % [stage._row.shown_ids()])
+	await shot("jefe")
+	var rival := stage.global_position + stage._row.front_rect().get_center()
+	await _click(rival)
+	await get_tree().create_timer(0.4).timeout
+	print("MISION jefe armado=%s combate=%s" % [stage._row.armed, main._battle != null])
+	await shot("jefe_armado")
+	await _click(stage.global_position + Vector2(stage.size.x * 0.5, stage.size.y * 0.2))
+	await get_tree().create_timer(0.7).timeout
+	print("MISION fuera: canal='%s' combate=%s" % [hangar.missions_channel(), main._battle != null])
+	await shot("de_vuelta_al_taller")
+	get_tree().quit(0)
+
+
+## Mueve el raton (un evento de verdad) a un punto del juego. Los eventos
+## del raton van en pixeles de la ventana: con la ventana a otro tamano que
+## el juego hay que pasarlos por su escala.
+func _move(at: Vector2) -> void:
+	var motion := InputEventMouseMotion.new()
+	motion.position = get_viewport().get_final_transform() * at
+	motion.global_position = motion.position
+	motion.relative = Vector2(1, 0)
+	Input.parse_input_event(motion)
+	await get_tree().process_frame
+
+
+## Un clic con el raton en un punto del juego.
+func _click(at: Vector2) -> void:
+	await _move(at)
+	var window_at := get_viewport().get_final_transform() * at
+	_mouse_button(window_at, true)
+	await get_tree().process_frame
+	_mouse_button(window_at, false)
+	await get_tree().process_frame
+
+
 ## Arrastra con el raton (eventos de verdad) del centro de un control a otro.
 func _drag(from: Control, to: Control) -> void:
 	await _drag_to(from, to.get_global_rect().get_center())

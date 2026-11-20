@@ -1,10 +1,10 @@
 class_name MainScreen
 extends Control
-## Punto de entrada: la base del jugador (GDD 9). Desde aqui se entra a la
-## campana (los combates de la zona y su jefe), a la arena (para juntar
-## celdas) y al taller (WorkshopScreen), que es tambien la armeria: piezas,
-## tienda, mejoras permanentes y habilidades. Hay ademas un combate libre, sin
-## recompensa, para probar cualquier cruce.
+## Punto de entrada: la base del jugador (GDD 9), que es el hangar
+## (WorkshopScreen): taller, armeria (piezas, tienda, mejoras permanentes y
+## habilidades) y, desde su monitor de misiones, la salida a combatir: la
+## campana (los combates de la zona y su jefe), la arena (para juntar celdas)
+## y un combate libre, sin recompensa, para probar cualquier cruce.
 ##
 ## Pruebas en vivo: `++ --autoplay` (ver LiveTest) y `++ --menu-shot`, que
 ## guarda una captura del menu con un perfil de muestra y sale
@@ -15,8 +15,6 @@ const MENU_DIFFICULTIES: Array[BattleAI.Difficulty] = [
 	BattleAI.Difficulty.EASY, BattleAI.Difficulty.NORMAL, BattleAI.Difficulty.HARD
 ]
 const DIFFICULTY_IDS: Array[String] = ["EASY", "NORMAL", "HARD"]
-const COLOR_CELLS := Color("7fe3ff")
-const COLOR_WARNING := Color("ff9a7d")
 const COLOR_MUTED := Color("9aa7b8")
 
 var _rules := RulesConfig.new()
@@ -40,9 +38,18 @@ var _library: BuildLibrary
 var _campaign: Campaign
 var _menu: Control
 var _battle: BattleScreen
-var _pickers: Dictionary = {}
-## Lo elegido en el combate libre, para conservarlo al volver al menu.
+## Lo elegido en el combate libre ({"enemy", "tier", "difficulty"}, indices),
+## para conservarlo al volver al hangar.
 var _last: Dictionary = {}
+## Arma lo que ensenan el monitor de misiones y la fila de rivales.
+var _brief := MissionBrief.new()
+## Semilla del rival de la arena: el que se ve en el hangar es el que sale.
+var _arena_seed: int = 0
+## Como vuelve el hangar de un combate: {"channel", "how", "beaten"}
+## (WorkshopScreen.open_missions); vacio = el hangar de siempre.
+var _return: Dictionary = {}
+## Telon negro entre el hangar y el combate.
+var _curtain: ColorRect
 ## Combate en curso: {"mode" ("campaign", "arena" o "free"), "items" (el
 ## mech del jugador, formato de builds.json), "name", "enemy", "enemy_tier",
 ## "enemy_level", "difficulty", "seed"} y, en el combate libre, "player_tier"
@@ -72,6 +79,13 @@ func _ready() -> void:
 	_catalog = Catalog.load_file("res://data/catalog.json")
 	_library = BuildLibrary.load_file("res://data/builds.json")
 	_campaign = Campaign.load_file("res://data/campaign.json", _library)
+	_brief.rules = _rules
+	_brief.catalog = _catalog
+	_brief.library = _library
+	_brief.chassis = _chassis
+	_brief.campaign = _campaign
+	_brief.shop = _shop
+	_arena_seed = randi()
 	if _args.has("showcase"):
 		# Muestra de movimientos para revisar animaciones (tools/clip.ps1 -Showcase).
 		var showcase := MovesShowcase.new()
@@ -134,6 +148,9 @@ func _ready() -> void:
 		elif _args["menu-shot"] == "garaje":
 			_live_test().garage_test()
 			return
+		elif _args["menu-shot"] == "misiones":
+			_live_test().missions_test()
+			return
 		elif _args["menu-shot"] in ["tienda", "mejoras", "habilidades"]:
 			# El taller abierto en ese espacio.
 			open_workshop().show_page(_args["menu-shot"])
@@ -150,6 +167,11 @@ func _ready() -> void:
 				await live.shot("giro")
 			get_tree().quit(0)
 			return
+		# --channel=<canal>: el hangar en modo mision, en ese canal (campaign,
+		# arena o free). Se espera a que los rivales terminen de encenderse.
+		if _args.has("channel") and _menu is WorkshopScreen:
+			(_menu as WorkshopScreen).open_missions(_args["channel"])
+			await get_tree().create_timer(1.5).timeout
 		# --turn=<grados>: el robot del hangar, girado.
 		if _args.has("turn") and _menu is WorkshopScreen:
 			(_menu as WorkshopScreen).turn_robot(float(_args["turn"]))
@@ -181,14 +203,22 @@ func _show_menu() -> void:
 		_battle = null
 	if _menu != null:
 		_menu.queue_free()
-	_pickers.clear()
 	Sfx.music("base")
+	var back := _return
+	_return = {}
 	if _profile.has_mech():
 		var hangar := WorkshopScreen.new()
 		hangar.main = self
 		_menu = hangar
 		add_child(hangar)
 		hangar.toast.call_deferred(_last_result)
+		# De vuelta de un combate, el hangar sigue en el modo mision: si
+		# ganaste en la campana, el vencido se apaga y la fila avanza.
+		if not back.is_empty():
+			hangar.open_missions.call_deferred(
+				back["channel"], back.get("how", "enter"), back.get("beaten", {})
+			)
+			_raise_curtain()
 		return
 	# Partida nueva: una placa en el centro con los cuatro robots de ejemplo.
 	var center := CenterContainer.new()
@@ -316,31 +346,85 @@ func _refresh_hangar() -> void:
 		_show_menu()
 
 
-## Lineas de la pantalla de misiones del hangar: la zona, el combate que toca
-## y su rival.
-func mission_lines() -> PackedStringArray:
-	var zone := mini(_profile.zone, _campaign.zone_count() - 1)
-	var lines := PackedStringArray([Txt.t("mission_zone", [zone + 1, _campaign.zone_name(zone)])])
-	if _campaign.is_complete(_profile):
-		lines.append(Txt.t("campaign_done"))
-		return lines
-	var fight := _campaign.fight_at(zone, _profile.fight)
-	if _campaign.is_boss_fight(zone, _profile.fight):
-		lines.append(Txt.t("mission_boss"))
-	else:
-		lines.append(Txt.t("mission_fight", [_profile.fight + 1, _campaign.fights_in(zone)]))
-	lines.append(_library.display_name(fight["enemy"]))
-	return lines
+# --- Misiones --------------------------------------------------------------------
 
 
-## Cajon de misiones: el estado de tu robot, la campana, la arena, el combate
-## libre y tu historial.
-func fill_missions(box: VBoxContainer) -> void:
-	var can_fight := _add_mech_status(box)
-	_add_campaign(box, can_fight)
-	_add_arena(box, can_fight)
-	_add_free_fight(box)
-	_text(box, _record_text(), 13, COLOR_MUTED).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+## Lo que ensenan el monitor de misiones y la fila de rivales en ese canal
+## ("campaign", "arena" o "free"): un estado de MissionBrief con, ademas, si
+## tu robot puede pelear ("can_fight", "problems") y tu historial ("record").
+func mission_state(channel: String = "campaign") -> Dictionary:
+	var state: Dictionary
+	match channel:
+		"arena":
+			var power := Campaign.mean_power(_rules, _profile, _player_items())
+			state = _brief.arena_state(_profile, _arena_seed, power)
+		"free":
+			state = _brief.free_state(_last)
+		_:
+			state = _brief.campaign_state(_profile)
+	var problems := _player_build().validate(_rules)
+	state["can_fight"] = problems.is_empty()
+	state["problems"] = Txt.t("mech_problems", [", ".join(problems)])
+	state["record"] = Txt.t(
+		"mission_record",
+		[_profile.wins, _profile.losses, _profile.boss_wins, _campaign.world_bosses]
+	)
+	return state
+
+
+## Sale a combatir en ese canal. El aviso del jefe (perder acaba la partida)
+## ya lo dio el hangar, que pide pulsarlo dos veces.
+func start_mission(channel: String) -> void:
+	match channel:
+		"arena":
+			_on_arena_pressed()
+		"free":
+			_on_free_pressed()
+		_:
+			var zone := _profile.zone
+			if zone < _campaign.zone_count() and not _campaign.is_complete(_profile):
+				_start_battle(_spec_for("campaign", zone, _campaign.fight_at(zone, _profile.fight)))
+
+
+## Cambia algo de lo elegido en el combate libre ("enemy", "tier" o
+## "difficulty"), un paso adelante o atras, dando la vuelta.
+func change_free_pick(key: String, step: int) -> void:
+	var pick := _brief.free_pick(_last)
+	_last[key] = posmod(int(pick[key]) + step, _brief.free_count(key))
+
+
+## Velocidad de las animaciones que eligio el jugador.
+func animation_speed() -> float:
+	return _settings.speed()
+
+
+## Baja el telon (la pantalla se va a negro) y espera a que termine.
+func drop_curtain(seconds: float) -> void:
+	var curtain := _get_curtain()
+	curtain.mouse_filter = Control.MOUSE_FILTER_STOP
+	var fade := create_tween()
+	fade.tween_property(curtain, "color:a", 1.0, seconds)
+	await fade.finished
+
+
+## Sube el telon sobre la pantalla que acaba de entrar.
+func _raise_curtain(seconds: float = 0.35) -> void:
+	if _curtain == null or _curtain.color.a <= 0.0:
+		return
+	move_child(_curtain, -1)
+	_curtain.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	create_tween().tween_property(_curtain, "color:a", 0.0, seconds)
+
+
+func _get_curtain() -> ColorRect:
+	if _curtain == null:
+		_curtain = ColorRect.new()
+		_curtain.color = Color(0, 0, 0, 0)
+		_curtain.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		_curtain.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(_curtain)
+	move_child(_curtain, -1)
+	return _curtain
 
 
 func _column(parent: Control, width: int) -> VBoxContainer:
@@ -373,8 +457,6 @@ func _button(parent: Control, text: String, height: int, action: Callable) -> Bu
 	return button
 
 
-## Campana: el combate que toca en la zona, o su jefe cuando ya se ganaron
-## todos los normales.
 ## Partida nueva: el jugador elige su primer mech entre los de ejemplo.
 func _add_starters(box: VBoxContainer) -> void:
 	_text(box, Txt.t("starter_title"), 20)
@@ -391,130 +473,11 @@ func _element_name(id: String) -> String:
 	return Txt.ELEMENT_NAMES[ItemDef.Element[element]]
 
 
-## Mech armado del jugador, con su peso y lo que le impide pelear. Devuelve
-## si puede pelear.
-func _add_mech_status(box: VBoxContainer) -> bool:
-	var build := _player_build()
-	var problems := build.validate(_rules)
-	var line := Txt.t("mech_weight", [build.total_weight(), _rules.max_weight])
-	_text(box, "%s · %s" % [_player_name(), line], 16)
-	var next := _progression.next_level_xp(_profile.xp)
-	var level_line := Txt.t("player_level", [_player_level(), _profile.xp])
-	if next >= 0:
-		level_line += Txt.t("player_next", [next])
-	_text(box, level_line, 15, COLOR_MUTED)
-	if not problems.is_empty():
-		_text(box, Txt.t("mech_problems", [", ".join(problems)]), 14, COLOR_WARNING)
-	return problems.is_empty()
-
-
-func _add_campaign(box: VBoxContainer, can_fight: bool) -> void:
-	_text(box, Txt.t("menu_campaign"), 20)
-	var zone := _profile.zone
-	if _campaign.is_complete(_profile):
-		_text(box, Txt.t("campaign_won", [_campaign.world_bosses]), 16, COLOR_CELLS)
-		return
-	if zone >= _campaign.zone_count():
-		_text(box, Txt.t("campaign_pending", [zone + 1, _campaign.world_bosses]), 16, COLOR_MUTED)
-		return
-	var zone_line := Txt.t(
-		"campaign_zone", [zone + 1, _campaign.world_bosses, _campaign.zone_name(zone)]
-	)
-	if _campaign.enemy_armory(zone) > 0:
-		zone_line += Txt.t("campaign_order_armory", [_campaign.enemy_armory(zone)])
-	_text(box, zone_line, 16, COLOR_MUTED)
-	var fight := _campaign.fight_at(zone, _profile.fight)
-	var rival := _library.display_name(fight["enemy"])
-	if _campaign.is_boss_fight(zone, _profile.fight):
-		_text(box, Txt.t("campaign_boss", [rival]))
-		var ability := _boss_ability(fight["enemy"])
-		if ability != "":
-			_text(box, ability, 14, COLOR_MUTED)
-		var trained := _campaign.boss_skills(zone)
-		if trained > 0:
-			_text(box, Txt.t("campaign_boss_skills", [trained]), 14, COLOR_MUTED)
-		_button(box, Txt.t("campaign_boss_fight"), 46, _on_campaign_pressed).disabled = not can_fight
-		if _campaign.on_boss_loss == "new_game":
-			_text(box, Txt.t("campaign_boss_warning"), 14, COLOR_WARNING)
-	else:
-		var count := _campaign.fights_in(zone)
-		_text(box, Txt.t("campaign_next", [_profile.fight + 1, count, rival]))
-		var fight_button := _button(
-			box, Txt.t("campaign_fight", [_profile.fight + 1]), 46, _on_campaign_pressed
-		)
-		fight_button.disabled = not can_fight
-
-
-## Arena: combates sueltos contra un rival al azar, para juntar celdas.
-func _add_arena(box: VBoxContainer, can_fight: bool) -> void:
-	_text(box, Txt.t("menu_arena"), 20)
-	_text(
-		box,
-		(
-			Txt
-			. t(
-				"arena_info",
-				[
-					roundi(_shop.reward("arena_win") * _campaign.reward_mult(_profile.zone)),
-					roundi(_shop.reward("arena_loss") * _campaign.reward_mult(_profile.zone)),
-				]
-			)
-		),
-		16,
-		COLOR_MUTED
-	)
-	_button(box, Txt.t("arena_fight"), 46, _on_arena_pressed).disabled = not can_fight
-
-
-## Combate libre: cualquier rival, en cualquier clase. No da ni quita nada.
-func _add_free_fight(box: VBoxContainer) -> void:
-	_text(box, Txt.t("menu_free"), 20)
-	var enemy_names: Array[String] = []
-	for id in _library.all_ids():
-		enemy_names.append(_library.display_name(id))
-	var difficulty_names: Array[String] = [
-		Txt.t("difficulty_easy"), Txt.t("difficulty_normal"), Txt.t("difficulty_hard")
-	]
-	_add_picker(box, "enemy", Txt.t("menu_enemy"), enemy_names, _last.get("enemy", 1))
-	_add_picker(box, "tier", Txt.t("menu_tier"), Txt.TIER_NAMES, _last.get("tier", 2))
-	_add_picker(
-		box, "difficulty", Txt.t("menu_difficulty"), difficulty_names, _last.get("difficulty", 1)
-	)
-	_button(box, Txt.t("menu_free_fight"), 36, _on_free_pressed)
-
-
 ## Clase de la zona en la que esta el jugador.
 func _zone_tier() -> int:
 	return _campaign.tier_of(mini(_profile.zone, _campaign.zone_count() - 1))
 
 
-func _add_picker(
-	box: VBoxContainer, key: String, title: String, items: Array[String], selected: int
-) -> void:
-	var row := HBoxContainer.new()
-	box.add_child(row)
-	var label := Label.new()
-	label.text = title
-	label.custom_minimum_size = Vector2(130, 0)
-	row.add_child(label)
-	var picker := OptionButton.new()
-	picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	for item in items:
-		picker.add_item(item)
-	picker.select(clampi(selected, 0, items.size() - 1))
-	row.add_child(picker)
-	_pickers[key] = picker
-
-
-## Habilidad especial de un jefe, como texto para el menu; "" si no tiene.
-func _boss_ability(id: String) -> String:
-	var def := _chassis.get_def(_library.chassis_of(id))
-	if def == null or def.ability == "":
-		return ""
-	return Txt.t("campaign_boss_ability", [def.ability, def.ability_text])
-
-
-## Nombre del mech del jugador: el del mech con el que empezo.
 ## Nombre del robot que usa.
 func _player_name() -> String:
 	return robot_name(_profile.active) if _profile.has_mech() else ""
@@ -523,12 +486,6 @@ func _player_name() -> String:
 func _save() -> void:
 	if _persist:
 		_profile.save(SAVE_PATH)
-
-
-func _remember_picks() -> void:
-	for key: String in ["enemy", "tier", "difficulty"]:
-		if _pickers.has(key):
-			_last[key] = (_pickers[key] as OptionButton).selected
 
 
 func _on_starter_picked(id: String) -> void:
@@ -584,45 +541,31 @@ func _armory_cap() -> int:
 	return _campaign.armory_cap(mini(_profile.zone, _campaign.zone_count() - 1), _shop)
 
 
-func _on_campaign_pressed() -> void:
-	var zone := _profile.zone
-	var spec := _spec_for("campaign", zone, _campaign.fight_at(zone, _profile.fight))
-	if not _campaign.is_boss_fight(zone, _profile.fight) or _campaign.on_boss_loss != "new_game":
-		_start_battle(spec)
-		return
-	# Perder contra el jefe borra la partida: se avisa antes de entrar.
-	var dialog := ConfirmationDialog.new()
-	dialog.title = Txt.t("campaign_boss_fight")
-	dialog.dialog_text = Txt.t("campaign_boss_confirm", [_library.display_name(spec["enemy"])])
-	dialog.ok_button_text = Txt.t("campaign_boss_yes")
-	dialog.cancel_button_text = Txt.t("campaign_boss_no")
-	dialog.confirmed.connect(_start_battle.bind(spec))
-	_menu.add_child(dialog)
-	dialog.popup_centered()
-
-
+## Un combate de arena, contra el rival que se ve en el hangar (el de la
+## semilla); despues toca otro.
 func _on_arena_pressed() -> void:
 	var zone := mini(_profile.zone, _campaign.zone_count() - 1)
 	var power := Campaign.mean_power(_rules, _profile, _player_items())
-	var fight := _campaign.arena_fight(zone, _library, randi(), _rules, power)
+	var fight := _campaign.arena_fight(zone, _library, _arena_seed, _rules, power)
+	_arena_seed = randi()
 	_start_battle(_spec_for("arena", zone, fight))
 
 
 func _on_free_pressed() -> void:
-	_remember_picks()
-	var tier: ItemDef.Tier = ItemDef.Tier.values()[_last["tier"]]
+	var pick := _brief.free_pick(_last)
+	var tier: ItemDef.Tier = ItemDef.Tier.values()[pick["tier"]]
 	var level := _rules.tier_max_level[tier]
 	_start_battle(
 		{
 			"mode": "free",
 			"items": _profile.build,
 			"name": _player_name(),
-			"enemy": _library.all_ids()[_last["enemy"]],
+			"enemy": _library.all_ids()[pick["enemy"]],
 			"enemy_tier": tier,
 			"enemy_level": level,
 			"player_tier": tier,
 			"player_level": level,
-			"difficulty": _last["difficulty"],
+			"difficulty": pick["difficulty"],
 			"seed": randi(),
 		}
 	)
@@ -650,7 +593,8 @@ func _spec_for(mode: String, zone: int, fight: Dictionary) -> Dictionary:
 
 func _start_battle(spec: Dictionary) -> void:
 	_spec = spec
-	_remember_picks()
+	# Al volver, el hangar sigue en el canal del que se salio.
+	_return = {"channel": spec["mode"], "how": "enter"}
 	if _menu != null:
 		_menu.queue_free()
 		_menu = null
@@ -715,6 +659,7 @@ func _start_battle(spec: Dictionary) -> void:
 	_battle.start(
 		_rules, player_build, enemy_build, spec["seed"], MENU_DIFFICULTIES[spec["difficulty"]]
 	)
+	_raise_curtain()
 
 
 func _on_rematch() -> void:
@@ -730,7 +675,23 @@ func _on_rematch() -> void:
 func _on_battle_finished(player_won: bool) -> void:
 	var result := _campaign.finish_fight(_profile, _shop, _spec["mode"], player_won, _progression)
 	_save()
+	if _spec["mode"] == "campaign" and player_won:
+		# En el hangar, el vencido se apaga y la fila avanza un sitio.
+		_return["how"] = "advance"
+		_return["beaten"] = (
+			_brief
+			. rival(
+				{
+					"enemy": _spec["enemy"],
+					"tier": _spec["enemy_tier"],
+					"level": _spec["enemy_level"],
+					"difficulty": DIFFICULTY_IDS[_spec["difficulty"]],
+				},
+				_spec["enemy_tier"]
+			)
+		)
 	if result["game_over"]:
+		_return = {}
 		_last_result = Txt.t("result_game_over")
 	elif result["unique"]:
 		_last_result = Txt.t("result_unique", [result["gold"]])

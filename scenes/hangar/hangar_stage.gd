@@ -6,8 +6,12 @@ extends MechStage
 ## (MechStage) anade:
 ## - tus otros robots en tres bahias al fondo, mas pequenos y en penumbra
 ##   (un clic y pasas a usarlo; una bahia vacia es para adquirir uno);
-## - cuatro terminales en la pared (tienda, mejoras, habilidades y misiones)
-##   que se iluminan al pasar y abren su panel;
+## - tres terminales en la pared (tienda, mejoras y habilidades) que se
+##   iluminan al pasar y abren su panel;
+## - el monitor de misiones (MissionBoard): el cuadro de campana. Al pulsarlo
+##   el hangar pasa al modo mision: se queda en penumbra y los rivales se
+##   proyectan en el suelo delante de tu robot (RivalRow); pulsar al primero
+##   es salir a combatir;
 ## - enchufes que brillan en los huecos de arma vacios del robot;
 ## - la plataforma del robot es giratoria: arrastrarla (o la rueda del raton)
 ##   lo gira 360 grados (TurntableMech); doble clic lo devuelve al perfil;
@@ -16,11 +20,17 @@ extends MechStage
 ## Pulsar el hangar vacio cierra el panel abierto.
 
 signal terminal_pressed(terminal: String)
+## El monitor de misiones, con el modo mision apagado.
+signal missions_pressed
+## El primero de la fila de rivales: salir a combatir.
+signal rival_pressed
+signal channel_picked(channel: String)
+signal pick_changed(key: String, step: int)
 signal bay_pressed(index: int)
 signal background_pressed
 signal dropped_on(slot: String, data: Dictionary)
 
-const TERMINALS: Array[String] = ["tienda", "mejoras", "habilidades", "misiones"]
+const TERMINALS: Array[String] = ["tienda", "mejoras", "habilidades"]
 ## Huecos del estante: arriba lo especial, abajo los modulos.
 const RACK_TOP: Array[String] = [
 	"chest", "charge", "teleport", "hook", "assist", "drone", "drone_low"
@@ -42,9 +52,26 @@ const SOCKET_RADIUS := 13.0
 const TURN_PER_PIXEL := TAU / 620.0
 const TURN_PER_NOTCH := TAU / 16.0
 const TURN_SNAP := deg_to_rad(9.0)
+## Modo mision: lo que tarda en bajar la luz y cuanto oscurece el hangar
+## (menos sobre tu robot).
+const MISSION_SECONDS := 0.35
+const MISSION_DIM := 0.7
+const MISSION_DIM_ROBOT := 0.3
+## Salir a combatir: lo que dura y lo que anda tu robot (unidades del dibujo).
+const LAUNCH_SECONDS := 0.85
+const LAUNCH_WALK := 250.0
 
-## Lineas del panel de misiones (zona, combate y rival).
-var mission_lines: PackedStringArray = []
+## Cuanto esta el hangar en modo mision: 0 = el taller, 1 = en penumbra con
+## los rivales delante.
+var mission := 0.0:
+	set(value):
+		mission = value
+		_target_alpha = 1.0 - value
+		_board.open = value
+		for cell: SlotCell in rack.values():
+			cell.modulate = Color.WHITE.lerp(Color(0.3, 0.36, 0.46), value)
+		_dim.queue_redraw()
+		_overlay.queue_redraw()
 ## Robots de las bahias: [{"index", "build", "name"}]; uno con "index" -1 es
 ## una bahia vacia.
 var bays: Array[Dictionary] = []
@@ -70,16 +97,174 @@ var _bounds := Rect2()
 var _turning := false
 var _hover_platform := false
 var _turn_tween: Tween
+var _dim := Node2D.new()
+var _row := RivalRow.new()
+var _board := MissionBoard.new()
+var _mission_on := false
+var _mission_tween: Tween
+## Saliendo a combatir: ya no se toca nada. Y su alarma (0 a 1).
+var _launching := false
+var _alarm := 0.0
+## Centro de la plataforma al salir: se queda en su sitio aunque el robot ande.
+var _launch_center := 0.0
 
 
 func _ready() -> void:
 	super._ready()
 	add_child(_bay_layer)
 	move_child(_bay_layer, 0)
+	# Sobre el fondo y las bahias, la penumbra del modo mision y la fila de
+	# rivales; tu robot queda por delante de todo.
+	add_child(_dim)
+	move_child(_dim, 1)
+	_dim.draw.connect(_draw_dim)
+	add_child(_row)
+	move_child(_row, 2)
+	add_child(_board)
+	_board.opened.connect(func() -> void: missions_pressed.emit())
+	_board.channel_picked.connect(func(channel: String) -> void: channel_picked.emit(channel))
+	_board.pick_changed.connect(func(key: String, step: int) -> void: pick_changed.emit(key, step))
+	_mech.footstep.connect(_on_footstep)
 	_world.add_child(_turntable)
 	_world.move_child(_turntable, _mech.get_index() + 1)
 	_turntable.set_active(false)
 	_font = get_theme_default_font()
+	_row.font = _font
+
+
+# --- Modo mision -------------------------------------------------------------------
+
+
+## Lo que ensena el monitor de misiones (MissionBrief), tambien sin abrir.
+func set_board(state: Dictionary) -> void:
+	_board.state = state
+
+
+## Pasa al modo mision (o cambia lo que ensena): el hangar se queda en
+## penumbra y los rivales de `state` se proyectan delante de tu robot. `how`
+## es como aparecen (RivalRow.show_rivals); `beaten`, el rival recien vencido.
+func show_mission(state: Dictionary, how: String = "enter", beaten: Dictionary = {}) -> void:
+	_board.state = state
+	_row.blocked = "" if bool(state.get("can_fight", true)) else str(state.get("problems", ""))
+	_row.warning = str(state.get("warning", ""))
+	_row.confirm = bool(state.get("confirm", false))
+	var rivals: Array[Dictionary] = []
+	rivals.assign(state.get("rivals", []))
+	_row.show_rivals(rivals, how, beaten)
+	if how == "advance":
+		_board.flash_lamp(int(state.get("fight", 0)) - 1, RivalRow.BEATEN_HOLD)
+	if _mission_on:
+		return
+	_mission_on = true
+	if how == "enter":
+		Sfx.play("ui_abrir")
+	_tween_mission(1.0, 0.0 if how == "none" else MISSION_SECONDS)
+
+
+## Vuelve al taller: la fila se apaga y sube la luz.
+func hide_mission() -> void:
+	if not _mission_on:
+		return
+	_mission_on = false
+	_row.clear()
+	_tween_mission(0.0, MISSION_SECONDS * 0.8)
+
+
+func is_mission_on() -> bool:
+	return _mission_on
+
+
+## El jefe pide pulsar dos veces: la primera lo deja armado. True si con
+## esta pulsacion ya se sale a combatir.
+func confirm_rival() -> bool:
+	if not _row.confirm or _row.armed:
+		return true
+	_row.armed = true
+	return false
+
+
+func _tween_mission(to: float, seconds: float) -> void:
+	if _mission_tween != null:
+		_mission_tween.kill()
+	if seconds <= 0.0:
+		mission = to
+		return
+	_mission_tween = create_tween().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	_mission_tween.tween_property(self, "mission", to, seconds)
+
+
+## Salir a combatir: las proyecciones se cortan, salta la alarma y tu robot
+## echa a andar hacia la salida. Se espera a que termine. `speed` es la
+## velocidad de las animaciones de los ajustes.
+func launch_out(speed: float = 1.0) -> void:
+	_launch_center = _platform_center()
+	_launching = true
+	hover_slot = ""
+	selected_slot = ""
+	_row.hover = false
+	if is_turned():
+		await turn_to(0.0, 0.2)
+	Sfx.play("despliegue")
+	_row.collapse(0.25 / speed)
+	create_tween().tween_property(self, "_alarm", 1.0, 0.2 / speed)
+	_mech.move_to(_mech.position + Vector2(LAUNCH_WALK, 0.0), LAUNCH_SECONDS / speed)
+	await get_tree().create_timer(LAUNCH_SECONDS * 0.6 / speed).timeout
+
+
+func _process(delta: float) -> void:
+	super._process(delta)
+	# La alarma late: su tinte se repinta cada cuadro.
+	if _alarm > 0.0:
+		_dim.queue_redraw()
+
+
+func _on_footstep(_at: Vector2) -> void:
+	if _launching:
+		Sfx.play("paso")
+
+
+## La penumbra del modo mision: mas clara sobre tu robot, que sigue bajo su
+## foco. Al salir a combatir, la alarma lo tine todo de rojo.
+func _draw_dim() -> void:
+	if mission <= 0.001 and _alarm <= 0.001:
+		return
+	var center := _platform_center()
+	var reach := size.x * 0.17
+	var columns: Array[float] = [0.0, center - reach, center, center + reach, size.x]
+	var alphas: Array[float] = [
+		MISSION_DIM, MISSION_DIM * 0.9, MISSION_DIM_ROBOT, MISSION_DIM * 0.85, MISSION_DIM
+	]
+	for i in columns.size() - 1:
+		var from := Color(0.01, 0.02, 0.05, alphas[i] * mission)
+		var to := Color(0.01, 0.02, 0.05, alphas[i + 1] * mission)
+		_dim.draw_polygon(
+			PackedVector2Array(
+				[
+					Vector2(columns[i], 0),
+					Vector2(columns[i + 1], 0),
+					Vector2(columns[i + 1], size.y),
+					Vector2(columns[i], size.y)
+				]
+			),
+			PackedColorArray([from, to, to, from])
+		)
+	if _alarm > 0.0:
+		# La alarma: todo se tine de rojo a golpes y dos balizas barren el techo.
+		var beat := 0.4 + 0.6 * absf(sin(_time * 9.0))
+		_dim.draw_rect(Rect2(Vector2.ZERO, size), Color(0.95, 0.1, 0.05, 0.22 * _alarm * beat))
+		for side: float in [0.2, 0.8]:
+			var lamp := Vector2(size.x * side, size.y * 0.1)
+			var sweep := sin(_time * 7.0 + side * 9.0) * size.x * 0.22
+			var cone := PackedVector2Array(
+				[
+					lamp + Vector2(-6, 0),
+					lamp + Vector2(6, 0),
+					Vector2(lamp.x + sweep + size.x * 0.1, _floor_y),
+					Vector2(lamp.x + sweep - size.x * 0.1, _floor_y)
+				]
+			)
+			_dim.draw_colored_polygon(cone, Color(1.0, 0.2, 0.1, 0.16 * _alarm))
+			_dim.draw_circle(lamp, 7.0, Color(1.0, 0.3, 0.2, 0.9 * _alarm * beat))
 
 
 ## Ensena el robot girado (con sus capas) o el de siempre si esta de perfil.
@@ -152,8 +337,10 @@ func _layout() -> void:
 		"tienda": Rect2(size.x * 0.025, size.y * 0.085, size.x * 0.135, size.y * 0.2),
 		"mejoras": Rect2(size.x * 0.175, size.y * 0.085, size.x * 0.12, size.y * 0.2),
 		"habilidades": Rect2(size.x * 0.585, size.y * 0.085, size.x * 0.12, size.y * 0.2),
-		"misiones": Rect2(size.x * 0.72, size.y * 0.07, size.x * 0.255, size.y * 0.27),
 	}
+	_board.position = Vector2(size.x * 0.72, size.y * 0.07)
+	_board.size = Vector2(size.x * 0.255, size.y * 0.27)
+	_row.layout(size, _floor_y, _world.scale.x, _board.position.y + _board.size.y + 4.0)
 	_bay_rects.clear()
 	for i in BAY_X.size():
 		var feet := Vector2(size.x * BAY_X[i], _bay_floor())
@@ -219,10 +406,9 @@ func _draw() -> void:
 	for terminal in TERMINALS:
 		if _terminal_rects.has(terminal):
 			_draw_terminal(terminal, _terminal_rects[terminal])
-	var center := _world.position.x
-	var legs := _world_rect("legs")
-	if legs.size != Vector2.ZERO:
-		center = _world.position.x + legs.get_center().x * _world.scale.x
+	var board := Rect2(_board.position, _board.size)
+	_draw_cable(Vector2(board.position.x + board.size.x * 0.8, board.end.y))
+	var center := _platform_center()
 	HangarArt.draw_floor(self, rect, _floor_y, Vector2(center, _floor_y - size.y * 0.9))
 	_draw_floor_marks(center)
 	HangarArt.draw_light(self, rect, center, _floor_y, _time)
@@ -233,6 +419,16 @@ func _draw() -> void:
 	_draw_target_stand()
 	_draw_shelf()
 	HangarArt.draw_vignette(self, rect, 1.2)
+
+
+## Centro de la plataforma del robot, en la pantalla: bajo sus piernas.
+func _platform_center() -> float:
+	if _launching:
+		return _launch_center
+	var legs := _world_rect("legs")
+	if legs.size == Vector2.ZERO:
+		return _world.position.x
+	return _world.position.x + legs.get_center().x * _world.scale.x
 
 
 ## Muescas de la plataforma giratoria: dan la vuelta con el robot; la larga
@@ -343,34 +539,7 @@ func _draw_hologram(feet: Vector2, height: float, hover: bool, label: String) ->
 ## Una terminal de pared: marco con relieve, pantalla con lineas de barrido,
 ## su dibujo, su nombre, un led y un brillo al pasar el raton.
 func _draw_terminal(terminal: String, rect: Rect2) -> void:
-	var hover := _hover_terminal == terminal
-	var frame := TechStyle.plate(
-		Color("1c2533"), Color("ffd36b") if hover else Color("4f6380"), 0.0, 8.0
-	)
-	frame.glow = 0.7 if hover else 0.0
-	frame.draw(get_canvas_item(), rect)
-	var screen := rect.grow(-9.0)
-	var steps := 8
-	for i in steps:
-		var t := float(i) / steps
-		var band := Rect2(
-			screen.position.x,
-			screen.position.y + screen.size.y * t,
-			screen.size.x,
-			screen.size.y / steps + 1.0
-		)
-		draw_rect(band, COLOR_SCREEN.lightened(0.08 * (1.0 - t) + (0.06 if hover else 0.0)))
-	var line := 0.0
-	while line < screen.size.y:
-		draw_line(
-			screen.position + Vector2(0, line),
-			screen.position + Vector2(screen.size.x, line),
-			Color(0, 0, 0, 0.18),
-			1.0
-		)
-		line += 3.0
-	var sweep := screen.position.y + fposmod(_time * 40.0, screen.size.y)
-	draw_rect(Rect2(screen.position.x, sweep, screen.size.x, 6.0), Color(COLOR_SCREEN_LINE, 0.08))
+	var screen := HangarArt.draw_screen(self, rect, _hover_terminal == terminal, _time)
 	var art := Rect2(screen.position + Vector2(8, 22), screen.size - Vector2(16, 30))
 	match terminal:
 		"tienda":
@@ -379,8 +548,6 @@ func _draw_terminal(terminal: String, rect: Rect2) -> void:
 			_art_upgrades(art)
 		"habilidades":
 			_art_skills(art)
-		"misiones":
-			_art_missions(art)
 	_text(
 		screen.position + Vector2(8, 15),
 		Txt.t("terminal_" + terminal),
@@ -390,14 +557,12 @@ func _draw_terminal(terminal: String, rect: Rect2) -> void:
 	)
 	var led_at := Vector2(rect.end.x - 14.0, rect.position.y + 6.0)
 	draw_circle(led_at, 2.4, Color("55ff9a", 0.4 + 0.4 * sin(_time * 4.0 + rect.position.x)))
-	# Cable que baja de la terminal a la pared.
-	var cable_x := rect.position.x + rect.size.x * 0.8
-	draw_line(
-		Vector2(cable_x, rect.end.y),
-		Vector2(cable_x + 6.0, rect.end.y + 28.0),
-		Color("0e141c"),
-		3.0
-	)
+	_draw_cable(Vector2(rect.position.x + rect.size.x * 0.8, rect.end.y))
+
+
+## Cable que baja de una pantalla a la pared.
+func _draw_cable(from: Vector2) -> void:
+	draw_line(from, from + Vector2(6.0, 28.0), Color("0e141c"), 3.0)
 
 
 ## Armas colgadas en un expositor.
@@ -446,35 +611,6 @@ func _art_skills(art: Rect2) -> void:
 			draw_circle(p, 5.0, Color(COLOR_SCREEN, 1.0))
 			draw_arc(p, 5.0, 0, TAU, 12, color, 1.5)
 	draw_circle(root, 6.0, Color(COLOR_TEXT, 0.9))
-
-
-## Mapa con la ruta y las lineas de la mision.
-func _art_missions(art: Rect2) -> void:
-	var map := Rect2(art.position, Vector2(art.size.x * 0.42, art.size.y))
-	var color := Color(COLOR_SCREEN_LINE, 0.5)
-	draw_rect(map, Color(COLOR_SCREEN_LINE, 0.06))
-	var points := PackedVector2Array()
-	for i in 6:
-		points.append(
-			(
-				map.position
-				+ Vector2(
-					map.size.x * (0.1 + 0.16 * i), map.size.y * (0.8 - 0.55 * absf(sin(i * 1.3)))
-				)
-			)
-		)
-	draw_polyline(points, color, 1.5, true)
-	for i in points.size():
-		draw_circle(
-			points[i],
-			3.0 if i < points.size() - 1 else 4.5,
-			Color(COLOR_TEXT, 0.9) if i == points.size() - 1 else color
-		)
-	var x := map.end.x + 8.0
-	var y := art.position.y + 12.0
-	for line in mission_lines:
-		_text(Vector2(x, y), line, art.end.x - x, 11, COLOR_TEXT)
-		y += 15.0
 
 
 ## Marcas pintadas en el suelo: el numero del robot y lineas de seguridad.
@@ -536,7 +672,7 @@ func _draw_shelf() -> void:
 
 func _draw_overlay() -> void:
 	super._draw_overlay()
-	if _mech.build == null or is_turned():
+	if _mech.build == null or is_turned() or _mission_on:
 		return
 	# Enchufes de los huecos de arma vacios: un anillo que late.
 	for slot: String in ["side0", "side1", "side2", "side3", "top0", "top1"]:
@@ -647,6 +783,8 @@ func _grabs_platform(at: Vector2) -> bool:
 
 
 func _gui_input(event: InputEvent) -> void:
+	if _launching:
+		return
 	var button := event as InputEventMouseButton
 	if button != null and _turn_input(button):
 		return
@@ -656,8 +794,10 @@ func _gui_input(event: InputEvent) -> void:
 		return
 	var motion := event as InputEventMouseMotion
 	if motion != null:
-		var terminal := _terminal_at(motion.position)
-		var bay := _bay_at(motion.position) if terminal == "" else -2
+		var on_rival := _mission_on and _row.front_has_point(motion.position)
+		_row.hover = on_rival
+		var terminal := "" if on_rival else _terminal_at(motion.position)
+		var bay := _bay_at(motion.position) if terminal == "" and not on_rival else -2
 		if terminal != _hover_terminal or bay != _hover_bay:
 			_hover_terminal = terminal
 			_hover_bay = bay
@@ -672,7 +812,7 @@ func _gui_input(event: InputEvent) -> void:
 			if platform
 			else (
 				Control.CURSOR_POINTING_HAND
-				if terminal != "" or bay >= 0 or slot_at(motion.position) != ""
+				if terminal != "" or bay >= 0 or on_rival or slot_at(motion.position) != ""
 				else Control.CURSOR_ARROW
 			)
 		)
@@ -680,6 +820,9 @@ func _gui_input(event: InputEvent) -> void:
 		return
 	var click := event as InputEventMouseButton
 	if click != null and click.pressed and click.button_index == MOUSE_BUTTON_LEFT:
+		if _mission_on and _row.front_has_point(click.position):
+			rival_pressed.emit()
+			return
 		var terminal := _terminal_at(click.position)
 		if terminal != "":
 			terminal_pressed.emit(terminal)

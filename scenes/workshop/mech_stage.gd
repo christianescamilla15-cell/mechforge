@@ -40,6 +40,8 @@ var _flash_slot: String = ""
 var _flash: float = 0.0
 var _flash_color := Color.WHITE
 var _target_hit: float = 0.0
+## Cuanto se ve la diana (el hangar la apaga en el modo mision).
+var _target_alpha: float = 1.0
 var _floor_y: float = 0.0
 ## Ancho de la plataforma bajo el mech, en pixeles del escenario.
 var _platform_width: float = 0.0
@@ -179,7 +181,8 @@ func _draw_overlay() -> void:
 	var target := _target_point()
 	for i in 0 if preview else 3:
 		var radius := 34.0 - i * 11.0
-		_overlay.draw_arc(target, radius, 0, TAU, 32, COLOR_TARGET.darkened(0.2 * i), 3.0)
+		var ring := Color(COLOR_TARGET.darkened(0.2 * i), _target_alpha)
+		_overlay.draw_arc(target, radius, 0, TAU, 32, ring, 3.0)
 	if _target_hit > 0.0:
 		_overlay.draw_circle(
 			target, 40.0 * (1.5 - _target_hit), Color(1, 0.9, 0.7, _target_hit * 0.4)

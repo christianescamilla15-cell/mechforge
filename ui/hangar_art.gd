@@ -16,6 +16,10 @@ const LAMP := Color("ffcf7a")
 const TRIM := Color("5a7da6")
 const HAZARD_A := Color("d9a520")
 const HAZARD_B := Color("1a1a1a")
+## Cristal de las pantallas de pared y el color de lo que ensenan.
+const SCREEN := Color("0b2a33")
+const SCREEN_LINE := Color("3fd0e6")
+const SCREEN_TEXT := Color("bfefff")
 
 
 ## Pared del fondo: degradado y placas atornilladas, con una franja de
@@ -234,6 +238,40 @@ static func draw_platform(canvas: CanvasItem, feet: Vector2, width: float) -> vo
 	_ellipse_line(canvas, feet, rx * 0.45, ry * 0.45, Color(1, 1, 1, 0.06), 1.0)
 	# Sombra del mech.
 	_ellipse(canvas, feet + Vector2(0, 1), rx * 0.62, ry * 0.55, Color(0, 0, 0, 0.5))
+
+
+## Una pantalla de pared: marco con relieve y, dentro, el cristal con su
+## degradado, sus lineas de barrido y una franja de luz que baja (`time`).
+## Devuelve el rectangulo del cristal, para dibujar encima.
+static func draw_screen(canvas: CanvasItem, rect: Rect2, hover: bool, time: float) -> Rect2:
+	var frame := TechStyle.plate(
+		Color("1c2533"), Color("ffd36b") if hover else Color("4f6380"), 0.0, 8.0
+	)
+	frame.glow = 0.7 if hover else 0.0
+	frame.draw(canvas.get_canvas_item(), rect)
+	var screen := rect.grow(-9.0)
+	var steps := 8
+	for i in steps:
+		var t := float(i) / steps
+		var band := Rect2(
+			screen.position.x,
+			screen.position.y + screen.size.y * t,
+			screen.size.x,
+			screen.size.y / steps + 1.0
+		)
+		canvas.draw_rect(band, SCREEN.lightened(0.08 * (1.0 - t) + (0.06 if hover else 0.0)))
+	var line := 0.0
+	while line < screen.size.y:
+		canvas.draw_line(
+			screen.position + Vector2(0, line),
+			screen.position + Vector2(screen.size.x, line),
+			Color(0, 0, 0, 0.18),
+			1.0
+		)
+		line += 3.0
+	var sweep := screen.position.y + fposmod(time * 40.0, screen.size.y - 6.0)
+	canvas.draw_rect(Rect2(screen.position.x, sweep, screen.size.x, 6.0), Color(SCREEN_LINE, 0.08))
+	return screen
 
 
 ## Oscurece los bordes, para que la vista se hunda hacia el centro.
