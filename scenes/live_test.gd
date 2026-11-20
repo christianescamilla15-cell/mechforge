@@ -185,9 +185,10 @@ func _autoplay_pause_test() -> void:
 
 
 ## Prueba en vivo del garaje (`--menu-shot=garaje`, con `--real-profile`
-## sobre la partida de verdad, sin guardar nada): la base con tus robots,
-## adquirir un diseno, un armazon vacio (abre el taller), volver, cambiar de
-## robot y desmontar uno.
+## sobre la partida de verdad, sin guardar nada), con el raton: pulsar una
+## bahia vacia (proyecta lo que se puede adquirir), pasar con su flecha a un
+## diseno y adquirirlo con dos pulsaciones; en otra bahia, el armazon vacio
+## (sale el tablero con los torsos); cambiar de robot pulsando su bahia.
 func garage_test() -> void:
 	var profile := main._profile
 	print(
@@ -196,13 +197,39 @@ func garage_test() -> void:
 			% [profile.mechs.size(), profile.active, profile.gold]
 		)
 	)
+	var hangar := main._menu as WorkshopScreen
+	var stage := hangar._stage
+	var projector := stage.projector
 	await get_tree().create_timer(0.8).timeout
 	await shot("base")
-	main.open_acquire()
-	await get_tree().create_timer(0.6).timeout
+	await _click(_empty_bay(stage))
+	await get_tree().create_timer(0.5).timeout
+	print(
+		(
+			"GARAJE bahia vacia: abierto='%s' ofertas=%d"
+			% [hangar.current_page(), projector._offers.size()]
+		)
+	)
 	await shot("adquirir")
-	var design: String = main._library.starter_ids()[2]
-	main.acquire_design(design)
+	# Su flecha pasa del armazon vacio a los disenos.
+	for i in 3:
+		await _click(projector.global_position + projector.zone_rect("next").get_center())
+		await get_tree().create_timer(0.2).timeout
+	var design := str(projector.current()["id"])
+	var robot := projector.global_position + projector.zone_rect("robot").get_center()
+	await _move(robot)
+	await get_tree().create_timer(0.3).timeout
+	await shot("adquirir_diseno")
+	await _click(robot)
+	await get_tree().create_timer(0.3).timeout
+	print(
+		(
+			"GARAJE primera pulsacion en %s: armado=%s robots=%d"
+			% [design, projector.is_armed(), profile.mechs.size()]
+		)
+	)
+	await shot("adquirir_armado")
+	await _click(robot)
 	await get_tree().create_timer(0.8).timeout
 	print(
 		(
@@ -211,26 +238,51 @@ func garage_test() -> void:
 		)
 	)
 	await shot("base_dos_robots")
-	main.acquire_frame()
+	# En otra bahia vacia, lo primero que proyecta: el armazon vacio.
+	await _click(_empty_bay(stage))
+	await get_tree().create_timer(0.5).timeout
+	robot = projector.global_position + projector.zone_rect("robot").get_center()
+	await _click(robot)
+	await get_tree().create_timer(0.2).timeout
+	await shot("adquirir_armazon")
+	await _click(robot)
 	await get_tree().create_timer(0.8).timeout
 	print(
 		(
-			"GARAJE armazon: robots=%d activo=%d vacio=%s"
-			% [profile.mechs.size(), profile.active, profile.build.is_empty()]
+			"GARAJE armazon: robots=%d activo=%d vacio=%s abierto='%s'"
+			% [
+				profile.mechs.size(),
+				profile.active,
+				profile.build.is_empty(),
+				hangar.current_page()
+			]
 		)
 	)
 	await shot("taller_armazon")
-	(main._menu as WorkshopScreen).close_panels()
+	hangar.close_panels()
 	await get_tree().create_timer(0.8).timeout
 	await shot("base_tres_robots")
-	main.use_robot(0)
+	# Un clic en la bahia de otro robot: pasas a usarlo.
+	await _click(stage._bay_rects[0].get_center())
 	await get_tree().create_timer(0.8).timeout
-	print("GARAJE usa el 0: activo=%d" % profile.active)
-	await shot("base_usa_primero")
+	print("GARAJE clic en la primera bahia: activo=%d" % profile.active)
+	await shot("base_cambia_de_robot")
+	# Pulsar el hangar vacio apaga el proyector.
 	main.open_acquire()
-	await get_tree().create_timer(0.5).timeout
-	await shot("adquirir_otra_vez")
+	await get_tree().create_timer(0.4).timeout
+	var was := hangar.current_page()
+	await _click(Vector2(stage.size.x * 0.33, stage.size.y * 0.4))
+	await get_tree().create_timer(0.4).timeout
+	print("GARAJE proyector: abierto='%s' y tras pulsar fuera '%s'" % [was, hangar.current_page()])
 	get_tree().quit(0)
+
+
+## Centro de la primera bahia vacia del hangar.
+func _empty_bay(stage: HangarStage) -> Vector2:
+	for i in stage.bays.size():
+		if int(stage.bays[i]["index"]) < 0:
+			return stage._bay_rects[i].get_center()
+	return Vector2.ZERO
 
 
 ## Prueba en vivo de la armeria (`--menu-shot=armeria`, con `--real-profile`

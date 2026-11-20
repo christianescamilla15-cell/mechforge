@@ -443,6 +443,122 @@ func test_mientras_crece_la_pantalla_no_se_pulsa() -> void:
 	assert_false(console.visible)
 
 
+# --- Adquirir un robot en su bahia (BayProjector) --------------------------------------
+
+
+func _projector(state: Dictionary) -> BayProjector:
+	var projector := BayProjector.new()
+	add_child_autofree(projector)
+	projector.open(state, Rect2(100, 300, 180, 224))
+	projector.bought.connect(func(id: String) -> void: _bought.append(id))
+	return projector
+
+
+func test_una_bahia_vacia_ofrece_el_armazon_y_los_disenos() -> void:
+	var profile := _profile(100000)
+	var offers: Array = _brief.offers(profile)["offers"]
+	assert_eq(offers.size(), 1 + _library.starter_ids().size())
+	assert_eq(offers[0]["id"], "", "lo primero, el armazon vacio")
+	assert_eq(int(offers[0]["price"]), 0)
+	assert_null(offers[0]["build"])
+	var buyable := 0
+	for i in range(1, offers.size()):
+		assert_true(str(offers[i]["id"]) in _library.starter_ids())
+		assert_not_null(offers[i]["build"], "los disenos se ven armados")
+		if str(offers[i]["id"]) == "calor_horno":
+			assert_eq(int(offers[i]["price"]), 0, "el que ya tienes no cuesta piezas")
+		else:
+			assert_gt(int(offers[i]["price"]), 0)
+		# Con celdas de sobra solo lo para llevar piezas que la zona no vende.
+		assert_true(str(offers[i]["reason"]) in ["", Txt.t("acquire_why_zone")])
+		if str(offers[i]["reason"]) == "":
+			buyable += 1
+	assert_gt(buyable, 1, "hay disenos que se pueden adquirir")
+
+
+func test_sin_celdas_o_con_el_garaje_lleno_la_bahia_lo_dice() -> void:
+	var profile := _profile(0)
+	var poor := 0
+	for offer: Dictionary in _brief.offers(profile)["offers"]:
+		if int(offer["price"]) > 0:
+			assert_ne(str(offer["reason"]), "", "sin celdas no se adquiere")
+			if str(offer["reason"]) == Txt.t("acquire_why_cells"):
+				poor += 1
+	assert_gt(poor, 0)
+	profile.gold = 100000
+	while profile.mechs.size() < _brief.rules.max_mechs:
+		profile.mechs.append(profile.mechs[0].duplicate(true))
+	for offer: Dictionary in _brief.offers(profile)["offers"]:
+		assert_eq(str(offer["reason"]), Txt.t("acquire_why_full"))
+
+
+func test_la_bahia_pasa_de_una_oferta_a_otra_y_da_la_vuelta() -> void:
+	var state := _brief.offers(_profile(100000))
+	var projector := _projector(state)
+	var count := (state["offers"] as Array).size()
+	assert_eq(projector.current()["id"], "")
+	projector._gui_input(_click(projector.zone_rect("next").get_center()))
+	assert_eq(projector.current()["id"], state["offers"][1]["id"])
+	projector._gui_input(_click(projector.zone_rect("prev").get_center()))
+	projector._gui_input(_click(projector.zone_rect("prev").get_center()))
+	assert_eq(projector.current()["id"], state["offers"][count - 1]["id"], "da la vuelta")
+	projector._gui_input(_click(Vector2(60, 60), MOUSE_BUTTON_WHEEL_DOWN))
+	assert_eq(projector.current()["id"], "")
+
+
+func test_un_robot_se_adquiere_con_dos_pulsaciones() -> void:
+	var projector := _projector(_brief.offers(_profile(100000)))
+	projector.step(1)
+	var id := str(projector.current()["id"])
+	var at := projector.zone_rect("robot").get_center()
+	projector._gui_input(_click(at))
+	assert_true(projector.is_armed())
+	assert_eq(_bought.size(), 0, "la primera solo lo deja armado")
+	# Pasar a otra oferta lo desarma.
+	projector.step(1)
+	assert_false(projector.is_armed())
+	projector.step(-1)
+	projector._gui_input(_click(at))
+	projector._gui_input(_click(at))
+	assert_eq(_bought, [id] as Array[String])
+
+
+func test_lo_que_no_se_puede_adquirir_no_se_arma() -> void:
+	var projector := _projector(_brief.offers(_profile(0)))
+	while int(projector.current()["price"]) <= 0:
+		projector.step(1)
+	var at := projector.zone_rect("robot").get_center()
+	projector._gui_input(_click(at))
+	projector._gui_input(_click(at))
+	assert_false(projector.is_armed())
+	assert_eq(_bought.size(), 0)
+
+
+func test_el_proyector_se_enciende_en_la_bahia_vacia_que_se_pulso() -> void:
+	var stage := _stage()
+	var none: MechBuild = null
+	var bays: Array[Dictionary] = [
+		{"index": 1, "build": stage._mech.build, "name": "Otro"},
+		{"index": -1, "build": none, "name": ""},
+		{"index": -1, "build": none, "name": ""},
+	]
+	stage.set_bays(bays)
+	assert_false(stage.projector.is_open())
+	stage._gui_input(_click(stage._bay_rects[2].get_center()))
+	stage.show_offers(_brief.offers(_profile(100000)))
+	assert_true(stage.projector.is_open())
+	assert_true(
+		stage.projector.get_rect().intersects(stage._bay_rects[2]), "sobre la bahia pulsada"
+	)
+	assert_false(stage.projector.get_rect().intersects(stage._bay_rects[0]))
+	stage.hide_offers()
+	assert_false(stage.projector.is_open())
+	# Sin haber pulsado una vacia, se enciende en la primera vacia.
+	stage._pressed_bay = 0
+	stage.show_offers(_brief.offers(_profile(100000)))
+	assert_true(stage.projector.get_rect().intersects(stage._bay_rects[1]))
+
+
 # --- En el hangar (HangarStage) ---------------------------------------------------------
 
 

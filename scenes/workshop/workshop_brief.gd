@@ -339,6 +339,64 @@ func robot(profile: PlayerProfile, robot_name: String) -> Dictionary:
 	}
 
 
+# --- Adquirir un robot ----------------------------------------------------------------
+
+
+## Lo que puede fabricar una bahia vacia (BayProjector.state): un armazon
+## vacio, gratis, que se arma con tus piezas, y los disenos ya armados, por
+## los que se pagan solo las piezas que aun no tienes, al precio de tu zona.
+## "reason" dice por que no se puede ("" = se puede).
+func offers(profile: PlayerProfile) -> Dictionary:
+	var tier := zone_tier(profile)
+	var out: Array[Dictionary] = [
+		{
+			"id": "",
+			"name": Txt.t("acquire_frame"),
+			"hint": Txt.t("acquire_frame_short"),
+			"price": 0,
+			"reason": _offer_reason(profile.why_cant_add_mech(rules)),
+			"build": null,
+		}
+	]
+	for design in library.starter_ids():
+		var missing := Garage.missing_parts(profile, library, design)
+		var why := garage.why_cant_buy_design(
+			profile, library, catalog, rules, workshop, design, tier
+		)
+		var element := library.element_of(design)
+		var kind := (
+			Txt.t("element_hybrid")
+			if element == "HYBRID"
+			else Txt.ELEMENT_NAMES[ItemDef.Element[element]]
+		)
+		(
+			out
+			. append(
+				{
+					"id": design,
+					"name": library.display_name(design),
+					"hint": Txt.t("acquire_design_hint", [kind, missing.size()]),
+					"price":
+					garage.design_price(profile, library, catalog, rules, workshop, design, tier),
+					"reason": _offer_reason(why),
+					"build": build_of(profile, library.specs[design]["items"]),
+				}
+			)
+		)
+	return {"offers": out}
+
+
+## Por que no se puede adquirir, en corto ("" = se puede).
+func _offer_reason(why: String) -> String:
+	if why == "":
+		return ""
+	if why.begins_with("ya tienes"):
+		return Txt.t("acquire_why_full")
+	if why == "faltan celdas":
+		return Txt.t("acquire_why_cells")
+	return Txt.t("acquire_why_zone")
+
+
 # --- El diagnostico -----------------------------------------------------------------
 
 

@@ -81,6 +81,8 @@ var info: Dictionary = {}
 ## ensenan y oye lo que se pulsa en ellos.
 var parts_rack := PartsRack.new()
 var console := WallConsole.new()
+## El proyector de la bahia vacia que se pulso: lo que se puede adquirir.
+var projector := BayProjector.new()
 ## El hueco elegido lleva un arma que se puede probar: la diana se enciende.
 var can_test := false:
 	set(value):
@@ -116,6 +118,8 @@ var _terminal_rects: Dictionary[String, Rect2] = {}
 var _bay_rects: Array[Rect2] = []
 var _hover_terminal: String = ""
 var _hover_bay: int = -2
+## Ultima bahia pulsada (su sitio en la fila): ahi se enciende el proyector.
+var _pressed_bay: int = -1
 var _hover_sign := false
 var _hover_target := false
 var _font: Font
@@ -159,6 +163,7 @@ func _ready() -> void:
 	_board.opened.connect(func() -> void: missions_pressed.emit())
 	_board.channel_picked.connect(func(channel: String) -> void: channel_picked.emit(channel))
 	_board.pick_changed.connect(func(key: String, step: int) -> void: pick_changed.emit(key, step))
+	add_child(projector)
 	add_child(parts_rack)
 	add_child(console)
 	mouse_exited.connect(_clear_hover)
@@ -307,6 +312,23 @@ func console_rects(kind: String) -> Array[Rect2]:
 	var plate := _sign_rect()
 	var wide := maxf(plate.size.x, 300.0)
 	return [plate, Rect2(plate.get_center().x - wide * 0.5, plate.end.y + 6.0, wide, 170.0)]
+
+
+## Enciende el proyector de la bahia vacia que se pulso (o de la primera
+## vacia) con lo que se puede adquirir.
+func show_offers(state: Dictionary) -> void:
+	if _pressed_bay < 0 or _pressed_bay >= bays.size() or int(bays[_pressed_bay]["index"]) >= 0:
+		_pressed_bay = -1
+		for i in bays.size():
+			if _pressed_bay < 0 and int(bays[i]["index"]) < 0:
+				_pressed_bay = i
+	if _pressed_bay < 0:
+		return
+	projector.open(state, _bay_rects[_pressed_bay])
+
+
+func hide_offers() -> void:
+	projector.close()
 
 
 ## Lo que ocupa la diana en la pantalla.
@@ -592,7 +614,7 @@ func _draw_bays_live() -> void:
 		if hover:
 			draw_rect(Rect2(x - w, top, w * 2.0, y - top), Color(COLOR_SOCKET, 0.06))
 			draw_rect(Rect2(x - w, top, w * 2.0, y - top), Color(COLOR_SOCKET, 0.5), false, 1.5)
-		if not full:
+		if not full and not (projector.visible and i == _pressed_bay):
 			# Vacia: para adquirir; con un armazon vacio: su nombre.
 			var label := (
 				str(bays[i]["name"]) if mine and i < bays.size() else Txt.t("robots_acquire")
@@ -876,6 +898,7 @@ func _gui_input(event: InputEvent) -> void:
 			return
 		var bay := _bay_at(click.position)
 		if bay >= 0 and bay < bays.size():
+			_pressed_bay = bay
 			bay_pressed.emit(int(bays[bay]["index"]))
 			return
 		if slot_at(click.position) == "":

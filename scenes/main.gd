@@ -290,10 +290,10 @@ func use_robot(index: int) -> void:
 	_refresh_hangar()
 
 
+## Adquirir un robot: una bahia vacia del hangar proyecta lo que hay.
 func open_acquire() -> void:
-	var panel := AcquirePanel.new()
-	panel.main = self
-	add_child(panel)
+	if _menu is WorkshopScreen:
+		(_menu as WorkshopScreen).open_offers()
 
 
 ## Un armazon vacio, gratis: se abre el taller para armarlo.
@@ -303,8 +303,7 @@ func acquire_frame() -> void:
 		return
 	Sfx.play("ui_comprar")
 	_save()
-	_close_acquire()
-	# Un armazon vacio se arma ya: el cajon abre el torso.
+	# Un armazon vacio se arma ya: el tablero sale con los torsos.
 	_refresh_hangar()
 	if _menu is WorkshopScreen:
 		(_menu as WorkshopScreen).pick("torso")
@@ -317,14 +316,7 @@ func acquire_design(design: String) -> void:
 		return
 	Sfx.play("ui_comprar")
 	_save()
-	_close_acquire()
 	_refresh_hangar()
-
-
-func _close_acquire() -> void:
-	for child in get_children():
-		if child is AcquirePanel:
-			child.queue_free()
 
 
 ## Desmontar un robot pide confirmacion; sus piezas se quedan.

@@ -11,7 +11,8 @@ extends Control
 ## - el banco de equipo bajo el robot: las cunas de pecho, especiales,
 ##   asistente y modulos, que se eligen igual;
 ## - tus otros robots en las bahias del fondo: un clic y pasas a usarlo; una
-##   bahia vacia es para adquirir otro;
+##   bahia vacia proyecta lo que puede fabricar (BayProjector): un armazon
+##   vacio o un diseno ya armado, que se adquiere pulsandolo dos veces;
 ## - las pantallas de la pared: la de la tienda saca el tablero con la
 ##   tienda delante; las de mejoras y habilidades se usan ahi mismo, de
 ##   cerca (WallConsole); el rotulo de tu robot ensena su ficha;
@@ -40,6 +41,8 @@ var _arming := false
 var _store_first := false
 ## Pantalla que esta de cerca: "mejoras", "habilidades", "robot" o "".
 var _console: String = ""
+## Una bahia vacia esta proyectando lo que se puede adquirir.
+var _offering := false
 ## Canal del modo mision ("campaign", "arena" o "free"); "" = apagado.
 var _channel: String = ""
 var _launching := false
@@ -74,6 +77,7 @@ func _ready() -> void:
 	console.upgrade_picked.connect(buy_upgrade)
 	console.skill_picked.connect(learn)
 	console.remove_pressed.connect(func() -> void: main.ask_remove_robot(main._profile.active))
+	_stage.projector.bought.connect(_on_offer_bought)
 	_build_bench()
 	_build_hud()
 	refresh()
@@ -186,6 +190,10 @@ func refresh() -> void:
 		_stage.show_console(_console_state())
 	else:
 		_stage.hide_console()
+	if _offering:
+		_stage.projector.state = brief.offers(profile)
+	else:
+		_stage.hide_offers()
 
 
 ## Lo que ensenan los rotulos de la escena (tu robot, tus celdas, tu nivel
@@ -281,6 +289,7 @@ func open_parts(store_first: bool = false) -> void:
 		return
 	close_missions()
 	_console = ""
+	_offering = false
 	if not _arming:
 		Sfx.play("ui_pagina")
 	_arming = true
@@ -296,29 +305,57 @@ func open_console(kind: String) -> void:
 		return
 	close_missions()
 	_arming = false
+	_offering = false
 	_console = kind
 	_hover_id = ""
 	_hover_slot = ""
 	refresh()
 
 
-## Recoge el tablero de piezas y la pantalla que este de cerca.
+## Una bahia vacia proyecta lo que se puede adquirir: un armazon vacio o un
+## diseno ya armado.
+func open_offers() -> void:
+	if _launching:
+		return
+	close_missions()
+	_arming = false
+	_console = ""
+	_offering = true
+	refresh()
+	_stage.show_offers(main._bench.offers(main._profile))
+	_offering = _stage.projector.is_open()
+
+
+## Se adquirio lo que proyectaba la bahia: "" es el armazon vacio.
+func _on_offer_bought(id: String) -> void:
+	_offering = false
+	if id == "":
+		main.acquire_frame()
+	else:
+		main.acquire_design(id)
+
+
+## Recoge el tablero de piezas, la pantalla que este de cerca y el proyector
+## de la bahia.
 func close_panels() -> void:
 	if current_page() == "":
 		return
 	_arming = false
 	_console = ""
+	_offering = false
 	_hover_id = ""
 	_hover_slot = ""
 	Sfx.play("ui_cerrar")
 	refresh()
 
 
-## Lo que esta abierto: "pieza", "tienda", "mejoras", "habilidades", "robot"
-## o "".
+## Lo que esta abierto: "pieza", "tienda", "mejoras", "habilidades", "robot",
+## "adquirir" o "".
 func current_page() -> String:
 	if _console != "":
 		return _console
+	if _offering:
+		return "adquirir"
 	if _arming:
 		return "tienda" if _store_first else "pieza"
 	return ""
@@ -407,7 +444,7 @@ func _on_part_picked(slot: String) -> void:
 
 func _on_bay_pressed(index: int) -> void:
 	if index < 0:
-		main.open_acquire()
+		open_offers()
 	else:
 		main.use_robot(index)
 
