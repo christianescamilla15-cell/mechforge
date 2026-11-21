@@ -117,6 +117,15 @@ func test_con_la_campana_completa_no_hay_fila() -> void:
 	assert_gt(state["fight"], state["fights"], "todas las luces encendidas, jefe incluido")
 
 
+func test_un_avance_mas_alla_del_jefe_no_rompe_el_monitor() -> void:
+	# Un estado que el juego no produce (el jefe vencido abre la zona
+	# siguiente), pero el monitor no debe fallar si le llega.
+	var past := _campaign.fights_in(0) + 1
+	var state := _brief.campaign_state(_profile(past))
+	assert_eq((state["rivals"] as Array).size(), 0)
+	assert_false(bool(state["confirm"]))
+
+
 func test_el_rival_de_la_arena_que_se_ve_es_el_que_sale() -> void:
 	var profile := _profile(2)
 	var power := ItemScaling.power(_rules, ItemDef.Tier.COMMON, 2)

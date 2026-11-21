@@ -746,7 +746,12 @@ func missions_test() -> void:
 	await get_tree().create_timer(1.0).timeout
 	# Como al volver de ganar: el vencido se apaga y la fila avanza.
 	var beaten: Dictionary = main.mission_state("campaign")["rivals"][0]
-	main._profile.fight += 1
+	if bool(beaten.get("boss", false)):
+		# Vencer al jefe abre la zona siguiente, que empieza por su primer combate.
+		main._profile.zone += 1
+		main._profile.fight = 0
+	else:
+		main._profile.fight += 1
 	hangar.open_missions("campaign", "advance", beaten)
 	for i in 6:
 		await get_tree().create_timer(0.24).timeout

@@ -58,6 +58,10 @@ func campaign_state(profile: PlayerProfile) -> Dictionary:
 		rivals.append(rival(entry, campaign.tier_of(zone)))
 	state["rivals"] = rivals
 	var mult := campaign.reward_mult(zone)
+	if rivals.is_empty():
+		# Un avance que no existe (mas alla del jefe): sin rival que ensenar.
+		state["lines"] = lines
+		return state
 	if campaign.is_boss_fight(zone, profile.fight):
 		lines.append(Txt.t("mission_boss"))
 		var ability := boss_ability(str(rivals[0]["id"]))
