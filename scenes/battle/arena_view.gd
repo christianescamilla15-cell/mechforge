@@ -249,9 +249,14 @@ func strike(
 	actor: int, target: int, fx: String, color: Color, seconds: float, slot: String = ""
 ) -> void:
 	mechs[actor].lunge(seconds)
-	mechs[actor].swing(seconds, slot)
+	var fall := mechs[actor].swing(seconds, slot)
 	if fx == "" or ShotFx.shot(fx)["path"] != "melee":
 		return
+	# El silbido de la hoja empieza con el tajo; el corte y su golpe llegan
+	# cuando la hoja cae, no antes.
+	Sfx.shot_fired(fx)
+	if fall > 0.0:
+		await get_tree().create_timer(fall).timeout
 	var from := mechs[actor].hit_point()
 	_shots.play(fx, from, mechs[target].hit_point(), color, seconds)
 

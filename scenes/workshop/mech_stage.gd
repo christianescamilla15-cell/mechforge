@@ -155,6 +155,8 @@ func _test_strike(slot: String, fx: String, color: Color) -> void:
 		await _mech.move_to(near, STRIKE_JUMP).finished
 	_mech.lunge(STRIKE_SWING)
 	var fall := _mech.swing(STRIKE_SWING, slot)
+	if ShotFx.is_known(fx):
+		Sfx.shot_fired(fx)
 	await get_tree().create_timer(fall).timeout
 	if ShotFx.is_known(fx):
 		_shots.play(fx, _mech.muzzle_point(false, slot), to, color, 0.42)

@@ -1,6 +1,6 @@
 # Créditos del sonido
 
-Generado por `tools/audio/curate.py`. Todo es **CC0** (dominio público, https://creativecommons.org/publicdomain/zero/1.0/) o se sintetizó en ese script. Los créditos no son obligatorios con CC0, pero se dejan por agradecimiento y para saber de dónde sale cada archivo.
+Generado por `tools/audio/curate.py`. Todo es **CC0** (dominio público, https://creativecommons.org/publicdomain/zero/1.0/) o se sintetizó aquí (`tools/audio/design.py`). Los créditos no son obligatorios con CC0, pero se dejan por agradecimiento y para saber de dónde sale cada archivo.
 
 | Archivo | Origen | Autor | Página |
 |---|---|---|---|
@@ -14,7 +14,6 @@ Generado por `tools/audio/curate.py`. Todo es **CC0** (dominio público, https:/
 | `ui/subir_nivel.ogg` | 63 Digital sound effects · powerUp7.mp3 | Kenney (kenney.nl) | https://opengameart.org/node/12493 |
 | `ui/transformar.ogg` | 63 Digital sound effects · powerUp3.mp3 | Kenney (kenney.nl) | https://opengameart.org/node/12493 |
 | `ui/habilidad.ogg` | 63 Digital sound effects · zapThreeToneUp.mp3 | Kenney (kenney.nl) | https://opengameart.org/node/12493 |
-| `armas/escopeta.ogg` | Sci-fi Sounds · explosionCrunch_000.ogg | Kenney (kenney.nl) | https://opengameart.org/content/sci-fi-sounds |
 | `armas/canon_1.ogg` | Sci-fi Sounds · explosionCrunch_002.ogg | Kenney (kenney.nl) | https://opengameart.org/content/sci-fi-sounds |
 | `armas/canon_pesado.ogg` | Sci-fi Sounds · lowFrequency_explosion_001.ogg | Kenney (kenney.nl) | https://opengameart.org/content/sci-fi-sounds |
 | `armas/lanzador.ogg` | Sci-fi Sounds · impactMetal_001.ogg | Kenney (kenney.nl) | https://opengameart.org/content/sci-fi-sounds |
@@ -38,12 +37,8 @@ Generado por `tools/audio/curate.py`. Todo es **CC0** (dominio público, https:/
 | `armas/sifon.ogg` | Sci-fi Sounds · engineCircular_000.ogg | Kenney (kenney.nl) | https://opengameart.org/content/sci-fi-sounds |
 | `armas/repulsor.ogg` | Sci-fi Sounds · forceField_002.ogg | Kenney (kenney.nl) | https://opengameart.org/content/sci-fi-sounds |
 | `armas/arpon.ogg` | 100 CC0 SFX · spring_03.ogg | rubberduck | https://opengameart.org/content/100-cc0-sfx |
-| `armas/tajo_metal.ogg` | 100 CC0 SFX · metal_02.ogg | rubberduck | https://opengameart.org/content/100-cc0-sfx |
 | `armas/tajo_plasma.ogg` | Sci-fi Sounds · laserRetro_004.ogg | Kenney (kenney.nl) | https://opengameart.org/content/sci-fi-sounds |
 | `armas/tajo_luz.ogg` | Sci-fi Sounds · laserSmall_004.ogg | Kenney (kenney.nl) | https://opengameart.org/content/sci-fi-sounds |
-| `impactos/chispas_1.ogg` | Sci-fi Sounds · impactMetal_000.ogg | Kenney (kenney.nl) | https://opengameart.org/content/sci-fi-sounds |
-| `impactos/chispas_2.ogg` | Sci-fi Sounds · impactMetal_002.ogg | Kenney (kenney.nl) | https://opengameart.org/content/sci-fi-sounds |
-| `impactos/chispas_3.ogg` | Sci-fi Sounds · impactMetal_004.ogg | Kenney (kenney.nl) | https://opengameart.org/content/sci-fi-sounds |
 | `impactos/explosion_1.ogg` | Sci-fi Sounds · explosionCrunch_001.ogg | Kenney (kenney.nl) | https://opengameart.org/content/sci-fi-sounds |
 | `impactos/explosion_2.ogg` | Sci-fi Sounds · explosionCrunch_003.ogg | Kenney (kenney.nl) | https://opengameart.org/content/sci-fi-sounds |
 | `impactos/explosion_3.ogg` | Sci-fi Sounds · explosionCrunch_004.ogg | Kenney (kenney.nl) | https://opengameart.org/content/sci-fi-sounds |
@@ -74,8 +69,18 @@ Generado por `tools/audio/curate.py`. Todo es **CC0** (dominio público, https:/
 | `musica/base.ogg` | Dark Sci-Fi Audio Pack · title.ogg | SRG774 | https://opengameart.org/content/dark-sci-fi-audio-pack |
 | `musica/combate.ogg` | Space Battle · space_battle_bpm130_0.ogg | MintoDog | https://opengameart.org/content/space-battle |
 | `musica/jefe.ogg` | Friendly Talk On a Robotic Battlefield (Looped) · Friendly_Talk_On_a_Robotic_Battlefield_0.ogg | illin | https://opengameart.org/content/friendly-talk-on-a-robotic-battlefield-looped |
-| `armas/bala_1.ogg` | sintetizado (tools/audio/curate.py) | MechForge |  |
-| `armas/bala_2.ogg` | sintetizado (tools/audio/curate.py) | MechForge |  |
-| `armas/bala_3.ogg` | sintetizado (tools/audio/curate.py) | MechForge |  |
-| `armas/bala_4.ogg` | sintetizado (tools/audio/curate.py) | MechForge |  |
-| `armas/rifle.ogg` | sintetizado (tools/audio/curate.py) | MechForge |  |
+| `armas/bala_1.ogg` | diseñado por capas (tools/audio/design.py) | MechForge |  |
+| `armas/bala_2.ogg` | diseñado por capas (tools/audio/design.py) | MechForge |  |
+| `armas/bala_3.ogg` | diseñado por capas (tools/audio/design.py) | MechForge |  |
+| `armas/bala_4.ogg` | diseñado por capas (tools/audio/design.py) | MechForge |  |
+| `armas/rifle.ogg` | diseñado por capas (tools/audio/design.py) | MechForge |  |
+| `armas/escopeta.ogg` | diseñado por capas (tools/audio/design.py) | MechForge |  |
+| `armas/tajo_metal_1.ogg` | diseñado por capas (tools/audio/design.py) | MechForge |  |
+| `armas/tajo_metal_2.ogg` | diseñado por capas (tools/audio/design.py) | MechForge |  |
+| `armas/tajo_metal_3.ogg` | diseñado por capas (tools/audio/design.py) | MechForge |  |
+| `impactos/tajo_1.ogg` | diseñado por capas (tools/audio/design.py) | MechForge |  |
+| `impactos/tajo_2.ogg` | diseñado por capas (tools/audio/design.py) | MechForge |  |
+| `impactos/tajo_3.ogg` | diseñado por capas (tools/audio/design.py) | MechForge |  |
+| `impactos/chispas_1.ogg` | diseñado por capas (tools/audio/design.py) | MechForge |  |
+| `impactos/chispas_2.ogg` | diseñado por capas (tools/audio/design.py) | MechForge |  |
+| `impactos/chispas_3.ogg` | diseñado por capas (tools/audio/design.py) | MechForge |  |

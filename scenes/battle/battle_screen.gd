@@ -237,7 +237,8 @@ func _play_event(entry: Dictionary) -> void:
 				var slot: String = entry.get("slot", "")
 				await _arena.fire_between(actor, target, fx, shot_color, step, false, slot)
 			else:
-				_arena.strike(actor, target, fx, shot_color, step, str(entry.get("slot", "")))
+				var blade := str(entry.get("slot", ""))
+				await _arena.strike(actor, target, fx, shot_color, step, blade)
 			var damage: int = entry.get("damage", 0)
 			if entry.get("shielded", false):
 				_arena.float_text(_state[target]["pos"], Txt.t("shield_hit"), COLOR_COOL)

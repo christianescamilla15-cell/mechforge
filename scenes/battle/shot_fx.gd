@@ -191,7 +191,9 @@ func play(id: String, from: Vector2, to: Vector2, color: Color, seconds: float) 
 			_muzzle_flash(from, color, s, k, delay)
 		var reach := delay + _launch(s, origin, to + offset, color, k, delay, i)
 		_impact(s, to + offset, color, k, reach)
-		if i == 0 or not together:
+		# Un tajo suena desde que la hoja empieza a moverse: lo pide quien la
+		# mueve (ArenaView.strike), antes de que llegue aqui el corte.
+		if (i == 0 or not together) and s["path"] != "melee":
 			Sfx.shot_fired(id, delay)
 		if i < 2 or not together:
 			Sfx.shot_hit(id, s["impact"], reach)

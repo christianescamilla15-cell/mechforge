@@ -16,7 +16,7 @@
 
     "bala": {"files": ["armas/bala_1", "armas/bala_2", "armas/bala_3", "armas/bala_4"], "volume_db": -3.0, "pitch": [0.92, 1.08]},
     "rifle": {"files": ["armas/rifle"], "pitch": [0.95, 1.05]},
-    "escopeta": {"files": ["armas/escopeta"], "pitch": [1.15, 1.3]},
+    "escopeta": {"files": ["armas/escopeta"], "pitch": [0.95, 1.05]},
     "canon": {"files": ["armas/canon_1"], "pitch": [0.85, 0.95]},
     "canon_pesado": {"files": ["armas/canon_pesado"], "volume_db": 2.0, "pitch": [0.9, 1.0]},
     "lanzador": {"files": ["armas/lanzador"], "pitch": [0.75, 0.85]},
@@ -34,11 +34,12 @@
     "sifon": {"files": ["armas/sifon"]},
     "repulsor": {"files": ["armas/repulsor"], "pitch": [0.7, 0.75]},
     "arpon": {"files": ["armas/arpon"]},
-    "tajo_metal": {"files": ["armas/tajo_metal"], "pitch": [0.9, 1.1]},
+    "tajo_metal": {"files": ["armas/tajo_metal_1", "armas/tajo_metal_2", "armas/tajo_metal_3"], "pitch": [0.96, 1.04]},
     "tajo_plasma": {"files": ["armas/tajo_plasma"], "pitch": [0.65, 0.75]},
     "tajo_luz": {"files": ["armas/tajo_luz"], "pitch": [0.9, 1.0]},
 
-    "impacto_chispas": {"files": ["impactos/chispas_1", "impactos/chispas_2", "impactos/chispas_3"], "volume_db": -1.0, "pitch": [0.9, 1.15]},
+    "impacto_chispas": {"files": ["impactos/chispas_1", "impactos/chispas_2", "impactos/chispas_3"], "volume_db": -1.0, "pitch": [0.94, 1.08]},
+    "impacto_tajo": {"files": ["impactos/tajo_1", "impactos/tajo_2", "impactos/tajo_3"], "pitch": [0.95, 1.06]},
     "impacto_explosion": {"files": ["impactos/explosion_1", "impactos/explosion_2", "impactos/explosion_3"], "pitch": [0.9, 1.05]},
     "impacto_plasma": {"files": ["impactos/plasma"], "volume_db": 1.0, "pitch": [0.85, 1.0]},
     "impacto_quemadura": {"files": ["impactos/quemadura"], "volume_db": -5.0, "pitch": [0.9, 1.1]},
@@ -68,7 +69,7 @@
     "derrota": {"files": ["musica/derrota"], "bus": "Music", "volume_db": 3.0}
   },
   "shots": {
-    "tajo_vibrante": {"fire": "tajo_metal"},
+    "tajo_vibrante": {"fire": "tajo_metal", "impact": "impacto_tajo"},
     "tajo_plasma": {"fire": "tajo_plasma"},
     "tajo_luz": {"fire": "tajo_luz"},
     "perdigones": {"fire": "escopeta"},

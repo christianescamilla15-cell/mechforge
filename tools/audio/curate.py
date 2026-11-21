@@ -6,8 +6,8 @@
 no se sube al repo) y extrae solo el audio. Despues, cada sonido de CLIPS se
 recorta, se le pone una caida suave, se iguala su volumen (RMS de la parte que
 suena) sin pasar de -1 dB de pico y se guarda en OGG en assets/audio/. Los
-disparos de bala no tienen un buen equivalente en los paquetes: se sintetizan
-aqui (ruido filtrado, cuerpo grave y cola), con semilla fija.
+disparos de bala, la hoja vibratoria y sus impactos se disenan por capas en
+tools/audio/design.py, que es quien escribe esos archivos.
 
 Escribe tambien assets/audio/CREDITOS.md con la fuente, el autor y la licencia
 de cada archivo. Todo es CC0 (dominio publico) o sintetizado aqui.
@@ -23,7 +23,6 @@ import zipfile
 
 import numpy as np
 import soundfile as sf
-from scipy.signal import butter, sosfilt
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 SRC = os.path.join(ROOT, "art_raw", "audio", "src")
@@ -98,7 +97,6 @@ CLIPS = [
     ("ui/transformar", "kenney_digital", "powerUp3.mp3", 0, None, 0.1, "ui"),
     ("ui/habilidad", "kenney_digital", "zapThreeToneUp.mp3", 0, None, 0.1, "ui"),
     # Disparos.
-    ("armas/escopeta", "kenney_scifi", "explosionCrunch_000.ogg", 0, 0.45, 0.15, "sfx"),
     ("armas/canon_1", "kenney_scifi", "explosionCrunch_002.ogg", 0, 0.9, 0.3, "sfx"),
     ("armas/canon_pesado", "kenney_scifi", "lowFrequency_explosion_001.ogg", 0, None, 0.2, "sfx"),
     ("armas/lanzador", "kenney_scifi", "impactMetal_001.ogg", 0, 0.5, 0.2, "sfx"),
@@ -122,13 +120,9 @@ CLIPS = [
     ("armas/sifon", "kenney_scifi", "engineCircular_000.ogg", 0, 0.9, 0.35, "sfx"),
     ("armas/repulsor", "kenney_scifi", "forceField_002.ogg", 0, None, 0.2, "sfx"),
     ("armas/arpon", "rubberduck_100", "spring_03.ogg", 0, None, 0.1, "sfx"),
-    ("armas/tajo_metal", "rubberduck_100", "metal_02.ogg", 0, None, 0.05, "sfx"),
     ("armas/tajo_plasma", "kenney_scifi", "laserRetro_004.ogg", 0, None, 0.05, "sfx"),
     ("armas/tajo_luz", "kenney_scifi", "laserSmall_004.ogg", 0, None, 0.05, "sfx"),
     # Impactos segun lo que deja el disparo, y segun el tamano del arma.
-    ("impactos/chispas_1", "kenney_scifi", "impactMetal_000.ogg", 0, 0.45, 0.15, "sfx"),
-    ("impactos/chispas_2", "kenney_scifi", "impactMetal_002.ogg", 0, 0.45, 0.15, "sfx"),
-    ("impactos/chispas_3", "kenney_scifi", "impactMetal_004.ogg", 0, 0.4, 0.15, "sfx"),
     ("impactos/explosion_1", "kenney_scifi", "explosionCrunch_001.ogg", 0, None, 0.4, "sfx"),
     ("impactos/explosion_2", "kenney_scifi", "explosionCrunch_003.ogg", 0, None, 0.4, "sfx"),
     ("impactos/explosion_3", "kenney_scifi", "explosionCrunch_004.ogg", 0, 1.4, 0.5, "sfx"),
@@ -171,14 +165,10 @@ CLIPS = [
     ),
 ]
 
-# Disparos de bala sintetizados: (archivo, semilla, chasquido, cuerpo, cola).
-SYNTH = [
-    ("armas/bala_1", 11, 1.0, 1.0, 0.18),
-    ("armas/bala_2", 23, 0.9, 1.1, 0.16),
-    ("armas/bala_3", 37, 1.1, 0.9, 0.2),
-    ("armas/bala_4", 41, 1.0, 1.05, 0.17),
-    ("armas/rifle", 53, 1.5, 1.2, 0.45),
-]
+# Los disparos de bala, la hoja vibratoria y sus impactos no salen de aqui: se
+# disenan por capas en tools/audio/design.py (OBS-029). Aqui solo se apuntan
+# en los creditos.
+DESIGNED = "tools/audio/design.py"
 
 
 def fetch():
@@ -258,25 +248,6 @@ def cut(x, start, length, fade):
     return x
 
 
-def gunshot(seed, crack, body, tail):
-    rng = np.random.default_rng(seed)
-    n = int(RATE * (0.12 + tail * 2.5))
-    t = np.arange(n) / RATE
-    noise = rng.standard_normal(n)
-    high = sosfilt(butter(4, 1800, "highpass", fs=RATE, output="sos"), noise)
-    mid = sosfilt(butter(4, [250, 1400], "bandpass", fs=RATE, output="sos"), noise)
-    low = sosfilt(butter(2, 1200, "lowpass", fs=RATE, output="sos"), noise)
-    freq = 95 * np.exp(-t / 0.05) + 45
-    thump = np.sin(2 * np.pi * np.cumsum(freq) / RATE)
-    x = (
-        crack * high * np.exp(-t / 0.006)
-        + body * mid * np.exp(-t / 0.035)
-        + 0.9 * thump * np.exp(-t / 0.06)
-        + 0.25 * low * np.exp(-t / tail)
-    )
-    return x
-
-
 def write(rel, x):
     path = os.path.join(OUT, rel + ".ogg")
     os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -309,18 +280,18 @@ def main():
         x, gain = normalize(x, kind)
         write(rel, x)
         print("%-26s %6.2f s  %+5.1f dB  <- %s/%s" % (rel, len(x) / RATE, gain, pack, name))
-    for rel, seed, crack, body, tail in SYNTH:
-        x, gain = normalize(cut(gunshot(seed, crack, body, tail), 0, None, 0.05), "sfx")
-        write(rel, x)
-        credits.append((rel, "sintetizado (tools/audio/curate.py)", "MechForge", ""))
-        print("%-26s %6.2f s  %+5.1f dB  <- sintetizado" % (rel, len(x) / RATE, gain))
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from design import DESIGNS
+
+    for rel, _recipe, _params in DESIGNS:
+        credits.append((rel, "diseñado por capas (%s)" % DESIGNED, "MechForge", ""))
     lines = [
         "# Créditos del sonido",
         "",
         "Generado por `tools/audio/curate.py`. Todo es **CC0** (dominio público, "
-        "https://creativecommons.org/publicdomain/zero/1.0/) o se sintetizó en ese "
-        "script. Los créditos no son obligatorios con CC0, pero se dejan por "
-        "agradecimiento y para saber de dónde sale cada archivo.",
+        "https://creativecommons.org/publicdomain/zero/1.0/) o se sintetizó aquí "
+        "(`tools/audio/design.py`). Los créditos no son obligatorios con CC0, pero se "
+        "dejan por agradecimiento y para saber de dónde sale cada archivo.",
         "",
         "| Archivo | Origen | Autor | Página |",
         "|---|---|---|---|",
