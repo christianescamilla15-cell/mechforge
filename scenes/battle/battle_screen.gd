@@ -96,10 +96,12 @@ func start(
 	build_player: MechBuild,
 	build_enemy: MechBuild,
 	seed_value: int,
-	difficulty: BattleAI.Difficulty
+	difficulty: BattleAI.Difficulty,
+	temper: AIConfig = null
 ) -> void:
 	rules = p_rules
-	enemy_ai = BattleAI.new(difficulty, seed_value + 1)
+	# Con su caracter, si el rival lo tiene (TemperLibrary).
+	enemy_ai = BattleAI.new(difficulty, seed_value + 1, temper)
 	engine = BattleEngine.new(rules, build_player, build_enemy, seed_value, seed_value % 2)
 	_shown = 0
 	_busy = true

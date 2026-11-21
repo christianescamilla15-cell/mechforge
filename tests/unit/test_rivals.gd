@@ -112,11 +112,11 @@ func test_con_habilidades_el_rival_las_usa_en_combate() -> void:
 
 func test_el_hangar_dice_lo_que_sabe_hacer_el_rival() -> void:
 	var plain := _brief.rival({"enemy": "calor_horno", "level": 0, "difficulty": "EASY"}, 0)
-	assert_false(str(plain["detail"]).contains("escudo"))
+	assert_false(str(plain["traits"]).contains("escudo"))
 	var shield := _brief.rival(
 		{"enemy": "calor_horno", "level": 0, "difficulty": "EASY", "kits": {"shield_uses": 1}}, 0
 	)
-	assert_string_contains(str(shield["detail"]), "con escudo")
+	assert_string_contains(str(shield["traits"]), "con escudo")
 	var both := _brief.rival(
 		{
 			"enemy": "calor_horno",
@@ -126,4 +126,4 @@ func test_el_hangar_dice_lo_que_sabe_hacer_el_rival() -> void:
 		},
 		0
 	)
-	assert_string_contains(str(both["detail"]), "escudo y reparación")
+	assert_string_contains(str(both["traits"]), "escudo y reparación")

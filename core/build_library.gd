@@ -89,6 +89,14 @@ func display_name(id: String) -> String:
 	return str(specs[id].get("name", id))
 
 
+## Su caracter al pelear (TemperLibrary), o "" si piensa como siempre (los
+## jefes y un diseno que no existe).
+func temper_of(id: String) -> String:
+	if not specs.has(id):
+		return ""
+	return str(specs[id].get("temper", ""))
+
+
 ## Chasis que pide ese mech en los datos, o "" si no pide ninguno.
 func chassis_of(id: String) -> String:
 	return str(specs[id].get("chassis", ""))

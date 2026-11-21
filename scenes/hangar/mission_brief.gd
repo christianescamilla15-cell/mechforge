@@ -18,7 +18,9 @@ extends RefCounted
 ## - "protections": en la campana, las que se pueden comprar (protections());
 ## - "pickers": en el combate libre, [{"key", "value"}] para elegir;
 ## - "rivals": la fila, el primero es el que toca. Cada uno:
-##   {"id", "build", "name", "boss", "tier", "level", "difficulty", "detail"}.
+##   {"id", "build", "name", "boss", "tier", "level", "difficulty", "detail"
+##   (clase, nivel y dificultad), "traits" (como pelea: "Agresivo · con
+##   escudo"; "" si nada), "temper" (su caracter, "" si no tiene), "kits"}.
 
 const CHANNELS: Array[String] = ["campaign", "arena", "free"]
 ## Rivales de la campana que se ven en fila: el que toca y los siguientes.
@@ -228,7 +230,12 @@ func rival(entry: Dictionary, zone_tier: int) -> Dictionary:
 	var detail := Txt.t(
 		"mission_rival", [Txt.TIER_NAMES[tier], level, Txt.t(DIFFICULTY_KEYS[difficulty])]
 	)
-	# Lo que sabe hacer ademas de disparar: se ve antes de salir.
+	# Como pelea, en su propio renglon: su caracter (TemperLibrary) y lo que
+	# sabe hacer ademas de disparar. Se ve antes de salir.
+	var traits: Array[String] = []
+	var temper := library.temper_of(id)
+	if temper != "":
+		traits.append(Txt.t("temper_" + temper))
 	var kits := Campaign.kits_of(entry)
 	var known: Array[String] = []
 	if int(kits.get("shield_uses", 0)) > 0:
@@ -236,7 +243,8 @@ func rival(entry: Dictionary, zone_tier: int) -> Dictionary:
 	if int(kits.get("repair_uses", 0)) > 0:
 		known.append(Txt.t("mission_kit_repair"))
 	if not known.is_empty():
-		detail += " · " + Txt.t("mission_rival_kits", [" y ".join(known)])
+		traits.append(Txt.t("mission_rival_kits", [" y ".join(known)]))
+	var manner := " · ".join(traits)
 	return {
 		"id": id,
 		"build":
@@ -249,5 +257,7 @@ func rival(entry: Dictionary, zone_tier: int) -> Dictionary:
 		"level": level,
 		"difficulty": difficulty,
 		"detail": detail,
+		"traits": manner.left(1).to_upper() + manner.substr(1),
+		"temper": temper,
 		"kits": kits,
 	}

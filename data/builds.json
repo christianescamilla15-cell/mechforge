@@ -6,6 +6,7 @@
       "name": "Vanguardia de Acero",
       "element": "PHYSICAL",
       "band": "balas",
+      "temper": "agresivo",
       "starter": true,
       "items": {
         "torso": "torso_baluarte",
@@ -37,6 +38,7 @@
       "name": "Vanguardia de Asalto",
       "element": "PHYSICAL",
       "band": "canon",
+      "temper": "agresivo",
       "items": {
         "torso": "torso_baluarte",
         "legs": "piernas_zancos",
@@ -67,6 +69,7 @@
       "name": "Vanguardia de Plasma",
       "element": "PHYSICAL",
       "band": "blaster",
+      "temper": "agresivo",
       "items": {
         "torso": "torso_baluarte",
         "legs": "piernas_zancos",
@@ -97,6 +100,7 @@
       "name": "Vanguardia Láser",
       "element": "PHYSICAL",
       "band": "laser",
+      "temper": "agresivo",
       "items": {
         "torso": "torso_baluarte",
         "legs": "piernas_zancos",
@@ -127,6 +131,7 @@
       "name": "Horno Andante",
       "element": "HEAT",
       "band": "balas",
+      "temper": "desgaste",
       "starter": true,
       "items": {
         "torso": "torso_fragua",
@@ -159,6 +164,7 @@
       "name": "Horno de Asalto",
       "element": "HEAT",
       "band": "canon",
+      "temper": "desgaste",
       "items": {
         "torso": "torso_fragua",
         "legs": "piernas_pisabrasas",
@@ -190,6 +196,7 @@
       "name": "Horno de Plasma",
       "element": "HEAT",
       "band": "blaster",
+      "temper": "desgaste",
       "items": {
         "torso": "torso_fragua",
         "legs": "piernas_pisabrasas",
@@ -221,6 +228,7 @@
       "name": "Horno Láser",
       "element": "HEAT",
       "band": "laser",
+      "temper": "desgaste",
       "items": {
         "torso": "torso_fragua",
         "legs": "piernas_pisabrasas",
@@ -252,6 +260,7 @@
       "name": "Tempestad",
       "element": "ENERGY",
       "band": "balas",
+      "temper": "esquivo",
       "starter": true,
       "items": {
         "torso": "torso_dinamo",
@@ -285,6 +294,7 @@
       "name": "Tempestad de Asalto",
       "element": "ENERGY",
       "band": "canon",
+      "temper": "esquivo",
       "items": {
         "torso": "torso_dinamo",
         "legs": "piernas_zancas_arco",
@@ -317,6 +327,7 @@
       "name": "Tempestad de Plasma",
       "element": "ENERGY",
       "band": "blaster",
+      "temper": "esquivo",
       "items": {
         "torso": "torso_dinamo",
         "legs": "piernas_zancas_arco",
@@ -349,6 +360,7 @@
       "name": "Tempestad Láser",
       "element": "ENERGY",
       "band": "laser",
+      "temper": "esquivo",
       "items": {
         "torso": "torso_dinamo",
         "legs": "piernas_zancas_arco",
@@ -381,6 +393,7 @@
       "name": "Quimera",
       "element": "HYBRID",
       "band": "balas",
+      "temper": "defensivo",
       "starter": true,
       "items": {
         "torso": "torso_centinela",
@@ -413,6 +426,7 @@
       "name": "Quimera de Asalto",
       "element": "HYBRID",
       "band": "canon",
+      "temper": "defensivo",
       "items": {
         "torso": "torso_centinela",
         "legs": "piernas_zancos",
@@ -444,6 +458,7 @@
       "name": "Quimera de Plasma",
       "element": "HYBRID",
       "band": "blaster",
+      "temper": "defensivo",
       "items": {
         "torso": "torso_centinela",
         "legs": "piernas_zancos",
@@ -475,6 +490,7 @@
       "name": "Quimera Láser",
       "element": "HYBRID",
       "band": "laser",
+      "temper": "defensivo",
       "items": {
         "torso": "torso_centinela",
         "legs": "piernas_zancos",

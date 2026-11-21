@@ -26,6 +26,28 @@ extends Resource
 ## Valor de ganar o perder el combate.
 @export var win_value: float = 100.0
 
+@export_group("Temperamento")
+## El caracter de un rival (GDD 7, OBS-014): con todo en 1 valora las cosas
+## por igual, que es la IA de siempre. Cuanto pesa su propia vida (mas de 1:
+## se cuida, usa antes el escudo y la reparacion).
+@export var guard: float = 1.0
+## Cuanto pesa la vida del rival (mas de 1: va a por el dano).
+@export var aggression: float = 1.0
+## Cuanto pesa lo que le hace al rival: calentarlo, dejarlo sin energia y
+## las acciones que pierde por ello (mas de 1: lo desgasta).
+@export var pressure: float = 1.0
+## Cuanto pesan su propio calor y su propia energia (menos de 1: temerario;
+## mas de 1: enfria antes).
+@export var caution: float = 1.0
+## Cuanto pesa quedar donde las armas del rival no alcanzan (mas de 1:
+## guarda la distancia).
+@export var evasion: float = 1.0
+## Sus gustos: lo que suma a una jugada por empezar con ese tipo de accion,
+## en barras de vida. Las claves son los tipos de BattleAction en minusculas
+## ("charge", "stomp", "walk", "cool", "hook", "teleport", "shield"...). Con
+## ellos, entre jugadas casi igual de buenas elige la suya.
+@export var likes: Dictionary = {}
+
 @export_group("Dificultad")
 ## Ruido uniforme (+-) que se suma a cada valoracion en dificultad facil.
 @export var easy_noise: float = 0.20

@@ -23,6 +23,8 @@ var _results: Array[Dictionary] = []
 var _players: Dictionary[String, MechBuild] = {}
 var _rivals: Array[MechBuild] = []
 var _difficulties: Array[int] = []
+## El caracter de cada rival (TemperLibrary).
+var _configs: Array[AIConfig] = []
 
 
 func _initialize() -> void:
@@ -38,7 +40,10 @@ func _initialize() -> void:
 	var library := BuildLibrary.load_file("res://data/builds.json")
 	var chassis := ChassisLibrary.load_file("res://data/chassis.json")
 	var campaign := Campaign.load_file("res://data/campaign.json", library)
+	var tempers := TemperLibrary.load_file("res://data/tempers.json")
+	var plain := OS.get_cmdline_user_args().has("--no-temper")
 	var problems := catalog.errors + library.errors + chassis.errors + campaign.errors
+	problems += tempers.errors + tempers.missing_in(library)
 	if not problems.is_empty() or zone >= campaign.zone_count():
 		printerr("datos con errores: ", problems)
 		quit(2)
@@ -54,6 +59,7 @@ func _initialize() -> void:
 		rival.skills.add(Campaign.kits_of(spec))
 		_rivals.append(rival)
 		_difficulties.append(DIFFICULTY[spec["difficulty"]])
+		_configs.append(tempers.config("" if plain else library.temper_of(spec["enemy"])))
 	for id in library.band_ids(campaign.band_of(zone)):
 		_players[id] = library.make(id, catalog, _rules, tier, campaign.level_cap(zone))
 		for fight in count:
@@ -75,7 +81,7 @@ func _run_task(index: int) -> void:
 		_players[task["id"]],
 		_rivals[fight],
 		BattleAI.new(BattleAI.Difficulty.HARD, task["seed"] * 2 + 1),
-		BattleAI.new(_difficulties[fight], task["seed"] * 2 + 2),
+		BattleAI.new(_difficulties[fight], task["seed"] * 2 + 2, _configs[fight]),
 		task["seed"],
 		task["starter"]
 	)

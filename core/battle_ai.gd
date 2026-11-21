@@ -49,10 +49,19 @@ func choose_action(engine: BattleEngine) -> BattleAction:
 				if score > best_score:
 					best_score = score
 					best_state = after_second
+		# Su caracter: lo que le gusta hacer (AIConfig).
+		var taste := _taste(first)
+		best_score += taste
 		if difficulty == Difficulty.EASY:
 			best_score += _rng.randf_range(-config.easy_noise, config.easy_noise)
 		candidates.append(
-			{"action": first, "score": best_score, "state": best_state, "order": candidates.size()}
+			{
+				"action": first,
+				"score": best_score,
+				"state": best_state,
+				"taste": taste,
+				"order": candidates.size()
+			}
 		)
 
 	# A igual valoracion gana la primera accion encontrada (orden estable).
@@ -78,22 +87,32 @@ func evaluate(e: BattleEngine, me: int) -> float:
 	var foe_strike := _strike(foe, mine)
 	var per_turn := float(e.rules.actions_per_turn)
 
-	var score := _ratio(mine.health, mine.max_health) - _ratio(foe.health, foe.max_health)
+	# El temperamento (AIConfig): cuanto pesa cada cosa para este rival.
+	var score := (
+		config.guard * _ratio(mine.health, mine.max_health)
+		- config.aggression * _ratio(foe.health, foe.max_health)
+	)
 
 	# Acciones que el calor ya le quito al rival en el turno que empieza.
 	if e.turn == me:
-		score += foe_strike * per_turn + _assist_strike(foe, mine)
+		score += config.pressure * (foe_strike * per_turn + _assist_strike(foe, mine))
 	else:
-		score += foe_strike * (per_turn - e.actions_left)
+		score += config.pressure * foe_strike * (per_turn - e.actions_left)
 
 	# Calor pendiente: cada `enfriamiento` de calor costara una accion. Enfriar
 	# antes de tiempo no ahorra nada, asi que no se penaliza el riesgo de un
 	# enfriado forzado: solo el calor acumulado.
-	score += config.heat_discount * foe_strike * _ratio(foe.heat, foe.cooling)
-	score -= config.heat_discount * my_strike * _ratio(mine.heat, mine.cooling)
+	var foe_heat := config.heat_discount * foe_strike * _ratio(foe.heat, foe.cooling)
+	var my_heat := config.heat_discount * my_strike * _ratio(mine.heat, mine.cooling)
+	score += config.pressure * foe_heat - config.caution * my_heat
 
-	score += config.energy_discount * foe_strike * per_turn * _energy_starvation(foe, mine, false)
-	score -= config.energy_discount * my_strike * per_turn * _energy_starvation(mine, foe, true)
+	var foe_dry := (
+		config.energy_discount * foe_strike * per_turn * _energy_starvation(foe, mine, false)
+	)
+	var my_dry := (
+		config.energy_discount * my_strike * per_turn * _energy_starvation(mine, foe, true)
+	)
+	score += config.pressure * foe_dry - config.caution * my_dry
 
 	# Habilidades del arbol: un escudo activado vale lo que absorbera, y un kit
 	# de reparacion sin usar vale parte de lo que curaria.
@@ -104,7 +123,7 @@ func evaluate(e: BattleEngine, me: int) -> float:
 
 	var distance := absi(mine.position - foe.position)
 	score -= config.position_discount * my_strike * (1.0 - _reach(mine, distance))
-	score += config.position_discount * foe_strike * (1.0 - _reach(foe, distance))
+	score += config.evasion * config.position_discount * foe_strike * (1.0 - _reach(foe, distance))
 	return score
 
 
@@ -117,7 +136,7 @@ func _best_against_reply(candidates: Array[Dictionary], me: int) -> BattleAction
 		var state: BattleEngine = candidates[i]["state"]
 		var value: float = candidates[i]["score"]
 		if not state.is_over() and state.turn != me:
-			value = _worst_reply_value(state, me)
+			value = _worst_reply_value(state, me) + float(candidates[i]["taste"])
 		if value > best_value:
 			best_value = value
 			best_action = candidates[i]["action"]
@@ -137,6 +156,13 @@ func _worst_reply_value(state: BattleEngine, me: int) -> float:
 			after_second.apply(second)
 			worst = minf(worst, evaluate(after_second, me))
 	return worst
+
+
+## Lo que suma a una jugada el caracter del rival: su gusto por ese tipo de
+## accion.
+func _taste(action: BattleAction) -> float:
+	var kind: String = BattleAction.Type.keys()[action.type]
+	return float(config.likes.get(kind.to_lower(), 0.0))
 
 
 func _turn_ended(after: BattleEngine, before: BattleEngine) -> bool:

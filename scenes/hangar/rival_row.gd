@@ -523,7 +523,7 @@ func _draw_fx() -> void:
 
 
 ## Rotulo del que toca, proyectado en el suelo delante de el: su nombre, su
-## clase y nivel, y lo que pasa al pulsarlo.
+## clase y nivel, como pelea (si se sabe) y lo que pasa al pulsarlo.
 func _draw_label(front: Rival, live: bool) -> void:
 	var feet := _feet(front)
 	var boss := bool(front.info.get("boss", false))
@@ -532,10 +532,14 @@ func _draw_label(front: Rival, live: bool) -> void:
 	var left := feet.x - width * 0.5
 	var y := feet.y + 34.0
 	var alpha := front.alpha
+	# Como pelea va en un renglon mas, y lo de debajo baja con el.
+	var traits := str(front.info.get("traits", ""))
+	var drop := 14.0 if traits != "" else 0.0
 	# Dos trazos, como una proyeccion sobre el suelo.
 	for side: float in [-1.0, 1.0]:
 		var x := feet.x + side * width * 0.5
-		_fx.draw_line(Vector2(x, y - 12.0), Vector2(x, y + 44.0), Color(accent, 0.55 * alpha), 2.0)
+		var foot := y + 44.0 + drop
+		_fx.draw_line(Vector2(x, y - 12.0), Vector2(x, foot), Color(accent, 0.55 * alpha), 2.0)
 		_fx.draw_line(
 			Vector2(x, y - 12.0),
 			Vector2(x - side * 10.0, y - 12.0),
@@ -543,10 +547,7 @@ func _draw_label(front: Rival, live: bool) -> void:
 			2.0
 		)
 		_fx.draw_line(
-			Vector2(x, y + 44.0),
-			Vector2(x - side * 10.0, y + 44.0),
-			Color(accent, 0.55 * alpha),
-			2.0
+			Vector2(x, foot), Vector2(x - side * 10.0, foot), Color(accent, 0.55 * alpha), 2.0
 		)
 	_text(
 		Vector2(left, y + 4.0), str(front.info.get("name", "")).to_upper(), width, 15, TEXT, alpha
@@ -559,6 +560,8 @@ func _draw_label(front: Rival, live: bool) -> void:
 		accent.lightened(0.35),
 		alpha * 0.9
 	)
+	if traits != "":
+		_text(Vector2(left - 30.0, y + 34.0), traits, width + 60.0, 11, GOLD, alpha * 0.85)
 	var cue := Txt.t("mission_go_boss" if boss else "mission_go")
 	var cue_color := GOLD
 	var cue_alpha := 0.5
@@ -573,10 +576,12 @@ func _draw_label(front: Rival, live: bool) -> void:
 	elif live:
 		cue = "▶  %s  ◀" % cue
 		cue_alpha = 0.8 + 0.2 * sin(_time * 7.0)
-	_text(Vector2(left - 60.0, y + 38.0), cue, width + 120.0, 13, cue_color, alpha * cue_alpha)
+	_text(
+		Vector2(left - 60.0, y + 38.0 + drop), cue, width + 120.0, 13, cue_color, alpha * cue_alpha
+	)
 	if warning != "" and blocked == "":
 		var tone := BAD if danger else GOLD
-		_text(Vector2(left - 60.0, y + 58.0), warning, width + 120.0, 11, tone, alpha * 0.95)
+		_text(Vector2(left - 60.0, y + 58.0 + drop), warning, width + 120.0, 11, tone, alpha * 0.95)
 
 
 func _brackets(rect: Rect2, color: Color) -> void:

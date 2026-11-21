@@ -9,6 +9,10 @@ extends SceneTree
 ##   --zone=0      zona de la campana
 ##   --battles=N   combates por rival (por defecto 12)
 ##   --seed=1      semilla base
+##   --temper=guard:1.5,likes.cool:0.03   pesos y gustos de AIConfig
+##                 para todos los rivales, para probar un temperamento
+##                 antes de darselo (sin esto, cada uno lleva el suyo)
+##   --no-temper   todos piensan como siempre
 ## El jugador es el mech de ejemplo fisico con la IA normal; cada rival juega
 ## con la dificultad que le pone la campana. Bonificaciones encendidas.
 
@@ -38,6 +42,7 @@ var _results: Array[Dictionary] = []
 var _player: MechBuild
 var _rivals: Array[MechBuild] = []
 var _ais: Array[int] = []
+var _configs: Array[AIConfig] = []
 
 
 func _initialize() -> void:
@@ -48,11 +53,17 @@ func _initialize() -> void:
 	var zone := int(args.get("zone", "0"))
 	var battles := int(args.get("battles", "12"))
 	var seed_value := int(args.get("seed", "1"))
+	var forced := {}
+	for pair: String in str(args.get("temper", "")).split(",", false):
+		var bits := pair.split(":")
+		forced[bits[0]] = float(bits[1])
 	_rules.drops_enabled = true
 	var catalog := Catalog.load_file("res://data/catalog.json")
 	var library := BuildLibrary.load_file("res://data/builds.json")
 	var chassis := ChassisLibrary.load_file("res://data/chassis.json")
 	var campaign := Campaign.load_file("res://data/campaign.json", library)
+	var tempers := TemperLibrary.load_file("res://data/tempers.json")
+	var plain := OS.get_cmdline_user_args().has("--no-temper")
 	var skills := SkillTree.load_file("res://data/skills.json")
 	var shop := ArenaShop.load_file("res://data/arena_shop.json")
 	var tier := campaign.tier_of(zone)
@@ -67,13 +78,22 @@ func _initialize() -> void:
 		rival.skills.add(Campaign.kits_of(spec))
 		_rivals.append(rival)
 		_ais.append(DIFFICULTY[spec["difficulty"]])
+		var temper := "" if plain or not forced.is_empty() else library.temper_of(spec["enemy"])
+		var config := tempers.config(temper)
+		for key: String in forced:
+			if key.begins_with("likes."):
+				config.likes[key.trim_prefix("likes.")] = forced[key]
+			else:
+				config.set(key, forced[key])
+		_configs.append(config)
 		labels.append(
 			(
-				"%-5s %-22s %-7s"
+				"%-5s %-22s %-7s %-9s"
 				% [
 					"jefe" if campaign.is_boss_fight(zone, fight) else str(fight + 1),
 					library.display_name(spec["enemy"]),
-					spec["difficulty"]
+					spec["difficulty"],
+					temper
 				]
 			)
 		)
@@ -93,10 +113,13 @@ func _run_task(index: int) -> void:
 	var engine := BattleEngine.new(_rules, _player, _rivals[fight], task["seed"], task["starter"])
 	var ais: Array[BattleAI] = [
 		BattleAI.new(BattleAI.Difficulty.NORMAL, task["seed"] * 2 + 1),
-		BattleAI.new(_ais[fight], task["seed"] * 2 + 2),
+		BattleAI.new(_ais[fight], task["seed"] * 2 + 2, _configs[fight]),
 	]
 	var counts := {}
 	var kinds := {}
+	# Cuantas veces repite la accion que acaba de hacer.
+	var repeats := 0
+	var previous := ""
 	while not engine.is_over() and engine.turn_number <= 200:
 		var who := engine.turn
 		var action := ais[who].choose_action(engine)
@@ -105,16 +128,21 @@ func _run_task(index: int) -> void:
 		if who == 1:
 			var group: String = GROUPS.get(action.type, "otra")
 			counts[group] = int(counts.get(group, 0)) + 1
-			kinds["%d/%s" % [action.type, action.slot]] = true
-	_results[index] = {"counts": counts, "kinds": kinds.size(), "won": engine.winner == 1}
+			var key := "%d/%s" % [action.type, action.slot]
+			kinds[key] = true
+			repeats += 1 if key == previous else 0
+			previous = key
+	_results[index] = {
+		"counts": counts, "kinds": kinds.size(), "won": engine.winner == 1, "repeats": repeats
+	}
 
 
 func _report(labels: Array[String], zone: int, campaign: Campaign) -> void:
 	print("Zona %d (%s): en que gasta el rival sus acciones" % [zone + 1, campaign.zone_name(zone)])
-	var header := "  %-36s" % "rival"
+	var header := "  %-46s" % "rival"
 	for group in ORDER:
 		header += " %9s" % group
-	print(header + "   distintas   gana")
+	print(header + "   distintas   repite   gana")
 	var total := {}
 	var all_actions := 0
 	for fight in labels.size():
@@ -122,12 +150,14 @@ func _report(labels: Array[String], zone: int, campaign: Campaign) -> void:
 		var kinds := 0.0
 		var wins := 0
 		var games := 0
+		var repeats := 0
 		for index in _tasks.size():
 			if _tasks[index]["fight"] != fight:
 				continue
 			games += 1
 			kinds += float(_results[index]["kinds"])
 			wins += 1 if _results[index]["won"] else 0
+			repeats += int(_results[index]["repeats"])
 			for group: String in _results[index]["counts"]:
 				counts[group] = int(counts.get(group, 0)) + int(_results[index]["counts"][group])
 		var sum := 0
@@ -135,19 +165,23 @@ func _report(labels: Array[String], zone: int, campaign: Campaign) -> void:
 			sum += int(counts[group])
 			total[group] = int(total.get(group, 0)) + int(counts[group])
 		all_actions += sum
-		var line := "  %-36s" % labels[fight]
+		var line := "  %-46s" % labels[fight]
 		for group in ORDER:
 			line += " %7.1f %%" % (100.0 * int(counts.get(group, 0)) / maxi(sum, 1))
 		print(
 			(
 				line
 				+ (
-					"   %7.1f   %3d %%"
-					% [kinds / maxi(games, 1), roundi(100.0 * wins / maxi(games, 1))]
+					"   %7.1f   %4.0f %%   %3d %%"
+					% [
+						kinds / maxi(games, 1),
+						100.0 * repeats / maxi(sum, 1),
+						roundi(100.0 * wins / maxi(games, 1))
+					]
 				)
 			)
 		)
-	var line := "  %-36s" % "todos"
+	var line := "  %-46s" % "todos"
 	for group in ORDER:
 		line += " %7.1f %%" % (100.0 * int(total.get(group, 0)) / maxi(all_actions, 1))
 	print(line)

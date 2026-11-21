@@ -36,6 +36,7 @@ var _catalog: Catalog
 var _library: BuildLibrary
 ## Los tipos de robot con los que se empieza.
 var _styles: StyleLibrary
+var _tempers: TemperLibrary
 var _campaign: Campaign
 var _menu: Control
 var _battle: BattleScreen
@@ -82,6 +83,7 @@ func _ready() -> void:
 	_catalog = Catalog.load_file("res://data/catalog.json")
 	_library = BuildLibrary.load_file("res://data/builds.json")
 	_styles = StyleLibrary.load_file("res://data/styles.json", _catalog)
+	_tempers = TemperLibrary.load_file("res://data/tempers.json")
 	_campaign = Campaign.load_file("res://data/campaign.json", _library)
 	_brief.rules = _rules
 	_brief.catalog = _catalog
@@ -678,7 +680,12 @@ func _start_battle(spec: Dictionary) -> void:
 	# Y los rivales normales, sus habilidades (el escudo, la reparacion).
 	enemy_build.skills.add(spec.get("enemy_kits", {}))
 	_battle.start(
-		_rules, player_build, enemy_build, spec["seed"], MENU_DIFFICULTIES[spec["difficulty"]]
+		_rules,
+		player_build,
+		enemy_build,
+		spec["seed"],
+		MENU_DIFFICULTIES[spec["difficulty"]],
+		_tempers.config(_library.temper_of(spec["enemy"]))
 	)
 	_raise_curtain()
 

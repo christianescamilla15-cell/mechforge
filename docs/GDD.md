@@ -263,7 +263,7 @@ Unas 58 piezas con nombres propios (nunca los del original).
 - **No enfría antes de tiempo.** El enfriado forzado cuesta la misma acción que enfriar voluntariamente y además aprovecha el margen del tope de calor. Una versión anterior de la IA enfriaba por miedo al sobrecalentamiento y perdía la mitad de sus acciones.
 - **Dificultad:** al azar (solo para pruebas), fácil (ruido en la valoración), normal, y difícil (revisa las mejores jugadas contra la mejor respuesta del rival). Los parámetros están en `AIConfig`.
 - La misma IA sirve para los enemigos de la campaña y para el simulador de balance.
-- **Los rivales normales llevan habilidades** (2026-11-21, OBS-014: "es muy predecible; los enemigos no hacen más que atacar; no usan habilidades, no usan estrategia; solamente el primer nivel fue realmente combativo"). Medido antes de tocar nada (`tools/sim/behavior_sim.gd`, zona 1): un rival normal o difícil gastaba del 80 al 95 % de sus acciones en disparar un arma y ninguna en habilidades, porque no llevaba; usaba 3 o 4 acciones distintas por combate. Los tres primeros de cada zona, que juegan en fácil (con ruido en su valoración), se mueven, enfrían y usan especiales mucho más (un 44 % de armas y 6 acciones distintas): por eso el principio se sentía más combativo. Ahora cada combate de la campaña puede dar a su rival habilidades (data/campaign.json, `kits`; `Campaign.kits_of`): del cuarto en adelante llevan un **escudo** (para un golpe entero) o un **kit de reparación** (20 % de la vida), alternando del cuarto al séptimo; el octavo y el noveno, escudo; el décimo, escudo y un kit corto (10 %). Una primera versión con kits enteros en los tres últimos dejaba el noveno y el décimo en 15,6 % y 18,8 % de victorias, y se suavizó. La IA ya sabía usarlos (valora el escudo por lo que absorberá y guarda el kit hasta que hace falta). El hangar lo dice bajo el rival antes de salir ("con escudo", "con reparación"). **Medido después** (12 combates por rival): del cuarto en adelante gastan entre el 3 y el 10 % de sus acciones en habilidades, disparan un 71–88 % y usan entre 4 y 5,5 acciones distintas. Es un cambio corto: siguen sobre todo disparando.
+- **Los rivales normales llevan habilidades** (2026-11-21, OBS-014: "es muy predecible; los enemigos no hacen más que atacar; no usan habilidades, no usan estrategia; solamente el primer nivel fue realmente combativo"). Medido antes de tocar nada (`tools/sim/behavior_sim.gd`, zona 1): un rival normal o difícil gastaba del 80 al 95 % de sus acciones en disparar un arma y ninguna en habilidades, porque no llevaba; usaba 3 o 4 acciones distintas por combate. Los tres primeros de cada zona, que juegan en fácil (con ruido en su valoración), se mueven, enfrían y usan especiales mucho más (un 44 % de armas y 6 acciones distintas): por eso el principio se sentía más combativo. Ahora cada combate de la campaña puede dar a su rival habilidades (data/campaign.json, `kits`; `Campaign.kits_of`): del cuarto en adelante llevan un **escudo** (para un golpe entero), un **kit de reparación** (repone parte de la vida) o los dos. El reparto de hoy está más abajo, con el carácter de cada rival; el primero (escudo o kit alternando del cuarto al séptimo, escudo en el octavo y el noveno, escudo y un kit del 10 % en el décimo) es el que mide la tabla siguiente. La IA ya sabía usarlos (valora el escudo por lo que absorberá y guarda el kit hasta que hace falta). El hangar lo dice bajo el rival antes de salir ("con escudo", "con reparación"). **Medido después** (12 combates por rival): del cuarto en adelante gastan entre el 3 y el 10 % de sus acciones en habilidades, disparan un 71–88 % y usan entre 4 y 5,5 acciones distintas. Es un cambio corto: siguen sobre todo disparando.
   - **Lo que cuesta:** el escudo y el kit son vida de más, así que esos rivales son más duros. La curva de la zona 1 sin mejoras (`tools/sim/campaign_sim.gd`, el jugador con un mech de ejemplo entero y la IA difícil, 24 combates por casilla), del combate 1 al jefe:
 
     | | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | Jefe |
@@ -271,7 +271,45 @@ Unas 58 piezas con nombres propios (nunca los del original).
     | Antes | 100 % | 100 % | 100 % | 97.9 % | 99.0 % | 91.7 % | 74.0 % | 81.3 % | 56.3 % | 38.5 % | 3.1 % |
     | Con habilidades | 100 % | 100 % | 100 % | 94.8 % | 90.6 % | 88.5 % | 63.5 % | 84.4 % | 49.0 % | 27.1 % | 3.1 % |
 
-  - **Lo que falta de esta observación:** que piensen distinto unos de otros (uno que aguante, uno que desgaste, uno que guarde la distancia). Hoy todos valoran igual la jugada; darles carácter es cambiar los pesos de `AIConfig` por rival, y hay que medirlo.
+- **Cada rival tiene su carácter** (2026-11-21, OBS-014, segunda parte: "no usan estrategia"). Se probó primero lo obvio y no sirvió: cambiar solo los pesos de la valoración (que le pese más su vida, la del rival, el desgaste o la distancia) casi no mueve lo que hacen —siguen disparando un 75–95 % de sus acciones—, y castigar que repitan la misma acción tampoco, porque ya alternaban sus armas (repetían entre un 0 y un 13 %). Lo que sí cambia lo que hacen son sus **gustos**: un pequeño extra, en barras de vida, para las jugadas que empiezan con cierto tipo de acción (`AIConfig.likes`); entre jugadas casi igual de buenas, cada uno elige la suya. Un **temperamento** (`data/tempers.json`, `core/temper_library.gd`) son esos gustos y unos pesos de la valoración (`guard`, `aggression`, `pressure`, `caution`, `evasion`; con todo en 1 es la IA de siempre, jugada a jugada). Cada diseño de rival dice el suyo en `data/builds.json` (`temper`) y lo conserva de una liga a otra, también en la arena y en el combate libre. Los jefes no llevan: piensan como siempre.
+
+  | Rival | Carácter | Lo que hace |
+  |---|---|---|
+  | Vanguardia (físico) | agresivo | embiste y engancha para tenerte cerca; no le importa recalentarse |
+  | Horno (calor) | de desgaste | se te echa encima y te pisa; le pesa más calentarte y dejarte sin energía |
+  | Tempestad (energía) | esquivo | camina y salta para quedar donde tus armas no alcanzan |
+  | Quimera (híbrido) | defensivo | cuida su vida: se cubre, se repara antes y enfría a tiempo |
+
+  - **Medido** (`tools/sim/behavior_sim.gd`, zona 1, 12 combates por rival contra el mech de ejemplo con la IA normal; en qué gastan sus acciones, cuántas acciones distintas usan por combate y cuánto ganan; "antes" es con las mismas habilidades y sin carácter, `--no-temper`):
+
+    | Combate | Rival | Carácter | | Arma | Pisotón | Moverse | Enfriar | Especial | Habilidad | Distintas | El rival gana |
+    |---|---|---|---|---|---|---|---|---|---|---|---|
+    | 4 | Quimera | defensivo | antes | 73,8 % | 0,0 % | 5,6 % | 1,6 % | 9,5 % | 9,5 % | 5,5 | 0 % |
+    | | | | ahora | 66,4 % | 0,0 % | 7,0 % | 7,8 % | 9,4 % | 9,4 % | 5,7 | 0 % |
+    | 5 | Vanguardia de Acero | agresivo | antes | 73,5 % | 0,0 % | 6,6 % | 2,2 % | 8,8 % | 8,8 % | 5,0 | 8 % |
+    | | | | ahora | 69,1 % | 0,7 % | 4,4 % | 0,0 % | 17,6 % | 8,1 % | 5,5 | 8 % |
+    | 6 | Horno Andante | de desgaste | antes | 80,7 % | 1,8 % | 2,3 % | 0,6 % | 0,6 % | 14,0 % | 5,3 | 42 % |
+    | | | | ahora | 60,8 % | 35,9 % | 0,0 % | 0,0 % | 0,0 % | 3,3 % | 3,6 | 0 % |
+    | 7 | Tempestad | esquivo | antes | 79,8 % | 0,8 % | 1,6 % | 0,0 % | 6,5 % | 11,3 % | 4,3 | 8 % |
+    | | | | ahora | 73,0 % | 0,0 % | 9,8 % | 0,0 % | 9,8 % | 7,4 % | 4,3 | 8 % |
+    | 8 | Quimera | defensivo | antes | 65,8 % | 0,6 % | 10,1 % | 1,3 % | 7,6 % | 14,6 % | 6,2 | 42 % |
+    | | | | ahora | 57,6 % | 0,0 % | 3,3 % | 15,2 % | 7,9 % | 15,9 % | 6,8 | 0 % |
+    | 9 | Horno Andante | de desgaste | antes | 81,6 % | 3,1 % | 5,5 % | 1,2 % | 1,2 % | 7,4 % | 4,7 | 92 % |
+    | | | | ahora | 57,1 % | 25,0 % | 1,8 % | 0,0 % | 7,1 % | 8,9 % | 5,3 | 42 % |
+    | 10 | Tempestad | esquivo | antes | 74,6 % | 1,4 % | 2,9 % | 2,2 % | 5,8 % | 13,0 % | 5,9 | 100 % |
+    | | | | ahora | 70,1 % | 4,9 % | 6,9 % | 0,0 % | 8,3 % | 9,7 % | 5,5 | 83 % |
+
+  - **Dónde se ve:** el hangar lo dice bajo el rival, en su propio renglón, antes de salir: "Agresivo · con reparación", "De desgaste · con escudo".
+  - **Lo que cuesta, y cómo se compensó:** apartarse de la mejor jugada los hace más flojos (con las habilidades de antes, el jugador pasaba a ganar el 79 % y el 76 % de los combates 9 y 10). Para devolver la subida de la liga se les dio más habilidades del sexto combate en adelante: el cuarto lleva escudo; el quinto, un kit de reparación (20 %); del sexto al octavo, escudo y kit (20 %); el noveno, escudo y un kit corto (15 %); el décimo, escudo y un kit largo (25 %). Una prueba con dos escudos y 25 % en los dos últimos los dejaba en 31 % y 22 % (8 combates por casilla), demasiado. La curva de la zona 1 sin mejoras (mismo método que arriba), del combate 1 al jefe:
+
+    | | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | Jefe |
+    |---|---|---|---|---|---|---|---|---|---|---|---|
+    | Sin habilidades ni carácter | 100 % | 100 % | 100 % | 97.9 % | 99.0 % | 91.7 % | 74.0 % | 81.3 % | 56.3 % | 38.5 % | 3.1 % |
+    | Con las primeras habilidades | 100 % | 100 % | 100 % | 94.8 % | 90.6 % | 88.5 % | 63.5 % | 84.4 % | 49.0 % | 27.1 % | 3.1 % |
+    | Con ellas y con carácter | 100 % | 100 % | 100 % | 99.0 % | 96.9 % | 99.0 % | 88.5 % | 94.8 % | 79.2 % | 76.0 % | 3.1 % |
+    | Con carácter y las habilidades de ahora | 100 % | 100 % | 100 % | 99.0 % | 96.9 % | 95.8 % | 85.4 % | 91.7 % | 56.3 % | 42.7 % | 3.1 % |
+
+  - **Límites, dichos claro:** los gustos son umbrales, no perillas suaves: con 0,03 el Horno casi no pisa y con 0,04 pisa un tercio de sus acciones. Están ajustados con las piezas de la liga 1; en las ligas altas hay que volver a medirlos. Y siguen siendo la misma IA por utilidad a dos jugadas: tienen manías, no planes a varios turnos.
 
 ### 7.1 Cómo se mide el balance
 - `tools/sim.ps1` enfrenta a todos los mechs de `data/builds.json` entre sí con la IA normal, en paralelo, y comprueba las puertas de la fase F3. Con `-Trace` imprime un combate jugada por jugada.

@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "tempers": [
+    {
+      "id": "agresivo",
+      "weights": {"aggression": 1.2, "caution": 0.7},
+      "likes": {"charge": 0.06, "stomp": 0.03, "hook": 0.04}
+    },
+    {
+      "id": "defensivo",
+      "weights": {"guard": 1.5, "caution": 1.2, "repair_hold": 0.3},
+      "likes": {"shield": 0.05, "cool": 0.015, "repair": 0.03}
+    },
+    {
+      "id": "desgaste",
+      "weights": {"pressure": 1.8},
+      "likes": {"hook": 0.04, "stomp": 0.04}
+    },
+    {
+      "id": "esquivo",
+      "weights": {"evasion": 2.5},
+      "likes": {"walk": 0.05, "teleport": 0.06}
+    }
+  ]
+}
