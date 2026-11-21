@@ -570,14 +570,36 @@ func upgrade_selected() -> void:
 	if item == null:
 		return
 	var key := main._bench.upgrade_key(main._profile, item)
-	if str(key.get("action", "")) == "transform":
-		transform_selected()
-	else:
-		level_up_selected()
+	match str(key.get("action", "")):
+		"transform":
+			transform_selected()
+		"evolve":
+			evolve_selected()
+		_:
+			level_up_selected()
+
+
+## Evoluciona el arma del hueco elegido en la del tipo siguiente (OBS-045).
+func evolve_selected() -> void:
+	var item := _selected_item()
+	if item == null:
+		return
+	var profile := main._profile
+	var why := profile.evolve(
+		main._workshop, main._rules, main._catalog, item.id, main._zone_tier()
+	)
+	if why != "":
+		return
+	main._save()
+	Sfx.play("ui_transformar")
+	refresh()
+	var now := _selected_item()
+	if now != null:
+		_stage.loadout.flash(_selected, PartIcon.TIER_COLORS[now.tier])
 
 
 func level_up_selected() -> void:
-	var item := _selected_item()
+	var item := _upgrade_item()
 	if item == null:
 		return
 	var cap := main._campaign.level_cap(main._profile.zone)
@@ -591,7 +613,7 @@ func level_up_selected() -> void:
 
 
 func transform_selected() -> void:
-	var item := _selected_item()
+	var item := _upgrade_item()
 	if item == null:
 		return
 	var item_max := main._catalog.get_item(item.id).tier_max
@@ -610,6 +632,16 @@ func transform_selected() -> void:
 
 func _selected_item() -> ItemDef:
 	return main._bench.resolved(main._profile, Garage.get_slot(main._profile.build, _selected))
+
+
+## La pieza que sube la tecla del hueco elegido: la suya o, en un dron del
+## asistente, el asistente (sus armas suben con el).
+func _upgrade_item() -> ItemDef:
+	var item := _selected_item()
+	var profile := main._profile
+	if item != null and item.type == ItemDef.Type.DRONE and profile.build.has("assist"):
+		return main._bench.resolved(profile, str(profile.build["assist"]))
+	return item
 
 
 ## Compra una pieza de la tienda. Si el hueco donde iria esta vacio, la

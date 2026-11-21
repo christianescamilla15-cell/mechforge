@@ -478,7 +478,18 @@ static func stat_changes(now: ItemDef, then: ItemDef) -> String:
 ## vacio si la pieza no sube sola.
 func upgrade_key(profile: PlayerProfile, item: ItemDef) -> Dictionary:
 	if item.type == ItemDef.Type.DRONE and profile.build.has("assist"):
-		return {}
+		# Las armas del asistente suben con el: la tecla sube al asistente
+		# (OBS-045, del usuario: "en los drones no veo que se pueda subir").
+		var assist := resolved(profile, str(profile.build["assist"]))
+		if assist == null:
+			return {}
+		var via := upgrade_key(profile, assist)
+		via["via_assist"] = true
+		via["gain"] = (
+			Txt.t("drone_via_assist")
+			+ ((" · " + str(via["gain"])) if str(via.get("gain", "")) != "" else "")
+		)
+		return via
 	var id := item.progress_id()
 	var p := profile.part(id)
 	var max_tier := zone_tier(profile)
@@ -499,6 +510,22 @@ func upgrade_key(profile: PlayerProfile, item: ItemDef) -> Dictionary:
 			"gain": stat_changes(item, raised),
 		}
 	var item_max := catalog.get_item(item.id).tier_max
+	# Un arma en el tope de su tipo evoluciona en la del tipo siguiente.
+	var heir := catalog.successor(catalog.get_item(item.id), p["tier"] + 1)
+	if p["tier"] >= item_max and p["tier"] + 1 < ItemDef.Tier.DIVINE and heir != null:
+		var why_evolve := profile.why_cant_evolve(workshop, rules, catalog, id, max_tier)
+		var evolved := ItemScaling.resolve(heir, rules, p["tier"] + 1, 0)
+		return {
+			"label": Txt.t("part_evolve", [workshop.transform_cost(p["tier"])]),
+			"enabled": why_evolve == "",
+			"reason": why_evolve,
+			"action": "evolve",
+			"gain":
+			(
+				"%s · %s"
+				% [Txt.t("part_evolves_into", [heir.display_name]), stat_changes(item, evolved)]
+			),
+		}
 	var why := profile.why_cant_transform(workshop, rules, id, max_tier, item_max)
 	var text := Txt.t("part_transform", [workshop.transform_cost(p["tier"])])
 	if p["tier"] == ItemDef.Tier.MYTHIC:

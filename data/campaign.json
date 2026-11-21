@@ -567,6 +567,7 @@
       ],
       "boss": {
         "enemy": "jefe_zona_5",
+        "body": "jefe5_centella",
         "weapon": "pecho_centella",
         "level": 9,
         "difficulty": "HARD",
@@ -877,6 +878,7 @@
       ],
       "boss": {
         "enemy": "jefe_zona_8",
+        "body": "jefe8_estrella",
         "level": 24,
         "difficulty": "HARD",
         "skills": 24

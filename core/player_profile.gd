@@ -333,6 +333,76 @@ func transform(
 	return ""
 
 
+## Un arma al maximo de su clase que ya no puede pasar de clase porque su tipo
+## no llega (el canon, hasta Avanzada) evoluciona en la del tipo siguiente,
+## con su forma y su elemento, una clase mas arriba (OBS-045, del usuario:
+## "ya no hay mas armas para seguir subiendolas de nivel").
+## Devuelve "" si se puede; si no, el motivo.
+func why_cant_evolve(
+	workshop: Workshop, rules: RulesConfig, catalog: Catalog, id: String, max_tier: int
+) -> String:
+	var def := catalog.get_item(id)
+	if def == null:
+		return "no existe esa pieza"
+	var p := part(id)
+	if p["level"] < rules.tier_max_level[p["tier"]]:
+		return "primero hay que llevarla al nivel maximo"
+	if p["tier"] < def.tier_max or p["tier"] + 1 >= ItemDef.Tier.DIVINE:
+		return "no evoluciona: se transforma"
+	if catalog.successor(def, p["tier"] + 1) == null:
+		return "esta pieza no pasa de su clase"
+	if p["tier"] + 1 > max_tier:
+		return "la clase siguiente se abre en otra zona"
+	if workshop.transform_cost(p["tier"]) > gold:
+		return "faltan celdas"
+	return ""
+
+
+## La evoluciona: el arma nueva sustituye a la vieja en tu inventario y en tus
+## robots (mismo hueco y pintura), empieza en la clase siguiente a nivel 0 y
+## se lleva sus prototipos. Devuelve "" o el motivo del fallo.
+func evolve(
+	workshop: Workshop, rules: RulesConfig, catalog: Catalog, id: String, max_tier: int
+) -> String:
+	var why := why_cant_evolve(workshop, rules, catalog, id, max_tier)
+	if why != "":
+		return why
+	var p := part(id)
+	var next := catalog.successor(catalog.get_item(id), p["tier"] + 1)
+	gold -= workshop.transform_cost(p["tier"])
+	owned.erase(id)
+	if not next.id in owned:
+		owned.append(next.id)
+	for robot: Dictionary in mechs:
+		_swap_item(robot["build"], id, next.id)
+	var fresh := {"tier": p["tier"] + 1, "level": 0}
+	var had := part(next.id)
+	if parts.has(next.id) and (had["tier"] > fresh["tier"]):
+		fresh = had
+	parts.erase(id)
+	parts[next.id] = fresh
+	if prototypes.has(id):
+		var moved: Dictionary = prototypes[id]
+		var into: Dictionary = prototypes.get(next.id, {})
+		for proto: String in moved:
+			into[proto] = maxi(int(into.get(proto, 0)), int(moved[proto]))
+		prototypes[next.id] = into
+		prototypes.erase(id)
+	return ""
+
+
+static func _swap_item(build: Dictionary, old: String, new: String) -> void:
+	for key: String in build.keys():
+		var value: Variant = build[key]
+		if value is Array:
+			var list: Array = value
+			for i in list.size():
+				if str(list[i]) == old:
+					list[i] = new
+		elif value is String and value == old:
+			build[key] = new
+
+
 ## Compra el siguiente nivel de una mejora. Devuelve "" o el motivo del fallo.
 func buy(shop: ArenaShop, track: String, cap: int = 999, player_level: int = 0) -> String:
 	var reason := why_cant_buy(shop, track, cap, player_level)

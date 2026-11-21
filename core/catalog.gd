@@ -4,6 +4,10 @@ extends RefCounted
 ## Formato: {"schema_version": 1, "items": [{"id", "name", "type", "element",
 ## "tier_min", "tier_max"?, "tags"?, "top": {estadisticas de Divino maximo}}]}
 
+## Orden de los tipos de arma, de las primeras clases a las ultimas (GDD 8:
+## balas, canon, blaster, laser).
+const WEAPON_ORDER: Array[String] = ["balas", "canon", "blaster", "laser"]
+
 const SCHEMA_VERSION := 1
 
 var items: Dictionary[String, ItemDef] = {}
@@ -28,6 +32,27 @@ static func from_dict(data: Dictionary) -> Catalog:
 	var catalog := Catalog.new()
 	catalog._load(data)
 	return catalog
+
+
+## El arma en la que evoluciona otra que llego al tope de su tipo (OBS-045):
+## la misma forma, el mismo elemento y el mismo tipo de pieza, del primer tipo
+## de arma siguiente que llega a esa clase. null si no hay (o no es un arma).
+func successor(def: ItemDef, tier: int) -> ItemDef:
+	if def == null or def.form == "" or not def.weapon_type in WEAPON_ORDER:
+		return null
+	var after := WEAPON_ORDER.find(def.weapon_type)
+	var best: ItemDef = null
+	var best_rank := WEAPON_ORDER.size()
+	for other in by_type(def.type):
+		if other.form != def.form or other.element != def.element:
+			continue
+		if other.has_tag(ItemDef.TAG_BOSS) or tier < other.tier_min or tier > other.tier_max:
+			continue
+		var rank := WEAPON_ORDER.find(other.weapon_type)
+		if rank > after and rank < best_rank:
+			best = other
+			best_rank = rank
+	return best
 
 
 func get_item(id: String) -> ItemDef:
