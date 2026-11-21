@@ -46,7 +46,8 @@ signal robot_pressed
 
 ## Lo que hay en la pared y se pulsa: tres pantallas y el cuadro de control
 ## de los ajustes.
-const TERMINALS: Array[String] = ["taller", "mejoras", "habilidades", "ajustes"]
+## "especialista" es su banco en el suelo (GDD 8.6), no una pantalla de pared.
+const TERMINALS: Array[String] = ["taller", "mejoras", "habilidades", "ajustes", "especialista"]
 ## Centro de cada bahia, como parte del ancho. Las dos de la izquierda van
 ## separadas para que el arma de un robot no tape al de al lado.
 const BAY_X: Array[float] = [0.085, 0.225, 0.815]
@@ -73,6 +74,8 @@ var loadout := LoadoutScreen.new()
 var console := WallConsole.new()
 ## El proyector de la bahia vacia que se pulso: lo que se puede adquirir.
 var projector := BayProjector.new()
+## El banco del especialista, de cerca (GDD 8.6, OBS-043).
+var specialist := SpecialistScreen.new()
 ## La casilla elegida lleva un arma que se puede probar: la diana se enciende.
 var can_test := false:
 	set(value):
@@ -150,6 +153,7 @@ func _ready() -> void:
 	add_child(_wall_robot)
 	add_child(console)
 	add_child(loadout)
+	add_child(specialist)
 	mouse_exited.connect(_clear_hover)
 	_mech.footstep.connect(_on_footstep)
 	_font = get_theme_default_font()
@@ -322,6 +326,17 @@ func hide_loadout() -> void:
 	loadout.close()
 
 
+## Acerca el banco del especialista con ese estado (SpecialistBrief.state):
+## crece desde su sitio en el suelo hasta casi todo el hangar.
+func show_specialist(state: Dictionary, instant: bool = false) -> void:
+	var to := Rect2(size.x * 0.03, size.y * 0.04, size.x * 0.94, size.y * 0.92)
+	specialist.open(state, _terminal_rects.get("especialista", Rect2()), to, instant)
+
+
+func hide_specialist() -> void:
+	specialist.close()
+
+
 ## Sitio de la computadora del taller en la pared y el que ocupa de cerca:
 ## casi todo el hangar, que queda asomando por los bordes.
 func loadout_rects() -> Array[Rect2]:
@@ -400,6 +415,8 @@ func _layout() -> void:
 		"mejoras": Rect2(size.x * 0.175, size.y * 0.085, size.x * 0.12, size.y * 0.2),
 		"habilidades": Rect2(size.x * 0.585, size.y * 0.085, size.x * 0.12, size.y * 0.2),
 		"ajustes": Rect2(size.x * 0.944, size.y * 0.012, size.x * 0.046, size.y * 0.05),
+		# El banco del especialista, en el suelo, abajo a la izquierda.
+		"especialista": Rect2(size.x * 0.02, size.y * 0.78, size.x * 0.17, size.y * 0.2),
 	}
 	var wall := HangarProps.terminal_art(_terminal_rects["taller"], "taller")
 	_wall_robot.position = wall.position

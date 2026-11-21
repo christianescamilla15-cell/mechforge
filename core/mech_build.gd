@@ -199,6 +199,14 @@ func summary(rules: RulesConfig) -> Dictionary:
 		upgrades.apply(s)
 	if skills != null:
 		skills.apply(s)
+	# Los prototipos del especialista que mejoran al robot (GDD 8.6).
+	var more := {"cooling": 0.0, "regen": 0.0, "health": 0.0}
+	for item in all_items():
+		if item != null and item.proto_effect in more:
+			more[item.proto_effect] += item.proto_value
+	s["cooling"] = roundi(s["cooling"] * (1.0 + more["cooling"]))
+	s["energy_regen"] = roundi(s["energy_regen"] * (1.0 + more["regen"]))
+	s["health"] = roundi(s["health"] * (1.0 + more["health"]))
 	var over: int = s["weight"] - max_weight(rules)
 	if over > 0:
 		s["health"] = maxi(1, s["health"] - over * rules.overload_hp_penalty_per_kg)

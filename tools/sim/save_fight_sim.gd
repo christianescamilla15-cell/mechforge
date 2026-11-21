@@ -12,6 +12,7 @@ extends SceneTree
 ##                        en la municion de esa clase) y la armeria al tope
 ##     --battles=40       combates por variante
 ##     --player=HARD      dificultad de la IA que hace de jugador
+## Con las reglas del juego: criticos, empujes y bonificaciones en la arena.
 ## Variantes: el robot como esta y, si no lleva modulos de ataque, con tres.
 
 const DIFFICULTY := {
@@ -34,6 +35,11 @@ func _initialize() -> void:
 	var path := str(args.get("save", "user://save.json"))
 	var battles := int(args.get("battles", "40"))
 	var player_ai: BattleAI.Difficulty = DIFFICULTY[str(args.get("player", "HARD"))]
+	# Las reglas del juego (MainScreen): criticos, empujes y bonificaciones en
+	# la arena.
+	_rules.crits_enabled = true
+	_rules.impact_enabled = true
+	_rules.drops_enabled = true
 	_catalog = Catalog.load_file("res://data/catalog.json")
 	var library := BuildLibrary.load_file("res://data/builds.json")
 	var chassis := ChassisLibrary.load_file("res://data/chassis.json")

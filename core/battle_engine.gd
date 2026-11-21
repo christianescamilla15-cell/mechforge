@@ -407,6 +407,12 @@ func _begin_turn() -> void:
 		_log("repair", {"amount": repair})
 	if me.no_overheat():
 		me.heat = mini(me.heat, me.heat_cap)
+	# Valvula de alivio (prototipo): un sobrecalentamiento que no le cuesta
+	# nada; el calor queda en su tope.
+	if me.heat > me.heat_cap and me.relief_left > 0:
+		me.relief_left -= 1
+		me.heat = me.heat_cap
+		_log("relief", {"left": me.relief_left})
 	var actions := rules.actions_per_turn + me.extra_actions()
 	var shutdown := false
 	if me.heat > me.heat_cap:
@@ -543,6 +549,8 @@ func _use(
 
 	var data := {"slot": key, "item": def.id, "damage": damage}
 	_note_layer(data, target, soaked)
+	if damage > 0 and def.proto_effect != "":
+		_proto_on_hit(user, def, damage, data)
 	if crit >= 1.0:
 		data.merge(_apply_crit(def, target))
 	# Un escudo que para el golpe tambien para su impacto.
@@ -561,11 +569,14 @@ func _use(
 ## arma, por su poder frente al blindaje del rival, menos lo que paran su
 ## armadura gruesa (resistencia frente al dano del arma) y su escudo. 0 si
 ## los criticos estan apagados o un escudo para el golpe.
+## Con el percutor del especialista (GDD 8.6) se suma la suya, aunque los
+## criticos esten apagados o el arma no tenga.
 func crit_chance(def: ItemDef, target: BattleMech) -> float:
-	if not rules.crits_enabled or def.crit <= 0 or not def.deals_damage():
+	if not def.deals_damage() or target.shield_left > 0 or target.barrier > 0:
 		return 0.0
-	if target.shield_left > 0 or target.barrier > 0:
-		return 0.0
+	var extra := def.proto_value if def.proto_effect == "crit" else 0.0
+	if not rules.crits_enabled or def.crit <= 0:
+		return clampf(extra, 0.0, rules.crit_cap)
 	var chance := def.crit / 100.0
 	var level := ItemScaling.power(rules, def.tier, def.level) / target.armor_power(rules)
 	chance *= clampf(level, rules.crit_level_min, rules.crit_level_max)
@@ -575,7 +586,7 @@ func crit_chance(def: ItemDef, target: BattleMech) -> float:
 		chance *= maxf(0.0, 1.0 - rules.crit_armor_weight * armor)
 	chance *= maxf(0.0, 1.0 - rules.crit_shield_cut * target.shield_level())
 	chance *= 1.0 - target.buff_amount("armor")
-	return clampf(chance, 0.0, rules.crit_cap)
+	return clampf(chance + extra, 0.0, rules.crit_cap)
 
 
 ## Efectos de un critico ademas del dano (el de "pierce" ya va en el dano).
@@ -634,6 +645,8 @@ func _damage(
 		damage += attacker.module_damage(key)
 		# Con potencia 1.0 el resultado es exactamente el de antes.
 		damage = roundi(damage * attacker.damage_mult())
+		if def.proto_effect == "damage":
+			damage = roundi(damage * (1.0 + def.proto_value))
 		if attacker.build != null and def == attacker.build.chest:
 			damage = roundi(damage * attacker.chest_damage_mult())
 		if attacker.build != null and def in [attacker.build.drone, attacker.build.drone_low]:
@@ -832,6 +845,29 @@ func _log(event: String, data: Dictionary = {}) -> void:
 	entry["actions_left"] = actions_left
 	entry["drop"] = drop.duplicate()
 	events.append(entry)
+
+
+## Lo que hace un prototipo del especialista con cada golpe que acierta su
+## arma (GDD 8.6): devolver vida, devolver energia o quitar calor.
+func _proto_on_hit(user: BattleMech, def: ItemDef, damage: int, data: Dictionary) -> void:
+	match def.proto_effect:
+		"lifesteal":
+			var healed := mini(roundi(damage * def.proto_value), user.max_health - user.health)
+			if healed > 0:
+				user.health += healed
+				data["lifesteal"] = healed
+		"energy_on_hit":
+			var gained := mini(
+				roundi(user.energy_cap * def.proto_value), user.energy_cap - user.energy
+			)
+			if gained > 0:
+				user.energy += gained
+				data["energy_gain"] = gained
+		"cool_on_hit":
+			var vented := mini(roundi(user.heat_cap * def.proto_value), user.heat)
+			if vented > 0:
+				user.heat -= vented
+				data["vented"] = vented
 
 
 ## Lo que paro el manto en un golpe, y si se rompio con el.

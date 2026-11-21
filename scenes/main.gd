@@ -47,6 +47,8 @@ var _last: Dictionary = {}
 var _brief := MissionBrief.new()
 ## Arma lo que ensena el taller del hangar: el tablero de piezas, las
 ## pantallas de mejoras y habilidades y la lectura del robot.
+## Los prototipos del especialista (GDD 8.6).
+var _prototypes: PrototypeLibrary
 var _bench := WorkshopBrief.new()
 ## Semilla del rival de la arena: el que se ve en el hangar es el que sale.
 var _arena_seed: int = 0
@@ -85,6 +87,7 @@ func _ready() -> void:
 	_styles = StyleLibrary.load_file("res://data/styles.json", _catalog)
 	_tempers = TemperLibrary.load_file("res://data/tempers.json")
 	_campaign = Campaign.load_file("res://data/campaign.json", _library)
+	_prototypes = PrototypeLibrary.load_file("res://data/prototypes.json")
 	_brief.rules = _rules
 	_brief.catalog = _catalog
 	_brief.library = _library
@@ -101,6 +104,7 @@ func _ready() -> void:
 	_bench.skills = _skills
 	_bench.progression = _progression
 	_bench.styles = _styles
+	_bench.prototypes = _prototypes
 	_arena_seed = randi()
 	if _args.has("showcase"):
 		# Muestra de movimientos para revisar animaciones (tools/clip.ps1 -Showcase).
@@ -652,9 +656,11 @@ func _start_battle(spec: Dictionary) -> void:
 		# pecho lo sobrecargaria.
 		player_build.upgrades = ArenaUpgrades.new()
 		player_build.upgrades.core = _shop.upgrades_for(_profile.shop_levels).core
-	# Las mejoras de la armeria solo cuentan para el mech del jugador.
+	# Las mejoras de la armeria y los prototipos del especialista solo cuentan
+	# para el mech del jugador.
 	if rewarded:
 		player_build.upgrades = _shop.upgrades_for(_profile.shop_levels)
+		_prototypes.apply(player_build, _profile)
 	var enemy_build := _library.make(
 		spec["enemy"],
 		_catalog,

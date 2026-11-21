@@ -43,6 +43,11 @@ var _arming := false
 var _console: String = ""
 ## Una bahia vacia esta proyectando lo que se puede adquirir.
 var _offering := false
+## El banco del especialista esta abierto (GDD 8.6), con esa pieza elegida
+## y lo que acaba de decir.
+var _special := false
+var _proto_slot := "side0"
+var _said := ""
 ## Canal del modo mision ("campaign", "arena" o "free"); "" = apagado.
 var _channel: String = ""
 var _launching := false
@@ -68,6 +73,9 @@ func _ready() -> void:
 	_stage.target_pressed.connect(test_fire)
 	_stage.loadout.slot_picked.connect(pick)
 	_stage.loadout.close_pressed.connect(close_panels)
+	_stage.specialist.piece_picked.connect(pick_proto_slot)
+	_stage.specialist.proto_confirmed.connect(buy_prototype)
+	_stage.specialist.close_pressed.connect(close_panels)
 	var rack := _stage.loadout.rack
 	rack.chosen.connect(_on_rack_chosen)
 	rack.bought.connect(buy)
@@ -169,6 +177,13 @@ func refresh() -> void:
 		_stage.projector.state = brief.offers(profile)
 	else:
 		_stage.hide_offers()
+	if _special:
+		var said := _said
+		_stage.show_specialist(
+			SpecialistBrief.state(profile, brief, main._prototypes, _proto_slot, said)
+		)
+	else:
+		_stage.hide_specialist()
 
 
 ## Lo que ensenan los rotulos de la escena (tu robot, tus celdas, tu nivel
@@ -187,6 +202,7 @@ func _refresh_info() -> void:
 		"problems": "" if problems.is_empty() else Txt.t("mech_problems", [", ".join(problems)]),
 		"cells": profile.gold,
 		"level": brief.level(profile),
+		"specialist_unlock": main._prototypes.unlock_level,
 		"xp": profile.xp,
 		"xp_next": main._progression.next_level_xp(profile.xp),
 		"weight": int(reading["weight"]),
@@ -257,6 +273,8 @@ func _placeholder(type: ItemDef.Type) -> ItemDef:
 func show_page(page: String) -> void:
 	if page == "misiones":
 		open_missions()
+	elif page == "especialista":
+		open_specialist()
 	elif page in CONSOLES:
 		open_console(page)
 	else:
@@ -270,9 +288,49 @@ func open_parts() -> void:
 	close_missions()
 	_console = ""
 	_offering = false
+	_special = false
 	_arming = true
 	_hover_id = ""
 	_hover_slot = ""
+	refresh()
+
+
+## Acerca el banco del especialista (GDD 8.6).
+func open_specialist() -> void:
+	if _launching:
+		return
+	close_missions()
+	_arming = false
+	_console = ""
+	_offering = false
+	_special = true
+	_said = ""
+	refresh()
+
+
+## Elige la pieza a la que el especialista le ensena sus prototipos.
+func pick_proto_slot(slot: String) -> void:
+	_proto_slot = slot
+	_said = ""
+	refresh()
+
+
+## Compra un prototipo (o su rango siguiente) para la pieza elegida.
+func buy_prototype(id: String) -> void:
+	var profile := main._profile
+	var protos := main._prototypes
+	var why := protos.buy(profile, main._catalog, main._bench.level(profile), _proto_slot, id)
+	if why != "":
+		Sfx.play("ui_cerrar")
+		_said = why
+		refresh()
+		return
+	main._save()
+	Sfx.play("ui_subir_nivel")
+	var item := main._catalog.get_item(Garage.get_slot(profile.build, _proto_slot))
+	var rank := int(PrototypeLibrary.installed(profile, item.progress_id()).get("rank", 1))
+	_said = Txt.t("specialist_line_done", [protos.display_name(id), SpecialistBrief.ROMAN[rank]])
+	_stage.specialist.celebrate()
 	refresh()
 
 
@@ -316,6 +374,7 @@ func close_panels() -> void:
 	if current_page() == "":
 		return
 	_arming = false
+	_special = false
 	_console = ""
 	_offering = false
 	_hover_id = ""
@@ -327,6 +386,8 @@ func close_panels() -> void:
 ## Lo que esta abierto: "taller", "mejoras", "habilidades", "robot",
 ## "ajustes", "adquirir" o "".
 func current_page() -> String:
+	if _special:
+		return "especialista"
 	if _console != "":
 		return _console
 	if _offering:

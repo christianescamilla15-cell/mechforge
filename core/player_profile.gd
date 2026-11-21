@@ -34,6 +34,9 @@ var shop_levels: Dictionary[String, int] = {}
 ## Las que no estan van en clase Basica nivel 0. Dos piezas iguales del mech
 ## suben juntas.
 var parts: Dictionary[String, Dictionary] = {}
+## Prototipos del especialista (GDD 8.6), por la clave de progreso de la
+## pieza: {"id", "rank"}. Van con la pieza.
+var prototypes: Dictionary = {}
 ## Nucleos unicos: los sueltan los 3 ultimos jefes y cada uno transforma una
 ## pieza Mitica al maximo en Unica (GDD 8).
 var unique_cores: int = 0
@@ -349,6 +352,7 @@ func to_dict() -> Dictionary:
 		"skills": skills.duplicate(),
 		"shop_levels": shop_levels.duplicate(),
 		"parts": parts.duplicate(true),
+		"prototypes": prototypes.duplicate(true),
 		"unique_cores": unique_cores,
 		"owned": owned.duplicate(),
 		"mechs": mechs.duplicate(true),
@@ -426,6 +430,13 @@ static func from_dict(data: Dictionary) -> PlayerProfile:
 			if raw is Dictionary:
 				var tier := clampi(int(raw.get("tier", 0)), 0, ItemDef.Tier.DIVINE)
 				profile.parts[id] = {"tier": tier, "level": maxi(0, int(raw.get("level", 0)))}
+	var saved_protos: Variant = data.get("prototypes", {})
+	if saved_protos is Dictionary:
+		for key: String in saved_protos:
+			var entry: Variant = saved_protos[key]
+			if entry is Dictionary and str(entry.get("id", "")) != "":
+				var rank := maxi(1, int(entry.get("rank", 1)))
+				profile.prototypes[key] = {"id": str(entry["id"]), "rank": rank}
 	var levels: Variant = data.get("shop_levels", {})
 	if levels is Dictionary:
 		for track: String in levels:

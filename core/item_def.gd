@@ -136,6 +136,15 @@ const BOOSTS: Array[String] = ["arms", "shoulder", "special", "all"]
 @export var energy_regen_dmg: int = 0
 ## Dano de mas por golpe que da un modulo de ataque a las armas de `boost`.
 @export var dmg_bonus: int = 0
+
+@export_group("Prototipo")
+## El prototipo del especialista montado en esta pieza (GDD 8.6,
+## PrototypeLibrary.apply): su id, su rango, su efecto y lo que vale. Vacio
+## en las piezas del catalogo y en las de los rivales.
+@export var proto: String = ""
+@export var proto_rank: int = 0
+@export var proto_effect: String = ""
+@export var proto_value: float = 0.0
 @export var range_min: int = 0
 @export var range_max: int = 0
 

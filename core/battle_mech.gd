@@ -27,6 +27,9 @@ var max_health: int = 0
 ## que la vida. Rota (0), no vuelve.
 var layer: int = 0
 var layer_max: int = 0
+## Valvula de alivio (prototipo de torso): veces que aun puede
+## sobrecalentarse sin perder nada en este combate.
+var relief_left: int = 0
 var health: int = 0
 var energy: int = 0
 var energy_cap: int = 0
@@ -74,6 +77,8 @@ func _init(p_build: MechBuild = null, rules: RulesConfig = null, p_position: int
 	var s := build.summary(rules)
 	max_health = s["health"]
 	health = max_health
+	if build.torso != null and build.torso.proto_effect == "overheat_relief":
+		relief_left = roundi(build.torso.proto_value)
 	if build.chassis != null and build.chassis.shield_layer > 0.0:
 		layer_max = roundi(max_health * build.chassis.shield_layer)
 		layer = layer_max
@@ -130,6 +135,7 @@ func clone() -> BattleMech:
 	copy.shield_left = shield_left
 	copy.evade_left = evade_left
 	copy.layer = layer
+	copy.relief_left = relief_left
 	copy.layer_max = layer_max
 	copy.barrier = barrier
 	copy.kits = kits.duplicate()

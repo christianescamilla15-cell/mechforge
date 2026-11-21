@@ -53,6 +53,8 @@ var shop: ArenaShop
 var skills: SkillTree
 var progression: Progression
 var styles: StyleLibrary
+## Los prototipos del especialista (GDD 8.6); sin ella, las piezas van sin.
+var prototypes: PrototypeLibrary
 
 
 static func _group_order() -> Array[String]:
@@ -101,6 +103,8 @@ func build_of(profile: PlayerProfile, spec: Dictionary, parts: Dictionary = {}) 
 	# Lo que da el tipo de su robot (el escudo del guardian...).
 	styles.add_effects(profile.style, build.skills)
 	build.upgrades = shop.upgrades_for(profile.shop_levels)
+	if prototypes != null:
+		prototypes.apply(build, profile)
 	return build
 
 

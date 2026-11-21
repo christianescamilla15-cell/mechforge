@@ -132,6 +132,14 @@ func _on_autoplay_event(entry: Dictionary) -> void:
 	if entry.get("crit", false) and not _shot_events.has("crit"):
 		_shot_events["crit"] = true
 		shot("critico")
+	# El manto de plasma de un jefe (OBS-041): el primer golpe que lo gasta y
+	# el que lo rompe.
+	if entry.get("layer", 0) > 0 and not _shot_events.has("layer"):
+		_shot_events["layer"] = true
+		shot("manto")
+	if entry.get("layer_broken", false) and not _shot_events.has("layer_broken"):
+		_shot_events["layer_broken"] = true
+		shot("manto_roto")
 	if (
 		event
 		in [
@@ -582,6 +590,7 @@ func workshop_test(workshop: WorkshopScreen) -> void:
 	await get_tree().create_timer(0.6).timeout
 	print("TALLER tras la tecla de cerrar: abierto='%s'" % workshop.current_page())
 	await shot("taller_recogido")
+	await _specialist_test(workshop, stage)
 	# Y la diana prueba el arma de la ultima casilla tocada.
 	if item != null:
 		await _move(stage.target_rect().get_center())
@@ -702,6 +711,41 @@ func _click(at: Vector2) -> void:
 	await get_tree().process_frame
 	_mouse_button(window_at, false)
 	await get_tree().process_frame
+
+
+## El banco del especialista (GDD 8.6): se acerca, se elige el brazo y se
+## compra el sifon vital con dos pulsaciones (en memoria: la prueba no guarda).
+func _specialist_test(workshop: WorkshopScreen, stage: HangarStage) -> void:
+	var bench: Rect2 = stage._terminal_rects.get("especialista", Rect2())
+	await _move(stage.global_position + bench.get_center())
+	await get_tree().create_timer(0.4).timeout
+	await shot("especialista_banco")
+	await _click(stage.global_position + bench.get_center())
+	await get_tree().create_timer(0.7).timeout
+	var screen := stage.specialist
+	print("ESPECIALISTA abierto=%s" % workshop.current_page())
+	await shot("especialista")
+	if screen.state.get("protos", []).is_empty():
+		return
+	var row := screen.global_position + screen.proto_rect(0).get_center()
+	await _click(row)
+	await get_tree().create_timer(0.4).timeout
+	await shot("especialista_armado")
+	var gold: int = main._profile.gold
+	await _click(row)
+	await get_tree().create_timer(0.5).timeout
+	print(
+		(
+			"ESPECIALISTA compra: celdas %d -> %d prototipos=%s"
+			% [gold, main._profile.gold, main._profile.prototypes]
+		)
+	)
+	await shot("especialista_comprado")
+	await _click(screen.global_position + screen.piece_rect(4).get_center())
+	await get_tree().create_timer(0.5).timeout
+	await shot("especialista_torso")
+	workshop.close_panels()
+	await get_tree().create_timer(0.5).timeout
 
 
 ## Centro, en el juego, de la casilla de un hueco en la computadora del taller.

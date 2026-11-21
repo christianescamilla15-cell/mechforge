@@ -309,6 +309,8 @@ static func terminal_still(c: CanvasItem, font: Font, terminal: String, rect: Re
 	if terminal == "ajustes":
 		control_box(c, rect)
 		return
+	if terminal == "especialista":
+		return
 	var screen := HangarArt.draw_screen_still(c, rect)
 	var at := screen.position + Vector2(8, 15)
 	text(c, font, at, Txt.t("terminal_" + terminal), screen.size.x - 16.0, 13, SCREEN_TEXT)
@@ -342,6 +344,11 @@ static func terminal_live(
 ) -> void:
 	if terminal == "ajustes":
 		control_box_live(c, font, rect, hover, time)
+		return
+	if terminal == "especialista":
+		var unlock := int(info.get("specialist_unlock", 10))
+		var open := int(info.get("level", 1)) >= unlock
+		SpecialistBench.draw(c, font, rect, hover, open, unlock, time)
 		return
 	var screen := HangarArt.draw_screen_live(c, rect, hover, time)
 	var art := terminal_art(rect, terminal)

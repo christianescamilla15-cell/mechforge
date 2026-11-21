@@ -1,0 +1,149 @@
+{
+  "schema_version": 1,
+  "unlock_level": 10,
+  "ranks": 5,
+  "prices": {
+    "estandar": [
+      1000,
+      3000,
+      8000,
+      20000,
+      50000
+    ],
+    "especial": [
+      2000,
+      6000,
+      15000,
+      40000,
+      100000
+    ]
+  },
+  "prototypes": [
+    {
+      "id": "sifon_vital",
+      "name": "Sifón vital",
+      "piece": "weapon",
+      "effect": "lifesteal",
+      "price": "especial",
+      "values": [
+        0.06,
+        0.09,
+        0.12,
+        0.16,
+        0.2
+      ]
+    },
+    {
+      "id": "captador",
+      "name": "Captador de energía",
+      "piece": "weapon",
+      "effect": "energy_on_hit",
+      "price": "estandar",
+      "values": [
+        0.04,
+        0.06,
+        0.08,
+        0.11,
+        0.15
+      ]
+    },
+    {
+      "id": "purga_termica",
+      "name": "Purga térmica",
+      "piece": "weapon",
+      "effect": "cool_on_hit",
+      "price": "estandar",
+      "values": [
+        0.05,
+        0.08,
+        0.11,
+        0.15,
+        0.2
+      ]
+    },
+    {
+      "id": "percutor",
+      "name": "Percutor de resonancia",
+      "piece": "weapon",
+      "effect": "crit",
+      "price": "especial",
+      "values": [
+        0.08,
+        0.12,
+        0.16,
+        0.22,
+        0.3
+      ]
+    },
+    {
+      "id": "sobrecarga",
+      "name": "Núcleo de sobrecarga",
+      "piece": "weapon",
+      "effect": "damage",
+      "price": "estandar",
+      "values": [
+        0.05,
+        0.08,
+        0.11,
+        0.15,
+        0.2
+      ]
+    },
+    {
+      "id": "radiador",
+      "name": "Radiador de fase",
+      "piece": "torso",
+      "effect": "cooling",
+      "price": "estandar",
+      "values": [
+        0.1,
+        0.16,
+        0.22,
+        0.3,
+        0.4
+      ]
+    },
+    {
+      "id": "reactor",
+      "name": "Reactor afinado",
+      "piece": "torso",
+      "effect": "regen",
+      "price": "estandar",
+      "values": [
+        0.1,
+        0.16,
+        0.22,
+        0.3,
+        0.4
+      ]
+    },
+    {
+      "id": "valvula",
+      "name": "Válvula de alivio",
+      "piece": "torso",
+      "effect": "overheat_relief",
+      "price": "especial",
+      "values": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ]
+    },
+    {
+      "id": "coraza_marcha",
+      "name": "Coraza de marcha",
+      "piece": "legs",
+      "effect": "health",
+      "price": "estandar",
+      "values": [
+        0.04,
+        0.06,
+        0.08,
+        0.11,
+        0.15
+      ]
+    }
+  ]
+}
