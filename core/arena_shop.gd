@@ -7,9 +7,14 @@ extends RefCounted
 
 ## Tabla de pasos: lo que da cada nivel, sobre 20. Es la del original.
 var steps: Array[int] = []
-## Mejoras a la venta, por id: {"name", "kind" ("percent" o "flat"), "max"}.
+## Mejoras a la venta, por id: {"name", "kind" ("percent" o "flat"), "max"}
+## y, si es plana, "unit" (en que se mide: "kg"). "gain" es el texto con el
+## que la pantalla de mejoras cuenta lo que da el nivel siguiente, si no es el
+## de todas.
 ## Con "assist_tier", la mejora se abre cuando el robot de asistencia llega a
 ## esa clase (antes no sirve) y no cuenta para el ritmo de la primera zona.
+## Con "player_level", se abre cuando el jugador llega a ese nivel (el nucleo
+## ampliado, que carga el arma de pecho) y tampoco cuenta para ese ritmo.
 var tracks: Dictionary[String, Dictionary] = {}
 ## Oro que cuesta llegar a cada nivel desde el anterior.
 var prices: Array[int] = []
@@ -80,6 +85,21 @@ func assist_tier(track: String) -> int:
 	return int(tracks[track].get("assist_tier", -1))
 
 
+## En que se mide una mejora plana ("kg"); "" si no lo dice.
+func unit(track: String) -> String:
+	return str(tracks[track].get("unit", ""))
+
+
+## Clave del texto que cuenta lo que da el nivel siguiente de una mejora.
+func gain_key(track: String) -> String:
+	return str(tracks[track].get("gain", "console_upgrade_gain"))
+
+
+## Nivel del jugador que pide una mejora; 0 si no pide ninguno.
+func player_level(track: String) -> int:
+	return int(tracks[track].get("player_level", 0))
+
+
 ## Oro total para llevar del nivel 0 a ese nivel las mejoras que estan
 ## abiertas desde el principio (las que no piden nada).
 func total_cost(level: int) -> int:
@@ -88,7 +108,7 @@ func total_cost(level: int) -> int:
 		per_track += prices[step]
 	var open := 0
 	for track in tracks:
-		if assist_tier(track) < 0:
+		if assist_tier(track) < 0 and player_level(track) <= 0:
 			open += 1
 	return per_track * open
 

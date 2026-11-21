@@ -367,13 +367,16 @@ func upgrades(profile: PlayerProfile) -> Dictionary:
 			row["label"] = Txt.t("shop_max")
 			row["reason"] = Txt.t("shop_max")
 		else:
-			var reason := profile.why_cant_buy(shop, track, cap)
+			var reason := profile.why_cant_buy(shop, track, cap, level(profile))
 			row["label"] = HangarProps.thousands(shop.price(now + 1))
 			row["gain"] = Txt.t(
-				"console_upgrade_gain", [value_text(track, now + 1), shop.price(now + 1)]
+				shop.gain_key(track), [value_text(track, now + 1), shop.price(now + 1)]
 			)
 			row["reason"] = reason
-			if reason.begins_with("se abre"):
+			if reason.begins_with("se abre en el nivel"):
+				row["state"] = "locked"
+				row["label"] = Txt.t("slot_locked", [shop.player_level(track)])
+			elif reason.begins_with("se abre"):
 				row["state"] = "locked"
 				row["label"] = Txt.t("shop_locked_assist")
 			elif reason == "la zona no deja subirla mas":
@@ -399,7 +402,7 @@ func value_text(track: String, track_level: int) -> String:
 	var amount := shop.value(track, track_level)
 	if shop.tracks[track]["kind"] == "percent":
 		return "+%d %%" % roundi(amount * 100.0)
-	return "+%d" % roundi(amount)
+	return ("+%d %s" % [roundi(amount), shop.unit(track)]).strip_edges()
 
 
 ## La pantalla de habilidades (WallConsole): las ramas con sus nodos. "state"

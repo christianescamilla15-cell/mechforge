@@ -208,7 +208,7 @@ func _refresh_info() -> void:
 		"xp_next": main._progression.next_level_xp(profile.xp),
 		"weight": int(reading["weight"]),
 		"weight_delta": int(reading["weight_delta"]) if _arming else 0,
-		"max_weight": main._rules.max_weight,
+		"max_weight": main._player_build().max_weight(main._rules),
 		"overload": main._rules.overload,
 		"upgrades": upgrades,
 	}
@@ -597,7 +597,8 @@ func _slot_for(id: String) -> String:
 
 ## Sube una de las mejoras permanentes, con el tope de la zona.
 func buy_upgrade(track: String) -> void:
-	if main._profile.buy(main._shop, track, main._armory_cap()) != "":
+	var level: int = main._player_level()
+	if main._profile.buy(main._shop, track, main._armory_cap(), level) != "":
 		return
 	Sfx.play("ui_comprar")
 	main._save()

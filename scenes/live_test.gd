@@ -355,7 +355,11 @@ func armory_test() -> void:
 	var reasons := {}
 	for track in main._shop.track_ids():
 		reasons[track] = (
-			"%d: %s" % [profile.level_of(track), profile.why_cant_buy(main._shop, track, cap)]
+			"%d: %s"
+			% [
+				profile.level_of(track),
+				profile.why_cant_buy(main._shop, track, cap, main._player_level())
+			]
 		)
 	print("ARMERIA tope=%d gastado=%d quedan=%d" % [cap, gold - profile.gold, profile.gold])
 	print("ARMERIA por mejora: %s" % reasons)

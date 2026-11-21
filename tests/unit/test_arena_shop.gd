@@ -170,3 +170,45 @@ func test_un_guardado_roto_empieza_de_cero() -> void:
 	var loaded := PlayerProfile.load_or_new(path)
 	assert_eq(loaded.gold, 0)
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
+
+
+# --- El nucleo ampliado (OBS-027) ------------------------------------------------------
+
+
+func test_el_nucleo_ampliado_se_abre_en_el_nivel_10_del_jugador() -> void:
+	var shop := _shop()
+	assert_eq(shop.player_level("core"), 10)
+	assert_eq(shop.player_level("damage"), 0)
+	var profile := PlayerProfile.new()
+	profile.gold = 100000
+	assert_eq(profile.buy(shop, "core", 999, 9), "se abre en el nivel 10")
+	assert_eq(profile.level_of("core"), 0)
+	assert_eq(profile.buy(shop, "core", 999, 10), "")
+	assert_eq(profile.level_of("core"), 1)
+	# Las demas no piden nivel.
+	assert_eq(profile.buy(shop, "damage", 999, 1), "")
+
+
+func test_el_nucleo_al_maximo_carga_la_mas_pesada_de_las_armas_de_pecho() -> void:
+	var shop := _shop()
+	var catalog := Catalog.load_file("res://data/catalog.json")
+	var heaviest := 0
+	for def in catalog.by_type(ItemDef.Type.CHEST):
+		heaviest = maxi(heaviest, def.weight)
+	var levels := {"core": shop.max_level()}
+	assert_gte(roundi(shop.upgrades_for(levels).core), heaviest)
+	assert_eq(shop.upgrades_for({}).core, 0.0)
+	assert_eq(shop.unit("core"), "kg")
+
+
+func test_el_nucleo_no_cuenta_para_el_ritmo_de_la_primera_zona() -> void:
+	var shop := _shop()
+	var open := 0
+	for track in shop.track_ids():
+		if shop.assist_tier(track) < 0 and shop.player_level(track) <= 0:
+			open += 1
+	assert_eq(open, 6, "las seis mejoras de siempre")
+	var per_track := 0
+	for step in range(1, 7):
+		per_track += shop.price(step)
+	assert_eq(shop.total_cost(6), per_track * 6)

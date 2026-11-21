@@ -43,12 +43,11 @@ func all_items() -> Array[ItemDef]:
 	return out
 
 
-## Peso que cuenta para el limite. El arma de pecho no cuenta: va en un hueco
-## reforzado aparte, que se abre en el nivel 10 del jugador (GDD 4). Medido el
-## 2026-11-17: si contara, montarla obligaba a quitar modulos y el mech salia
-## peor que sin ella.
-## El cuerpo del robot de asistencia y su arma inferior tampoco: es un hueco
-## nuevo, y si contara habria que quitar piezas para montarla. El arma
+## Peso que cuenta para el limite. El arma de pecho pesa (decision del
+## usuario, 2026-11-20, OBS-027): quien la quiere llevar sin quitar nada
+## amplia el nucleo (max_weight).
+## El cuerpo del robot de asistencia y su arma inferior no cuentan: es un
+## hueco nuevo, y si contara habria que quitar piezas para montarla. El arma
 ## superior pesa como siempre peso el dron.
 func total_weight() -> int:
 	var total := 0
@@ -59,7 +58,18 @@ func total_weight() -> int:
 
 
 func _weightless(item: ItemDef) -> bool:
-	return item == chest or item == assist or item == drone_low
+	return item == assist or item == drone_low
+
+
+## Peso que puede llevar: el limite de las reglas mas lo que el nucleo
+## ampliado (mejora de la armeria, desde el nivel 10 del jugador) carga del
+## arma de pecho. Nunca mas de lo que pesa el arma: el nucleo se amplia para
+## ella, no para llevar mas de lo demas. Medido el 2026-11-17: sin esto,
+## montarla obligaba a quitar modulos y el mech salia peor que sin ella.
+func max_weight(rules: RulesConfig) -> int:
+	if chest == null or upgrades == null:
+		return rules.max_weight
+	return rules.max_weight + mini(roundi(upgrades.core), chest.weight)
 
 
 ## Devuelve los motivos por los que el mech no puede pelear; vacio si es valido.
@@ -75,7 +85,7 @@ func validate(rules: RulesConfig) -> Array[String]:
 		problems.append("demasiadas armas superiores")
 	if modules.size() > MODULE_SLOTS:
 		problems.append("demasiados modulos")
-	if total_weight() > rules.max_weight + rules.overload:
+	if total_weight() > max_weight(rules) + rules.overload:
 		problems.append("demasiado peso")
 	# Como maximo un modulo por tipo de resistencia: se dice cuales chocan,
 	# una vez por pareja.
@@ -122,7 +132,7 @@ func summary(rules: RulesConfig) -> Dictionary:
 		upgrades.apply(s)
 	if skills != null:
 		skills.apply(s)
-	var over: int = s["weight"] - rules.max_weight
+	var over: int = s["weight"] - max_weight(rules)
 	if over > 0:
 		s["health"] = maxi(1, s["health"] - over * rules.overload_hp_penalty_per_kg)
 	return s

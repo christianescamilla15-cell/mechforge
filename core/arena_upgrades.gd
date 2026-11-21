@@ -19,6 +19,10 @@ extends Resource
 ## armas (solo al dano; no dispara mas veces ni le cuesta menos al mech).
 @export var assist: float = 0.0
 
+## Nucleo ampliado: kilos del arma de pecho que carga el torso sin que
+## cuenten para el limite de peso (MechBuild.max_weight).
+@export var core: float = 0.0
+
 
 ## Aplica las mejoras a las estadisticas sumadas de un mech (MechBuild.summary).
 func apply(stats: Dictionary) -> void:

@@ -36,6 +36,9 @@ const DIFFICULTY := {
 	"NORMAL": BattleAI.Difficulty.NORMAL,
 	"HARD": BattleAI.Difficulty.HARD,
 }
+## La mejora que carga el arma de pecho: va aparte de las demas (solo la
+## compra quien lleva esa arma, y hasta donde le hace falta).
+const CORE := "core"
 
 var _rules := RulesConfig.new()
 var _tasks: Array[Dictionary] = []
@@ -118,8 +121,17 @@ func _initialize() -> void:
 			for item: String in levelable:
 				profile.parts[item] = {"tier": start_tier, "level": start_level}
 			for track in shop.track_ids():
-				profile.shop_levels[track] = start_armory
+				if track != CORE:
+					profile.shop_levels[track] = start_armory
 			profile.gold = roundi(wins * reward)
+			if chest != "":
+				# Quien lleva arma de pecho amplia el nucleo hasta cargarla
+				# entera (GDD 4); si la compra en esta zona, tambien lo paga.
+				var core := _core_level(shop, catalog.get_item(chest).weight)
+				profile.shop_levels[CORE] = core
+				if chest_mode == "bought":
+					for step in range(1, core + 1):
+						profile.gold -= shop.price(step)
 			if chest_mode == "bought":
 				# Se compra en la tienda de la zona: llega en su clase, nivel 0.
 				profile.parts[chest] = {"tier": tier, "level": 0}
@@ -179,6 +191,14 @@ func _chest_for(catalog: Catalog, element: String, band: String) -> String:
 	return ""
 
 
+## Nivel del nucleo ampliado que hace falta para cargar un arma de ese peso.
+func _core_level(shop: ArenaShop, weight: int) -> int:
+	for level in shop.max_level() + 1:
+		if roundi(shop.value(CORE, level)) >= weight:
+			return level
+	return shop.max_level()
+
+
 ## Quita modulos (primero los repetidos) hasta que el mech pese lo permitido,
 ## como haria el jugador al montar el arma de pecho.
 func _fit_weight(items: Dictionary, catalog: Catalog) -> void:
@@ -191,8 +211,8 @@ func _fit_weight(items: Dictionary, catalog: Catalog) -> void:
 
 func _weight(items: Dictionary, catalog: Catalog) -> int:
 	var total := 0
-	# El arma de pecho no cuenta para el limite (MechBuild.total_weight), ni
-	# el robot de asistencia y su arma inferior.
+	# El arma de pecho la carga el nucleo ampliado (MechBuild.max_weight), y
+	# el robot de asistencia y su arma inferior no cuentan.
 	for key: String in ["torso", "legs", "drone", "charge", "teleport", "hook"]:
 		if str(items.get(key, "")) != "":
 			total += catalog.get_item(items[key]).weight
@@ -257,7 +277,7 @@ func _spend(
 				best_cost = cost
 				best = action
 		for track in shop.track_ids():
-			if track == "assist" and not two_weapons:
+			if track == CORE or (track == "assist" and not two_weapons):
 				continue
 			var level := profile.level_of(track)
 			var top := mini(shop.max_level(), armory_cap)
@@ -311,12 +331,13 @@ func _report(
 			var items := library.item_ids(id)
 			parts_power += Campaign.mean_power(_rules, profile, items)
 			for track in shop.track_ids():
-				armory += profile.level_of(track)
+				if track != CORE:
+					armory += profile.level_of(track)
 			var rate: float = 100.0 * int(won[key]) / battles
 			total += rate
 			line += "  %6.1f %%" % rate
 		parts_power /= ids.size()
-		armory /= ids.size() * shop.track_ids().size()
+		armory /= ids.size() * (shop.track_ids().size() - 1)
 		print(
 			(
 				"  %9d  %7d  %14s  %15.1f%s  %5.1f %%"

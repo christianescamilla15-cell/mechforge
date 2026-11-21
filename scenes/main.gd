@@ -651,6 +651,10 @@ func _start_battle(spec: Dictionary) -> void:
 		# y lo que da su tipo de robot.
 		player_build.skills = _skills.effects_for(_profile.skills)
 		_styles.add_effects(_profile.style, player_build.skills)
+		# Y su nucleo ampliado, que es parte del robot: sin el, el arma de
+		# pecho lo sobrecargaria.
+		player_build.upgrades = ArenaUpgrades.new()
+		player_build.upgrades.core = _shop.upgrades_for(_profile.shop_levels).core
 	# Las mejoras de la armeria solo cuentan para el mech del jugador.
 	if rewarded:
 		player_build.upgrades = _shop.upgrades_for(_profile.shop_levels)

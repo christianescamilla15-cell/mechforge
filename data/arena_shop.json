@@ -8,7 +8,8 @@
     {"id": "resistance", "name": "Resistencias", "kind": "percent", "max": 40},
     {"id": "health", "name": "Blindaje", "kind": "percent", "max": 15},
     {"id": "backfire", "name": "Amortiguación del retroceso", "kind": "percent", "max": 20},
-    {"id": "assist", "name": "Batería del asistente", "kind": "percent", "max": 10, "assist_tier": 1}
+    {"id": "assist", "name": "Batería del asistente", "kind": "percent", "max": 10, "assist_tier": 1},
+    {"id": "core", "name": "Núcleo ampliado", "kind": "flat", "unit": "kg", "max": 80, "player_level": 10, "gain": "console_core_gain"}
   ],
   "prices": [0, 180, 240, 360, 480, 540, 660, 720, 840, 960, 1140],
   "rewards": {"arena_win": 300, "arena_loss": 60, "campaign_win": 500, "campaign_loss": 0, "boss_win": 22500, "boss_loss": 0}

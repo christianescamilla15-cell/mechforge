@@ -35,6 +35,47 @@ func test_sobrecarga_maxima_es_valida_y_un_kg_mas_no() -> void:
 	assert_has(pasado.validate(Fx.rules()), "demasiado peso")
 
 
+# --- El arma de pecho pesa y el nucleo ampliado la carga (OBS-027) -----------------
+
+
+func _with_chest(chest_weight: int, core_kg: float) -> MechBuild:
+	# Un mech justo en el limite de peso, mas el arma de pecho.
+	var b := Fx.build([], {"torso": Fx.torso({"weight": 900})})
+	b.chest = Fx.item(ItemDef.Type.CHEST, {"weight": chest_weight, "dmg_min": 10, "dmg_max": 10})
+	b.upgrades = ArenaUpgrades.new()
+	b.upgrades.core = core_kg
+	return b
+
+
+func test_sin_ampliar_el_nucleo_el_arma_de_pecho_sobrecarga() -> void:
+	var b := _with_chest(60, 0.0)
+	assert_eq(b.total_weight(), 1060)
+	assert_eq(b.max_weight(Fx.rules()), 1000)
+	assert_has(b.validate(Fx.rules()), "demasiado peso")
+
+
+func test_el_nucleo_ampliado_carga_el_arma_de_pecho_sin_tocar_lo_demas() -> void:
+	var b := _with_chest(60, 80.0)
+	assert_eq(b.max_weight(Fx.rules()), 1060, "carga el arma entera, no mas")
+	assert_eq(b.validate(Fx.rules()), [] as Array[String])
+	assert_eq(b.summary(Fx.rules())["health"], 1000, "sin penalizacion de sobrecarga")
+
+
+func test_un_nucleo_a_medio_ampliar_carga_solo_una_parte() -> void:
+	var b := _with_chest(60, 52.0)
+	assert_eq(b.max_weight(Fx.rules()), 1052)
+	assert_eq(b.validate(Fx.rules()), [] as Array[String], "8 kg de mas: sobrecarga permitida")
+	assert_eq(b.summary(Fx.rules())["health"], 1000 - 8 * 15)
+
+
+func test_sin_arma_de_pecho_el_nucleo_ampliado_no_da_capacidad() -> void:
+	var b := Fx.build([], {"torso": Fx.torso({"weight": 911})})
+	b.upgrades = ArenaUpgrades.new()
+	b.upgrades.core = 80.0
+	assert_eq(b.max_weight(Fx.rules()), 1000, "se amplia para el arma, no para lo demas")
+	assert_has(b.validate(Fx.rules()), "demasiado peso")
+
+
 func test_torso_y_piernas_son_obligatorios() -> void:
 	var b := MechBuild.new()
 	var problems := b.validate(Fx.rules())

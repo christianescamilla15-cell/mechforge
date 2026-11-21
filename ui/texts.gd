@@ -235,6 +235,7 @@ const ES := {
 	"target_test": "PROBAR",
 	"console_upgrades_hint": "Pulsa una mejora para subirla un nivel.",
 	"console_upgrade_gain": "El siguiente nivel da %s · cuesta %d celdas",
+	"console_core_gain": "Con el siguiente nivel carga %s del arma de pecho · cuesta %d celdas",
 	"console_points": "puntos",
 	"console_branch_done": "%d de %d",
 	"console_skills_hint":
