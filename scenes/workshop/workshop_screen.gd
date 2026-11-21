@@ -585,9 +585,11 @@ func evolve_selected() -> void:
 	if item == null:
 		return
 	var profile := main._profile
-	var why := profile.evolve(
-		main._workshop, main._rules, main._catalog, item.id, main._zone_tier()
-	)
+	var why := ""
+	if item.type == ItemDef.Type.DRONE and profile.build.has("assist"):
+		why = profile.evolve_with_assist(main._workshop, main._catalog, item.id)
+	else:
+		why = profile.evolve(main._workshop, main._rules, main._catalog, item.id, main._zone_tier())
 	if why != "":
 		return
 	main._save()

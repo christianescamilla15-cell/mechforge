@@ -391,6 +391,40 @@ func evolve(
 	return ""
 
 
+## Un arma del asistente sube con el, sin salirse del rango de su tipo: cuando
+## el asistente pasa del tope de ese tipo, evoluciona en la del tipo siguiente
+## que llega a su clase (OBS-045). Devuelve "" si se puede; si no, el motivo.
+func why_cant_evolve_with_assist(workshop: Workshop, catalog: Catalog, id: String) -> String:
+	var def := catalog.get_item(id)
+	if def == null or def.type != ItemDef.Type.DRONE:
+		return "no es un arma del asistente"
+	var tier: int = part(ItemDef.ASSIST_PROGRESS)["tier"]
+	if tier <= def.tier_max:
+		return "aun sube con el asistente"
+	if catalog.successor(def, tier) == null:
+		return "esta pieza no pasa de su clase"
+	if workshop.transform_cost(def.tier_max) > gold:
+		return "faltan celdas"
+	return ""
+
+
+func evolve_with_assist(workshop: Workshop, catalog: Catalog, id: String) -> String:
+	var why := why_cant_evolve_with_assist(workshop, catalog, id)
+	if why != "":
+		return why
+	var def := catalog.get_item(id)
+	var next := catalog.successor(def, part(ItemDef.ASSIST_PROGRESS)["tier"])
+	gold -= workshop.transform_cost(def.tier_max)
+	if not next.id in owned:
+		owned.append(next.id)
+	for robot: Dictionary in mechs:
+		_swap_item(robot["build"], id, next.id)
+	if prototypes.has(id):
+		prototypes[next.id] = prototypes[id]
+		prototypes.erase(id)
+	return ""
+
+
 static func _swap_item(build: Dictionary, old: String, new: String) -> void:
 	for key: String in build.keys():
 		var value: Variant = build[key]

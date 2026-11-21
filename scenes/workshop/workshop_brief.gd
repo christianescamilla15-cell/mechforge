@@ -480,6 +480,19 @@ func upgrade_key(profile: PlayerProfile, item: ItemDef) -> Dictionary:
 	if item.type == ItemDef.Type.DRONE and profile.build.has("assist"):
 		# Las armas del asistente suben con el: la tecla sube al asistente
 		# (OBS-045, del usuario: "en los drones no veo que se pueda subir").
+		# Si el asistente ya paso del tope de su tipo, el arma evoluciona.
+		var drone_def := catalog.get_item(item.id)
+		var assist_tier: int = profile.part(ItemDef.ASSIST_PROGRESS)["tier"]
+		var drone_heir := catalog.successor(drone_def, assist_tier)
+		if assist_tier > drone_def.tier_max and drone_heir != null:
+			var why_drone := profile.why_cant_evolve_with_assist(workshop, catalog, item.id)
+			return {
+				"label": Txt.t("part_evolve", [workshop.transform_cost(drone_def.tier_max)]),
+				"enabled": why_drone == "",
+				"reason": why_drone,
+				"action": "evolve",
+				"gain": Txt.t("part_evolves_into", [drone_heir.display_name]),
+			}
 		var assist := resolved(profile, str(profile.build["assist"]))
 		if assist == null:
 			return {}

@@ -108,3 +108,23 @@ func test_los_drones_suben_con_el_asistente_desde_su_casilla() -> void:
 	assert_false(key.is_empty(), "ya no sale vacia")
 	assert_true(bool(key.get("via_assist", false)))
 	assert_string_contains(str(key["gain"]), "Sube con el asistente")
+
+
+func test_las_armas_del_asistente_evolucionan_cuando_el_pasa_de_su_tipo() -> void:
+	var profile := PlayerProfile.new()
+	profile.start_run(_library, "calor_horno")
+	profile.legacy_assist = true
+	Garage.ensure_assist(profile, _catalog)
+	profile.gold = 1000000
+	profile.build["drone"] = "artillero_blaster_ter"
+	profile.owned.append("artillero_blaster_ter")
+	profile.parts[ItemDef.ASSIST_PROGRESS] = {"tier": T.MYTHIC, "level": 5}
+	var drone := _brief.resolved(profile, "artillero_blaster_ter")
+	assert_eq(drone.tier, T.LEGENDARY, "se quedaba en el tope de su tipo")
+	var key := _brief.upgrade_key(profile, drone)
+	assert_eq(key["action"], "evolve")
+	assert_true(key["enabled"], str(key["reason"]))
+	assert_eq(profile.evolve_with_assist(_workshop, _catalog, "artillero_blaster_ter"), "")
+	var now := str(profile.build["drone"])
+	assert_eq(_catalog.get_item(now).weapon_type, "laser")
+	assert_eq(_brief.resolved(profile, now).tier, T.MYTHIC, "y ya sube con el asistente")
