@@ -177,10 +177,17 @@ func reward_mult(zone: int) -> float:
 
 ## Rival de un combate de arena en esa zona: un mech normal al azar (de la
 ## semilla), con la clase y el nivel cuyo poder mas se parece al del
-## jugador, sin pasar de la clase de la zona. Asi la arena siempre esta a la
-## medida. Devuelve {"enemy", "tier", "level", "difficulty"}.
+## jugador, sin pasar de la clase de la zona, y con el mismo equipo que el
+## (`loadout`, de loadout_of: quien empieza con una sola arma pelea contra
+## rivales de una sola arma). Asi la arena siempre esta a la medida. Devuelve
+## {"enemy", "tier", "level", "difficulty", "loadout"}.
 func arena_fight(
-	zone: int, library: BuildLibrary, seed_value: int, rules: RulesConfig, power: float
+	zone: int,
+	library: BuildLibrary,
+	seed_value: int,
+	rules: RulesConfig,
+	power: float,
+	loadout: Dictionary = {}
 ) -> Dictionary:
 	var ids := library.band_ids(band_of(zone))
 	if ids.is_empty():
@@ -193,11 +200,42 @@ func arena_fight(
 			if gap < best_gap:
 				best_gap = gap
 				best = {"tier": tier, "level": level}
+	var gear := loadout.duplicate()
+	if not gear.is_empty():
+		# El arma con la que sale tambien cambia de un rival a otro.
+		gear["shift"] = absi(seed_value) / ids.size()
 	return {
 		"enemy": ids[absi(seed_value) % ids.size()],
 		"tier": best["tier"],
 		"level": best["level"],
 		"difficulty": str(zones[zone]["arena"]["difficulty"]),
+		"loadout": gear,
+	}
+
+
+## El equipo con el que sale a pelear un mech, para medirle el rival de la
+## arena (BuildLibrary.trim): cuantas armas laterales y superiores, modulos y
+## especiales lleva, de que formas son sus armas de brazo (el rival saca las
+## suyas de esas formas, si las tiene) y si lleva asistente y arma de pecho.
+static func loadout_of(build: MechBuild) -> Dictionary:
+	var forms: Array[String] = []
+	for item in build.sides:
+		if item != null:
+			forms.append(item.form)
+	var count := func(list: Array) -> int:
+		var total := 0
+		for item: Variant in list:
+			if item != null:
+				total += 1
+		return total
+	return {
+		"sides": count.call(build.sides),
+		"forms": forms,
+		"tops": count.call(build.tops),
+		"modules": count.call(build.modules),
+		"specials": count.call([build.charge, build.hook, build.teleport]),
+		"assist": build.drone != null or build.drone_low != null,
+		"chest": build.chest != null,
 	}
 
 

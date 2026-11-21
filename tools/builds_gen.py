@@ -2,7 +2,9 @@
 catalogo generado (tools/catalog_gen.py).
 
 Cada elemento tiene un mech por tipo de arma ("band"): balas, canon, blaster y
-laser. Los de balas son los mechs con los que se empieza. Los jefes llevan las
+laser. Los de balas llevan la marca "starter": con ellos se empezaba la partida
+(ahora se empieza con un tipo de robot, data/styles.json) y los usan las
+pruebas y los simuladores. Los jefes llevan las
 armas del tipo de su zona y su elemento. Si una forma no existe en un tipo, se
 usa la del tipo mas cercano que si cubra esa clase.
 

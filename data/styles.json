@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "styles": [
+    {
+      "id": "asalto",
+      "name": "Ariete",
+      "role": "Asalto",
+      "story": "Derribaba muros en las fundiciones del Orden. El día que le mandaron tirar un refugio, se volvió contra sus capataces.",
+      "mechanic": "Entra a golpes y pega más fuerte. En los brazos lleva hojas y armas cortas.",
+      "sides": ["hoja", "corto"],
+      "tops": [],
+      "effects": {"damage": 0.06},
+      "build": {"torso": "torso_fragua", "legs": "piernas_pisabrasas", "sides": ["hoja_balas_ter"]}
+    },
+    {
+      "id": "guardian",
+      "name": "Muralla",
+      "role": "Guardián",
+      "story": "Escoltaba convoyes del Orden hasta que vio lo que llevaban dentro. Ahora se pone delante de los que huyen.",
+      "mechanic": "Aguanta más que nadie y responde de cerca y a media distancia. Su escudo para un golpe entero en cada combate.",
+      "sides": ["corto", "medio", "saboteador"],
+      "tops": [],
+      "effects": {"shield_uses": 1, "health": 0.12},
+      "build": {"torso": "torso_centinela", "legs": "piernas_orugas", "sides": ["medio_balas_cin"]}
+    },
+    {
+      "id": "tirador",
+      "name": "Halcón",
+      "role": "Tirador",
+      "story": "Explorador de frontera al que el Orden dio por perdido. Volvió, pero del lado de los insurrectos.",
+      "mechanic": "En los brazos lleva armas medias y largas, que en sus manos rinden más y disparan también a quemarropa.",
+      "sides": ["medio", "largo"],
+      "tops": [],
+      "effects": {"point_blank": 1, "damage": 0.2},
+      "build": {"torso": "torso_condensador", "legs": "piernas_deslizadores", "sides": ["largo_balas_ion"]}
+    }
+  ]
+}

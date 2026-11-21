@@ -119,12 +119,14 @@ func protections(profile: PlayerProfile) -> Array[Dictionary]:
 
 ## La arena: un rival al azar (de la semilla) a la medida del jugador. La
 ## misma semilla da el mismo rival, asi que el que se ve es el que sale.
-func arena_state(profile: PlayerProfile, seed_value: int, power: float) -> Dictionary:
+func arena_state(
+	profile: PlayerProfile, seed_value: int, power: float, loadout: Dictionary = {}
+) -> Dictionary:
 	var state := _blank("arena")
 	var zone := mini(profile.zone, campaign.zone_count() - 1)
 	state["zone_line"] = Txt.t("mission_zone", [zone + 1, campaign.zone_name(zone)])
 	state["title"] = Txt.t("menu_arena")
-	var fight := campaign.arena_fight(zone, library, seed_value, rules, power)
+	var fight := campaign.arena_fight(zone, library, seed_value, rules, power, loadout)
 	var rivals: Array[Dictionary] = [rival(fight, campaign.tier_of(zone))]
 	state["rivals"] = rivals
 	var mult := campaign.reward_mult(profile.zone)
@@ -216,7 +218,8 @@ func _blank(channel: String) -> Dictionary:
 
 
 ## Un rival de la fila, armado como saldra al combate. `entry` es su combate
-## ({"enemy", "level", "difficulty" y, si no es la de la zona, "tier"}).
+## ({"enemy", "level", "difficulty" y, si no es la de la zona, "tier"; en la
+## arena, tambien "loadout": el equipo con el que sale).
 func rival(entry: Dictionary, zone_tier: int) -> Dictionary:
 	var id := str(entry["enemy"])
 	var tier := int(entry.get("tier", zone_tier))
@@ -224,7 +227,10 @@ func rival(entry: Dictionary, zone_tier: int) -> Dictionary:
 	var difficulty := maxi(Campaign.DIFFICULTIES.find(str(entry["difficulty"])), 0)
 	return {
 		"id": id,
-		"build": library.make(id, catalog, rules, tier as ItemDef.Tier, level, chassis),
+		"build":
+		library.make(
+			id, catalog, rules, tier as ItemDef.Tier, level, chassis, {}, entry.get("loadout", {})
+		),
 		"name": library.display_name(id),
 		"boss": library.is_boss(id),
 		"tier": tier,

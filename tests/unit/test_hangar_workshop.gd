@@ -31,6 +31,7 @@ func before_all() -> void:
 	_brief.shop = ArenaShop.load_file("res://data/arena_shop.json")
 	_brief.skills = SkillTree.load_file("res://data/skills.json")
 	_brief.progression = Progression.load_file("res://data/progression.json")
+	_brief.styles = StyleLibrary.load_file("res://data/styles.json", _catalog)
 
 
 func before_each() -> void:
@@ -468,38 +469,22 @@ func _projector(state: Dictionary) -> BayProjector:
 	return projector
 
 
-func test_una_bahia_vacia_ofrece_el_armazon_y_los_disenos() -> void:
-	var profile := _profile(100000)
-	var offers: Array = _brief.offers(profile)["offers"]
-	assert_eq(offers.size(), 1 + _library.starter_ids().size())
-	assert_eq(offers[0]["id"], "", "lo primero, el armazon vacio")
-	assert_eq(int(offers[0]["price"]), 0)
-	assert_null(offers[0]["build"])
-	var buyable := 0
-	for i in range(1, offers.size()):
-		assert_true(str(offers[i]["id"]) in _library.starter_ids())
-		assert_not_null(offers[i]["build"], "los disenos se ven armados")
-		if str(offers[i]["id"]) == "calor_horno":
-			assert_eq(int(offers[i]["price"]), 0, "el que ya tienes no cuesta piezas")
-		else:
-			assert_gt(int(offers[i]["price"]), 0)
-		# Con celdas de sobra solo lo para llevar piezas que la zona no vende.
-		assert_true(str(offers[i]["reason"]) in ["", Txt.t("acquire_why_zone")])
-		if str(offers[i]["reason"]) == "":
-			buyable += 1
-	assert_gt(buyable, 1, "hay disenos que se pueden adquirir")
-
-
-func test_sin_celdas_o_con_el_garaje_lleno_la_bahia_lo_dice() -> void:
+func test_una_bahia_vacia_ofrece_un_armazon_de_cada_tipo() -> void:
 	var profile := _profile(0)
-	var poor := 0
-	for offer: Dictionary in _brief.offers(profile)["offers"]:
-		if int(offer["price"]) > 0:
-			assert_ne(str(offer["reason"]), "", "sin celdas no se adquiere")
-			if str(offer["reason"]) == Txt.t("acquire_why_cells"):
-				poor += 1
-	assert_gt(poor, 0)
-	profile.gold = 100000
+	var offers: Array = _brief.offers(profile)["offers"]
+	assert_eq(offers.size(), _brief.styles.ids().size())
+	for i in offers.size():
+		var style_id: String = _brief.styles.ids()[i]
+		assert_eq(offers[i]["id"], style_id)
+		assert_eq(int(offers[i]["price"]), 0, "los armazones son gratis")
+		assert_null(offers[i]["build"], "llega vacio: se arma con tus piezas")
+		assert_eq(str(offers[i]["reason"]), "")
+		assert_string_contains(str(offers[i]["name"]), _brief.styles.role(style_id))
+		assert_eq(str(offers[i]["hint"]), _brief.arms_text(style_id))
+
+
+func test_con_el_garaje_lleno_la_bahia_lo_dice() -> void:
+	var profile := _profile(100000)
 	while profile.mechs.size() < _brief.rules.max_mechs:
 		profile.mechs.append(profile.mechs[0].duplicate(true))
 	for offer: Dictionary in _brief.offers(profile)["offers"]:
@@ -510,14 +495,14 @@ func test_la_bahia_pasa_de_una_oferta_a_otra_y_da_la_vuelta() -> void:
 	var state := _brief.offers(_profile(100000))
 	var projector := _projector(state)
 	var count := (state["offers"] as Array).size()
-	assert_eq(projector.current()["id"], "")
+	assert_eq(projector.current()["id"], state["offers"][0]["id"])
 	projector._gui_input(_click(projector.zone_rect("next").get_center()))
 	assert_eq(projector.current()["id"], state["offers"][1]["id"])
 	projector._gui_input(_click(projector.zone_rect("prev").get_center()))
 	projector._gui_input(_click(projector.zone_rect("prev").get_center()))
 	assert_eq(projector.current()["id"], state["offers"][count - 1]["id"], "da la vuelta")
 	projector._gui_input(_click(Vector2(60, 60), MOUSE_BUTTON_WHEEL_DOWN))
-	assert_eq(projector.current()["id"], "")
+	assert_eq(projector.current()["id"], state["offers"][0]["id"])
 
 
 func test_un_robot_se_adquiere_con_dos_pulsaciones() -> void:
@@ -538,9 +523,10 @@ func test_un_robot_se_adquiere_con_dos_pulsaciones() -> void:
 
 
 func test_lo_que_no_se_puede_adquirir_no_se_arma() -> void:
-	var projector := _projector(_brief.offers(_profile(0)))
-	while int(projector.current()["price"]) <= 0:
-		projector.step(1)
+	var profile := _profile(0)
+	while profile.mechs.size() < _brief.rules.max_mechs:
+		profile.mechs.append(profile.mechs[0].duplicate(true))
+	var projector := _projector(_brief.offers(profile))
 	var at := projector.zone_rect("robot").get_center()
 	projector._gui_input(_click(at))
 	projector._gui_input(_click(at))

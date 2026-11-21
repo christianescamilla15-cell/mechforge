@@ -7,7 +7,7 @@ extends RefCounted
 ## La moneda se llama `gold` en el codigo y en el guardado; en pantalla se
 ## muestra con el nombre de la tabla de textos (GDD 8).
 
-const SCHEMA_VERSION := 8
+const SCHEMA_VERSION := 9
 
 var gold: int = 0
 ## Experiencia total; de ella sale el nivel del jugador (Progression).
@@ -46,6 +46,16 @@ var build: Dictionary:
 			active = mechs.size() - 1
 ## Mech de ejemplo con el que empezo la partida (id de data/builds.json).
 var mech: String = ""
+## Tipo del robot que usa (StyleLibrary); "" en los robots de antes de que
+## hubiera tipos, que montan cualquier arma.
+var style: String:
+	get:
+		if active < 0 or active >= mechs.size():
+			return ""
+		return str((mechs[active] as Dictionary).get("style", ""))
+## Viene de un guardado en el que el asistente se regalaba: lo conserva
+## (Garage.ensure_assist). No se guarda.
+var legacy_assist: bool = false
 ## Avance en la campana: zona en la que esta y combates ganados en ella.
 ## Cuando `fight` llega al numero de combates de la zona, toca el jefe.
 var zone: int = 0
@@ -82,8 +92,31 @@ func earn(shop: ArenaShop, kind: String, mult: float = 1.0) -> int:
 	return amount
 
 
-## Empieza una partida con uno de los mechs de ejemplo: sus piezas pasan a
-## ser del jugador y quedan montadas en su primer robot.
+## Empieza una partida con un robot de ese tipo (StyleLibrary): el cuerpo
+## y una sola arma, que pasan a ser del jugador y quedan montados.
+func start_style(styles: StyleLibrary, style_id: String) -> void:
+	mech = style_id
+	mechs.clear()
+	(
+		mechs
+		. append(
+			{
+				"name": styles.display_name(style_id),
+				"design": "",
+				"style": style_id,
+				"build": styles.build(style_id),
+			}
+		)
+	)
+	active = 0
+	owned.clear()
+	for id in styles.item_ids(style_id):
+		owned.append(id)
+
+
+## Empieza una partida con uno de los mechs de ejemplo, ya armado: sus piezas
+## pasan a ser del jugador y quedan montadas en su primer robot. Es un robot
+## sin tipo (monta cualquier arma): lo usan las pruebas y los simuladores.
 func start_run(library: BuildLibrary, mech_id: String) -> void:
 	mech = mech_id
 	mechs.clear()
@@ -114,13 +147,14 @@ func why_cant_add_mech(rules: RulesConfig) -> String:
 	return ""
 
 
-## Adquiere un armazon vacio, gratis: se arma en el taller con las piezas que
-## ya tiene. Pasa a ser el que usa. Devuelve "" o el motivo.
-func add_frame(rules: RulesConfig, display_name: String) -> String:
+## Adquiere un armazon vacio, gratis, del tipo que se diga: se arma en el
+## taller con las piezas que ya tiene. Pasa a ser el que usa. Devuelve "" o
+## el motivo.
+func add_frame(rules: RulesConfig, display_name: String, style_id: String = "") -> String:
 	var reason := why_cant_add_mech(rules)
 	if reason != "":
 		return reason
-	mechs.append({"name": display_name, "design": "", "build": {}})
+	mechs.append({"name": display_name, "design": "", "style": style_id, "build": {}})
 	active = mechs.size() - 1
 	return ""
 
@@ -316,9 +350,10 @@ func to_dict() -> Dictionary:
 
 ## Migraciones: la version 1 no tenia campana ni mech elegido, la 2 no tenia
 ## piezas, la 3 no tenia mech armado, la 4 no tenia experiencia, hasta la 6
-## habia un solo mech ("build"), que pasa a ser el primer robot, y hasta la 7
-## no habia campana en marcha ni protecciones; los campos nuevos empiezan
-## vacios y lo demas se conserva. Sin robots, el menu pide elegir uno.
+## habia un solo mech ("build"), que pasa a ser el primer robot, hasta la 7
+## no habia campana en marcha ni protecciones, y hasta la 8 no habia tipos de
+## robot (_from_before_styles); los campos nuevos empiezan vacios y lo demas
+## se conserva. Sin robots, el menu pide elegir uno.
 static func from_dict(data: Dictionary) -> PlayerProfile:
 	var profile := PlayerProfile.new()
 	profile.gold = maxi(0, int(data.get("gold", 0)))
@@ -341,13 +376,16 @@ static func from_dict(data: Dictionary) -> PlayerProfile:
 						{
 							"name": str(raw.get("name", "")),
 							"design": str(raw.get("design", "")),
+							"style": str(raw.get("style", "")),
 							"build": raw["build"],
 						}
 					)
 				)
 		profile.active = clampi(int(data.get("active", 0)), 0, maxi(0, profile.mechs.size() - 1))
 	elif data.get("build") is Dictionary and not (data["build"] as Dictionary).is_empty():
-		profile.mechs.append({"name": "", "design": profile.mech, "build": data["build"]})
+		profile.mechs.append(
+			{"name": "", "design": profile.mech, "style": "", "build": data["build"]}
+		)
 	profile.zone = maxi(0, int(data.get("zone", 0)))
 	profile.fight = maxi(0, int(data.get("fight", 0)))
 	# Hasta la version 7 la campana no se "empezaba": lo esta quien ya ha
@@ -373,7 +411,33 @@ static func from_dict(data: Dictionary) -> PlayerProfile:
 	if levels is Dictionary:
 		for track: String in levels:
 			profile.shop_levels[track] = maxi(0, int(levels[track]))
+	if int(data.get("schema_version", 1)) < 9:
+		profile._from_before_styles()
 	return profile
+
+
+## Hasta la version 8 se empezaba con un robot ya armado y con el asistente
+## regalado. Quien ya iba jugando conserva su robot (sin tipo: monta todo) y
+## su asistente; una partida recien empezada, sin nada ganado ni comprado,
+## vuelve a elegir robot con las reglas de ahora.
+func _from_before_styles() -> void:
+	var untouched := (
+		wins + losses + gold + xp + zone + fight + unique_cores == 0
+		and skills.is_empty()
+		and shop_levels.is_empty()
+	)
+	for id: String in parts:
+		if int(parts[id]["tier"]) > 0 or int(parts[id]["level"]) > 0:
+			untouched = false
+	if untouched:
+		mechs.clear()
+		owned.clear()
+		parts.clear()
+		active = 0
+		mech = ""
+		campaign_on = false
+	else:
+		legacy_assist = has_mech()
 
 
 func save(path: String) -> bool:

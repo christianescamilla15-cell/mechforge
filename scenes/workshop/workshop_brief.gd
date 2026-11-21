@@ -38,6 +38,7 @@ var garage: Garage
 var shop: ArenaShop
 var skills: SkillTree
 var progression: Progression
+var styles: StyleLibrary
 
 # --- El jugador -------------------------------------------------------------------
 
@@ -70,6 +71,8 @@ func build_of(profile: PlayerProfile, spec: Dictionary, parts: Dictionary = {}) 
 	var build := catalog.make_build(spec, rules, ItemDef.Tier.COMMON, 0, progress)
 	progression.apply_locks(build, level(profile))
 	build.skills = skills.effects_for(profile.skills)
+	# Lo que da el tipo de su robot (el escudo del guardian...).
+	styles.add_effects(profile.style, build.skills)
 	build.upgrades = shop.upgrades_for(profile.shop_levels)
 	return build
 
@@ -108,9 +111,24 @@ func progress_text(profile: PlayerProfile, item: ItemDef) -> String:
 func lock_reason(profile: PlayerProfile, slot: String) -> String:
 	if not progression.is_unlocked(slot, level(profile)):
 		return Txt.t("slot_locked", [progression.unlock_level(slot)])
+	if slot in ["drone", "drone_low"] and not Garage.has_assist(profile, catalog):
+		return Txt.t("slot_needs_assist")
 	if slot == "drone_low" and assist_tier(profile) < rules.assist_second_weapon_tier:
 		return Txt.t("slot_second_weapon")
 	return ""
+
+
+## Formas de arma que monta en los brazos el tipo de ese robot, en una
+## linea: "Brazos: hojas y armas cortas". "" si monta cualquiera.
+func arms_text(style_id: String) -> String:
+	var names: Array[String] = []
+	for form in styles.forms(style_id, "sides"):
+		names.append(Txt.t("form_" + form))
+	if names.is_empty():
+		return ""
+	var last: String = names.pop_back()
+	var listed := last if names.is_empty() else "%s y %s" % [", ".join(names), last]
+	return Txt.t("style_arms", [listed])
 
 
 ## Hueco donde iria una pieza: el `preferred` si le cabe, o el primero libre
@@ -135,6 +153,9 @@ func rack(profile: PlayerProfile, slot: String, store_first: bool = false) -> Di
 	var locked := lock_reason(profile, slot)
 	var owned: Array[Dictionary] = []
 	for id in Garage.owned_for(profile, catalog, slot):
+		# Lo que su tipo no monta no cuelga en el tablero de este robot.
+		if styles.why_cant_mount(profile.style, catalog.get_item(id)) != "":
+			continue
 		var item := resolved(profile, id)
 		(
 			owned
@@ -156,11 +177,14 @@ func rack(profile: PlayerProfile, slot: String, store_first: bool = false) -> Di
 	if not progression.is_unlocked(slot, level(profile)):
 		note = Txt.t("store_from_level", [progression.unlock_level(slot)])
 	var sold: Array[Dictionary] = []
-	for id in garage.stock_for(catalog, tier):
+	for id in _on_sale(profile, slot, tier):
 		var def := catalog.get_item(id)
-		if def.type != Garage.slot_type(slot) or id in profile.owned:
-			continue
 		var item := ItemScaling.resolve(def, rules, tier, 0)
+		var reason := garage.why_cant_buy(profile, catalog, rules, workshop, id, tier)
+		if def.type == ItemDef.Type.ASSIST and locked != "":
+			# El asistente se ve desde el principio, pero no se compra hasta
+			# que el nivel del jugador abre su hueco.
+			reason = locked
 		(
 			sold
 			. append(
@@ -173,7 +197,7 @@ func rack(profile: PlayerProfile, slot: String, store_first: bool = false) -> Di
 					Txt.t("part_level", [Txt.TIER_NAMES[tier], 0, rules.tier_max_level[tier]]),
 					"stats": item_stats(item, false),
 					"price": garage.price(catalog, rules, workshop, id, tier),
-					"reason": garage.why_cant_buy(profile, catalog, rules, workshop, id, tier),
+					"reason": reason,
 					"note": note,
 				}
 			)
@@ -191,11 +215,15 @@ func rack(profile: PlayerProfile, slot: String, store_first: bool = false) -> Di
 			}
 			key = upgrade_key(profile, item)
 			can_test = item.deals_damage() and item.fx != ""
+	# Lo que su tipo de robot monta en los brazos, delante de la pista.
+	var arms := arms_text(profile.style) if slot.begins_with("side") else ""
+	var hint := Txt.t("workshop_empty_hint" if owned.size() + sold.size() > 0 else "workshop_none")
 	return {
 		"slot": slot,
 		"title": slot_title(slot),
 		"locked": locked,
-		"hint": Txt.t("workshop_empty_hint" if owned.size() + sold.size() > 0 else "workshop_none"),
+		"style": arms,
+		"hint": hint if arms == "" else "%s. %s" % [arms, hint],
 		"cells": profile.gold,
 		"siblings": siblings(profile, slot),
 		"parts": sold + owned if store_first else owned + sold,
@@ -203,6 +231,26 @@ func rack(profile: PlayerProfile, slot: String, store_first: bool = false) -> Di
 		"key": key,
 		"can_test": can_test,
 	}
+
+
+## Lo que vende la tienda para ese hueco y aun no tiene: lo de su tipo de
+## pieza que le cabe a su robot. El robot de asistencia se vende entero, una
+## vez, con cualquiera de sus cuerpos.
+func _on_sale(profile: PlayerProfile, slot: String, tier: int) -> Array[String]:
+	var out: Array[String] = []
+	if Garage.slot_type(slot) == ItemDef.Type.ASSIST:
+		if not Garage.has_assist(profile, catalog):
+			for def in catalog.by_type(ItemDef.Type.ASSIST):
+				out.append(def.id)
+			out.sort()
+		return out
+	for id in garage.stock_for(catalog, tier):
+		var def := catalog.get_item(id)
+		if def.type != Garage.slot_type(slot) or id in profile.owned:
+			continue
+		if styles.why_cant_mount(profile.style, def) == "":
+			out.append(id)
+	return out
 
 
 ## Los huecos hermanos de uno (los de su mismo tipo, o el torso con las
@@ -402,11 +450,15 @@ func robot(profile: PlayerProfile, robot_name: String) -> Dictionary:
 	var entry: Dictionary = profile.mechs[profile.active]
 	var design := str(entry.get("design", ""))
 	var several := profile.mechs.size() > 1
+	var line := ""
+	if styles.has(profile.style):
+		line = Txt.t("robot_style", [styles.role(profile.style), arms_text(profile.style)])
+	elif library.specs.has(design):
+		line = Txt.t("robot_design", [library.display_name(design)])
 	return {
 		"kind": "robot",
 		"title": robot_name,
-		"design":
-		Txt.t("robot_design", [library.display_name(design)]) if library.specs.has(design) else "",
+		"design": line,
 		"hint": Txt.t("robot_page_hint") + (" " + Txt.t("robot_remove_note") if several else ""),
 		"can_remove": several,
 	}
@@ -415,59 +467,62 @@ func robot(profile: PlayerProfile, robot_name: String) -> Dictionary:
 # --- Adquirir un robot ----------------------------------------------------------------
 
 
-## Lo que puede fabricar una bahia vacia (BayProjector.state): un armazon
-## vacio, gratis, que se arma con tus piezas, y los disenos ya armados, por
-## los que se pagan solo las piezas que aun no tienes, al precio de tu zona.
-## "reason" dice por que no se puede ("" = se puede).
-func offers(profile: PlayerProfile) -> Dictionary:
-	var tier := zone_tier(profile)
-	var out: Array[Dictionary] = [
-		{
-			"id": "",
-			"name": Txt.t("acquire_frame"),
-			"hint": Txt.t("acquire_frame_short"),
-			"price": 0,
-			"reason": _offer_reason(profile.why_cant_add_mech(rules)),
-			"build": null,
-		}
-	]
-	for design in library.starter_ids():
-		var missing := Garage.missing_parts(profile, library, design)
-		var why := garage.why_cant_buy_design(
-			profile, library, catalog, rules, workshop, design, tier
-		)
-		var element := library.element_of(design)
-		var kind := (
-			Txt.t("element_hybrid")
-			if element == "HYBRID"
-			else Txt.ELEMENT_NAMES[ItemDef.Element[element]]
-		)
+## Los tipos de robot con los que se empieza (StarterSelect.entries): su
+## tipo, su nombre, su historia, como pelea, que monta en los brazos y con
+## que arma empieza, y el robot armado para verlo.
+func starters() -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	for style_id in styles.ids():
+		var spec := styles.build(style_id)
+		var weapons: Array[String] = []
+		for id: Variant in spec.get("sides", []) + spec.get("tops", []):
+			if catalog.get_item(str(id)) != null:
+				weapons.append(catalog.get_item(str(id)).display_name)
 		(
 			out
 			. append(
 				{
-					"id": design,
-					"name": library.display_name(design),
-					"hint": Txt.t("acquire_design_hint", [kind, missing.size()]),
-					"price":
-					garage.design_price(profile, library, catalog, rules, workshop, design, tier),
-					"reason": _offer_reason(why),
-					"build": build_of(profile, library.specs[design]["items"]),
+					"id": style_id,
+					"role": styles.role(style_id),
+					"name": styles.display_name(style_id),
+					"story": styles.story(style_id),
+					"mechanic": styles.mechanic(style_id),
+					"arms": arms_text(style_id),
+					"kit": Txt.t("starter_kit", [", ".join(weapons)]),
+					"build": catalog.make_build(spec, rules, ItemDef.Tier.COMMON, 0),
+				}
+			)
+		)
+	return out
+
+
+## Lo que puede fabricar una bahia vacia (BayProjector.state): un armazon
+## vacio de cada tipo de robot, gratis, que se arma con tus piezas. "reason"
+## dice por que no se puede ("" = se puede).
+func offers(profile: PlayerProfile) -> Dictionary:
+	var out: Array[Dictionary] = []
+	var why := _offer_reason(profile.why_cant_add_mech(rules))
+	for style_id in styles.ids():
+		(
+			out
+			. append(
+				{
+					"id": style_id,
+					"name": Txt.t("acquire_style", [styles.role(style_id)]),
+					"hint": arms_text(style_id),
+					"price": 0,
+					"reason": why,
+					"build": null,
 				}
 			)
 		)
 	return {"offers": out}
 
 
-## Por que no se puede adquirir, en corto ("" = se puede).
+## Por que no se puede adquirir, en corto ("" = se puede): los armazones son
+## gratis, asi que solo lo impide el garaje lleno.
 func _offer_reason(why: String) -> String:
-	if why == "":
-		return ""
-	if why.begins_with("ya tienes"):
-		return Txt.t("acquire_why_full")
-	if why == "faltan celdas":
-		return Txt.t("acquire_why_cells")
-	return Txt.t("acquire_why_zone")
+	return "" if why == "" else Txt.t("acquire_why_full")
 
 
 # --- El diagnostico -----------------------------------------------------------------

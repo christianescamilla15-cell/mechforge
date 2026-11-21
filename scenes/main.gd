@@ -15,7 +15,6 @@ const MENU_DIFFICULTIES: Array[BattleAI.Difficulty] = [
 	BattleAI.Difficulty.EASY, BattleAI.Difficulty.NORMAL, BattleAI.Difficulty.HARD
 ]
 const DIFFICULTY_IDS: Array[String] = ["EASY", "NORMAL", "HARD"]
-const COLOR_MUTED := Color("9aa7b8")
 
 var _rules := RulesConfig.new()
 var _stages := StageLibrary.load_file("res://data/stages.json")
@@ -35,6 +34,8 @@ var _last_result := ""
 var _stage_seed: int = 0
 var _catalog: Catalog
 var _library: BuildLibrary
+## Los tipos de robot con los que se empieza.
+var _styles: StyleLibrary
 var _campaign: Campaign
 var _menu: Control
 var _battle: BattleScreen
@@ -53,9 +54,6 @@ var _arena_seed: int = 0
 var _return: Dictionary = {}
 ## Telon negro entre el hangar y el combate.
 var _curtain: ColorRect
-## El hangar de fondo: solo se ve al elegir el primer robot (el hangar de
-## verdad y el combate lo tapan, y pintarlo costaba cuadros).
-var _backdrop := HangarBackdrop.new()
 ## Combate en curso: {"mode" ("campaign", "arena" o "free"), "items" (el
 ## mech del jugador, formato de builds.json), "name", "enemy", "enemy_tier",
 ## "enemy_level", "difficulty", "seed"} y, en el combate libre, "player_tier"
@@ -69,9 +67,8 @@ var _settings := GameSettings.new()
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	# Toda la interfaz con relieve, y el hangar al fondo.
+	# Toda la interfaz con relieve.
 	theme = Look.theme()
-	add_child(_backdrop)
 	# El sonido va primero: asi oye los botones de todo lo que se cree despues.
 	add_child(Sfx.new())
 	# En el juego la nave deja bonificaciones en la arena (GDD 2.8), hay
@@ -84,6 +81,7 @@ func _ready() -> void:
 		_args[parts[0]] = parts[1] if parts.size() > 1 else "true"
 	_catalog = Catalog.load_file("res://data/catalog.json")
 	_library = BuildLibrary.load_file("res://data/builds.json")
+	_styles = StyleLibrary.load_file("res://data/styles.json", _catalog)
 	_campaign = Campaign.load_file("res://data/campaign.json", _library)
 	_brief.rules = _rules
 	_brief.catalog = _catalog
@@ -100,6 +98,7 @@ func _ready() -> void:
 	_bench.shop = _shop
 	_bench.skills = _skills
 	_bench.progression = _progression
+	_bench.styles = _styles
 	_arena_seed = randi()
 	if _args.has("showcase"):
 		# Muestra de movimientos para revisar animaciones (tools/clip.ps1 -Showcase).
@@ -125,7 +124,7 @@ func _ready() -> void:
 		_profile.parts["hoja_balas_cin"] = {"tier": 0, "level": 3}
 		_profile.wins = 12
 		_profile.fight = 4
-		if _args["menu-shot"] == "nuevo":
+		if _args["menu-shot"] in ["nuevo", "inicio"]:
 			_profile = PlayerProfile.new()
 		elif _args["menu-shot"] == "habilidades":
 			_profile.xp = 9500
@@ -143,6 +142,10 @@ func _ready() -> void:
 		# --xp=<n> y --chest=<id>: un perfil con huecos abiertos y arma de pecho.
 		if _args.has("xp"):
 			_profile.xp = int(_args["xp"])
+		# --style=<tipo>: una partida recien empezada con ese tipo de robot.
+		if _args.has("style"):
+			_profile = PlayerProfile.new()
+			_profile.start_style(_styles, _args["style"])
 		# --gold=<n>: sus celdas; --en-campana: con la campana de la liga en marcha.
 		if _args.has("gold"):
 			_profile.gold = int(_args["gold"])
@@ -162,6 +165,9 @@ func _ready() -> void:
 			if _args.has("slot"):
 				hangar._selected = _args["slot"]
 			hangar.show_page(_args["menu-shot"])
+		elif _args["menu-shot"] == "inicio":
+			_live_test().starter_test()
+			return
 		elif _args["menu-shot"] == "ajustes":
 			_live_test().settings_test()
 			return
@@ -238,7 +244,6 @@ func _show_menu() -> void:
 	Sfx.music("base")
 	var back := _return
 	_return = {}
-	_backdrop.set_shown(not _profile.has_mech())
 	if _profile.has_mech():
 		var hangar := WorkshopScreen.new()
 		hangar.main = self
@@ -253,32 +258,24 @@ func _show_menu() -> void:
 			)
 			_raise_curtain()
 		return
-	# Partida nueva: una placa en el centro con los cuatro robots de ejemplo.
-	var center := CenterContainer.new()
-	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_menu = center
-	add_child(center)
-	var plate := PanelContainer.new()
-	var style := TechStyle.plate(Color(0.07, 0.1, 0.15, 0.94), Color("ffd36b"), 24.0, 14.0)
-	style.glow = 0.3
-	plate.add_theme_stylebox_override("panel", style)
-	center.add_child(plate)
-	var box := _column(plate, 520)
-	_text(box, Txt.t("menu_title"), 40).horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_add_starters(box)
-	_text(box, _record_text(), 14, COLOR_MUTED).horizontal_alignment = (HORIZONTAL_ALIGNMENT_CENTER)
+	# Partida nueva: los tres tipos de robot, de pie en el hangar.
+	var select := StarterSelect.new()
+	select.entries = _bench.starters()
+	select.record = _record_text()
+	select.chosen.connect(start_with)
+	_menu = select
+	add_child(select)
 
 
-## Historial: victorias, derrotas, jefes y partidas perdidas.
+## Lo que se lee bajo los tres robots al empezar otra partida: lo ultimo que
+## paso y el historial que sobrevive (partidas perdidas y mejor marca).
 func _record_text() -> String:
-	var record := Txt.t(
-		"menu_record", [_profile.wins, _profile.losses, _profile.boss_wins, _campaign.world_bosses]
-	)
-	if _profile.runs_lost > 0:
-		record += "\n" + Txt.t("menu_runs", [_profile.runs_lost, _profile.best_boss_wins])
+	var parts: Array[String] = []
 	if _last_result != "":
-		record = "%s\n%s" % [_last_result, record]
-	return record
+		parts.append(_last_result)
+	if _profile.runs_lost > 0:
+		parts.append(Txt.t("menu_runs", [_profile.runs_lost, _profile.best_boss_wins]))
+	return " · ".join(parts)
 
 
 # --- Garaje -------------------------------------------------------------------
@@ -310,10 +307,11 @@ func open_acquire() -> void:
 		(_menu as WorkshopScreen).open_offers()
 
 
-## Un armazon vacio, gratis: se abre el taller para armarlo.
-func acquire_frame() -> void:
+## Un armazon vacio de ese tipo de robot, gratis: se abre el taller para
+## armarlo.
+func acquire_frame(style_id: String) -> void:
 	var label := Txt.t("robot_default", [_profile.mechs.size() + 1])
-	if _profile.add_frame(_rules, label) != "":
+	if _profile.add_frame(_rules, label, style_id) != "":
 		return
 	Sfx.play("ui_comprar")
 	_save()
@@ -321,16 +319,6 @@ func acquire_frame() -> void:
 	_refresh_hangar()
 	if _menu is WorkshopScreen:
 		(_menu as WorkshopScreen).pick("torso")
-
-
-## Un robot con uno de los disenos de ejemplo: se queda en la base.
-func acquire_design(design: String) -> void:
-	var tier := _zone_tier()
-	if _garage.buy_design(_profile, _library, _catalog, _rules, _workshop, design, tier) != "":
-		return
-	Sfx.play("ui_comprar")
-	_save()
-	_refresh_hangar()
 
 
 ## Desmonta un robot; sus piezas se quedan. Quien lo pide ya confirmo (la
@@ -398,7 +386,8 @@ func mission_state(channel: String = "campaign") -> Dictionary:
 	match channel:
 		"arena":
 			var power := Campaign.mean_power(_rules, _profile, _player_items())
-			state = _brief.arena_state(_profile, _arena_seed, power)
+			var gear := Campaign.loadout_of(_player_build())
+			state = _brief.arena_state(_profile, _arena_seed, power, gear)
 		"free":
 			state = _brief.free_state(_last)
 		_:
@@ -488,52 +477,6 @@ func _get_curtain() -> ColorRect:
 	return _curtain
 
 
-func _column(parent: Control, width: int) -> VBoxContainer:
-	var box := VBoxContainer.new()
-	box.custom_minimum_size = Vector2(width, 0)
-	box.alignment = BoxContainer.ALIGNMENT_CENTER
-	box.add_theme_constant_override("separation", 8)
-	parent.add_child(box)
-	return box
-
-
-func _text(parent: Control, text: String, font_size: int = 16, color: Color = Color.WHITE) -> Label:
-	var label := Label.new()
-	label.text = text
-	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	label.add_theme_font_size_override("font_size", font_size)
-	if color != Color.WHITE:
-		label.add_theme_color_override("font_color", color)
-	parent.add_child(label)
-	return label
-
-
-func _button(parent: Control, text: String, height: int, action: Callable) -> Button:
-	var button := Button.new()
-	button.text = text
-	button.custom_minimum_size = Vector2(0, height)
-	button.add_theme_font_size_override("font_size", 18)
-	button.pressed.connect(action)
-	parent.add_child(button)
-	return button
-
-
-## Partida nueva: el jugador elige su primer mech entre los de ejemplo.
-func _add_starters(box: VBoxContainer) -> void:
-	_text(box, Txt.t("starter_title"), 20)
-	_text(box, Txt.t("starter_info"), 16, COLOR_MUTED)
-	for id in _library.starter_ids():
-		var label := Txt.t("starter_pick", [_library.display_name(id), _element_name(id)])
-		_button(box, label, 44, _on_starter_picked.bind(id))
-
-
-func _element_name(id: String) -> String:
-	var element := _library.element_of(id)
-	if element == "HYBRID":
-		return Txt.t("element_hybrid")
-	return Txt.ELEMENT_NAMES[ItemDef.Element[element]]
-
-
 ## Clase de la zona en la que esta el jugador.
 func _zone_tier() -> int:
 	return _bench.zone_tier(_profile)
@@ -549,9 +492,12 @@ func _save() -> void:
 		_profile.save(SAVE_PATH)
 
 
-func _on_starter_picked(id: String) -> void:
-	_profile.start_run(_library, id)
-	Garage.ensure_assist(_profile, _catalog)
+## Empieza la partida con un robot de ese tipo: el cuerpo y una sola arma.
+func start_with(style_id: String) -> void:
+	if not _styles.has(style_id):
+		return
+	_profile.start_style(_styles, style_id)
+	Sfx.play("ui_comprar")
 	_save()
 	_show_menu()
 
@@ -601,7 +547,8 @@ func _armory_cap() -> int:
 func _on_arena_pressed() -> void:
 	var zone := mini(_profile.zone, _campaign.zone_count() - 1)
 	var power := Campaign.mean_power(_rules, _profile, _player_items())
-	var fight := _campaign.arena_fight(zone, _library, _arena_seed, _rules, power)
+	var gear := Campaign.loadout_of(_player_build())
+	var fight := _campaign.arena_fight(zone, _library, _arena_seed, _rules, power, gear)
 	_arena_seed = randi()
 	_start_battle(_spec_for("arena", zone, fight))
 
@@ -638,6 +585,7 @@ func _spec_for(mode: String, zone: int, fight: Dictionary) -> Dictionary:
 		"enemy_tier": int(fight.get("tier", _campaign.tier_of(zone))),
 		"enemy_level": int(fight["level"]),
 		"enemy_skills": int(fight.get("skills", 0)),
+		"enemy_loadout": fight.get("loadout", {}),
 		"difficulty": DIFFICULTY_IDS.find(fight["difficulty"]),
 		"seed": randi(),
 	}
@@ -650,7 +598,6 @@ func _start_battle(spec: Dictionary) -> void:
 	_spec = spec
 	# Al volver, el hangar sigue en el canal del que se salio.
 	_return = {"channel": spec["mode"], "how": "enter"}
-	_backdrop.set_shown(false)
 	if _menu != null:
 		_menu.queue_free()
 		_menu = null
@@ -696,16 +643,26 @@ func _start_battle(spec: Dictionary) -> void:
 		)
 		_progression.apply_locks(player_build, _player_level())
 		player_build.skills = _skills.effects_for(_profile.skills)
+		_styles.add_effects(_profile.style, player_build.skills)
 	else:
 		var player_tier: ItemDef.Tier = spec["player_tier"]
 		player_build = _catalog.make_build(spec["items"], _rules, player_tier, spec["player_level"])
-		# Tambien en el combate libre el mech lleva las habilidades del jugador.
+		# Tambien en el combate libre el mech lleva las habilidades del jugador
+		# y lo que da su tipo de robot.
 		player_build.skills = _skills.effects_for(_profile.skills)
+		_styles.add_effects(_profile.style, player_build.skills)
 	# Las mejoras de la armeria solo cuentan para el mech del jugador.
 	if rewarded:
 		player_build.upgrades = _shop.upgrades_for(_profile.shop_levels)
 	var enemy_build := _library.make(
-		spec["enemy"], _catalog, _rules, spec["enemy_tier"], spec["enemy_level"], _chassis
+		spec["enemy"],
+		_catalog,
+		_rules,
+		spec["enemy_tier"],
+		spec["enemy_level"],
+		_chassis,
+		{},
+		spec.get("enemy_loadout", {})
 	)
 	# En la campana y la arena los rivales llevan la armeria del Orden.
 	if spec.has("zone"):

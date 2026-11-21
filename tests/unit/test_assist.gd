@@ -223,13 +223,34 @@ func test_la_bateria_de_la_armeria_se_abre_con_la_primera_transformacion() -> vo
 
 
 func test_una_partida_vieja_recibe_su_asistente() -> void:
-	var profile := PlayerProfile.new()
-	profile.build = {
-		"torso": "torso_baluarte", "legs": "piernas_zancos", "drone": "artillero_balas_cin"
-	}
-	profile.owned.assign(["torso_baluarte", "piernas_zancos", "artillero_balas_cin"])
-	profile.parts["artillero_balas_cin"] = {"tier": ItemDef.Tier.COMMON, "level": 4}
+	# De cuando el asistente se regalaba (hasta la version 8 del guardado).
+	var profile := (
+		PlayerProfile
+		. from_dict(
+			{
+				"schema_version": 8,
+				"wins": 3,
+				"owned": ["torso_baluarte", "piernas_zancos", "artillero_balas_cin"],
+				"mechs":
+				[
+					{
+						"name": "Viejo",
+						"design": "",
+						"build":
+						{
+							"torso": "torso_baluarte",
+							"legs": "piernas_zancos",
+							"drone": "artillero_balas_cin"
+						}
+					}
+				],
+				"parts": {"artillero_balas_cin": {"tier": ItemDef.Tier.COMMON, "level": 4}},
+			}
+		)
+	)
+	assert_true(profile.legacy_assist)
 	Garage.ensure_assist(profile, _catalog)
+	assert_false(profile.legacy_assist, "ya lo tiene: no hace falta recordarlo")
 	assert_true(str(profile.build["assist"]) in PROTOCOLS)
 	for id in PROTOCOLS:
 		assert_true(id in profile.owned, id)

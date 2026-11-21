@@ -16,7 +16,7 @@ func before_all() -> void:
 
 func test_la_biblioteca_carga_sin_errores() -> void:
 	assert_eq(_library.errors, [] as Array[String])
-	assert_eq(_library.starter_ids().size(), 4, "cuatro mechs para empezar")
+	assert_eq(_library.starter_ids().size(), 4, "los cuatro mechs de ejemplo de balas")
 	for band: String in ["balas", "canon", "blaster", "laser"]:
 		assert_eq(_library.band_ids(band).size(), 4, "cuatro mechs de %s" % band)
 

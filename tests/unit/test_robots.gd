@@ -1,24 +1,17 @@
 extends GutTest
 ## Garaje (GDD 8; pedido del usuario el 2026-11-18): hasta 4 robots en total,
-## el que usa y 3 mas. Uno nuevo es un armazon vacio gratis o un diseno de
-## ejemplo, pagando solo las piezas que aun no tiene. Todos comparten las
-## piezas y su nivel.
-
-const T := ItemDef.Tier
+## el que usa y 3 mas. Uno nuevo es un armazon vacio, gratis, del tipo de
+## robot que se elija. Todos comparten las piezas y su nivel.
 
 var _rules: RulesConfig
 var _catalog: Catalog
 var _library: BuildLibrary
-var _workshop: Workshop
-var _garage: Garage
 
 
 func before_all() -> void:
 	_rules = RulesConfig.new()
 	_catalog = Catalog.load_file("res://data/catalog.json")
 	_library = BuildLibrary.load_file("res://data/builds.json")
-	_workshop = Workshop.load_file("res://data/workshop.json")
-	_garage = Garage.load_file("res://data/part_shop.json")
 
 
 func _new_run(gold: int = 0) -> PlayerProfile:
@@ -65,41 +58,15 @@ func test_cambiar_de_robot_no_toca_el_otro() -> void:
 	assert_eq(profile.build.keys(), ["torso"], "el armazon solo lleva el torso")
 
 
-func test_un_diseno_cobra_solo_las_piezas_que_faltan_en_la_clase_de_la_zona() -> void:
-	var profile := _new_run(100000)
-	var design: String = _library.starter_ids()[1]
-	var missing := Garage.missing_parts(profile, _library, design)
-	assert_gt(missing.size(), 0)
-	var price := _garage.design_price(
-		profile, _library, _catalog, _rules, _workshop, design, T.COMMON
-	)
-	var expected := 0
-	for id in missing:
-		if _catalog.get_item(id).type != ItemDef.Type.ASSIST:
-			expected += _garage.price(_catalog, _rules, _workshop, id, T.COMMON)
-	assert_eq(price, expected)
-	var buy := _garage.buy_design(profile, _library, _catalog, _rules, _workshop, design, T.COMMON)
-	assert_eq(buy, "")
-	assert_eq(profile.gold, 100000 - price)
-	assert_eq(profile.mechs.size(), 2)
-	assert_eq(profile.active, 1)
-	assert_eq(profile.mechs[1]["design"], design)
-	for id in missing:
-		assert_has(profile.owned, id)
-	# Lo que ya tenia no se vuelve a cobrar: el mismo diseno cuesta 0.
-	assert_eq(
-		_garage.design_price(profile, _library, _catalog, _rules, _workshop, design, T.COMMON), 0
-	)
-
-
-func test_sin_celdas_no_se_compra_el_diseno() -> void:
-	var profile := _new_run(0)
-	var design: String = _library.starter_ids()[1]
-	var reason := _garage.buy_design(
-		profile, _library, _catalog, _rules, _workshop, design, T.COMMON
-	)
-	assert_eq(reason, "faltan celdas")
-	assert_eq(profile.mechs.size(), 1)
+func test_un_armazon_lleva_su_tipo_y_lo_conserva_al_guardar() -> void:
+	var profile := _new_run()
+	assert_eq(profile.style, "", "el robot de ejemplo no tiene tipo")
+	assert_eq(profile.add_frame(_rules, "Nuevo", "tirador"), "")
+	assert_eq(profile.style, "tirador", "el tipo es el del robot que usa")
+	var back := PlayerProfile.from_dict(profile.to_dict())
+	assert_eq(back.style, "tirador")
+	back.select_mech(0)
+	assert_eq(back.style, "")
 
 
 func test_desmontar_un_robot_deja_sus_piezas() -> void:

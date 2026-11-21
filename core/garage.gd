@@ -102,9 +102,10 @@ static func set_slot(build: Dictionary, slot: String, id: String) -> void:
 
 ## Devuelve "" si el jugador puede montar esa pieza en ese hueco; si no, el
 ## motivo. Quitar una pieza ("") siempre se puede: lo que falte lo avisa
-## MechBuild.validate.
+## MechBuild.validate. Con `styles`, el tipo de su robot dice que armas le
+## caben (StyleLibrary.why_cant_mount).
 static func why_cant_equip(
-	profile: PlayerProfile, catalog: Catalog, slot: String, id: String
+	profile: PlayerProfile, catalog: Catalog, slot: String, id: String, styles: StyleLibrary = null
 ) -> String:
 	if not slot in SLOTS:
 		return "ese hueco no existe"
@@ -114,23 +115,41 @@ static func why_cant_equip(
 		return "no tienes esa pieza"
 	if catalog.get_item(id) == null or catalog.get_item(id).type != slot_type(slot):
 		return "no va en ese hueco"
+	if styles != null:
+		return styles.why_cant_mount(profile.style, catalog.get_item(id))
 	return ""
 
 
-static func equip(profile: PlayerProfile, catalog: Catalog, slot: String, id: String) -> String:
-	var reason := why_cant_equip(profile, catalog, slot, id)
+static func equip(
+	profile: PlayerProfile, catalog: Catalog, slot: String, id: String, styles: StyleLibrary = null
+) -> String:
+	var reason := why_cant_equip(profile, catalog, slot, id, styles)
 	if reason == "":
 		set_slot(profile.build, slot, id)
 	return reason
 
 
-## Da al jugador los cuerpos del robot de asistencia (uno por protocolo, que
-## se cambia gratis) y le monta uno si su mech no lo lleva, como en las
-## partidas de antes del asistente; su progreso arranca del de su dron.
+## True si el jugador tiene el robot de asistencia (alguno de sus cuerpos).
+static func has_assist(profile: PlayerProfile, catalog: Catalog) -> bool:
+	for id in profile.owned:
+		var def := catalog.get_item(id)
+		if def != null and def.type == ItemDef.Type.ASSIST:
+			return true
+	return false
+
+
+## Completa el robot de asistencia de quien ya lo tiene: los cuatro cuerpos
+## (uno por protocolo, que se cambia gratis), uno montado en el robot que usa
+## y su progreso, que arranca del de su dron. El asistente se compra
+## (decision del usuario, 2026-11-20, OBS-013): solo se le da sin comprarlo a
+## las partidas de cuando se regalaba (PlayerProfile.legacy_assist).
 static func ensure_assist(profile: PlayerProfile, catalog: Catalog) -> void:
 	var bodies := catalog.by_type(ItemDef.Type.ASSIST)
 	if not profile.has_mech() or bodies.is_empty():
 		return
+	if not profile.legacy_assist and not has_assist(profile, catalog):
+		return
+	profile.legacy_assist = false
 	var ids: Array[String] = []
 	for def in bodies:
 		ids.append(def.id)
@@ -171,95 +190,6 @@ static func drop_slot(
 	return fits[0] if not fits.is_empty() else ""
 
 
-## Piezas de un mech de ejemplo que el jugador aun no tiene.
-static func missing_parts(
-	profile: PlayerProfile, library: BuildLibrary, design: String
-) -> Array[String]:
-	var out: Array[String] = []
-	for id in library.item_ids(design):
-		if not id in profile.owned and not id in out:
-			out.append(id)
-	return out
-
-
-## Lo que cuesta adquirir un robot con ese diseno: solo las piezas que aun no
-## tiene, al precio de la tienda de la zona. Los cuerpos del asistente no se
-## cobran (se tienen todos).
-func design_price(
-	profile: PlayerProfile,
-	library: BuildLibrary,
-	catalog: Catalog,
-	rules: RulesConfig,
-	workshop: Workshop,
-	design: String,
-	zone_tier: int
-) -> int:
-	var total := 0
-	for id in missing_parts(profile, library, design):
-		if catalog.get_item(id).type != ItemDef.Type.ASSIST:
-			total += price(catalog, rules, workshop, id, zone_tier)
-	return total
-
-
-func why_cant_buy_design(
-	profile: PlayerProfile,
-	library: BuildLibrary,
-	catalog: Catalog,
-	rules: RulesConfig,
-	workshop: Workshop,
-	design: String,
-	zone_tier: int
-) -> String:
-	if not design in library.starter_ids():
-		return "ese diseno no se vende"
-	var reason := profile.why_cant_add_mech(rules)
-	if reason != "":
-		return reason
-	var stock := stock_for(catalog, zone_tier)
-	for id in missing_parts(profile, library, design):
-		var def := catalog.get_item(id)
-		if def.type != ItemDef.Type.ASSIST and not id in stock:
-			return "lleva piezas que esta zona no vende"
-	if design_price(profile, library, catalog, rules, workshop, design, zone_tier) > profile.gold:
-		return "faltan celdas"
-	return ""
-
-
-## Adquiere un robot con un diseno de ejemplo: compra en la tienda de la zona
-## las piezas que faltan (llegan en su clase, nivel 0) y lo monta con ellas.
-## Pasa a ser el que usa. Devuelve "" o el motivo.
-func buy_design(
-	profile: PlayerProfile,
-	library: BuildLibrary,
-	catalog: Catalog,
-	rules: RulesConfig,
-	workshop: Workshop,
-	design: String,
-	zone_tier: int
-) -> String:
-	var reason := why_cant_buy_design(profile, library, catalog, rules, workshop, design, zone_tier)
-	if reason != "":
-		return reason
-	for id in missing_parts(profile, library, design):
-		if catalog.get_item(id).type == ItemDef.Type.ASSIST:
-			profile.owned.append(id)
-		else:
-			buy(profile, catalog, rules, workshop, id, zone_tier)
-	(
-		profile
-		. mechs
-		. append(
-			{
-				"name": library.display_name(design),
-				"design": design,
-				"build": library.specs[design]["items"].duplicate(true),
-			}
-		)
-	)
-	profile.active = profile.mechs.size() - 1
-	return ""
-
-
 ## Piezas que tiene el jugador y caben en ese hueco.
 static func owned_for(profile: PlayerProfile, catalog: Catalog, slot: String) -> Array[String]:
 	var out: Array[String] = []
@@ -274,7 +204,7 @@ static func owned_for(profile: PlayerProfile, catalog: Catalog, slot: String) ->
 func stock_for(catalog: Catalog, zone_tier: int) -> Array[String]:
 	var out: Array[String] = []
 	for type in ItemDef.Type.values():
-		# Los cuerpos del robot de asistencia no se venden: se tienen todos.
+		# El robot de asistencia va aparte: se compra una vez (why_cant_buy).
 		if type == ItemDef.Type.ASSIST:
 			continue
 		var ids: Array[String] = []
@@ -297,6 +227,8 @@ func price(
 	return base + workshop.total_cost(rules, zone_tier, 0)
 
 
+## El robot de asistencia se compra una vez, eligiendo cualquiera de sus
+## cuerpos: con el vienen los cuatro protocolos, que luego se cambian gratis.
 func why_cant_buy(
 	profile: PlayerProfile,
 	catalog: Catalog,
@@ -307,7 +239,11 @@ func why_cant_buy(
 ) -> String:
 	if id in profile.owned:
 		return "ya la tienes"
-	if not id in stock_for(catalog, zone_tier):
+	var def := catalog.get_item(id)
+	if def != null and def.type == ItemDef.Type.ASSIST:
+		if has_assist(profile, catalog):
+			return "ya la tienes"
+	elif not id in stock_for(catalog, zone_tier):
 		return "no se vende en esta zona"
 	if price(catalog, rules, workshop, id, zone_tier) > profile.gold:
 		return "faltan celdas"
@@ -328,6 +264,13 @@ func buy(
 		return reason
 	profile.gold -= price(catalog, rules, workshop, id, zone_tier)
 	profile.owned.append(id)
+	if catalog.get_item(id).type == ItemDef.Type.ASSIST:
+		# El asistente entero: los demas protocolos, montado con el que se
+		# eligio y con su progreso en la clase de la zona.
+		profile.build["assist"] = id
+		profile.parts[ItemDef.ASSIST_PROGRESS] = {"tier": zone_tier, "level": 0}
+		ensure_assist(profile, catalog)
+		return ""
 	var current := profile.part(id)
 	if current["tier"] < zone_tier:
 		profile.parts[id] = {"tier": zone_tier, "level": 0}

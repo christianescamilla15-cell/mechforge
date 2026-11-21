@@ -87,6 +87,12 @@ func _init(p_build: MechBuild = null, rules: RulesConfig = null, p_position: int
 	_add_slot("charge", build.charge)
 	_add_slot("teleport", build.teleport)
 	_add_slot("hook", build.hook)
+	if build.skills != null and build.skills.point_blank > 0:
+		# A quemarropa: sus armas de brazo llegan desde la casilla de al lado.
+		for key: String in slots:
+			if key.begins_with("side") and slots[key].def.range_min > 1:
+				slots[key].def = slots[key].def.duplicate()
+				slots[key].def.range_min = 1
 	if build.skills != null:
 		kits = {
 			"shield": build.skills.shield_uses,

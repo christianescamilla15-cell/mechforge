@@ -146,6 +146,106 @@ func observations_test() -> void:
 	get_tree().quit(0)
 
 
+## Prueba en vivo de la partida nueva (`--menu-shot=inicio`), con el raton y
+## sin guardar nada: pasar por los tres tipos de robot, elegir uno con dos
+## pulsaciones, ver en el hangar que empieza con una sola arma y sin
+## asistente, que su tablero solo cuelga lo que su tipo monta y que el rival
+## de la arena sale con su mismo equipo; y salir a pelear contra el.
+func starter_test() -> void:
+	var select := main._menu as StarterSelect
+	if select == null:
+		print("INICIO no salio la pantalla de partida nueva")
+		get_tree().quit(1)
+		return
+	await get_tree().create_timer(0.8).timeout
+	await shot("tres_tipos")
+	for i in select.entries.size():
+		await _move(select.spot_rect(i).get_center())
+		await get_tree().create_timer(0.25).timeout
+		await shot("raton_en_%s" % select.entries[i]["id"])
+	var pick := select.entries.size() - 1
+	var style := str(select.entries[pick]["id"])
+	await _click(select.spot_rect(pick).get_center())
+	await get_tree().create_timer(0.3).timeout
+	print("INICIO primera pulsacion en %s: armado=%d" % [style, select.armed()])
+	await shot("armado")
+	# El raton de verdad, si esta sobre la ventana, puede pasar por otro robot
+	# y desarmarlo entre una pulsacion y la otra: se insiste.
+	for attempt in 4:
+		if not is_instance_valid(select) or main._menu != select:
+			break
+		await _click(select.spot_rect(pick).get_center())
+		await get_tree().create_timer(0.5).timeout
+	await get_tree().create_timer(0.6).timeout
+	var profile := main._profile
+	var hangar := main._menu as WorkshopScreen
+	if hangar == null:
+		print("INICIO tras elegir no salio el hangar")
+		get_tree().quit(1)
+		return
+	print(
+		(
+			"INICIO empieza: tipo=%s robot=%s piezas=%s celdas=%d asistente=%s"
+			% [
+				profile.style,
+				main.robot_name(profile.active),
+				profile.owned,
+				profile.gold,
+				Garage.has_assist(profile, main._catalog)
+			]
+		)
+	)
+	await shot("hangar_recien_empezado")
+	var stage := hangar._stage
+	var rack := stage.parts_rack
+	# El segundo brazo: su tablero solo cuelga lo que monta su tipo.
+	hangar.pick("side1")
+	await get_tree().create_timer(0.7).timeout
+	var forms: Array[String] = []
+	for part: Dictionary in rack._parts:
+		var form := (part["item"] as ItemDef).form
+		if not form in forms:
+			forms.append(form)
+	print("INICIO tablero del brazo 2: %d piezas, formas=%s" % [rack._parts.size(), forms])
+	await shot("tablero_del_tipo")
+	# El asistente se ve, pero cerrado hasta su nivel.
+	hangar.pick("assist")
+	await get_tree().create_timer(0.6).timeout
+	print(
+		(
+			"INICIO asistente: cerrado='%s' cuerpos a la vista=%d"
+			% [rack.state.get("locked", ""), rack._parts.size()]
+		)
+	)
+	await shot("asistente_cerrado")
+	hangar.close_panels()
+	await get_tree().create_timer(0.5).timeout
+	# La arena: el rival sale con una sola arma, como tu.
+	var board := stage._board
+	await _click(board.get_global_rect().get_center())
+	await get_tree().create_timer(1.4).timeout
+	await _click(board.global_position + board.zone_rect("tab:arena").get_center())
+	await get_tree().create_timer(1.4).timeout
+	var state := main.mission_state("arena")
+	var rival: MechBuild = state["rivals"][0]["build"]
+	var weapons: Array[String] = []
+	for item in rival.sides + rival.tops:
+		if item != null:
+			weapons.append(item.id)
+	print(
+		(
+			"INICIO rival de la arena: %s armas=%s modulos=%d asistente=%s"
+			% [state["rivals"][0]["id"], weapons, rival.modules.size(), rival.drone != null]
+		)
+	)
+	await shot("arena_a_tu_medida")
+	await _click(stage.global_position + stage._row.front_rect().get_center())
+	await get_tree().create_timer(2.2).timeout
+	print("INICIO combate=%s" % (main._battle != null))
+	await shot("primer_combate")
+	get_tree().quit(0)
+
+
 ## Prueba en vivo de los ajustes (`--menu-shot=ajustes`), con el raton y sin
 ## guardar nada: pulsar el cuadro de control de la pared, cambiar la
 ## velocidad, pulsar y arrastrar un volumen, armar la salida sin salir,

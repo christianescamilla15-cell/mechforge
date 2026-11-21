@@ -335,13 +335,10 @@ func open_offers() -> void:
 	_offering = _stage.projector.is_open()
 
 
-## Se adquirio lo que proyectaba la bahia: "" es el armazon vacio.
+## Se adquirio lo que proyectaba la bahia: el armazon de un tipo de robot.
 func _on_offer_bought(id: String) -> void:
 	_offering = false
-	if id == "":
-		main.acquire_frame()
-	else:
-		main.acquire_design(id)
+	main.acquire_frame(id)
 
 
 ## Recoge el tablero de piezas, la pantalla que este de cerca y el proyector
@@ -486,7 +483,11 @@ func equip(slot: String, id: String) -> void:
 		Sfx.play("ui_cerrar")
 		toast(Txt.t("workshop_locked", [locked]))
 		return
-	if Garage.equip(main._profile, main._catalog, slot, id) != "":
+	var why := Garage.equip(main._profile, main._catalog, slot, id, main._styles)
+	if why != "":
+		if why.begins_with("un robot de"):
+			Sfx.play("ui_cerrar")
+			toast(Txt.t("workshop_wrong_style", [main._styles.role(main._profile.style)]))
 		return
 	_selected = slot
 	_hover_id = ""
@@ -576,6 +577,11 @@ func buy(id: String) -> void:
 
 func _pay(id: String) -> bool:
 	var tier := main._zone_tier()
+	var def: ItemDef = main._catalog.get_item(id)
+	if def != null and def.type == ItemDef.Type.ASSIST:
+		# El asistente no se compra hasta que tu nivel abre su hueco.
+		if main._bench.lock_reason(main._profile, "assist") != "":
+			return false
 	if main._garage.buy(main._profile, main._catalog, main._rules, main._workshop, id, tier) != "":
 		return false
 	Sfx.play("ui_comprar")

@@ -14,6 +14,9 @@ extends Resource
 ## Dano de mas del arma de pecho (fraccion) y usos de mas.
 @export var chest_damage: float = 0.0
 @export var chest_uses: int = 0
+## A quemarropa (lo da el tipo Tirador, StyleLibrary): con 1 o mas, sus armas
+## de brazo no tienen alcance minimo y disparan tambien con el rival pegado.
+@export var point_blank: int = 0
 ## Habilidades de combate: cuantas veces por combate se pueden usar.
 @export var shield_uses: int = 0
 @export var repair_uses: int = 0

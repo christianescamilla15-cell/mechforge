@@ -64,7 +64,10 @@ func band_ids(band: String) -> Array[String]:
 	return out
 
 
-## Mechs con los que se puede empezar una partida.
+## Los cuatro mechs de ejemplo de balas (uno por elemento y el hibrido). Con
+## ellos se empezaba la partida hasta el 2026-11-20; ahora se empieza con un
+## tipo de robot (StyleLibrary) y estos son los rivales de la liga 1 y los
+## robots de las pruebas y de los simuladores.
 func starter_ids() -> Array[String]:
 	var out: Array[String] = []
 	for id in ids():
@@ -96,6 +99,48 @@ func item_ids(id: String) -> Array[String]:
 	return items_of(specs[id]["items"])
 
 
+## Las piezas de un mech recortadas a un equipo (el de un jugador que aun
+## no ha armado el suyo entero, Campaign.loadout_of): {"sides", "tops",
+## "modules" y "specials" (cuantos lleva), "assist" y "chest" (si los lleva),
+## "shift" (por que arma lateral se empieza a contar, para que no salga
+## siempre la misma) y "forms" (formas de arma que se prefieren en los
+## brazos: con `catalog`, salen antes las que el mech tenga de esas formas)}.
+## El torso y las piernas van siempre.
+static func trim(items: Dictionary, loadout: Dictionary, catalog: Catalog = null) -> Dictionary:
+	var out := {"torso": items.get("torso", ""), "legs": items.get("legs", "")}
+	var sides: Array = items.get("sides", [])
+	var order: Array = []
+	for i in sides.size():
+		order.append(sides[(i + int(loadout.get("shift", 0))) % sides.size()])
+	var kept: Array = []
+	if catalog != null:
+		for form: Variant in loadout.get("forms", []):
+			for id: Variant in order:
+				var def := catalog.get_item(str(id))
+				if def != null and def.form == str(form) and not id in kept:
+					kept.append(id)
+					break
+	for id: Variant in order:
+		if not id in kept:
+			kept.append(id)
+	out["sides"] = kept.slice(0, mini(int(loadout.get("sides", 0)), sides.size()))
+	for key: String in ["tops", "modules"]:
+		var list: Array = items.get(key, [])
+		out[key] = list.slice(0, mini(int(loadout.get(key, 0)), list.size()))
+	var specials := int(loadout.get("specials", 0))
+	for key: String in ["charge", "hook", "teleport"]:
+		if specials > 0 and str(items.get(key, "")) != "":
+			out[key] = items[key]
+			specials -= 1
+	if bool(loadout.get("assist", false)):
+		for key: String in ["assist", "drone", "drone_low"]:
+			if items.has(key):
+				out[key] = items[key]
+	if bool(loadout.get("chest", false)) and items.has("chest"):
+		out["chest"] = items["chest"]
+	return out
+
+
 ## Piezas distintas de un mech dado por sus "items" (formato de builds.json).
 static func items_of(items: Dictionary) -> Array[String]:
 	var out: Array[String] = []
@@ -119,6 +164,7 @@ func is_boss(id: String) -> bool:
 ## Arma el mech con todas sus piezas al mismo tier y nivel. Si se pasa la
 ## biblioteca de chasis y el mech pide uno, lo monta a su nivel maximo.
 ## `parts` da a cada pieza su propia clase y nivel (Catalog.make_build).
+## Con `loadout`, sale solo con ese equipo (trim).
 func make(
 	id: String,
 	catalog: Catalog,
@@ -126,9 +172,13 @@ func make(
 	tier: ItemDef.Tier,
 	level: int,
 	chassis: ChassisLibrary = null,
-	parts: Dictionary = {}
+	parts: Dictionary = {},
+	loadout: Dictionary = {}
 ) -> MechBuild:
-	var build := catalog.make_build(specs[id]["items"], rules, tier, level, parts)
+	var items: Dictionary = specs[id]["items"]
+	if not loadout.is_empty():
+		items = trim(items, loadout, catalog)
+	var build := catalog.make_build(items, rules, tier, level, parts)
 	var chassis_id := chassis_of(id)
 	if chassis != null and chassis_id != "" and chassis.get_def(chassis_id) != null:
 		build.chassis = chassis.get_def(chassis_id).at_level(rules.chassis_max_level, rules)

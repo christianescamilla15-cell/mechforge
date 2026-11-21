@@ -211,21 +211,20 @@ func garage_test() -> void:
 		)
 	)
 	await shot("adquirir")
-	# Su flecha pasa del armazon vacio a los disenos.
-	for i in 3:
-		await _click(projector.global_position + projector.zone_rect("next").get_center())
-		await get_tree().create_timer(0.2).timeout
-	var design := str(projector.current()["id"])
+	# Su flecha pasa de un tipo de robot al siguiente: un armazon de cada uno.
+	await _click(projector.global_position + projector.zone_rect("next").get_center())
+	await get_tree().create_timer(0.2).timeout
+	var style := str(projector.current()["id"])
 	var robot := projector.global_position + projector.zone_rect("robot").get_center()
 	await _move(robot)
 	await get_tree().create_timer(0.3).timeout
-	await shot("adquirir_diseno")
+	await shot("adquirir_tipo")
 	await _click(robot)
 	await get_tree().create_timer(0.3).timeout
 	print(
 		(
 			"GARAJE primera pulsacion en %s: armado=%s robots=%d"
-			% [design, projector.is_armed(), profile.mechs.size()]
+			% [style, projector.is_armed(), profile.mechs.size()]
 		)
 	)
 	await shot("adquirir_armado")
@@ -233,26 +232,12 @@ func garage_test() -> void:
 	await get_tree().create_timer(0.8).timeout
 	print(
 		(
-			"GARAJE tras comprar %s: robots=%d activo=%d celdas=%d"
-			% [design, profile.mechs.size(), profile.active, profile.gold]
-		)
-	)
-	await shot("base_dos_robots")
-	# En otra bahia vacia, lo primero que proyecta: el armazon vacio.
-	await _click(_empty_bay(stage))
-	await get_tree().create_timer(0.5).timeout
-	robot = projector.global_position + projector.zone_rect("robot").get_center()
-	await _click(robot)
-	await get_tree().create_timer(0.2).timeout
-	await shot("adquirir_armazon")
-	await _click(robot)
-	await get_tree().create_timer(0.8).timeout
-	print(
-		(
-			"GARAJE armazon: robots=%d activo=%d vacio=%s abierto='%s'"
+			"GARAJE armazon de %s: robots=%d activo=%d tipo=%s vacio=%s abierto='%s'"
 			% [
+				style,
 				profile.mechs.size(),
 				profile.active,
+				profile.style,
 				profile.build.is_empty(),
 				hangar.current_page()
 			]
@@ -273,7 +258,7 @@ func garage_test() -> void:
 	await shot("armazon_piernas")
 	hangar.close_panels()
 	await get_tree().create_timer(0.8).timeout
-	await shot("base_tres_robots")
+	await shot("base_dos_robots")
 	# Un clic en la bahia de otro robot: pasas a usarlo.
 	await _click(stage._bay_rects[0].get_center())
 	await get_tree().create_timer(0.8).timeout

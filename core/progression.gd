@@ -80,7 +80,8 @@ func is_unlocked(slot: String, level: int) -> bool:
 ## Quita del mech las piezas de los huecos que el jugador aun no tiene: con
 ## ellas montadas no pelean.
 func apply_locks(build: MechBuild, level: int) -> void:
-	if not is_unlocked("drone", level):
+	if not is_unlocked("drone", level) or build.assist == null:
+		# Las armas del asistente no pelean sin el (se compra aparte).
 		build.assist = null
 		build.drone = null
 		build.drone_low = null
