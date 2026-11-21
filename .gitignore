@@ -13,3 +13,6 @@ Thumbs.db
 
 # Python
 __pycache__/
+
+# Cache del generador de musica (tools/audio/music.py)
+.cache/
