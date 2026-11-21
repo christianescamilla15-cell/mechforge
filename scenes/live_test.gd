@@ -578,6 +578,16 @@ func workshop_test(workshop: WorkshopScreen) -> void:
 			"TALLER casilla %s: hueco=%s piezas=%d" % [slot, workshop._selected, rack._parts.size()]
 		)
 		await shot("taller_" + slot)
+		if slot == "chest" and rack.index_of("pecho_centella") >= 0:
+			# El arma de campeon, tras vencerlo: se compra con dos pulsaciones.
+			var boss_weapon := _rack_point(rack, rack.index_of("pecho_centella"))
+			await _click(boss_weapon)
+			await get_tree().create_timer(0.3).timeout
+			await _click(boss_weapon)
+			await get_tree().create_timer(0.5).timeout
+			var has_boss := "pecho_centella" in main._profile.owned
+			print("TALLER arma de campeon comprada: %s" % has_boss)
+			await shot("taller_arma_campeon")
 		if slot == "module3" and not rack._parts.is_empty():
 			# Un modulo de ataque (OBS-040), examinado en la vitrina.
 			await _move(_rack_point(rack, 0))
@@ -741,6 +751,14 @@ func _specialist_test(workshop: WorkshopScreen, stage: HangarStage) -> void:
 		)
 	)
 	await shot("especialista_comprado")
+	# Un segundo prototipo en la misma pieza: se suma, no borra el primero.
+	var second := screen.global_position + screen.proto_rect(1).get_center()
+	await _click(second)
+	await get_tree().create_timer(0.3).timeout
+	await _click(second)
+	await get_tree().create_timer(0.5).timeout
+	print("ESPECIALISTA dos en la misma pieza: prototipos=%s" % [main._profile.prototypes])
+	await shot("especialista_dos")
 	await _click(screen.global_position + screen.piece_rect(4).get_center())
 	await get_tree().create_timer(0.5).timeout
 	await shot("especialista_torso")

@@ -138,13 +138,11 @@ const BOOSTS: Array[String] = ["arms", "shoulder", "special", "all"]
 @export var dmg_bonus: int = 0
 
 @export_group("Prototipo")
-## El prototipo del especialista montado en esta pieza (GDD 8.6,
-## PrototypeLibrary.apply): su id, su rango, su efecto y lo que vale. Vacio
-## en las piezas del catalogo y en las de los rivales.
-@export var proto: String = ""
-@export var proto_rank: int = 0
-@export var proto_effect: String = ""
-@export var proto_value: float = 0.0
+## Los prototipos del especialista montados en esta pieza (GDD 8.6,
+## PrototypeLibrary.apply): {id: rango} y lo que suman sus efectos
+## {efecto: valor}. Vacios en las piezas del catalogo y en las de los rivales.
+@export var protos: Dictionary = {}
+@export var proto_effects: Dictionary = {}
 @export var range_min: int = 0
 @export var range_max: int = 0
 

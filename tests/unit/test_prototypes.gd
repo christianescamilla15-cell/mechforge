@@ -2,7 +2,7 @@ extends GutTest
 ## El especialista (GDD 8.6, OBS-043, del usuario: "que cada ataque te de
 ## vida, que te regenere energia, te quite calor... cada rango te va dando mas
 ## nivel... se desbloquea en el nivel 10 nada mas... desde los 1 000 y hasta
-## los 100 000"): un prototipo por pieza, con rangos I a V.
+## los 100 000"): los prototipos de cada pieza se combinan, con rangos I a V.
 
 var _rules: RulesConfig
 var _catalog: Catalog
@@ -26,8 +26,7 @@ func _profile(gold: int = 1000000) -> PlayerProfile:
 
 func _proto_gun(effect: String, value: float) -> ItemDef:
 	var gun := Fx.gun()
-	gun.proto_effect = effect
-	gun.proto_value = value
+	gun.proto_effects = {effect: value}
 	return gun
 
 
@@ -60,22 +59,46 @@ func test_solo_se_abre_en_el_nivel_10_y_lo_demas_es_el_precio() -> void:
 	assert_ne(_protos.why_cant_buy(profile, _catalog, 30, "side0", "captador"), "", "sin celdas")
 
 
-func test_comprar_sube_de_rango_y_otro_lo_sustituye() -> void:
+## El usuario, 2026-11-21: "cuando subo al maximo nivel y mejoro la
+## siguiente, el primero se reinicia". Cada prototipo lleva su rango y comprar
+## otro no quita los demas.
+func test_comprar_sube_de_rango_y_otro_se_suma_sin_quitar_nada() -> void:
 	var profile := _profile()
 	var key := _catalog.get_item(Garage.get_slot(profile.build, "side0")).progress_id()
 	var gold := profile.gold
 	assert_eq(_protos.buy(profile, _catalog, 10, "side0", "sifon_vital"), "")
 	assert_eq(profile.gold, gold - 2000)
-	assert_eq(profile.prototypes[key], {"id": "sifon_vital", "rank": 1})
+	assert_eq(profile.prototypes[key], {"sifon_vital": 1})
 	assert_eq(_protos.buy(profile, _catalog, 10, "side0", "sifon_vital"), "")
-	assert_eq(profile.prototypes[key]["rank"], 2)
+	assert_eq(profile.prototypes[key]["sifon_vital"], 2)
 	assert_eq(profile.gold, gold - 2000 - 6000)
 	for i in 3:
 		_protos.buy(profile, _catalog, 10, "side0", "sifon_vital")
-	assert_eq(profile.prototypes[key]["rank"], 5)
+	assert_eq(profile.prototypes[key]["sifon_vital"], 5)
 	assert_ne(_protos.buy(profile, _catalog, 10, "side0", "sifon_vital"), "", "el V es el tope")
 	assert_eq(_protos.buy(profile, _catalog, 10, "side0", "purga_termica"), "")
-	assert_eq(profile.prototypes[key], {"id": "purga_termica", "rank": 1}, "otro lo sustituye")
+	assert_eq(profile.prototypes[key], {"sifon_vital": 5, "purga_termica": 1}, "se suma")
+	for id: String in ["captador", "percutor", "sobrecarga"]:
+		assert_eq(_protos.buy(profile, _catalog, 10, "side0", id), "")
+	assert_eq(profile.prototypes[key].size(), 5, "los cinco de arma a la vez")
+	assert_eq(profile.prototypes[key]["sifon_vital"], 5, "y el primero sigue en V")
+
+
+func test_una_partida_con_el_formato_de_uno_por_pieza_se_convierte() -> void:
+	var data := _profile().to_dict()
+	data["prototypes"] = {"medio_blaster_ter": {"id": "captador", "rank": 1}}
+	var profile := PlayerProfile.from_dict(data)
+	assert_eq(profile.prototypes["medio_blaster_ter"], {"captador": 1})
+
+
+func test_un_arma_con_varios_prototipos_los_aplica_todos() -> void:
+	var gun := Fx.gun()
+	gun.proto_effects = {"lifesteal": 0.2, "damage": 0.1}
+	var e := Fx.engine(Fx.build([gun]), Fx.build())
+	e.mechs[0].health = 500
+	e.apply(BattleAction.weapon("side0"))
+	assert_eq(e.events[-1]["damage"], 110, "+10 % de dano")
+	assert_eq(e.mechs[0].health, 522, "y el 20 % de 110 en vida")
 
 
 func test_el_prototipo_va_en_la_pieza_del_robot_y_se_guarda() -> void:
@@ -86,8 +109,7 @@ func test_el_prototipo_va_en_la_pieza_del_robot_y_se_guarda() -> void:
 	var build := _catalog.make_build(profile.build, _rules, ItemDef.Tier.COMMON, 0, profile.parts)
 	var plain := build.summary(_rules)
 	_protos.apply(build, profile)
-	assert_eq(build.torso.proto, "radiador")
-	assert_eq(build.torso.proto_rank, 1)
+	assert_eq(build.torso.protos, {"radiador": 1})
 	var cooled := build.summary(_rules)
 	assert_eq(cooled["cooling"], roundi(plain["cooling"] * 1.1), "+10 % de enfriamiento")
 
@@ -124,8 +146,7 @@ func test_sobrecarga_y_percutor() -> void:
 
 func test_la_valvula_perdona_el_sobrecalentamiento() -> void:
 	var build := Fx.build([Fx.gun()])
-	build.torso.proto_effect = "overheat_relief"
-	build.torso.proto_value = 1.0
+	build.torso.proto_effects = {"overheat_relief": 1.0}
 	var e := Fx.engine(Fx.build(), build)
 	assert_eq(e.mechs[1].relief_left, 1)
 	e.mechs[1].heat = 400
@@ -163,8 +184,8 @@ func test_el_banco_ensena_tus_piezas_y_lo_que_hace_el_rango_siguiente() -> void:
 	var state := SpecialistBrief.state(profile, brief, _protos, "side0")
 	assert_eq(str(state["locked"]), "")
 	assert_eq(state["pieces"].size(), 6, "dos brazos, hombro, pecho, torso y piernas")
-	assert_eq(state["pieces"][0]["proto"], "Sifón vital")
-	assert_eq(state["pieces"][0]["rank"], 1)
+	assert_eq(state["pieces"][0]["proto"], "Sifón vital I")
+	assert_eq(state["pieces"][0]["count"], 1)
 	var sifon: Dictionary = state["protos"][0]
 	assert_eq(sifon["id"], "sifon_vital")
 	assert_eq(sifon["rank_now"], 1)

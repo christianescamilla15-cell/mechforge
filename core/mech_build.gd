@@ -202,8 +202,10 @@ func summary(rules: RulesConfig) -> Dictionary:
 	# Los prototipos del especialista que mejoran al robot (GDD 8.6).
 	var more := {"cooling": 0.0, "regen": 0.0, "health": 0.0}
 	for item in all_items():
-		if item != null and item.proto_effect in more:
-			more[item.proto_effect] += item.proto_value
+		if item == null:
+			continue
+		for effect: String in more:
+			more[effect] += float(item.proto_effects.get(effect, 0.0))
 	s["cooling"] = roundi(s["cooling"] * (1.0 + more["cooling"]))
 	s["energy_regen"] = roundi(s["energy_regen"] * (1.0 + more["regen"]))
 	s["health"] = roundi(s["health"] * (1.0 + more["health"]))

@@ -50,7 +50,7 @@ const ES := {
 	"specialist_buy_confirm": "Pulsa otra vez para pagar",
 	"specialist_install": "Instalar rango %s",
 	"specialist_raise": "Subir a rango %s",
-	"specialist_line_armed": "Pulsa otra vez y lo monto. Lo que llevaba esa pieza se pierde.",
+	"specialist_line_armed": "Pulsa otra vez y lo monto. Se suma a lo que ya lleva esa pieza.",
 	"specialist_line_pick": "Elige una pieza y te digo qué le puedo injertar.",
 	"specialist_line_empty": "Ese hueco está vacío: monta una pieza en el taller primero.",
 	"specialist_line_locked": "Vuelve cuando seas nivel %d. Lo mío no es para cualquiera.",

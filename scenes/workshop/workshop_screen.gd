@@ -631,7 +631,11 @@ func _pay(id: String) -> bool:
 		# El asistente no se compra hasta que tu nivel abre su hueco.
 		if main._bench.lock_reason(main._profile, "assist") != "":
 			return false
-	if main._garage.buy(main._profile, main._catalog, main._rules, main._workshop, id, tier) != "":
+	var open := main._campaign.boss_weapons_open(main._profile)
+	var why := main._garage.buy(
+		main._profile, main._catalog, main._rules, main._workshop, id, tier, open
+	)
+	if why != "":
 		return false
 	Sfx.play("ui_comprar")
 	main._save()

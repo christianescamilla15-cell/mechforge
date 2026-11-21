@@ -77,6 +77,33 @@ func test_se_abre_al_vencer_a_su_campeon_y_cuesta_mucho_mas() -> void:
 	assert_eq(_brief.garage.boss_weapon_mult, 10)
 
 
+## El usuario, 2026-11-21: "ya veo el arma de campeon pero no la puedo
+## comprar... ya pase esa liga". La compra exigia que estuviera en la tienda
+## normal, de la que las armas de campeon estan fuera.
+func test_tras_vencer_a_su_campeon_se_compra_de_verdad() -> void:
+	var profile := _profile(7)
+	var tier := _brief.zone_tier(profile)
+	var open := _brief.campaign.boss_weapons_open(profile)
+	var part := _sold(_brief.rack(profile, "chest"), "pecho_centella")
+	assert_eq(str(part["reason"]), "", "sin motivo para no comprarla")
+	var garage := _brief.garage
+	assert_ne(garage.buy(profile, _catalog, _rules, _brief.workshop, "pecho_centella", tier), "")
+	var gold := profile.gold
+	assert_eq(
+		garage.buy(profile, _catalog, _rules, _brief.workshop, "pecho_centella", tier, open), ""
+	)
+	assert_true("pecho_centella" in profile.owned)
+	assert_eq(profile.gold, gold - int(part["price"]))
+	var early := _profile(4)
+	var closed := _brief.campaign.boss_weapons_open(early)
+	var early_tier := _brief.zone_tier(early)
+	assert_ne(
+		garage.buy(early, _catalog, _rules, _brief.workshop, "pecho_centella", early_tier, closed),
+		"",
+		"antes de vencerlo, no"
+	)
+
+
 func test_sin_dibujo_propio_usa_el_de_todas_las_armas_de_pecho() -> void:
 	var def := _catalog.get_item("pecho_centella")
 	assert_eq(str(def.art.get("set", "")), "jefe5_centella")

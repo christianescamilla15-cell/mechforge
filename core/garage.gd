@@ -354,7 +354,8 @@ func why_cant_buy(
 	rules: RulesConfig,
 	workshop: Workshop,
 	id: String,
-	zone_tier: int
+	zone_tier: int,
+	open: Array[String] = []
 ) -> String:
 	if id in profile.owned:
 		return "ya la tienes"
@@ -362,7 +363,9 @@ func why_cant_buy(
 	if def != null and def.type == ItemDef.Type.ASSIST:
 		if has_assist(profile, catalog):
 			return "ya la tienes"
-	elif not id in stock_for(catalog, zone_tier):
+	elif not id in stock_for(catalog, zone_tier) and not id in open:
+		# `open`: las armas de campeon ya vencido (Campaign.boss_weapons_open),
+		# que no estan en la tienda normal (GDD 9.4).
 		return "no se vende en esta zona"
 	if price(catalog, rules, workshop, id, zone_tier) > profile.gold:
 		return "faltan celdas"
@@ -376,9 +379,10 @@ func buy(
 	rules: RulesConfig,
 	workshop: Workshop,
 	id: String,
-	zone_tier: int
+	zone_tier: int,
+	open: Array[String] = []
 ) -> String:
-	var reason := why_cant_buy(profile, catalog, rules, workshop, id, zone_tier)
+	var reason := why_cant_buy(profile, catalog, rules, workshop, id, zone_tier, open)
 	if reason != "":
 		return reason
 	profile.gold -= price(catalog, rules, workshop, id, zone_tier)

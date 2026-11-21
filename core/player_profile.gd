@@ -35,7 +35,7 @@ var shop_levels: Dictionary[String, int] = {}
 ## suben juntas.
 var parts: Dictionary[String, Dictionary] = {}
 ## Prototipos del especialista (GDD 8.6), por la clave de progreso de la
-## pieza: {"id", "rank"}. Van con la pieza.
+## pieza: {id del prototipo: rango}. Van con la pieza; se combinan.
 var prototypes: Dictionary = {}
 ## Nucleos unicos: los sueltan los 3 ultimos jefes y cada uno transforma una
 ## pieza Mitica al maximo en Unica (GDD 8).
@@ -434,9 +434,15 @@ static func from_dict(data: Dictionary) -> PlayerProfile:
 	if saved_protos is Dictionary:
 		for key: String in saved_protos:
 			var entry: Variant = saved_protos[key]
-			if entry is Dictionary and str(entry.get("id", "")) != "":
-				var rank := maxi(1, int(entry.get("rank", 1)))
-				profile.prototypes[key] = {"id": str(entry["id"]), "rank": rank}
+			if not entry is Dictionary:
+				continue
+			# Hasta la primera version era uno por pieza: {"id", "rank"}.
+			if entry.has("id") and entry.has("rank"):
+				entry = {str(entry["id"]): int(entry["rank"])}
+			var mounted := {}
+			for id: Variant in entry:
+				mounted[str(id)] = clampi(int(entry[id]), 1, 5)
+			profile.prototypes[key] = mounted
 	var levels: Variant = data.get("shop_levels", {})
 	if levels is Dictionary:
 		for track: String in levels:

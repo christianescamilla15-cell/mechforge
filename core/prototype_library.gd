@@ -5,10 +5,12 @@ extends RefCounted
 ## combinaciones... cada rango te va dando mas nivel... se desbloquea en el
 ## nivel 10 nada mas... desde los 1 000 y hasta los 100 000").
 ##
-## Cada pieza tiene un hueco de prototipo: las armas (brazo, hombro, pecho),
-## el torso y las piernas. Un prototipo tiene rangos I a V; cada rango sube su
-## efecto y se paga sobre el anterior. Va con la pieza (PlayerProfile.
-## prototypes, por la clave de progreso de la pieza).
+## Las armas (brazo, hombro, pecho), el torso y las piernas llevan prototipos:
+## todos los que les quepan a la vez, cada uno con su rango (I a V), que sube
+## su efecto y se paga sobre el anterior. Comprar uno no quita los demas (el
+## usuario, 2026-11-21: "cuando subo al maximo nivel y mejoro la siguiente,
+## el primero se reinicia"). Van con la pieza (PlayerProfile.prototypes, por
+## la clave de progreso de la pieza: dos brazos con la misma arma comparten).
 ##
 ## Lee data/prototypes.json:
 ## {"schema_version", "unlock_level", "ranks", "prices": {escala: [precio por
@@ -142,17 +144,16 @@ func price(id: String, rank: int) -> int:
 	return int(prices[str(defs[id]["price"])][rank - 1])
 
 
-## El prototipo de una pieza: {"id", "rank"}; vacio si no lleva.
+## Los prototipos de una pieza: {id: rango}; vacio si no lleva.
 static func installed(profile: PlayerProfile, part_key: String) -> Dictionary:
 	var entry: Variant = profile.prototypes.get(part_key, {})
 	return (entry as Dictionary).duplicate() if entry is Dictionary else {}
 
 
-## El rango al que se llevaria ese prototipo en esa pieza: el siguiente si ya
-## lo tiene; el I si tiene otro o ninguno.
+## El rango al que se llevaria ese prototipo en esa pieza: el siguiente al
+## que tiene (el I si no lo tiene).
 static func next_rank(profile: PlayerProfile, part_key: String, id: String) -> int:
-	var now := installed(profile, part_key)
-	return int(now.get("rank", 0)) + 1 if str(now.get("id", "")) == id else 1
+	return int(installed(profile, part_key).get(id, 0)) + 1
 
 
 ## Devuelve "" si se puede comprar ese prototipo (o su rango siguiente) para la
@@ -184,23 +185,28 @@ func buy(profile: PlayerProfile, catalog: Catalog, level: int, slot: String, id:
 	var key := catalog.get_item(Garage.get_slot(profile.build, slot)).progress_id()
 	var rank := next_rank(profile, key, id)
 	profile.gold -= price(id, rank)
-	profile.prototypes[key] = {"id": id, "rank": rank}
+	var mounted := installed(profile, key)
+	mounted[id] = rank
+	profile.prototypes[key] = mounted
 	return ""
 
 
 ## Pone en las piezas de un robot armado lo que hacen sus prototipos
-## (ItemDef.proto_effect y proto_value), para el combate y la ficha.
+## (ItemDef.protos y proto_effects), para el combate y la ficha.
 func apply(build: MechBuild, profile: PlayerProfile) -> void:
 	if build == null:
 		return
 	for item in build.all_items():
 		if item == null:
 			continue
-		var entry := installed(profile, item.progress_id())
-		var id := str(entry.get("id", ""))
-		if not defs.has(id):
-			continue
-		item.proto = id
-		item.proto_rank = int(entry.get("rank", 1))
-		item.proto_effect = effect(id)
-		item.proto_value = value(id, item.proto_rank)
+		var mounted := installed(profile, item.progress_id())
+		var ranks_of := {}
+		var effects := {}
+		for id: String in mounted:
+			if not defs.has(id):
+				continue
+			var rank := int(mounted[id])
+			ranks_of[id] = rank
+			effects[effect(id)] = float(effects.get(effect(id), 0.0)) + value(id, rank)
+		item.protos = ranks_of
+		item.proto_effects = effects

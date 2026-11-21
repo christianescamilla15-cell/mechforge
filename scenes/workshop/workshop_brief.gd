@@ -219,7 +219,8 @@ func rack(profile: PlayerProfile, slot: String) -> Dictionary:
 	for id in _on_sale(profile, slot, tier):
 		var def := catalog.get_item(id)
 		var item := ItemScaling.resolve(def, rules, tier, 0)
-		var reason := garage.why_cant_buy(profile, catalog, rules, workshop, id, tier)
+		var open := campaign.boss_weapons_open(profile)
+		var reason := garage.why_cant_buy(profile, catalog, rules, workshop, id, tier, open)
 		# Un modulo que repetiria una resistencia se puede comprar, pero se
 		# avisa ya de con cual chocaria (OBS-040).
 		var clash := module_clash_text(profile, slot, id)

@@ -549,7 +549,7 @@ func _use(
 
 	var data := {"slot": key, "item": def.id, "damage": damage}
 	_note_layer(data, target, soaked)
-	if damage > 0 and def.proto_effect != "":
+	if damage > 0 and not def.proto_effects.is_empty():
 		_proto_on_hit(user, def, damage, data)
 	if crit >= 1.0:
 		data.merge(_apply_crit(def, target))
@@ -574,7 +574,7 @@ func _use(
 func crit_chance(def: ItemDef, target: BattleMech) -> float:
 	if not def.deals_damage() or target.shield_left > 0 or target.barrier > 0:
 		return 0.0
-	var extra := def.proto_value if def.proto_effect == "crit" else 0.0
+	var extra := float(def.proto_effects.get("crit", 0.0))
 	if not rules.crits_enabled or def.crit <= 0:
 		return clampf(extra, 0.0, rules.crit_cap)
 	var chance := def.crit / 100.0
@@ -645,8 +645,9 @@ func _damage(
 		damage += attacker.module_damage(key)
 		# Con potencia 1.0 el resultado es exactamente el de antes.
 		damage = roundi(damage * attacker.damage_mult())
-		if def.proto_effect == "damage":
-			damage = roundi(damage * (1.0 + def.proto_value))
+		var boost := float(def.proto_effects.get("damage", 0.0))
+		if boost > 0.0:
+			damage = roundi(damage * (1.0 + boost))
 		if attacker.build != null and def == attacker.build.chest:
 			damage = roundi(damage * attacker.chest_damage_mult())
 		if attacker.build != null and def in [attacker.build.drone, attacker.build.drone_low]:
@@ -850,24 +851,23 @@ func _log(event: String, data: Dictionary = {}) -> void:
 ## Lo que hace un prototipo del especialista con cada golpe que acierta su
 ## arma (GDD 8.6): devolver vida, devolver energia o quitar calor.
 func _proto_on_hit(user: BattleMech, def: ItemDef, damage: int, data: Dictionary) -> void:
-	match def.proto_effect:
-		"lifesteal":
-			var healed := mini(roundi(damage * def.proto_value), user.max_health - user.health)
-			if healed > 0:
-				user.health += healed
-				data["lifesteal"] = healed
-		"energy_on_hit":
-			var gained := mini(
-				roundi(user.energy_cap * def.proto_value), user.energy_cap - user.energy
-			)
-			if gained > 0:
-				user.energy += gained
-				data["energy_gain"] = gained
-		"cool_on_hit":
-			var vented := mini(roundi(user.heat_cap * def.proto_value), user.heat)
-			if vented > 0:
-				user.heat -= vented
-				data["vented"] = vented
+	var fx := def.proto_effects
+	var healed := mini(
+		roundi(damage * float(fx.get("lifesteal", 0.0))), user.max_health - user.health
+	)
+	if healed > 0:
+		user.health += healed
+		data["lifesteal"] = healed
+	var gained := mini(
+		roundi(user.energy_cap * float(fx.get("energy_on_hit", 0.0))), user.energy_cap - user.energy
+	)
+	if gained > 0:
+		user.energy += gained
+		data["energy_gain"] = gained
+	var vented := mini(roundi(user.heat_cap * float(fx.get("cool_on_hit", 0.0))), user.heat)
+	if vented > 0:
+		user.heat -= vented
+		data["vented"] = vented
 
 
 ## Lo que paro el manto en un golpe, y si se rompio con el.

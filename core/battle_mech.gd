@@ -77,8 +77,8 @@ func _init(p_build: MechBuild = null, rules: RulesConfig = null, p_position: int
 	var s := build.summary(rules)
 	max_health = s["health"]
 	health = max_health
-	if build.torso != null and build.torso.proto_effect == "overheat_relief":
-		relief_left = roundi(build.torso.proto_value)
+	if build.torso != null:
+		relief_left = roundi(float(build.torso.proto_effects.get("overheat_relief", 0.0)))
 	if build.chassis != null and build.chassis.shield_layer > 0.0:
 		layer_max = roundi(max_health * build.chassis.shield_layer)
 		layer = layer_max

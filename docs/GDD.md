@@ -385,7 +385,7 @@ Unas 58 piezas con nombres propios (nunca los del original).
 
 **Las reglas.**
 - **Se abre en el nivel 10 del jugador, y nada más lo limita:** ni la liga ni la clase de la pieza. El límite es el precio.
-- **Un prototipo por pieza** (las dos armas de brazo, la de hombro, la de pecho, el torso y las piernas): seis huecos, y se combinan como quieras (por ejemplo, vida por golpe en los brazos y frío en el hombro). Poner otro en la misma pieza sustituye al que tenía.
+- **Se combinan en cada pieza** (las dos armas de brazo, la de hombro, la de pecho, el torso y las piernas): una pieza lleva todos los prototipos que le quepan a la vez, cada uno con su rango; comprar uno no quita los demás. Hasta el 2026-11-21 era uno por pieza y otro lo sustituía; el usuario lo vivió como un error: "Acabo de ver un error: cuando subo al máximo nivel y mejoro la siguiente, el primero se reinicia. Arregla eso y valídalo." Van con la pieza, por su clave de progreso: dos brazos con la misma arma comparten sus prototipos, como comparten su nivel.
 - **Rangos I a V.** Cada rango sube el efecto; se paga el rango siguiente sobre el que ya tiene. El prototipo va con la pieza.
 - **Precio de 1 000 a 100 000 celdas.** Dos escalas (`data/prototypes.json`): los de serie, 1 000 · 3 000 · 8 000 · 20 000 · 50 000; los más especializados (vida por golpe, criticidad, válvula), 2 000 · 6 000 · 15 000 · 40 000 · 100 000.
 

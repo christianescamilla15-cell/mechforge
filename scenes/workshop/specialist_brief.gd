@@ -35,26 +35,15 @@ static func state(
 			"rank": 0,
 		}
 		var mounted := _installed(profile, protos, piece)
-		if not mounted.is_empty():
-			entry["proto"] = protos.display_name(str(mounted["id"]))
-			entry["rank"] = int(mounted["rank"])
+		entry["proto"] = _summary(protos, mounted)
+		entry["count"] = mounted.size()
 		pieces.append(entry)
 	var item := brief.resolved(profile, Garage.get_slot(profile.build, slot))
 	var now := _installed(profile, protos, item)
 	var list: Array[Dictionary] = []
 	for id in protos.ids_for(slot):
 		list.append(_proto_entry(profile, brief, protos, level, slot, id, now))
-	var installed := ""
-	if not now.is_empty():
-		var rank := int(now["rank"])
-		installed = (
-			"%s %s · %s"
-			% [
-				protos.display_name(str(now["id"])),
-				ROMAN[rank],
-				effect_text(protos, str(now["id"]), rank)
-			]
-		)
+	var installed := _summary(protos, now)
 	var line := said
 	if line == "":
 		if locked != "":
@@ -85,7 +74,7 @@ static func _proto_entry(
 	id: String,
 	now: Dictionary
 ) -> Dictionary:
-	var rank_now := int(now["rank"]) if str(now.get("id", "")) == id else 0
+	var rank_now := int(now.get(id, 0))
 	var maxed := rank_now >= protos.ranks
 	var rank_next := mini(rank_now + 1, protos.ranks)
 	var reason := (
@@ -112,15 +101,27 @@ static func _proto_entry(
 	}
 
 
-## El prototipo montado en una pieza ({"id", "rank"}), si lo conoce la
-## biblioteca; vacio si no lleva.
+## Los prototipos montados en una pieza ({id: rango}) que conoce la
+## biblioteca, en su orden; vacio si no lleva.
 static func _installed(
 	profile: PlayerProfile, protos: PrototypeLibrary, item: ItemDef
 ) -> Dictionary:
 	if item == null:
 		return {}
 	var now := PrototypeLibrary.installed(profile, item.progress_id())
-	return now if protos.defs.has(str(now.get("id", ""))) else {}
+	var out := {}
+	for id in protos.order:
+		if now.has(id):
+			out[id] = int(now[id])
+	return out
+
+
+## Los prototipos de una pieza en una linea: "Sifon vital V · Captador II".
+static func _summary(protos: PrototypeLibrary, mounted: Dictionary) -> String:
+	var parts: Array[String] = []
+	for id: String in mounted:
+		parts.append("%s %s" % [protos.display_name(id), ROMAN[int(mounted[id])]])
+	return " · ".join(parts)
 
 
 ## Lo que vale un prototipo en un rango, corto ("6 %" o "1").
