@@ -3,7 +3,7 @@ extends SceneTree
 ## los dos mechs. Sirve para entender por que un mech gana o pierde.
 ##
 ## Uso (tras `++`): --a=<id> --b=<id> [--seed=1] [--starter=0] [--tier=DIVINE]
-##                  [--level=40] [--difficulty=NORMAL] [--no-m2 --no-m5 --no-m6]
+##                  [--level=40] [--difficulty=NORMAL] [--no-m2 --m5 --no-m6]
 
 
 func _initialize() -> void:
@@ -13,7 +13,7 @@ func _initialize() -> void:
 		args[parts[0]] = parts[1] if parts.size() > 1 else "true"
 	var rules := RulesConfig.new()
 	rules.m2_no_chain_shutdown = not args.has("no-m2")
-	rules.m5_first_turn_single_action = not args.has("no-m5")
+	rules.m5_first_turn_single_action = args.has("m5")
 	rules.m6_regen_at_turn_start = not args.has("no-m6")
 	var tier: ItemDef.Tier = ItemDef.Tier[args.get("tier", "DIVINE")]
 	var level := int(args.get("level", str(rules.tier_max_level[tier])))

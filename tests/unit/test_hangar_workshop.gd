@@ -130,7 +130,7 @@ func test_el_catalogo_trae_tus_piezas_y_las_de_la_tienda_por_tipo() -> void:
 	for key: String in ["hoja", "corto", "medio"]:
 		order.append(Txt.t("form_" + key))
 	assert_eq(groups, order)
-	assert_eq(state["title"], "Lateral 1")
+	assert_eq(state["title"], "Brazo derecho")
 	assert_eq(int(state["cells"]), 5000)
 
 

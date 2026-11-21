@@ -12,7 +12,8 @@ extends SceneTree
 ##                        delante segun el nivel; promediar lo compensa.
 ##   --difficulty=NORMAL  dificultad de la IA
 ##   --seed=1             semilla base
-##   --no-m2 --no-m5 --no-m6    apaga una mejora para medir su efecto
+##   --no-m2 --no-m6    apaga una mejora para medir su efecto; --m5 enciende
+##                      la de un primer turno de una sola accion (apagada)
 ##   --crits              enciende los golpes criticos (GDD 2.9), como en el juego
 ##   --impact             enciende el impacto de los golpes (GDD 2.10), como en el juego
 ##   --hp-scales=0.92,0.96,1,1.04,1.08   escalas de vida sobre las que se promedia.
@@ -50,7 +51,8 @@ func _initialize() -> void:
 	var args := _parse_args()
 	_rules = RulesConfig.new()
 	_rules.m2_no_chain_shutdown = not args.has("no-m2")
-	_rules.m5_first_turn_single_action = not args.has("no-m5")
+	# --m5: con la regla del primer turno de una accion (apagada desde OBS-034).
+	_rules.m5_first_turn_single_action = args.has("m5")
 	_rules.m6_regen_at_turn_start = not args.has("no-m6")
 	_rules.crits_enabled = args.has("crits")
 	_rules.impact_enabled = args.has("impact")

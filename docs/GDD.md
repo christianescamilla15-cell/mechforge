@@ -84,7 +84,7 @@ Cada una es un interruptor en `RulesConfig`, encendido por defecto, para poder m
 | M2 | Sin apagados seguidos: si el turno anterior de un mech fue un apagado, su siguiente calor forzado es como mucho un enfriado simple. | Encadenar apagados dejaba al rival sin jugar. |
 | M3 | Previsualización: antes de confirmar, la UI muestra el daño final mín–máx tras resistencias, el calor y la energía resultantes de ambos mechs, y avisa si la acción provoca enfriado forzado o apagado. | Las fórmulas del original eran opacas. |
 | M4 | El dron está siempre activo: no existe la acción de encenderlo o apagarlo. | Era una acción torpe que casi nadie usaba bien. |
-| M5 | Iniciativa: quien empieza tiene 1 sola acción en su primer turno. | Compensa la ventaja de abrir. |
+| M5 | Iniciativa: quien empieza tiene 1 sola acción en su primer turno. **Apagada desde el 2026-11-21** (OBS-034): el usuario lo vivía como una desventaja suya; los dos abren con todas sus acciones. | Compensaba la ventaja de abrir. |
 | M6 | La energía se regenera al inicio del turno propio, no al final. | Con la regla original, un drenaje dejaba al rival en 0 justo antes de jugar y lo bloqueaba por completo. Así siempre le queda su regeneración para actuar. |
 
 **Efecto medido con el simulador (F3):**
@@ -475,6 +475,8 @@ Unas 58 piezas con nombres propios (nunca los del original).
 
 - **El campeón** (armado entero, IA difícil, 16 combates): con todas las mejoras y piezas a nivel 3, Asalto 100 %, Guardián 81 %, Tirador 69 %; sin mejoras, 0 % los tres. Con su asistente le ganaban, con todo comprado, el 69, 6 y 6 %.
 - **Lo que queda flojo:** el Tirador a la par del sexto combate en adelante (su rifle de hombro llega solo; sus brazos, armas medias). Hace falta medir cuánto lo arreglan las mejoras antes de tocarlo.
+
+**Delante del campeón se puede entrenar (2026-11-21, OBS-037).** "Si bien luchar con rivales… la experiencia se queda detenida. Yo soy actualmente atrapado… en el nivel 9, porque no puedo derrotar al jefe debido a estas desventajas acumuladas… cuando lucho una y otra vez… no se me acumula la experiencia… En caso de que no pueda derrotar a un jefe porque sea muy difícil, tengo la opción de farmear y subir de nivel jugando ya sea en la arena o acumulando experiencia en campaña." Con solo el campeón por delante, la arena se abre aunque la campaña de la liga esté en marcha (`Campaign.mode_locked`, `at_champion`); el combate libre sigue cerrado. Lo ganado en la arena se queda y perderla no toca la campaña. **Y los dos abren con todas sus acciones** (OBS-034): por eso la liga 1 empieza por sus rivales más flojos (Horno, Tempestad, Quimera, y la Vanguardia cuarta). Medido con una sola arma (`tools/sim/league_start_sim.gd --stage=0`, 16 combates): Asalto 100, 100 y 94 % en los tres primeros; Guardián 100, 94 y 88 %; Tirador 100, 100 y 81 %. El cuarto pide ya una segunda arma.
 
 ### 9.1 Los jefes
 **Reglas que fijó el usuario:**

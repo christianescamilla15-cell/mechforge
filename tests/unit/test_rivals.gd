@@ -217,7 +217,7 @@ func test_un_robot_inicial_puede_con_el_primer_rival() -> void:
 		player.skills = SkillSet.new()
 		styles.add_effects(style_id, player.skills)
 		var wins := 0
-		for seed_value in 6:
+		for seed_value in 12:
 			var result := BattleRunner.run(
 				_rules,
 				player,
@@ -232,4 +232,4 @@ func test_un_robot_inicial_puede_con_el_primer_rival() -> void:
 				seed_value % 2
 			)
 			wins += 1 if result["winner"] == 0 else 0
-		assert_gte(wins, 4, "%s, con su unica arma: %d de 6" % [style_id, wins])
+		assert_gte(wins, 8, "%s, con su unica arma: %d de 12" % [style_id, wins])

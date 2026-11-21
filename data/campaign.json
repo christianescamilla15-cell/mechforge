@@ -17,7 +17,7 @@
       },
       "fights": [
         {
-          "enemy": "fisico_vanguardia",
+          "enemy": "calor_horno",
           "level": 0,
           "difficulty": "EASY",
           "loadout": {
@@ -26,7 +26,7 @@
           }
         },
         {
-          "enemy": "calor_horno",
+          "enemy": "energia_tempestad",
           "level": 0,
           "difficulty": "EASY",
           "loadout": {
@@ -36,7 +36,7 @@
           }
         },
         {
-          "enemy": "energia_tempestad",
+          "enemy": "hibrido_quimera",
           "level": 0,
           "difficulty": "EASY",
           "loadout": {
@@ -44,7 +44,7 @@
           }
         },
         {
-          "enemy": "hibrido_quimera",
+          "enemy": "fisico_vanguardia",
           "level": 0,
           "difficulty": "EASY",
           "loadout": {

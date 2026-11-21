@@ -9,7 +9,7 @@
     {
       "id": "defensivo",
       "weights": {"guard": 1.5, "caution": 1.2, "repair_hold": 0.3},
-      "likes": {"shield": 0.05, "cool": 0.025, "repair": 0.03}
+      "likes": {"shield": 0.05, "cool": 0.03, "repair": 0.03}
     },
     {
       "id": "desgaste",

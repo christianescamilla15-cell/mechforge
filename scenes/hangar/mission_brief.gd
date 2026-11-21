@@ -76,6 +76,9 @@ func campaign_state(profile: PlayerProfile) -> Dictionary:
 		if campaign.boss_skills(zone) > 0:
 			lines.append(Txt.t("campaign_boss_skills", [campaign.boss_skills(zone)]))
 		lines.append(Txt.t("mission_reward_boss", [roundi(shop.reward("boss_win") * mult)]))
+		# Antes del campeon se puede entrenar en la arena (OBS-037).
+		if profile.campaign_on:
+			lines.append(Txt.t("mission_arena_open"))
 	else:
 		lines.append(Txt.t("mission_fight", [profile.fight + 1, state["fights"]]))
 		lines.append(Txt.t("mission_reward_win", [roundi(shop.reward("campaign_win") * mult)]))

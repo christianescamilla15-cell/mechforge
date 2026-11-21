@@ -32,11 +32,13 @@ const FAR_LEG_OFFSET := Vector2(-14.0, -2.0)
 const FAR_LEG_DIM := 0.65
 ## Donde va cada arma respecto a la que se dibujo sobre el robot, en
 ## unidades de MechView. Desde el 2026-11-21 (OBS-033) son dos de brazo y una
-## de hombro, todas del lado que se ve, delante del torso.
-const SIDE_MOUNTS: Array[Vector2] = [Vector2(0.0, 0.0), Vector2(8.0, 34.0)]
+## de hombro: un arma en cada brazo (del usuario: "tiene un arma del lado
+## izquierdo y un arma del lado derecho"), la del brazo cercano delante del
+## torso y la del lejano detras y mas oscura; la de hombro, del lado que se ve.
+const SIDE_MOUNTS: Array[Vector2] = [Vector2(0.0, 0.0), Vector2(14.0, 30.0)]
 const TOP_MOUNTS: Array[Vector2] = [Vector2(0.0, 0.0)]
-## A partir de que indice las armas van del lado lejano.
-const FAR_SIDE_FROM := 2
+## A partir de que indice las armas van del lado lejano: la segunda de brazo.
+const FAR_SIDE_FROM := 1
 ## Eje del hombro de un arma de brazo respecto a la cintura del robot (el
 ## de tools/art/export_weapons.py, ARM_UNION, en unidades de MechView): sobre
 ## el gira la hoja al dar un tajo. Y cuanto se levanta y cuanto cae.

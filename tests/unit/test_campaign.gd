@@ -156,6 +156,31 @@ func test_empezar_la_campana_cierra_la_arena_y_el_combate_libre() -> void:
 	assert_true(campaign.mode_locked(profile, "arena"))
 
 
+## OBS-037, del usuario: "en caso de que no pueda derrotar a un jefe porque
+## sea muy dificil, tengo la opcion de farmear... y subir de nivel jugando
+## en la arena".
+func test_con_solo_el_campeon_por_delante_la_arena_se_abre_para_entrenar() -> void:
+	var campaign := _campaign()
+	var progression := Progression.load_file("res://data/progression.json")
+	var profile := PlayerProfile.new()
+	campaign.begin_fight(profile)
+	profile.fight = campaign.fights_in(0) - 1
+	assert_true(campaign.mode_locked(profile, "arena"), "con rivales por delante, cerrada")
+	profile.fight = campaign.fights_in(0)
+	assert_true(campaign.at_champion(profile))
+	assert_false(campaign.mode_locked(profile, "arena"), "delante del campeon, abierta")
+	assert_true(campaign.mode_locked(profile, "free"), "el combate libre sigue cerrado")
+	# Lo que se gana en la arena se queda, y perder ahi no toca la campana.
+	var xp := profile.xp
+	var gold := profile.gold
+	campaign.finish_fight(profile, _shop, "arena", true, progression)
+	assert_gt(profile.xp, xp)
+	assert_gt(profile.gold, gold)
+	campaign.finish_fight(profile, _shop, "arena", false, progression)
+	assert_true(profile.campaign_on)
+	assert_eq(profile.fight, campaign.fights_in(0), "sigue delante del campeon")
+
+
 func test_vencer_al_campeon_abre_la_liga_siguiente_con_todo_abierto() -> void:
 	var campaign := _campaign()
 	var profile := _at_boss(campaign)

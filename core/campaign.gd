@@ -273,9 +273,24 @@ static func mean_power(
 
 
 ## True si ese modo ("arena" o "free") esta cerrado: lo esta mientras la
-## campana de la liga este en marcha.
+## campana de la liga este en marcha. Con solo el campeon por delante, la
+## arena se abre para entrenar (OBS-037, del usuario: "en caso de que no
+## pueda derrotar a un jefe porque sea muy dificil, tengo la opcion de
+## farmear... y subir de nivel jugando en la arena"): lo que se gana ahi
+## (celdas y experiencia) se queda, y perder en la arena no toca la campana.
 func mode_locked(profile: PlayerProfile, mode: String) -> bool:
-	return mode != "campaign" and profile.campaign_on
+	if mode == "campaign" or not profile.campaign_on:
+		return false
+	if mode == "arena" and at_champion(profile):
+		return false
+	return true
+
+
+## True si en la campana de la liga ya solo queda el campeon.
+func at_champion(profile: PlayerProfile) -> bool:
+	if profile.zone >= zone_count():
+		return false
+	return is_boss_fight(profile.zone, profile.fight)
 
 
 ## Empieza un combate de la campana: desde el primero, la campana de la liga

@@ -16,8 +16,11 @@ extends Resource
 @export var m1_max_damage_spread: float = 0.30
 ## M2: sin apagados seguidos.
 @export var m2_no_chain_shutdown: bool = true
-## M5: quien empieza tiene 1 sola accion en su primer turno.
-@export var m5_first_turn_single_action: bool = true
+## M5: quien empieza tiene 1 sola accion en su primer turno. Apagada desde el
+## 2026-11-21 (OBS-034, del usuario: "si yo empiezo atacando, solamente tengo
+## el uso de un arma y el de mi asistente... hay una desventaja"): los dos
+## abren con todas sus acciones. Quien empieza se elige al azar.
+@export var m5_first_turn_single_action: bool = false
 ## M6: la energia se regenera al inicio del turno propio y no al final, para
 ## que un drenaje no deje al rival en cero justo antes de jugar.
 @export var m6_regen_at_turn_start: bool = true
