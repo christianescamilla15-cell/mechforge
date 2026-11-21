@@ -67,13 +67,14 @@ var _surrender_armed: bool = false
 var _surrendered: bool = false
 
 var _arena: ArenaView
-var _panels: Array[StatPanel] = []
-var _turn_label: Label
-var _actions_label: Label
-var _hint_label: Label
-var _preview: RichTextLabel
-var _log: RichTextLabel
-var _action_bar: ActionBar
+## Lo unico que hay encima de la arena: las armas en el robot, sus rayitas
+## de vida, calor y energia y el rotulo del turno (BattleHud).
+var _hud: BattleHud
+## De quien era el turno la ultima vez que se anuncio, y lo que ensena el
+## HUD de turno y acciones (va por detras del motor mientras se anima).
+var _announced: int = -1
+var _hud_turn: int = -1
+var _hud_actions: int = 0
 var _result: PanelContainer
 var _result_label: Label
 var _result_note: Label
@@ -109,12 +110,13 @@ func start(
 	_pause.hide()
 	_result.hide()
 	set_result_note("")
-	_log.clear()
 	_arena.cells = rules.arena_size
 	for i in 2:
-		_panels[i].set_title(names[i])
 		_arena.mechs[i].setup(engine.mechs[i].build, 1 if i == 0 else -1)
-	_action_bar.build_for(engine.mechs[player])
+	_hud.player = player
+	_hud.build_for(engine.mechs[player])
+	_announced = -1
+	_hud_turn = -1
 	# Espera a que el contenedor tenga tamano antes de colocar los mechs.
 	await get_tree().process_frame
 	await get_tree().process_frame
@@ -124,6 +126,9 @@ func start(
 	_shown = engine.events.size()
 	_place_mechs()
 	_show_state()
+	# El combate empieza con su rotulo, y el del primer turno llega despues.
+	_hud.announce(Txt.t("battle_start"), BattleHud.GOLD, names[1 - player])
+	await get_tree().create_timer(0.9 / speed).timeout
 	_advance()
 
 
@@ -134,6 +139,8 @@ func _advance() -> void:
 	if _surrendered:
 		return
 	_busy = false
+	_hud_turn = engine.turn
+	_hud_actions = engine.actions_left
 	_refresh()
 	if engine.is_over():
 		_show_result()
@@ -206,14 +213,6 @@ func _play_event(entry: Dictionary) -> void:
 	var snapshot: Array = entry["state"]
 	var event: String = entry["event"]
 	var step := STEP_SECONDS / speed
-	var line := _log_line(entry)
-	if entry.get("shielded", false):
-		line += " · %s" % Txt.t("log_shielded")
-	if entry.get("crit", false):
-		var effect := Txt.t("crit_effect_" + str(entry["crit_effect"]))
-		line += " · [color=#ffd23d]%s[/color]" % Txt.t("log_crit", [effect])
-	if line != "":
-		_log.append_text(line + "\n")
 	if entry.get("shielded", false):
 		Sfx.play("escudo")
 
@@ -425,7 +424,6 @@ func _drive_ui() -> void:
 		return
 	match action.type:
 		BattleAction.Type.WALK:
-			_on_cell_hovered(action.position)
 			preview_shown.emit()
 			await get_tree().create_timer(pause).timeout
 			_on_cell_clicked(action.position)
@@ -435,7 +433,8 @@ func _drive_ui() -> void:
 			await get_tree().create_timer(pause).timeout
 			_on_cell_clicked(action.position)
 		_:
-			_on_action_hovered(action)
+			# "Pasa el raton" por la accion: el abanico se abre con su tarjeta.
+			_hud.demo(action)
 			preview_shown.emit()
 			await get_tree().create_timer(pause).timeout
 			_on_action_chosen(action)
@@ -466,21 +465,6 @@ func _on_cell_clicked(cell: int) -> void:
 		_perform(BattleAction.walk(cell))
 
 
-func _on_action_hovered(action: BattleAction) -> void:
-	if action == null or engine == null or not _can_act():
-		_preview.text = ""
-		return
-	_preview.text = _preview_text(action)
-
-
-func _on_cell_hovered(cell: int) -> void:
-	if cell < 0 or engine == null or not _can_act():
-		return
-	if not _teleport_mode and cell in engine.walkable_positions():
-		var distance := absi(cell - engine.mechs[1 - player].position)
-		_preview.text = Txt.t("preview_move", [cell, distance])
-
-
 func _can_act() -> bool:
 	return (
 		not _busy
@@ -498,31 +482,30 @@ func _can_act() -> bool:
 func _refresh() -> void:
 	if engine == null:
 		return
-	var mine := engine.turn == player
-	var whose := Txt.t("your_turn") if mine else Txt.t("rival_turn")
-	_turn_label.text = Txt.t("turn_of", [engine.turn_number, whose])
-	_actions_label.text = Txt.t("actions_left", [engine.actions_left])
 	var can_act := _can_act()
-	_action_bar.refresh(can_act, _reason_for, _uses_left_for)
+	_hud.refresh(can_act, _reason_for, _uses_left_for)
+	if engine.turn != _announced and not engine.is_over() and not _surrendered:
+		# El turno no esta fijo en pantalla: se anuncia al cambiar y se va.
+		_announced = engine.turn
+		var mine := engine.turn == player
+		var words := Txt.t("your_turn" if mine else "rival_turn").to_upper()
+		_hud.announce(words, BattleHud.GOLD if mine else COLOR_WARNING)
 	var highlights := {}
 	if can_act:
-		if _teleport_mode:
-			for cell in engine.teleportable_positions():
-				highlights[cell] = COLOR_TELEPORT
-			_hint_label.text = Txt.t("teleport_hint")
-		else:
-			for cell in engine.walkable_positions():
-				highlights[cell] = COLOR_WALK
-			_hint_label.text = Txt.t("walk_hint")
-	else:
-		_hint_label.text = "" if engine.is_over() or mine or _surrendered else Txt.t("thinking")
+		var tint := COLOR_TELEPORT if _teleport_mode else COLOR_WALK
+		var cells := (
+			engine.teleportable_positions() if _teleport_mode else engine.walkable_positions()
+		)
+		for cell in cells:
+			highlights[cell] = tint
 	_arena.set_highlights(highlights)
+	_show_state()
 
 
 func _show_state() -> void:
+	var vitals: Array[Dictionary] = []
 	for i in 2:
 		var state := _state[i]
-		_panels[i].show_state(state, engine.mechs[i].max_health)
 		var health := float(state["health"]) / float(maxi(engine.mechs[i].max_health, 1))
 		var energy := float(state["energy"]) / float(maxi(state["energy_cap"], 1))
 		var stuck: bool = state.get("immobilized", false)
@@ -530,6 +513,8 @@ func _show_state() -> void:
 		_arena.mechs[i].set_condition(health, energy, stuck, disabled, state.get("stunned", false))
 		var ratio := float(state["heat"]) / float(maxi(state["heat_cap"], 1))
 		_arena.mechs[i].set_heat(ratio)
+		vitals.append({"health": health, "heat": ratio, "energy": energy, "over": ratio > 1.0})
+	_hud.show_state(vitals, _hud_turn, _hud_actions)
 
 
 func _place_mechs() -> void:
@@ -609,114 +594,67 @@ func _slot_of(action: BattleAction) -> String:
 	return ""
 
 
-func _preview_text(action: BattleAction) -> String:
+## La tarjeta de una accion del abanico (BattleHud.card_for): su nombre y, en
+## pequeno, su dano, su critico, lo que cuesta y, si no se puede usar, por que.
+func _card_for(action: BattleAction) -> Dictionary:
 	var mine := engine.mechs[player]
-	var foe := engine.mechs[1 - player]
-	if action.type == BattleAction.Type.COOL:
-		return Txt.t("preview_cool", [mine.heat, maxi(0, mine.heat - mine.cooling)])
+	var lines: Array = []
+	var title := ""
 	var key := _slot_of(action)
-	var def := mine.slots[key].def
-	var title := "[b]%s[/b]" % def.display_name
-	if action.type == BattleAction.Type.TELEPORT:
-		return "%s\n%s" % [title, Txt.t("teleport_hint")]
-	var reason := engine.why_illegal(action)
-	if reason != "":
-		return "%s\n%s" % [title, Txt.t("illegal", [reason])]
-	var p := engine.preview(action)
-	var lines: Array[String] = [title]
-	if p["dmg_max"] > 0:
-		lines.append(Txt.t("preview_damage", [p["dmg_min"], p["dmg_max"]]))
-	else:
-		lines.append(Txt.t("preview_no_damage"))
-	if def.backfire > 0:
-		lines.append(Txt.t("preview_backfire", [def.backfire]))
-	lines.append(
-		Txt.t("preview_self", [p["self_heat"], mine.heat_cap, p["self_energy"], mine.energy_cap])
-	)
-	lines.append(
-		Txt.t(
-			"preview_target", [p["target_heat"], foe.heat_cap, p["target_energy"], foe.energy_cap]
-		)
-	)
-	var chance: float = p.get("crit_chance", 0.0)
-	if chance > 0.0:
-		var effect := Txt.t("crit_effect_" + str(p["crit_effect"]))
-		var crit_line := Txt.t("preview_crit", [roundi(chance * 100.0), effect])
-		lines.append("[color=#ffd23d]%s[/color]" % crit_line)
-	if p["self_overheats"]:
-		lines.append("[color=#ff6b5a]%s[/color]" % Txt.t("preview_self_overheat"))
-	if p["target_overheats"]:
-		lines.append("[color=#7dff9b]%s[/color]" % Txt.t("preview_target_overheat"))
-	return "\n".join(lines)
-
-
-## Lineas del registro de las habilidades de jefe (GDD 9.1).
-func _ability_line(entry: Dictionary) -> String:
-	var who := names[entry["actor"]]
-	match entry["event"]:
-		"repair":
-			return "[color=#7dff9b]%s[/color]" % Txt.t("log_repair", [who, entry["amount"]])
-		"barrier":
-			return "[color=#7fe3ff]%s[/color]" % Txt.t("log_barrier", [who])
-		"repair_kit":
-			return "[color=#7dff9b]%s[/color]" % Txt.t("log_repair_kit", [who, entry["amount"]])
-		"stunned":
-			return "[color=#ffd23d]%s[/color]" % Txt.t("log_stunned", [who])
-		"dark_matter":
-			return (
-				"[b][color=#c79bff]%s[/color][/b]"
-				% Txt.t("log_dark_matter", [who, entry["damage"]])
+	var def: ItemDef = mine.slots[key].def if mine.slots.has(key) else null
+	match action.type:
+		BattleAction.Type.COOL:
+			title = Txt.t("cool")
+			lines.append(
+				[Txt.t("card_cool", [mine.heat, maxi(0, mine.heat - mine.cooling)]), COLOR_COOL]
 			)
-	return Txt.t("log_evade", [names[entry["who"]], entry["to"]])
-
-
-func _log_line(entry: Dictionary) -> String:
-	var actor: int = entry["actor"]
-	var who := names[actor]
-	var item := ""
-	var slot: String = entry.get("slot", "")
-	if slot != "" and engine.mechs[actor].slots.has(slot):
-		item = engine.mechs[actor].slots[slot].def.display_name
-	var damage: int = entry.get("damage", 0)
-	if entry["event"] in ["repair", "evade", "barrier", "repair_kit", "dark_matter", "stunned"]:
-		return _ability_line(entry)
-	match entry["event"]:
-		"weapon":
-			return Txt.t("log_weapon", [who, item, damage])
-		"stomp":
-			return Txt.t("log_stomp", [who, damage])
-		"drone":
-			return Txt.t("log_drone", [who, item, damage])
-		"charge":
-			return Txt.t("log_charge", [who, damage])
-		"hook":
-			return Txt.t("log_hook", [who, damage])
-		"teleport":
-			return Txt.t("log_teleport", [who, entry.get("to", 0), damage])
-		"walk":
-			return Txt.t("log_walk", [who, entry["from"], entry["to"]])
-		"cool":
-			return Txt.t("log_cool", [who, entry["amount"]])
-		"forced_cool":
-			return "[color=#ffb37a]%s[/color]" % Txt.t("log_forced", [who, entry["amount"]])
-		"shutdown":
-			return "[color=#ff6b5a]%s[/color]" % Txt.t("log_shutdown", [who, entry["amount"]])
-		"drop_spawn":
-			var spawn_args := [Txt.t("drop_" + entry["kind"]), entry["cell"]]
-			return "[color=#ffe27a]%s[/color]" % Txt.t("log_drop_spawn", spawn_args)
-		"drop_taken":
-			var taken_args := [names[entry["who"]], Txt.t("drop_" + entry["kind"])]
-			taken_args.append(roundi(float(entry["amount"]) * 100.0))
-			taken_args.append(entry["turns"])
-			return "[color=#ffe27a]%s[/color]" % Txt.t("log_drop_taken", taken_args)
-		"buff_end":
-			return Txt.t("log_buff_end", [names[entry["who"]], Txt.t("drop_" + entry["kind"])])
-		"win":
-			return "[b]%s[/b]" % Txt.t("log_win", [names[entry["winner"]]])
-	return ""
-
-
-# --- Construccion de la interfaz ---------------------------------------------
+		BattleAction.Type.SHIELD:
+			title = Txt.t("ability_shield")
+			lines.append([Txt.t("card_shield"), COLOR_COOL])
+		BattleAction.Type.REPAIR:
+			title = Txt.t("ability_repair")
+			lines.append([Txt.t("card_repair"), COLOR_REPAIR])
+		BattleAction.Type.DARK_MATTER:
+			title = Txt.t("ability_dark_matter")
+		BattleAction.Type.STOMP:
+			title = Txt.t("stomp")
+		_:
+			title = def.display_name if def != null else ""
+	var my_turn := engine.turn == player and not engine.is_over()
+	var reason := _reason_for(action) if my_turn else ""
+	if my_turn and reason == "" and action.type != BattleAction.Type.TELEPORT:
+		# Lo que hara de verdad ahora, contra este rival.
+		var p := engine.preview(action)
+		if p["dmg_max"] > 0:
+			lines.append([Txt.t("card_damage", [p["dmg_min"], p["dmg_max"]]), BattleHud.TEXT])
+		var chance: float = p.get("crit_chance", 0.0)
+		if chance > 0.0:
+			var effect := Txt.t("crit_effect_" + str(p["crit_effect"]))
+			lines.append([Txt.t("card_crit", [roundi(chance * 100.0), effect]), COLOR_CRIT])
+		if p["self_overheats"]:
+			lines.append([Txt.t("preview_self_overheat"), COLOR_WARNING])
+		if p["target_overheats"]:
+			lines.append([Txt.t("preview_target_overheat"), COLOR_REPAIR])
+	elif def != null and def.deals_damage():
+		lines.append([Txt.t("card_damage", [def.dmg_min, def.dmg_max]), BattleHud.TEXT])
+	if def != null:
+		var costs: Array[String] = []
+		if def.range_max > 0:
+			costs.append(Txt.t("card_range", [def.range_min, def.range_max]))
+		if mine.energy_cost(def) > 0:
+			costs.append(Txt.t("card_energy", [mine.energy_cost(def)]))
+		if def.heat_cost > 0:
+			costs.append(Txt.t("card_heat", [def.heat_cost]))
+		if def.backfire > 0:
+			costs.append(Txt.t("card_backfire", [def.backfire]))
+		if not costs.is_empty():
+			lines.append([" · ".join(costs), BattleHud.MUTED])
+	var uses := _uses_left_for(action)
+	if uses >= 0:
+		lines.append([Txt.t("uses", [str(uses)]), BattleHud.MUTED])
+	if reason.strip_edges() != "":
+		lines.append([reason.capitalize() if reason.length() < 3 else reason, COLOR_WARNING])
+	return {"title": title, "lines": lines}
 
 
 func _build_ui() -> void:
@@ -727,67 +665,19 @@ func _build_ui() -> void:
 	background.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(background)
 
-	var margin := MarginContainer.new()
-	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	for side: String in ["left", "right", "top", "bottom"]:
-		margin.add_theme_constant_override("margin_" + side, 14)
-	add_child(margin)
-	var root := VBoxContainer.new()
-	root.add_theme_constant_override("separation", 8)
-	margin.add_child(root)
-
-	# Arriba: panel del jugador, turno y panel del rival.
-	var top := HBoxContainer.new()
-	root.add_child(top)
-	_panels.append(StatPanel.new())
-	top.add_child(_panels[0])
-	var center := VBoxContainer.new()
-	center.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	center.alignment = BoxContainer.ALIGNMENT_CENTER
-	top.add_child(center)
-	_turn_label = _label(center, 22)
-	_actions_label = _label(center, 16)
-	_hint_label = _label(center, 14)
-	_hint_label.add_theme_color_override("font_color", Color("9fb0c3"))
-	_panels.append(StatPanel.new())
-	top.add_child(_panels[1])
-
-	# Centro: la arena.
+	# Toda la pantalla es el juego: la arena la ocupa entera y encima solo
+	# va el HUD, que no tiene barras ni botones.
 	_arena = ArenaView.new()
 	_arena.set_stage(stage)
-	_arena.custom_minimum_size = Vector2(0, 340)
-	_arena.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_arena.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_arena.cell_clicked.connect(_on_cell_clicked)
-	_arena.cell_hovered.connect(_on_cell_hovered)
-	root.add_child(_arena)
-
-	# Abajo: registro, prevision y acciones.
-	var bottom := HBoxContainer.new()
-	bottom.custom_minimum_size = Vector2(0, 220)
-	bottom.add_theme_constant_override("separation", 10)
-	root.add_child(bottom)
-	_log = RichTextLabel.new()
-	_log.bbcode_enabled = true
-	_log.scroll_following = true
-	_log.custom_minimum_size = Vector2(400, 0)
-	_log.add_theme_font_size_override("normal_font_size", 13)
-	_log.add_theme_font_size_override("bold_font_size", 13)
-	bottom.add_child(_log)
-	var right := VBoxContainer.new()
-	right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	bottom.add_child(right)
-	_preview = RichTextLabel.new()
-	_preview.bbcode_enabled = true
-	_preview.custom_minimum_size = Vector2(0, 92)
-	_preview.add_theme_font_size_override("normal_font_size", 14)
-	_preview.add_theme_font_size_override("bold_font_size", 15)
-	right.add_child(_preview)
-	_action_bar = ActionBar.new()
-	_action_bar.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_action_bar.action_chosen.connect(_on_action_chosen)
-	_action_bar.teleport_requested.connect(_on_teleport_requested)
-	_action_bar.action_hovered.connect(_on_action_hovered)
-	right.add_child(_action_bar)
+	add_child(_arena)
+	_hud = BattleHud.new()
+	_hud.arena = _arena
+	_hud.card_for = _card_for
+	_hud.action_chosen.connect(_on_action_chosen)
+	_hud.teleport_requested.connect(_on_teleport_requested)
+	add_child(_hud)
 
 	# Resultado, centrado sobre la arena.
 	_result = PanelContainer.new()

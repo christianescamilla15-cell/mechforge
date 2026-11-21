@@ -375,8 +375,19 @@ func _cannon_item() -> ItemDef:
 	return build.chest if build.chest != null else build.tops[0]
 
 
-## Saca el arma de dentro del torso la primera vez que se usa en el combate.
-## Devuelve null si ya estaba desplegada o no tiene.
+## Guarda el arma de pecho dentro del torso: se despliega cada vez que se usa
+## (decision del usuario, 2026-11-20, OBS-025). Null si no estaba fuera.
+func stow(seconds: float) -> Tween:
+	if not _deployed or not has_cannon():
+		return null
+	_deployed = false
+	var tween := create_tween()
+	tween.tween_property(self, "_deploy", 0.0, seconds).set_trans(Tween.TRANS_SINE)
+	return tween
+
+
+## Saca el arma de dentro del torso. Devuelve null si ya estaba desplegada o
+## no tiene.
 func deploy(seconds: float) -> Tween:
 	if _deployed or not has_cannon():
 		return null
@@ -666,6 +677,11 @@ func standing_height() -> float:
 		# El asistente sube y baja 4 unidades al flotar.
 		top = minf(top, _assist_at().y - MechSprites.assist_top(kind) - 4.0)
 	return -top * absf(scale.y)
+
+
+## Alto del cuerpo (sin el asistente que flota encima), en unidades del mundo.
+func body_height() -> float:
+	return 0.0 if _sprites == null else -_body_top() * absf(scale.y)
 
 
 ## Lo mas alto del mech en reposo (torso y armas montadas), respecto a sus

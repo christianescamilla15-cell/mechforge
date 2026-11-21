@@ -10,6 +10,8 @@ signal cell_hovered(cell: int)
 ## Ancho de una casilla en el mundo. Con 10 casillas el campo mide 2300, casi
 ## el doble que la pantalla: hay que recorrerlo.
 const CELL_WIDTH := 230.0
+## Ancho de un mech, en unidades del mundo, para lo que se dibuja sobre el.
+const MECH_WIDTH := 190.0
 const CELL_HEIGHT := 46.0
 ## Distancia del suelo al borde inferior de la vista.
 const FLOOR_MARGIN := 58.0
@@ -116,6 +118,17 @@ func cell_width() -> float:
 	return CELL_WIDTH
 
 
+## Lo que ocupa un mech en la vista (coordenadas de la arena, no del mundo):
+## de sus pies a lo alto de su cuerpo. Lo usa lo que se dibuja pegado a el.
+func mech_rect(index: int) -> Rect2:
+	if index < 0 or index >= mechs.size():
+		return Rect2()
+	var feet := _world.position + mechs[index].position * _zoom
+	var height := mechs[index].body_height() * _zoom
+	var width := MECH_WIDTH * _zoom
+	return Rect2(feet.x - width * 0.5, feet.y - height, width, height)
+
+
 ## Punto del suelo en el centro de una casilla, en coordenadas del mundo.
 func cell_point(cell: int) -> Vector2:
 	return Vector2((cell + 0.5) * CELL_WIDTH, 0.0)
@@ -186,6 +199,11 @@ func fire_between(
 		if slot == "chest" or not MechSprites.has_weapon_art():
 			var deploying := shooter.deploy(seconds * 0.9)
 			if deploying != null:
+				# El pecho se abre con su propio numero: la compuerta, el
+				# destello del arma al asomar y un temblor.
+				Sfx.play("despliegue")
+				flash(shooter.hit_point(), color, 70.0, seconds * 0.9)
+				shake(4.0)
 				await deploying.finished
 		ShotFx.kick(shooter, fx, seconds * 0.6, slot, seconds)
 	elif slot != "":
@@ -194,6 +212,9 @@ func fire_between(
 	var from := shooter.muzzle_point(from_drone, slot)
 	var to := mechs[target].hit_point()
 	await _shots.play(fx, from, to, color, seconds)
+	if slot == "chest" and not from_drone:
+		# Y se guarda: la proxima vez vuelve a desplegarse.
+		shooter.stow(seconds * 1.1)
 
 
 ## Impacto de un golpe sobre un mech (GDD 2.10): "light" apenas sacude,
