@@ -58,18 +58,6 @@ func add(raw: Variant) -> void:
 			if int(raw[key]) < 0 or int(raw[key]) > 2:
 				errors.append("%s: %s debe estar entre 0 y 2" % [id, key])
 			continue
-		if key == "shield_chance":
-			var chances: Variant = raw[key]
-			if not chances is Dictionary:
-				errors.append("%s: shield_chance no es un diccionario" % id)
-				continue
-			for group: String in chances:
-				var chance := float(chances[group])
-				if not group in ChassisDef.SHIELD_GROUPS or chance < 0.0 or chance > 1.0:
-					errors.append("%s: shield_chance de '%s' no es valida" % [id, group])
-					continue
-				def.shield_chance[group] = chance
-			continue
 		if key == "regen_share":
 			def.regen_share = float(raw[key])
 			if def.regen_share < 0.0 or def.regen_share > ChassisDef.MAX_REGEN_SHARE:

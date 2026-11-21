@@ -2,11 +2,6 @@ extends GutTest
 ## Habilidades especiales de los jefes (GDD 9.1): cada una cambia una regla del
 ## combate y deja un punto debil. El mech 0 es el jugador y empieza el.
 
-## OBS-041, del usuario: el escudo del campeon de la liga 6 "exagera un
-## poco": deberia parar segun el arma, mucho las medianas, menos las largas y
-## casi nunca las pesadas.
-const CHANCES := {"arms": 0.6, "shoulder": 0.4, "chest": 0.05, "other": 0.6}
-
 
 func _boss(props: Dictionary, sides: Array = [], opts: Dictionary = {}) -> MechBuild:
 	var chassis := ChassisDef.new()
@@ -76,70 +71,6 @@ func test_el_escudo_no_para_el_segundo_disparo_del_dron() -> void:
 	e.apply(BattleAction.weapon("side0"))
 	Fx.pass_turn(e)
 	assert_eq(e.mechs[1].health, 970, "el arma choca con el escudo y el dron entra")
-
-
-func _egida_engine(draw: float) -> BattleEngine:
-	var boss := _boss({"shield_hits": 1, "shield_chance": CHANCES})
-	var chest := Fx.item(
-		ItemDef.Type.CHEST, {"weight": 40, "dmg_min": 300, "dmg_max": 300, "uses": 1}
-	)
-	var player := Fx.build([Fx.gun()], {"tops": [Fx.gun()]})
-	player.chest = chest
-	var e := Fx.engine(player, boss)
-	e.fixed_block = draw
-	return e
-
-
-func test_el_escudo_con_probabilidad_para_segun_el_arma() -> void:
-	var boss := _boss({"shield_hits": 1, "shield_chance": CHANCES})
-	var e := Fx.engine(Fx.build([Fx.gun()]), boss)
-	assert_eq(e.mechs[1].shield_chance("side0"), 0.6, "brazo")
-	assert_eq(e.mechs[1].shield_chance("top0"), 0.4, "hombro")
-	assert_eq(e.mechs[1].shield_chance("chest"), 0.05, "pecho")
-	assert_eq(e.mechs[1].shield_chance("drone"), 0.6, "lo demas")
-	# Por debajo de su probabilidad lo para; por encima, entra entero.
-	var low := _egida_engine(0.5)
-	low.apply(BattleAction.weapon("side0"))
-	assert_eq(low.mechs[1].health, 1000, "0.5 < 0.6: el brazo choca con el escudo")
-	assert_true(low.events[-1].get("shielded", false))
-	var high := _egida_engine(0.5)
-	high.apply(BattleAction.weapon("top0"))
-	assert_eq(high.mechs[1].health, 900, "0.5 > 0.4: el hombro entra")
-	assert_false(high.events[-1].get("shielded", false))
-	var chest := _egida_engine(0.1)
-	chest.apply(BattleAction.weapon("chest"))
-	assert_eq(chest.mechs[1].health, 700, "el pecho casi nunca se para")
-
-
-func test_el_escudo_con_probabilidad_lo_intenta_una_vez_por_turno() -> void:
-	var e := _egida_engine(0.9)
-	e.apply(BattleAction.weapon("side0"))
-	assert_eq(e.mechs[1].health, 900, "no lo paro")
-	e.fixed_block = 0.0
-	e.apply(BattleAction.weapon("top0"))
-	assert_eq(e.mechs[1].health, 800, "ya lo intento con el primero: el segundo entra")
-
-
-func test_la_prevision_avisa_de_la_probabilidad_del_escudo() -> void:
-	var e := _egida_engine(-1.0)
-	var p := e.preview(BattleAction.weapon("top0"))
-	assert_eq(p["dmg_min"], 100, "el dano entero, sin contar el escudo")
-	assert_eq(p["block_chance"], 0.4)
-	# Un escudo que para siempre se sigue avisando con dano 0.
-	var old := Fx.engine(Fx.build([Fx.gun()]), _boss({"shield_hits": 1}))
-	assert_eq(old.preview(BattleAction.weapon("side0"))["dmg_max"], 0)
-	assert_false(old.preview(BattleAction.weapon("side0")).has("block_chance"))
-
-
-func test_el_campeon_de_la_liga_6_lleva_el_escudo_con_probabilidad() -> void:
-	var chassis := ChassisLibrary.load_file("res://data/chassis.json")
-	var egida: ChassisDef = chassis.get_def("jefe_egida")
-	assert_eq(egida.shield_hits, 1)
-	assert_eq(egida.shield_chance, CHANCES)
-	var library := ChassisLibrary.new()
-	library.add({"id": "x", "shield_chance": {"arms": 1.5}})
-	library.add({"id": "y", "shield_chance": {"cabeza": 0.5}})
-	assert_eq(library.errors.size(), 2, "probabilidades fuera de rango o grupos desconocidos")
 
 
 func test_la_evasion_salta_al_extremo_de_su_lado_una_vez_por_turno() -> void:
