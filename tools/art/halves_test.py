@@ -114,7 +114,7 @@ def main():
         "--extra",
         nargs="+",
         default=[""],
-        help="etiquetas de diseno que se suman al torso y a las piernas; con varias, una tanda por cada una",
+        help="etiquetas de diseno que se suman a las zonas (no al aro); con varias, una tanda por cada una",
     )
     args = parser.parse_args()
 
@@ -136,7 +136,9 @@ def main():
             control, scale, end = chest_control(row, x), 0.65, 0.5
         else:
             control, scale, end = block_control, args.control_scale, args.control_end
-        for variant, extra in enumerate(args.extra if zone in ("torso", "legs") else [""]):
+        # El arma de pecho tambien lleva las etiquetas de su era (el arma especial
+        # de cada campeon, GDD 9.4); el aro no.
+        for variant, extra in enumerate(args.extra if zone != "ring" else [""]):
             subject = ZONE_SUBJECT.get(zone, style.subject_for("chassis"))
             if extra:
                 subject += ", " + extra

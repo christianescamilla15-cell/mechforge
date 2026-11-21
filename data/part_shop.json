@@ -12,5 +12,6 @@
     "HOOK": 500,
     "CHEST": 1000,
     "ASSIST": 2000
-  }
+  },
+  "boss_weapon_mult": 10
 }

@@ -567,6 +567,7 @@
       ],
       "boss": {
         "enemy": "jefe_zona_5",
+        "weapon": "pecho_centella",
         "level": 9,
         "difficulty": "HARD",
         "skills": 19

@@ -56,6 +56,8 @@ const PAINTS: Array[String] = ["PHYSICAL", "HEAT", "ENERGY"]
 const PAINTABLE: Array[String] = ["torso", "legs", "chest", "assist", "side", "top"]
 
 ## Precio base de una pieza nueva por tipo (nombre de ItemDef.Type).
+## Cuantas veces el precio de su tipo cuesta el arma especial de un campeon.
+var boss_weapon_mult: int = 1
 var base_prices: Dictionary = {}
 var errors: Array[String] = []
 
@@ -71,6 +73,9 @@ static func load_file(path: String) -> Garage:
 		return garage
 	if parsed.get("base_prices") is Dictionary:
 		garage.base_prices = parsed["base_prices"]
+	garage.boss_weapon_mult = int(parsed.get("boss_weapon_mult", 1))
+	if garage.boss_weapon_mult < 1:
+		garage.errors.append("boss_weapon_mult debe ser 1 o mas")
 	for type: String in ItemDef.Type.keys():
 		if int(garage.base_prices.get(type, 0)) <= 0:
 			garage.errors.append("falta el precio base de %s" % type)
@@ -316,6 +321,10 @@ func stock_for(catalog: Catalog, zone_tier: int) -> Array[String]:
 			continue
 		var ids: Array[String] = []
 		for def in catalog.by_type(type):
+			# Las armas de campeon no se venden aqui: se abren al vencerlo
+			# (Campaign.boss_weapons_open).
+			if def.has_tag(ItemDef.TAG_BOSS):
+				continue
 			if def.tier_min <= zone_tier and zone_tier <= def.tier_max:
 				ids.append(def.id)
 		ids.sort()
@@ -331,6 +340,9 @@ func price(
 ) -> int:
 	var type: String = ItemDef.Type.keys()[catalog.get_item(id).type]
 	var base := roundi(int(base_prices[type]) * rules.tier_mult[zone_tier])
+	# El arma especial de un campeon, "por un alto coste" (GDD 9.4).
+	if catalog.get_item(id).has_tag(ItemDef.TAG_BOSS):
+		base *= boss_weapon_mult
 	return base + workshop.total_cost(rules, zone_tier, 0)
 
 

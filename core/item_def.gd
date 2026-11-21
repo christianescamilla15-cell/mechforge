@@ -16,7 +16,13 @@ const TAG_SWORD := "espada"
 const TAG_TRACKS := "orugas"
 const TAG_WHEELS := "ruedas"
 const TAG_HOVER := "levita"
-const KNOWN_TAGS: Array[String] = [TAG_MELEE, TAG_SWORD, TAG_TRACKS, TAG_WHEELS, TAG_HOVER]
+## El arma especial de un campeon (GDD 9.4, del usuario: "esas si las puedo
+## comprar, pero por un alto coste"): no esta en la tienda hasta vencerlo y
+## cuesta mucho mas.
+const TAG_BOSS := "jefe"
+const KNOWN_TAGS: Array[String] = [
+	TAG_MELEE, TAG_SWORD, TAG_TRACKS, TAG_WHEELS, TAG_HOVER, TAG_BOSS
+]
 
 ## Estadisticas que crecen con el tier y el nivel (GDD 8).
 ## Clave con la que se guarda el progreso del robot de asistencia: es uno

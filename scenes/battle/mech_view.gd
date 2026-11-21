@@ -357,7 +357,7 @@ func _process(delta: float) -> void:
 ## True si este mech lleva el canon que se despliega del pecho. Mientras las
 ## armas superiores no tengan dibujo propio, el canon tambien las representa.
 func has_cannon() -> bool:
-	if _sprites == null or build == null or _sprites.is_boss:
+	if _sprites == null or build == null or _sprites.whole:
 		return false
 	# Sin arte de armas, el canon de pecho hace de arma superior.
 	if not MechSprites.has_weapon_art():
@@ -365,9 +365,16 @@ func has_cannon() -> bool:
 	return build.chest != null
 
 
-## Las armas montadas se dibujan en su hueco (con arte y sin ser jefe).
+## El dibujo de su arma de pecho: el suyo propio (el arma de un campeon) o
+## el de todas.
+func _chest_set() -> String:
+	return MechSprites.chest_set(build.chest if build != null else null)
+
+
+## Las armas montadas se dibujan en su hueco (con arte y sin ser un cuerpo
+## entero de jefe).
 func _shows_weapons() -> bool:
-	return _sprites != null and not _sprites.is_boss and MechSprites.has_weapon_art()
+	return _sprites != null and not _sprites.whole and MechSprites.has_weapon_art()
 
 
 ## Pieza que da el color al canon del pecho.
@@ -441,7 +448,7 @@ func muzzle_point(from_drone: bool, slot: String = "") -> Vector2:
 		if not mounted.is_empty():
 			local = _sprites.piece_tip(MechSprites.WEAPON_SET, mounted["kind"]) + mounted["at"]
 		elif has_cannon() and (slot == "chest" or not _shows_weapons()):
-			local = _sprites.piece_tip(CHEST_SET, "chest")
+			local = _sprites.piece_tip(_chest_set(), "chest")
 	return position + Vector2(local.x * facing, local.y) * scale.y
 
 
@@ -479,7 +486,7 @@ func _draw_sprites(dim: float) -> void:
 	var cannon_at := body + Vector2((1.0 - _deploy) * -RETRACT - _recoil, 0.0)
 	var cannon_tint := Color(tint.r, tint.g, tint.b, clampf(_deploy * 1.5, 0.0, 1.0))
 	if has_cannon() and _deploy > 0.0 and _deploy < 1.0 and _layer("chest"):
-		_sprites.draw_piece(self, CHEST_SET, "chest", _chest_paint(), cannon_tint, cannon_at)
+		_sprites.draw_piece(self, _chest_set(), "chest", _chest_paint(), cannon_tint, cannon_at)
 	# El brazo y el hombro del lado lejano van detras del torso.
 	if _layer("far") or _layer("far_top"):
 		_draw_weapons(tint, body, true)
@@ -491,7 +498,7 @@ func _draw_sprites(dim: float) -> void:
 		)
 		MechWear.draw_marks(self, torso, health_ratio, _wear_salt())
 	if has_cannon() and _deploy >= 1.0 and _layer("chest"):
-		_sprites.draw_piece(self, CHEST_SET, "chest", _chest_paint(), tint, cannon_at)
+		_sprites.draw_piece(self, _chest_set(), "chest", _chest_paint(), tint, cannon_at)
 	if _layer("near") or _layer("near_top"):
 		_draw_weapons(tint, body, false)
 	if _layer("body"):
@@ -536,11 +543,11 @@ func has_rigid_legs() -> bool:
 ## Juego de sprites de su torso y de sus piernas ("" sin arte o si es un
 ## jefe, que lleva su cuerpo entero).
 func torso_set() -> String:
-	return "" if _sprites == null or _sprites.is_boss else _sprites.torso_set
+	return "" if _sprites == null or _sprites.whole else _sprites.torso_set
 
 
 func legs_set() -> String:
-	return "" if _sprites == null or _sprites.is_boss else _sprites.legs_set
+	return "" if _sprites == null or _sprites.whole else _sprites.legs_set
 
 
 ## Cuanto sube todo el dibujo en reposo por levitar (negativo = hacia arriba).
@@ -588,7 +595,7 @@ func slot_rect(slot: String) -> Rect2:
 		"legs":
 			return _sprites.piece_rect(_sprites.legs_set, "legs")
 		"chest":
-			return _sprites.piece_rect(CHEST_SET, "chest") if has_cannon() else Rect2()
+			return _sprites.piece_rect(_chest_set(), "chest") if has_cannon() else Rect2()
 		"assist", "drone", "drone_low":
 			var kind := _assist_kind()
 			if kind == "":
@@ -630,7 +637,7 @@ func _wear_salt() -> int:
 
 ## Forma dibujada del robot de asistencia; "" si no lleva o no hay arte.
 func _assist_kind() -> String:
-	if build.assist == null or _sprites == null or _sprites.is_boss:
+	if build.assist == null or _sprites == null or _sprites.whole:
 		return ""
 	return MechSprites.assist_kind(build.assist.tier)
 

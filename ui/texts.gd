@@ -123,6 +123,7 @@ const ES := {
 	"form_artilleria": "artillería",
 	"form_canon_pesado": "cañones",
 	"form_nova": "novas",
+	"form_jefe": "de campeón",
 	"form_artillero": "artilleros",
 	"form_zapador": "zapadores",
 	"robot_style": "%s · %s",

@@ -74,10 +74,15 @@ func test_el_arma_de_pecho_pelea_como_un_arma_mas() -> void:
 
 
 func test_el_catalogo_tiene_las_111_armas_y_15_de_pecho() -> void:
-	assert_eq(_catalog.by_type(ItemDef.Type.CHEST).size(), 15)
+	# Sin contar las armas especiales de los campeones (GDD 9.4).
+	var chests := 0
 	var weapons := 0
 	for type in [ItemDef.Type.SIDE, ItemDef.Type.TOP, ItemDef.Type.CHEST, ItemDef.Type.DRONE]:
-		weapons += _catalog.by_type(type).size()
+		for def in _catalog.by_type(type):
+			if not def.has_tag(ItemDef.TAG_BOSS):
+				weapons += 1
+				chests += 1 if type == ItemDef.Type.CHEST else 0
+	assert_eq(chests, 15)
 	assert_eq(weapons, 111)
 	for def in _catalog.by_type(ItemDef.Type.CHEST):
 		assert_true(def.weapon_type in ["canon", "blaster", "laser"], def.id)

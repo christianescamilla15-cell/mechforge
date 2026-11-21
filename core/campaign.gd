@@ -165,6 +165,24 @@ func ladder(profile: PlayerProfile, count: int) -> Array[Dictionary]:
 
 
 ## Puntos de habilidad del jefe de esa zona (0 = sin entrenar).
+## Las armas especiales de los campeones ya vencidos: se pueden comprar
+## (GDD 9.4). Cada campeon dice la suya en su "weapon".
+func boss_weapons_open(profile: PlayerProfile) -> Array[String]:
+	var out: Array[String] = []
+	for zone in mini(profile.zone, zone_count()):
+		var weapon := boss_weapon(zone)
+		if weapon != "":
+			out.append(weapon)
+	return out
+
+
+## El arma especial del campeon de una zona; "" si aun no tiene.
+func boss_weapon(zone: int) -> String:
+	if zone < 0 or zone >= zone_count():
+		return ""
+	return str((zones[zone]["boss"] as Dictionary).get("weapon", ""))
+
+
 func boss_skills(zone: int) -> int:
 	return int(zones[mini(zone, zone_count() - 1)]["boss"].get("skills", 0))
 

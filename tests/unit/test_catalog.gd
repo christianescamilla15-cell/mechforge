@@ -11,7 +11,7 @@ const FORBIDDEN_PATH := "res://docs/reference/original-item-names.txt"
 func test_el_catalogo_real_carga_sin_errores() -> void:
 	var catalog := Catalog.load_file(CATALOG_PATH)
 	assert_eq(catalog.errors, [] as Array[String])
-	assert_eq(catalog.items.size(), 144)
+	assert_eq(catalog.items.size(), 145, "144 y el arma del campeon de la liga 5")
 
 
 func test_el_catalogo_real_pasa_el_validador() -> void:
@@ -45,6 +45,9 @@ func test_cada_tipo_de_arma_existe_en_sus_clases() -> void:
 	}
 	var catalog := Catalog.load_file(CATALOG_PATH)
 	for def: ItemDef in catalog.items.values():
+		# Las armas de campeon (GDD 9.4) son unicas: van aparte.
+		if def.has_tag(ItemDef.TAG_BOSS):
+			continue
 		if (
 			def.type
 			in [ItemDef.Type.SIDE, ItemDef.Type.TOP, ItemDef.Type.CHEST, ItemDef.Type.DRONE]
@@ -58,7 +61,7 @@ func test_cada_diseno_existe_en_las_tres_municiones() -> void:
 	var catalog := Catalog.load_file(CATALOG_PATH)
 	var designs := {}
 	for def: ItemDef in catalog.items.values():
-		if def.form != "":
+		if def.form != "" and not def.has_tag(ItemDef.TAG_BOSS):
 			var key := "%s_%s" % [def.form, def.weapon_type]
 			designs[key] = designs.get(key, []) + [def.element]
 	assert_eq(designs.size(), 37, "17 de brazo, 9 de hombro, 5 de pecho y 6 de soporte")

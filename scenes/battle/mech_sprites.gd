@@ -53,6 +53,9 @@ static var _textures: Dictionary[String, Texture2D] = {}
 var torso_set: String = ""
 ## True si es un jefe: usa su propio cuerpo entero, de la linea robusta.
 var is_boss: bool = false
+## Cuerpo entero de una pieza, sin anclas para armas (el jefe de siempre,
+## BOSS_SET): no se le montan armas ni asistente.
+var whole: bool = false
 var legs_set: String = ""
 ## True si las piernas son de una pieza (orugas, ruedas o levitar).
 var rigid_legs: bool = false
@@ -67,10 +70,19 @@ static func for_build(build: MechBuild) -> MechSprites:
 		return null
 	var out := MechSprites.new()
 	var boss := build.chassis != null and build.chassis.is_boss()
+	# Un campeon con cuerpo propio (GDD 9.4): sus piezas, con sus armas
+	# montadas como cualquiera, y mas grande.
+	var own := build.body != "" and has_piece(build.body, "torso") and has_piece(build.body, "legs")
+	if boss and own:
+		out.torso_set = build.body
+		out.legs_set = build.body
+		out.is_boss = true
+		return out
 	if boss and _load_anchors(BOSS_SET).get("torso") is Dictionary:
 		out.torso_set = BOSS_SET
 		out.legs_set = BOSS_SET
 		out.is_boss = true
+		out.whole = true
 		return out
 	# Un rival con cuerpo propio (OBS-011): entero, de un solo juego, y con
 	# sus armas montadas como cualquiera.
@@ -85,6 +97,13 @@ static func for_build(build: MechBuild) -> MechSprites:
 			out.legs_set = SPECIAL_LEGS[tag]
 			out.rigid_legs = true
 	return out
+
+
+## Juego del dibujo de un arma de pecho: el suyo si lo tiene (las armas
+## especiales de los campeones, "art": {"set"}) y, si no, el de todas.
+static func chest_set(item: ItemDef) -> String:
+	var own := str(item.art.get("set", "")) if item != null else ""
+	return own if own != "" and has_piece(own, "chest") else MechView.CHEST_SET
 
 
 static func has_piece(set_name: String, kind: String) -> bool:
@@ -228,7 +247,7 @@ static func icon_for(item: ItemDef, paint: int = -1) -> Texture2D:
 				return null
 			return _texture(legs[absi(item.id.hash()) % legs.size()], "legs", element)
 		ItemDef.Type.CHEST:
-			return _texture(MechView.CHEST_SET, "chest", element)
+			return _texture(chest_set(item), "chest", element)
 		ItemDef.Type.ASSIST:
 			var form := assist_kind(item.tier)
 			return _texture(ASSIST_SET, form, element) if form != "" else null

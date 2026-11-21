@@ -432,7 +432,12 @@ func _on_sale(profile: PlayerProfile, slot: String, tier: int) -> Array[String]:
 				out.append(def.id)
 			out.sort()
 		return out
-	for id in garage.stock_for(catalog, tier):
+	# Las armas especiales de los campeones vencidos (GDD 9.4).
+	var stock := garage.stock_for(catalog, tier)
+	for id in campaign.boss_weapons_open(profile):
+		if catalog.get_item(id) != null and not id in stock:
+			stock.append(id)
+	for id in stock:
 		var def := catalog.get_item(id)
 		if not Garage.fits(def, slot) or id in profile.owned:
 			continue
