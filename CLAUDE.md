@@ -8,6 +8,7 @@ Hay dos pasos: **paso 1** = versión refactorizada y mejor del núcleo (este pla
 1. `docs/PLAN.md` — fases, puertas de verificación y estado. Empieza por la primera fase sin cerrar y actualiza su estado al terminar cada tarea.
 2. `docs/GDD.md` — diseño: reglas, fórmulas, armado, progresión, campaña y arte.
 3. `docs/reference/original-mechanics.md` — cómo funciona el juego original, con fuentes. Es solo referencia: donde el GDD diga otra cosa, manda el GDD.
+4. `docs/OBSERVACIONES.md` — matriz de observaciones: cada cosa que el usuario nota al jugar, con lo comprobado y su estado. Toda incidencia nueva se apunta ahí (con sus palabras) y se actualiza al resolverla.
 
 ## Herramientas
 - **Godot 4.7.2 estándar (GDScript, no .NET)**:

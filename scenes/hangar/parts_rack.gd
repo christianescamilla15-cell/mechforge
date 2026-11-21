@@ -27,6 +27,8 @@ signal hovered(id: String, inside: bool)
 signal upgrade_pressed
 ## Se solto aqui la pieza de un hueco.
 signal unmounted(slot: String)
+## Una casilla de la cabecera: pasar a ese otro hueco del mismo tipo.
+signal slot_picked(slot: String)
 
 const COLUMNS := 4
 ## Alto minimo de una fila: caben las que quepan y se reparten el sitio.
@@ -50,7 +52,9 @@ const MUTED := Color("8fa3b8")
 const HOLO := Color("57d3ff")
 const BOARD := Color(0.055, 0.08, 0.115, 0.93)
 
-## Lo que ensena: {"slot", "title", "locked", "hint", "cells", "parts":
+## Lo que ensena: {"slot", "title", "locked", "hint", "cells", "siblings":
+## [{"slot", "label", "filled", "selected", "locked"}] (los huecos de su mismo
+## tipo, para pasar de uno a otro; el torso y las piernas van juntos), "parts":
 ## [{"id", "item", "owned", "mounted", "detail", "stats", "price", "reason",
 ## "note"}], "mounted": {} o {"item", "detail", "stats"}, "key": {} o
 ## {"label", "enabled", "reason"}}.
@@ -224,8 +228,28 @@ func _pager_rect(zone: String) -> Rect2:
 	return Rect2(x, y - 1.0, 24.0, PAGER_HEIGHT + 2.0)
 
 
-## Zona bajo un punto: "part:<n>", "key", "up", "down" o "".
+## Casillas de los huecos hermanos, a la derecha del titulo.
+func sibling_rects() -> Array[Rect2]:
+	var out: Array[Rect2] = []
+	var title := str(state.get("title", "")).to_upper()
+	var x := MARGIN + 16.0 + _font.get_string_size(title, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
+	for entry: Dictionary in state.get("siblings", []):
+		var label := str(entry["label"])
+		var wide := maxf(
+			18.0, _font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, 10).x + 10.0
+		)
+		out.append(Rect2(x, RAIL_HEIGHT + 3.0, wide, 16.0))
+		x += wide + 3.0
+	return out
+
+
+## Zona bajo un punto: "part:<n>", "slot:<hueco>", "key", "up", "down" o "".
 func zone_at(at: Vector2) -> String:
+	var boxes := sibling_rects()
+	var siblings: Array = state.get("siblings", [])
+	for i in boxes.size():
+		if boxes[i].grow(1.5).has_point(at):
+			return "slot:" + str(siblings[i]["slot"])
 	for index in _parts.size():
 		if part_rect(index).has_point(at):
 			return "part:%d" % index
@@ -290,6 +314,10 @@ func _gui_input(event: InputEvent) -> void:
 func _press(zone: String) -> void:
 	if zone == "up" or zone == "down":
 		scroll_rows(-1 if zone == "up" else 1)
+		return
+	if zone.begins_with("slot:"):
+		_armed = ""
+		slot_picked.emit(zone.trim_prefix("slot:"))
 		return
 	if zone == "key":
 		var key: Dictionary = state.get("key", {})
@@ -440,6 +468,29 @@ func _draw_head() -> void:
 		13,
 		GOLD
 	)
+	# Los huecos de su mismo tipo: lleno, vacio, el elegido en dorado.
+	var boxes := sibling_rects()
+	var siblings: Array = state.get("siblings", [])
+	for i in boxes.size():
+		var entry: Dictionary = siblings[i]
+		var chosen := bool(entry["selected"])
+		var hover := _hover == "slot:" + str(entry["slot"])
+		var fade := 0.4 if bool(entry["locked"]) else 1.0
+		var edge := GOLD if chosen or hover else (HOLO if bool(entry["filled"]) else MUTED)
+		if chosen:
+			draw_rect(boxes[i], Color(GOLD, 0.9))
+		elif bool(entry["filled"]):
+			draw_rect(boxes[i], Color(HOLO, 0.22 * fade))
+		draw_rect(boxes[i], Color(edge, (0.95 if chosen or hover else 0.6) * fade), false, 1.0)
+		draw_string(
+			_font,
+			Vector2(boxes[i].position.x, boxes[i].position.y + 12.0),
+			str(entry["label"]),
+			HORIZONTAL_ALIGNMENT_CENTER,
+			boxes[i].size.x,
+			10,
+			Color(Color("10151c") if chosen else Color.WHITE, fade)
+		)
 	var cells := HangarProps.thousands(int(state.get("cells", 0)))
 	var wide := _font.get_string_size(cells, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
 	var unit := Txt.t("hud_cells")
@@ -651,8 +702,12 @@ func _draw_key(key: Dictionary) -> void:
 	HangarProps.text(
 		self, _font, rect.position + Vector2(0, 18), str(key["label"]), rect.size.x, 12, tone, true
 	)
-	if hover and not enabled and str(key.get("reason", "")) != "":
-		_wrapped(rect.position + Vector2(0, 44), str(key["reason"]), rect.size.x, 10, BAD, 3)
+	# Debajo: lo que cambia al subirla o, si no se puede, por que.
+	var below := rect.position + Vector2(0, 42)
+	if not enabled and str(key.get("reason", "")) != "":
+		_wrapped(below, str(key["reason"]), rect.size.x, 10, BAD, 3)
+	elif str(key.get("gain", "")) != "":
+		_wrapped(below, str(key["gain"]), rect.size.x, 10, GOOD, 3)
 
 
 ## Al pie, la lectura del robot: una casilla por estadistica. Al comparar

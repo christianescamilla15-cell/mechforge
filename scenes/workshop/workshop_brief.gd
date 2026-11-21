@@ -19,6 +19,16 @@ const DIAGNOSTIC_KEYS: Array[String] = [
 	"res_energy"
 ]
 
+## Huecos que se eligen juntos en la cabecera del tablero: los de un mismo
+## tipo y, aparte, el torso con las piernas.
+const SIBLINGS: Array = [
+	["side0", "side1", "side2", "side3"],
+	["top0", "top1"],
+	["module0", "module1", "module2", "module3", "module4", "module5", "module6", "module7"],
+	["drone", "drone_low"],
+	["torso", "legs"],
+]
+
 var rules: RulesConfig
 var catalog: Catalog
 var library: BuildLibrary
@@ -187,6 +197,7 @@ func rack(profile: PlayerProfile, slot: String, store_first: bool = false) -> Di
 		"locked": locked,
 		"hint": Txt.t("workshop_empty_hint" if owned.size() + sold.size() > 0 else "workshop_none"),
 		"cells": profile.gold,
+		"siblings": siblings(profile, slot),
 		"parts": sold + owned if store_first else owned + sold,
 		"mounted": mounted,
 		"key": key,
@@ -194,9 +205,57 @@ func rack(profile: PlayerProfile, slot: String, store_first: bool = false) -> Di
 	}
 
 
+## Los huecos hermanos de uno (los de su mismo tipo, o el torso con las
+## piernas), para pasar de uno a otro sin tener que acertar en el dibujo:
+## [{"slot", "label", "filled", "selected", "locked"}]; vacio si va solo.
+func siblings(profile: PlayerProfile, slot: String) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	for group: Array in SIBLINGS:
+		if not slot in group:
+			continue
+		for i in group.size():
+			var other: String = group[i]
+			var numbered := other.rstrip("0123456789") != other or other.begins_with("drone")
+			(
+				out
+				. append(
+					{
+						"slot": other,
+						"label": str(i + 1) if numbered else slot_title(other).to_upper(),
+						"filled": Garage.get_slot(profile.build, other) != "",
+						"selected": other == slot,
+						"locked": lock_reason(profile, other) != "",
+					}
+				)
+			)
+	return out
+
+
+## Lo que cambia en una pieza entre como esta (`now`) y como quedaria
+## (`then`): "daño 37–48 → 39–50 · Vida 222 → 233". Vacio si no cambia nada.
+static func stat_changes(now: ItemDef, then: ItemDef) -> String:
+	var parts: Array[String] = []
+	if now.deals_damage() and (now.dmg_min != then.dmg_min or now.dmg_max != then.dmg_max):
+		var before := Txt.t("stat_damage", [now.dmg_min, now.dmg_max])
+		parts.append("%s → %d–%d" % [before, then.dmg_min, then.dmg_max])
+	for key in DIAGNOSTIC_KEYS:
+		if key == "weight":
+			continue
+		var a: int = now.get(key)
+		var b: int = then.get(key)
+		if a != b:
+			parts.append("%s %d → %d" % [Txt.t("stat_" + key), a, b])
+	if now.energy_cost != then.energy_cost:
+		parts.append("%s → %d" % [Txt.t("cost_energy", [now.energy_cost]), then.energy_cost])
+	if now.heat_cost != then.heat_cost:
+		parts.append("%s → %d" % [Txt.t("cost_heat", [now.heat_cost]), then.heat_cost])
+	return " · ".join(parts)
+
+
 ## La tecla del lector para la pieza de un hueco: subirla de nivel,
 ## transformarla o el tope que la para. {"label", "enabled", "reason",
-## "action" ("level" o "transform")}; vacio si la pieza no sube sola.
+## "action" ("level" o "transform"), "gain" (lo que cambia en la pieza)};
+## vacio si la pieza no sube sola.
 func upgrade_key(profile: PlayerProfile, item: ItemDef) -> Dictionary:
 	if item.type == ItemDef.Type.DRONE and profile.build.has("assist"):
 		return {}
@@ -209,7 +268,16 @@ func upgrade_key(profile: PlayerProfile, item: ItemDef) -> Dictionary:
 		var label := Txt.t("part_level_up", [workshop.level_cost(rules, p["tier"], p["level"])])
 		if reason == "la zona no deja subirla mas":
 			label = Txt.t("part_zone_max")
-		return {"label": label, "enabled": reason == "", "reason": reason, "action": "level"}
+		var raised := ItemScaling.resolve(
+			catalog.get_item(item.id), rules, p["tier"], p["level"] + 1
+		)
+		return {
+			"label": label,
+			"enabled": reason == "",
+			"reason": reason,
+			"action": "level",
+			"gain": stat_changes(item, raised),
+		}
 	var item_max := catalog.get_item(item.id).tier_max
 	var why := profile.why_cant_transform(workshop, rules, id, max_tier, item_max)
 	var text := Txt.t("part_transform", [workshop.transform_cost(p["tier"])])
@@ -217,7 +285,11 @@ func upgrade_key(profile: PlayerProfile, item: ItemDef) -> Dictionary:
 		text = Txt.t("part_unique")
 	if not why in ["", "faltan celdas"]:
 		text = Txt.t("part_zone_max" if why.contains("zona") else "shop_max")
-	return {"label": text, "enabled": why == "", "reason": why, "action": "transform"}
+	var gain := ""
+	if p["tier"] < item_max:
+		var next := ItemScaling.resolve(catalog.get_item(item.id), rules, p["tier"] + 1, 0)
+		gain = stat_changes(item, next)
+	return {"label": text, "enabled": why == "", "reason": why, "action": "transform", "gain": gain}
 
 
 # --- Las pantallas ------------------------------------------------------------------

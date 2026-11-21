@@ -260,6 +260,77 @@ static func level_line(
 	c.draw_rect(bar, Color(SCREEN_LINE, 0.5), false, 1.0)
 
 
+## Una pantalla de la pared, lo quieto: marco con relieve, cristal con sus
+## lineas de barrido, su nombre y el cable que baja a la pared. El cuadro de
+## control de los ajustes es una caja aparte.
+static func terminal_still(c: CanvasItem, font: Font, terminal: String, rect: Rect2) -> void:
+	if terminal == "ajustes":
+		control_box(c, rect)
+		return
+	var screen := HangarArt.draw_screen_still(c, rect)
+	var at := screen.position + Vector2(8, 15)
+	text(c, font, at, Txt.t("terminal_" + terminal), screen.size.x - 16.0, 13, SCREEN_TEXT)
+	cable(c, Vector2(rect.position.x + rect.size.x * 0.8, rect.end.y))
+
+
+## Y lo que se mueve: la franja de luz, su dibujo con lo tuyo (`info`, el
+## de HangarStage: celdas, nivel, mejoras), el led y el brillo al pasar el
+## raton.
+static func terminal_live(
+	c: CanvasItem,
+	font: Font,
+	terminal: String,
+	rect: Rect2,
+	hover: bool,
+	info: Dictionary,
+	time: float
+) -> void:
+	if terminal == "ajustes":
+		control_box_live(c, font, rect, hover, time)
+		return
+	var screen := HangarArt.draw_screen_live(c, rect, hover, time)
+	var art := Rect2(screen.position + Vector2(8, 22), screen.size - Vector2(16, 30))
+	var foot := Vector2(screen.position.x + 8.0, screen.end.y - 8.0)
+	var wide := screen.size.x - 16.0
+	match terminal:
+		"tienda":
+			# Abajo, tus celdas.
+			art.size.y -= 16.0
+			store_art(c, art)
+			cells_line(c, font, foot, wide, int(info.get("cells", 0)))
+		"mejoras":
+			upgrades_art(c, art, info.get("upgrades", []), time)
+		"habilidades":
+			# Abajo, tu nivel y lo que llevas del siguiente.
+			art.size.y -= 16.0
+			skills_art(c, art)
+			var next := int(info.get("xp_next", -1))
+			level_line(c, font, foot, wide, int(info.get("level", 1)), int(info.get("xp", 0)), next)
+	var led_at := Vector2(rect.end.x - 14.0, rect.position.y + 6.0)
+	c.draw_circle(led_at, 2.4, Color("55ff9a", 0.4 + 0.4 * sin(time * 4.0 + rect.position.x)))
+
+
+## Cable que baja de una pantalla a la pared.
+static func cable(c: CanvasItem, from: Vector2) -> void:
+	c.draw_line(from, from + Vector2(6.0, 28.0), Color("0e141c"), 3.0)
+
+
+## El banco de equipo: una placa con su rotulo; las cunas van encima.
+static func shelf(c: CanvasItem, font: Font, rect: Rect2) -> void:
+	var style := TechStyle.plate(Color("161e2a"), Color("3c4c62"), 0.0, 8.0)
+	style.groove = false
+	style.draw(c.get_canvas_item(), rect)
+	text(
+		c,
+		font,
+		rect.position + Vector2(10, -4),
+		Txt.t("rack_title"),
+		rect.size.x,
+		11,
+		Color("9aa7b8")
+	)
+
+
 # --- El cuadro de control ----------------------------------------------------------
 
 

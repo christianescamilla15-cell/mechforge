@@ -6,17 +6,17 @@
     "tajo_plasma": {"desc": "Hoja de plasma: tajo con estela caliente que salpica", "path": "melee", "body": "slash", "size": 1.15, "impact": "splash", "impact_size": 0.9},
     "tajo_luz": {"desc": "Hoja láser: corte de luz que deja la línea quemada", "path": "melee", "body": "slash", "size": 1.25, "impact": "burn", "impact_size": 0.8},
 
-    "perdigones": {"desc": "Escopeta: abanico de 6 perdigones", "path": "straight", "body": "pellet", "count": 6, "spread": 46, "speed": 3800, "max_travel": 0.2, "size": 0.8, "impact": "sparks", "impact_size": 0.45},
+    "perdigones": {"desc": "Escopeta: un solo tiro que abre 12 fragmentos en abanico, con un culatazo fuerte", "path": "straight", "body": "pellet", "count": 12, "spread": 74, "speed": 3800, "max_travel": 0.2, "size": 0.9, "impact": "sparks", "impact_size": 0.6, "kick": 1.9},
     "obus_corto": {"desc": "Obús corto: un obús gordo que estalla al tocar", "path": "straight", "body": "shell", "speed": 2400, "max_travel": 0.3, "size": 1.3, "trail": "smoke", "impact": "explosion", "impact_size": 0.8},
     "chorro_plasma": {"desc": "Proyector de plasma: chorro en cono", "path": "stream", "body": "orb", "count": 14, "gap": 0.018, "spread": 26, "speed": 2400, "max_travel": 0.3, "size": 0.7, "impact": "splash", "impact_size": 0.6},
     "soplete": {"desc": "Láser de corte: haz ancho y corto, como un soplete", "path": "beam", "body": "beam", "hold": 0.34, "size": 1.4, "impact": "burn", "impact_size": 0.9},
 
-    "rafaga": {"desc": "Ametralladora: ráfaga de 5 trazadoras", "path": "straight", "body": "tracer", "count": 5, "gap": 0.06, "spread": 12, "speed": 4200, "max_travel": 0.25, "size": 1.0, "impact": "sparks", "impact_size": 0.5},
+    "rafaga": {"desc": "Ametralladora: ráfaga de 9 trazadoras seguidas, cada una con su impacto", "path": "straight", "body": "tracer", "count": 9, "gap": 0.05, "spread": 16, "speed": 4200, "max_travel": 0.25, "size": 1.0, "impact": "sparks", "impact_size": 0.55, "kick": 0.8},
     "granada": {"desc": "Lanzagranadas: granada en parábola", "path": "arc", "body": "grenade", "speed": 2200, "max_travel": 0.55, "size": 1.0, "trail": "smoke", "impact": "explosion", "impact_size": 1.0},
     "pernos": {"desc": "Repetidor de plasma: tres pernos seguidos", "path": "straight", "body": "bolt", "count": 3, "gap": 0.1, "spread": 8, "speed": 3000, "max_travel": 0.3, "size": 1.0, "impact": "splash", "impact_size": 0.6},
     "pulsos": {"desc": "Láser de pulso: tres pulsos instantáneos", "path": "beam", "body": "beam", "count": 3, "gap": 0.11, "hold": 0.08, "size": 0.9, "impact": "burn", "impact_size": 0.5},
 
-    "bala_rifle": {"desc": "Rifle: una bala muy rápida con estela", "path": "straight", "body": "slug", "speed": 7000, "max_travel": 0.15, "size": 1.0, "trail": "streak", "impact": "sparks", "impact_size": 0.9},
+    "bala_rifle": {"desc": "Rifle: un tiro seco, una bala muy rápida con estela", "path": "straight", "body": "slug", "speed": 7000, "max_travel": 0.15, "size": 1.0, "trail": "streak", "impact": "sparks", "impact_size": 1.1, "kick": 1.5},
     "proyectil": {"desc": "Cañón de brazo: proyectil pesado en línea recta", "path": "straight", "body": "shell", "speed": 2800, "max_travel": 0.4, "size": 1.1, "trail": "smoke", "impact": "explosion", "impact_size": 0.95},
     "lanza_plasma": {"desc": "Lanza de plasma: un perno largo que salpica", "path": "straight", "body": "bolt", "speed": 2400, "max_travel": 0.45, "size": 2.0, "trail": "glow", "impact": "splash", "impact_size": 1.1},
     "haz_fino": {"desc": "Láser de precisión: haz fino y sostenido", "path": "beam", "body": "beam", "hold": 0.32, "size": 0.7, "impact": "burn", "impact_size": 0.8},
@@ -24,7 +24,7 @@
     "repulsor": {"desc": "Repulsor: ondas de presión que empujan", "path": "wave", "body": "wave", "count": 3, "gap": 0.07, "speed": 2600, "max_travel": 0.3, "size": 1.0, "impact": "sparks", "impact_size": 0.7},
     "sifon": {"desc": "Sifón: haz que absorbe energía del rival", "path": "beam", "body": "drain", "hold": 0.5, "size": 0.9, "impact": "drain", "impact_size": 0.8},
 
-    "rotativa": {"desc": "Rotativa: ráfaga larga de 8 balas", "path": "straight", "body": "tracer", "count": 8, "gap": 0.045, "spread": 16, "speed": 4200, "max_travel": 0.35, "size": 0.9, "impact": "sparks", "impact_size": 0.5},
+    "rotativa": {"desc": "Rotativa: ráfaga larga de 14 balas", "path": "straight", "body": "tracer", "count": 14, "gap": 0.04, "spread": 20, "speed": 4200, "max_travel": 0.35, "size": 0.9, "impact": "sparks", "impact_size": 0.5, "kick": 0.7},
     "misiles": {"desc": "Lanzamisiles: salva de 4 misiles en curva", "path": "missile", "body": "missile", "count": 4, "gap": 0.09, "spread": 34, "speed": 2000, "max_travel": 0.7, "size": 0.9, "trail": "smoke", "impact": "explosion", "impact_size": 0.55},
     "bolas_plasma": {"desc": "Batería de plasma: cuatro bolas escalonadas", "path": "straight", "body": "orb", "count": 4, "gap": 0.09, "spread": 18, "speed": 2400, "max_travel": 0.5, "size": 1.0, "trail": "glow", "impact": "splash", "impact_size": 0.6},
     "haces_dobles": {"desc": "Batería láser: dos haces paralelos", "path": "beam", "body": "beam", "count": 2, "spread": 26, "hold": 0.24, "size": 0.85, "impact": "burn", "impact_size": 0.7},

@@ -74,6 +74,7 @@ func _ready() -> void:
 	rack.hovered.connect(hover_item)
 	rack.upgrade_pressed.connect(upgrade_selected)
 	rack.unmounted.connect(clear_slot)
+	rack.slot_picked.connect(_on_part_picked)
 	var console := _stage.console
 	console.upgrade_picked.connect(buy_upgrade)
 	console.skill_picked.connect(learn)

@@ -85,6 +85,6 @@ func test_cada_disparo_lanza_sus_efectos_y_termina() -> void:
 		fx.play(id, Vector2.ZERO, Vector2(700.0, -40.0), Color.WHITE, 0.01)
 		assert_gt(fx._effects.size(), 0, "%s dibuja algo" % id)
 	var count: int = ShotFx.shot("rotativa")["count"]
-	assert_eq(count, 8, "la rotativa suelta 8 balas")
+	assert_eq(count, 14, "la rotativa suelta 14 balas")
 	await fx.play("obus", Vector2.ZERO, Vector2(1800.0, 0.0), Color.WHITE, 0.01)
 	assert_true(true, "el ultimo disparo termino")

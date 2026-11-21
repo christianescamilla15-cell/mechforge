@@ -70,6 +70,8 @@ const DEFAULTS := {
 	"impact": "sparks",
 	"impact_size": 1.0,
 	"core": "",
+	## Fuerza del culatazo del arma (1 = el de siempre).
+	"kick": 1.0,
 }
 ## Nucleos de los disparos: "" blanco; "dark" el negro de la materia oscura.
 const CORES: Array[String] = ["", "dark"]
@@ -130,6 +132,17 @@ static func ammo_color(element: int) -> Color:
 	return AMMO_COLORS[clampi(element, 0, AMMO_COLORS.size() - 1)]
 
 
+## El gesto del arma de `mech` al disparar ese disparo: un golpe por cada
+## proyectil (una rafaga tiembla; un tiro suelto da un solo culatazo), con
+## la fuerza de su "kick". `play_seconds` es la duracion que se le da a play.
+static func kick(
+	mech: MechView, id: String, seconds: float, slot: String, play_seconds: float
+) -> void:
+	var s := shot(id)
+	var k := clampf(play_seconds / REFERENCE_STEP, 0.3, 2.5)
+	mech.fire(seconds, slot, int(s["count"]), float(s["gap"]) * k, float(s["kick"]))
+
+
 ## Lo que esta mal en data/shots.json (para los tests).
 static func problems() -> Array[String]:
 	var out: Array[String] = []
@@ -166,16 +179,22 @@ func play(id: String, from: Vector2, to: Vector2, color: Color, seconds: float) 
 	var k := clampf(seconds / REFERENCE_STEP, 0.3, 2.5)
 	var count: int = s["count"]
 	var arrival := 0.0
-	if s["path"] != "melee" and s["path"] != "orbital":
-		_muzzle_flash(from, color, s, k)
+	var flashes: bool = s["path"] != "melee" and s["path"] != "orbital"
+	# Los que salen todos a la vez (los perdigones) suenan como un solo tiro.
+	var together := float(s["gap"]) <= 0.0
 	for i in count:
 		var delay: float = float(s["gap"]) * k * i
 		var offset := _scatter(s, i, count)
 		var origin := from + offset if s["path"] == "beam" else from
+		# Un fogonazo por cada proyectil que sale en su momento.
+		if flashes and (i == 0 or not together):
+			_muzzle_flash(from, color, s, k, delay)
 		var reach := delay + _launch(s, origin, to + offset, color, k, delay, i)
 		_impact(s, to + offset, color, k, reach)
-		Sfx.shot_fired(id, delay)
-		Sfx.shot_hit(id, s["impact"], reach)
+		if i == 0 or not together:
+			Sfx.shot_fired(id, delay)
+		if i < 2 or not together:
+			Sfx.shot_hit(id, s["impact"], reach)
 		arrival = maxf(arrival, reach)
 	_core = CORE
 	await get_tree().create_timer(maxf(arrival, 0.01)).timeout
@@ -288,17 +307,16 @@ func _scatter(s: Dictionary, index: int, count: int) -> Vector2:
 	return Vector2(0.0, (_noise(index, 5.0) - 0.5) * 2.0 * spread)
 
 
-func _muzzle_flash(at: Vector2, color: Color, s: Dictionary, k: float) -> void:
-	var size: float = s["size"]
+func _muzzle_flash(at: Vector2, color: Color, s: Dictionary, k: float, delay: float = 0.0) -> void:
+	# El fogonazo crece con el culatazo del arma: el de una escopeta es grande.
+	var size: float = float(s["size"]) * float(s["kick"])
 	var glow := CORE.lerp(color, 0.45)
-	_add(
-		_effect(
-			"blob", _time, 0.12 * k, glow, size, {"at": at, "r0": 6.0, "r1": 14.0 + 12.0 * size}
-		)
-	)
+	var start := _time + delay
+	var blob := {"at": at, "r0": 6.0, "r1": 14.0 + 12.0 * size}
+	_add(_effect("blob", start, 0.12 * k, glow, size, blob))
 	if s["path"] == "ring":
 		var flash := {"at": at, "r0": 12.0, "r1": 40.0 * size, "body": "ring"}
-		_add(_effect("ring", _time, 0.16 * k, color.lightened(0.4), size * 0.5, flash))
+		_add(_effect("ring", start, 0.16 * k, color.lightened(0.4), size * 0.5, flash))
 
 
 # --- Impactos -------------------------------------------------------------------

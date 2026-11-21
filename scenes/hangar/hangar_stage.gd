@@ -61,12 +61,27 @@ const COLOR_SCREEN_LINE := Color("3fd0e6")
 const COLOR_TEXT := Color("bfefff")
 const COLOR_SOCKET := Color("57d3ff")
 const SOCKET_RADIUS := 13.0
+## Huecos de arma: vacios, llevan un enchufe que se pulsa.
+const SOCKETS: Array[String] = ["side0", "side1", "side2", "side3", "top0", "top1"]
+## Orden de los huecos con el robot de media vuelta: delante quedan las
+## armas del otro lado.
+const FLIPPED_ORDER: Array[String] = [
+	"top1", "top0", "side2", "side3", "side0", "side1", "chest", "assist", "torso", "legs"
+]
 ## Giro por pixel arrastrado, por muesca de la rueda, y a cuanto de una
 ## vista dibujada (de perfil, de espalda, del otro perfil o de frente) el
 ## robot se coloca solo en ella al soltar.
 const TURN_PER_PIXEL := TAU / 620.0
 const TURN_PER_NOTCH := TAU / 16.0
 const TURN_SNAP := deg_to_rad(9.0)
+## Hacia donde gira cada rueda: la de arriba y abajo y la de los lados (el
+## desplazamiento con dos dedos de un panel tactil llega como una de ellas).
+const WHEEL_TURN := {
+	MOUSE_BUTTON_WHEEL_UP: 1.0,
+	MOUSE_BUTTON_WHEEL_DOWN: -1.0,
+	MOUSE_BUTTON_WHEEL_RIGHT: 1.0,
+	MOUSE_BUTTON_WHEEL_LEFT: -1.0,
+}
 ## Modo mision: lo que tarda en bajar la luz.
 const MISSION_SECONDS := 0.35
 ## Radio de la diana al tocarla.
@@ -130,6 +145,8 @@ var _turntable := TurntableMech.new()
 ## Lo que ocupa el robot en el taller (para las capas del giro).
 var _bounds := Rect2()
 var _turning := false
+## Si el arrastre que gira el robot llego a moverse.
+var _turn_moved := false
 var _hover_platform := false
 var _turn_tween: Tween
 var _dim := Node2D.new()
@@ -356,7 +373,7 @@ func _apply_turn() -> void:
 	_mech.visible = not turned
 	_turntable.angle = turn
 	_turntable.set_active(turned)
-	if turned and (hover_slot != "" or selected_slot != ""):
+	if turned and not is_flipped() and hover_slot != "":
 		hover_slot = ""
 	_overlay.queue_redraw()
 	queue_redraw()
@@ -364,6 +381,48 @@ func _apply_turn() -> void:
 
 func is_turned() -> bool:
 	return not (is_zero_approx(turn) or is_equal_approx(turn, TAU))
+
+
+## De media vuelta: se ve su otro perfil, con las armas del otro lado
+## delante. Ahi sus piezas se tocan igual que de perfil.
+func is_flipped() -> bool:
+	return is_equal_approx(turn, PI)
+
+
+## Se tocan sus piezas de perfil y de media vuelta; a medio girar, no.
+func _can_touch() -> bool:
+	return not is_turned() or is_flipped()
+
+
+## Eje del giro, en el mundo del taller.
+func _pivot() -> float:
+	var legs := _world_rect("legs")
+	return legs.get_center().x if legs.size != Vector2.ZERO else 0.0
+
+
+## De media vuelta el robot se ve reflejado sobre su eje.
+func _robot_point(world: Vector2) -> Vector2:
+	return Vector2(2.0 * _pivot() - world.x, world.y) if is_flipped() else world
+
+
+## De media vuelta mandan las armas del otro lado, que quedan delante.
+func _touch_order() -> Array[String]:
+	return FLIPPED_ORDER if is_flipped() else TOUCHABLE
+
+
+## Huecos bajo un punto: primero el enchufe de un hueco de arma vacio y
+## despues las piezas del robot.
+func slots_at(at: Vector2) -> Array[String]:
+	var out: Array[String] = []
+	if not _can_touch() or _mech.build == null:
+		return out
+	var world := _robot_point((at - _world.position) / _world.scale.x)
+	for socket: String in SOCKETS:
+		var radius := SOCKET_RADIUS * 1.6 / _world.scale.x
+		if _item_in(socket) == null and world.distance_to(socket_point(socket)) <= radius:
+			out.append(socket)
+	out.append_array(super.slots_at(at))
+	return out
 
 
 ## Gira el robot hasta ese angulo con un movimiento suave, por el camino corto.
@@ -504,7 +563,9 @@ func _draw() -> void:
 	_draw_bays_live()
 	for terminal in TERMINALS:
 		if _terminal_rects.has(terminal):
-			_draw_terminal_live(terminal, _terminal_rects[terminal])
+			var hover := _hover_terminal == terminal
+			var rect := _terminal_rects[terminal]
+			HangarProps.terminal_live(self, _font, terminal, rect, hover, info, _time)
 	var center := _platform_center()
 	HangarArt.draw_light_dust(self, Rect2(Vector2.ZERO, size), center, _floor_y, _time)
 	if _mech.build != null:
@@ -544,9 +605,9 @@ func _draw_still(c: CanvasItem) -> void:
 	HangarProps.back_row(c, size, _bay_floor(), BAY_X, _font)
 	for terminal in TERMINALS:
 		if _terminal_rects.has(terminal):
-			_draw_terminal_still(c, terminal, _terminal_rects[terminal])
+			HangarProps.terminal_still(c, _font, terminal, _terminal_rects[terminal])
 	var board := Rect2(_board.position, _board.size)
-	_draw_cable(c, Vector2(board.position.x + board.size.x * 0.8, board.end.y))
+	HangarProps.cable(c, Vector2(board.position.x + board.size.x * 0.8, board.end.y))
 	var center := _platform_center()
 	HangarArt.draw_floor(c, rect, _floor_y, Vector2(center, _floor_y - size.y * 0.9))
 	HangarProps.floor_marks(c, size, _floor_y, center, _font)
@@ -555,7 +616,7 @@ func _draw_still(c: CanvasItem) -> void:
 		HangarArt.draw_platform(c, Vector2(center, _floor_y), _platform_width)
 	HangarProps.clutter(c, size, _floor_y)
 	HangarProps.target_stand(c, _world.position + _target_point() * _world.scale.x, _floor_y)
-	_draw_shelf(c)
+	HangarProps.shelf(c, _font, _shelf_rect())
 	HangarArt.draw_vignette(c, rect, 1.2)
 
 
@@ -634,87 +695,11 @@ func _draw_bays_live() -> void:
 			HangarProps.hologram(self, Vector2(x, y), size.y * 0.24, hover, label, _time, _font)
 
 
-## Una terminal de pared, lo quieto: marco con relieve, cristal con sus
-## lineas de barrido, su nombre y el cable que baja a la pared.
-func _draw_terminal_still(c: CanvasItem, terminal: String, rect: Rect2) -> void:
-	if terminal == "ajustes":
-		HangarProps.control_box(c, rect)
-		return
-	var screen := HangarArt.draw_screen_still(c, rect)
-	HangarProps.text(
-		c,
-		_font,
-		screen.position + Vector2(8, 15),
-		Txt.t("terminal_" + terminal),
-		screen.size.x - 16.0,
-		13,
-		COLOR_TEXT
-	)
-	_draw_cable(c, Vector2(rect.position.x + rect.size.x * 0.8, rect.end.y))
-
-
-## Y lo que se mueve: la franja de luz, su dibujo, el led y el brillo al
-## pasar el raton.
-func _draw_terminal_live(terminal: String, rect: Rect2) -> void:
-	if terminal == "ajustes":
-		HangarProps.control_box_live(self, _font, rect, _hover_terminal == terminal, _time)
-		return
-	var screen := HangarArt.draw_screen_live(self, rect, _hover_terminal == terminal, _time)
-	var art := Rect2(screen.position + Vector2(8, 22), screen.size - Vector2(16, 30))
-	var foot := Vector2(screen.position.x + 8.0, screen.end.y - 8.0)
-	var wide := screen.size.x - 16.0
-	match terminal:
-		"tienda":
-			# Abajo, tus celdas.
-			art.size.y -= 16.0
-			HangarProps.store_art(self, art)
-			HangarProps.cells_line(self, _font, foot, wide, int(info.get("cells", 0)))
-		"mejoras":
-			HangarProps.upgrades_art(self, art, info.get("upgrades", []), _time)
-		"habilidades":
-			# Abajo, tu nivel y lo que llevas del siguiente.
-			art.size.y -= 16.0
-			HangarProps.skills_art(self, art)
-			HangarProps.level_line(
-				self,
-				_font,
-				foot,
-				wide,
-				int(info.get("level", 1)),
-				int(info.get("xp", 0)),
-				int(info.get("xp_next", -1))
-			)
-	var led_at := Vector2(rect.end.x - 14.0, rect.position.y + 6.0)
-	draw_circle(led_at, 2.4, Color("55ff9a", 0.4 + 0.4 * sin(_time * 4.0 + rect.position.x)))
-
-
-## Cable que baja de una pantalla a la pared.
-func _draw_cable(c: CanvasItem, from: Vector2) -> void:
-	c.draw_line(from, from + Vector2(6.0, 28.0), Color("0e141c"), 3.0)
-
-
-## Estante de equipo: una placa con su rotulo; los huecos van encima.
-func _draw_shelf(c: CanvasItem) -> void:
-	var shelf := _shelf_rect()
-	var style := TechStyle.plate(Color("161e2a"), Color("3c4c62"), 0.0, 8.0)
-	style.groove = false
-	style.draw(c.get_canvas_item(), shelf)
-	HangarProps.text(
-		c,
-		_font,
-		shelf.position + Vector2(10, -4),
-		Txt.t("rack_title"),
-		shelf.size.x,
-		11,
-		Color("9aa7b8")
-	)
-
-
 func _draw_overlay() -> void:
 	super._draw_overlay()
-	if _mech.build == null or is_turned() or _mission_on:
+	if _mech.build == null or not _can_touch() or _mission_on:
 		return
-	if can_test:
+	if can_test and not is_turned():
 		# La diana llama: un aro que late y, debajo, que hace.
 		var target := _target_point()
 		var beat := 0.5 + 0.5 * sin(_time * 4.0)
@@ -738,10 +723,10 @@ func _draw_overlay() -> void:
 			Color(COLOR_SELECTED, 0.55 + 0.45 * glow)
 		)
 	# Enchufes de los huecos de arma vacios: un anillo que late.
-	for slot: String in ["side0", "side1", "side2", "side3", "top0", "top1"]:
+	for slot: String in SOCKETS:
 		if _item_in(slot) != null:
 			continue
-		var at := socket_point(slot)
+		var at := _robot_point(socket_point(slot))
 		var pulse := 0.5 + 0.5 * sin(_time * 4.0)
 		var selected := slot == selected_slot
 		var color := COLOR_SELECTED if selected else COLOR_SOCKET
@@ -764,7 +749,7 @@ func socket_point(slot: String) -> Vector2:
 ## Punto de la pantalla donde esta un hueco (su pieza o su enchufe).
 func slot_screen_point(slot: String) -> Vector2:
 	var world := socket_point(slot) if _item_in(slot) == null else _world_rect(slot).get_center()
-	return get_global_rect().position + _world.position + world * _world.scale.x
+	return get_global_rect().position + _world.position + _robot_point(world) * _world.scale.x
 
 
 func _text(
@@ -774,23 +759,6 @@ func _text(
 
 
 # --- Raton -------------------------------------------------------------------
-
-
-## Hueco bajo un punto: una pieza del robot o el enchufe de un hueco vacio.
-func slot_at(at: Vector2) -> String:
-	# Girado no se tocan las piezas: se le da la vuelta para verlo.
-	if is_turned():
-		return ""
-	var slot := super.slot_at(at)
-	if slot != "" or _mech.build == null:
-		return slot
-	var world := (at - _world.position) / _world.scale.x
-	for socket: String in ["side0", "side1", "side2", "side3", "top0", "top1"]:
-		if _item_in(socket) == null:
-			var radius := SOCKET_RADIUS * 1.6 / _world.scale.x
-			if world.distance_to(socket_point(socket)) <= radius:
-				return socket
-	return ""
 
 
 ## El raton salio del hangar (o paso al tablero, a una cuna o a una pantalla
@@ -837,16 +805,40 @@ func _grabs_platform(at: Vector2) -> bool:
 	var on_platform := (
 		Vector2((at.x - feet.x) / rx, (at.y - feet.y - ry * 0.25) / ry).length() <= 1.0
 	)
-	if is_turned():
-		var body := Rect2(
-			_world.position + _bounds.position * _world.scale.x, _bounds.size * _world.scale.x
-		)
-		return on_platform or body.has_point(at)
-	return on_platform and slot_at(at) == ""
+	if is_turned() and not is_flipped():
+		return on_platform or _over_robot(at)
+	# Con las piezas a mano, el robot se agarra por donde no hay ninguna.
+	return (on_platform or _over_robot(at)) and slot_at(at) == ""
+
+
+## True si ese punto cae sobre el robot (lo que ocupa de perfil).
+func _over_robot(at: Vector2) -> bool:
+	if _mech.build == null:
+		return false
+	var body := Rect2(
+		_world.position + _bounds.position * _world.scale.x, _bounds.size * _world.scale.x
+	)
+	return body.grow(12.0).has_point(at)
+
+
+## La rueda o el desplazamiento del panel tactil giran el robot `steps`
+## muescas (pueden ser fracciones). Cerca de una vista dibujada se coloca
+## en ella.
+func turn_by(steps: float) -> void:
+	var target := turn + steps * TURN_PER_NOTCH
+	var quarter := snappedf(target, PI / 2.0)
+	if absf(wrapf(target - quarter, -PI, PI)) < TURN_SNAP:
+		target = quarter
+	turn_to(target, 0.16)
 
 
 func _gui_input(event: InputEvent) -> void:
 	if _launching:
+		return
+	var pan := event as InputEventPanGesture
+	if pan != null and (_over_robot(pan.position) or _grabs_platform(pan.position)):
+		turn_by((pan.delta.x if absf(pan.delta.x) > absf(pan.delta.y) else -pan.delta.y) * 0.25)
+		accept_event()
 		return
 	var button := event as InputEventMouseButton
 	if button != null and _turn_input(button):
@@ -854,6 +846,7 @@ func _gui_input(event: InputEvent) -> void:
 	var dragged := event as InputEventMouseMotion
 	if dragged != null and _turning:
 		turn += dragged.relative.x * TURN_PER_PIXEL
+		_turn_moved = true
 		return
 	var motion := event as InputEventMouseMotion
 	if motion != null:
@@ -931,13 +924,27 @@ func _turn_input(button: InputEventMouseButton) -> bool:
 	if button.button_index == MOUSE_BUTTON_LEFT and not button.pressed and _turning:
 		_turning = false
 		queue_redraw()
+		if not _turn_moved:
+			# Un clic sin arrastrar no es girarlo: es pulsar el hangar.
+			background_pressed.emit()
+			return true
 		# Casi en una vista dibujada: se coloca en ella (de perfil, ademas,
 		# se pueden tocar sus piezas).
 		var quarter := snappedf(turn, PI / 2.0)
 		if absf(wrapf(turn - quarter, -PI, PI)) < TURN_SNAP:
 			turn_to(quarter, 0.18)
 		return true
-	if not button.pressed or not _grabs_platform(button.position):
+	if not button.pressed:
+		return false
+	# La rueda (o desplazar con dos dedos) lo gira con el cursor en cualquier
+	# parte del robot o de su plataforma.
+	var wheel := WHEEL_TURN.get(button.button_index, 0.0) as float
+	if wheel != 0.0:
+		if not (_over_robot(button.position) or _grabs_platform(button.position)):
+			return false
+		turn_by(wheel * (button.factor if button.factor > 0.0 else 1.0))
+		return true
+	if not _grabs_platform(button.position):
 		return false
 	if _terminal_at(button.position) != "" or _bay_at(button.position) >= 0:
 		return false
@@ -949,13 +956,8 @@ func _turn_input(button: InputEventMouseButton) -> bool:
 				if _turn_tween != null:
 					_turn_tween.kill()
 				_turning = true
+				_turn_moved = false
 				queue_redraw()
-			return true
-		MOUSE_BUTTON_WHEEL_UP:
-			turn_to(turn + TURN_PER_NOTCH, 0.16)
-			return true
-		MOUSE_BUTTON_WHEEL_DOWN:
-			turn_to(turn - TURN_PER_NOTCH, 0.16)
 			return true
 	return false
 

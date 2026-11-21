@@ -167,6 +167,9 @@ func _ready() -> void:
 		elif _args["menu-shot"] == "evolucion":
 			_live_test().evolution_test()
 			return
+		elif _args["menu-shot"] == "observaciones":
+			_live_test().observations_test()
+			return
 		elif _args["menu-shot"] == "taller":
 			_live_test().workshop_test(open_workshop())
 			return
@@ -731,8 +734,8 @@ func _on_battle_finished(player_won: bool) -> void:
 
 
 ## Herramienta de prueba en vivo (LiveTest), solo con --autoplay o --menu-shot.
-func _live_test() -> LiveTest:
-	var live := LiveTest.new()
+func _live_test() -> LiveHangarTest:
+	var live := LiveHangarTest.new()
 	live.main = self
 	add_child(live)
 	return live

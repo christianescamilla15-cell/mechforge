@@ -187,10 +187,10 @@ func fire_between(
 			var deploying := shooter.deploy(seconds * 0.9)
 			if deploying != null:
 				await deploying.finished
-		shooter.fire(seconds * 0.6, slot)
+		ShotFx.kick(shooter, fx, seconds * 0.6, slot, seconds)
 	elif slot != "":
 		# El robot de asistencia tambien retrocede al disparar.
-		shooter.fire(seconds * 0.6, slot)
+		ShotFx.kick(shooter, fx, seconds * 0.6, slot, seconds)
 	var from := shooter.muzzle_point(from_drone, slot)
 	var to := mechs[target].hit_point()
 	await _shots.play(fx, from, to, color, seconds)

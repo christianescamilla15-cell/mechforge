@@ -731,6 +731,135 @@ func test_una_hoja_se_prueba_con_su_tajo_y_no_con_un_disparo() -> void:
 	assert_eq(stage._mech._swing, 0.0)
 
 
+# --- Observaciones del 2026-11-20 (docs/OBSERVACIONES.md) --------------------------
+
+
+func _screen_point(stage: HangarStage, world: Vector2) -> Vector2:
+	return stage._world.position + world * stage._world.scale.x
+
+
+func test_obs004_las_piernas_que_faltan_se_eligen_en_su_fantasma() -> void:
+	var stage := _stage()
+	var build: MechBuild = stage._mech.build
+	stage.show_build(build, ["legs"] as Array[String])
+	var legs := _screen_point(stage, stage._world_rect("legs").get_center())
+	assert_true("legs" in stage.slots_at(legs), "el fantasma se puede pulsar")
+	var picked: Array[String] = []
+	stage.picked.connect(func(slot: String) -> void: picked.append(slot))
+	# Un punto de las piernas que no tape ningun arma.
+	var foot := _screen_point(
+		stage,
+		stage._world_rect("legs").position + stage._world_rect("legs").size * Vector2(0.5, 0.85)
+	)
+	stage._gui_input(_click(foot))
+	assert_eq(picked, ["legs"] as Array[String])
+	assert_null(stage._get_drag_data(foot), "un fantasma no se arrastra")
+
+
+func test_obs005_pulsar_otra_vez_pasa_al_arma_de_detras() -> void:
+	var stage := _stage()
+	var both := stage._world_rect("side0").intersection(stage._world_rect("side2"))
+	assert_gt(both.get_area(), 0.0, "el brazo de detras queda tapado por el de delante")
+	var at := _screen_point(stage, both.get_center())
+	var under := stage.slots_at(at)
+	assert_true("side0" in under and "side2" in under)
+	assert_eq(stage.slot_to_pick(at), under[0], "el primer clic, el de encima")
+	stage.selected_slot = under[0]
+	assert_eq(stage.slot_to_pick(at), under[1], "el segundo, el de debajo")
+	stage.selected_slot = under[under.size() - 1]
+	assert_eq(stage.slot_to_pick(at), under[0], "y da la vuelta")
+
+
+func test_obs005_la_cabecera_del_tablero_tiene_una_casilla_por_hueco() -> void:
+	var profile := _profile()
+	var state := _brief.rack(profile, "side1")
+	var siblings: Array = state["siblings"]
+	assert_eq(siblings.size(), 4, "los cuatro brazos")
+	for entry: Dictionary in siblings:
+		assert_eq(bool(entry["selected"]), entry["slot"] == "side1")
+		assert_eq(bool(entry["filled"]), Garage.get_slot(profile.build, entry["slot"]) != "")
+	assert_eq((_brief.rack(profile, "top0")["siblings"] as Array).size(), 2)
+	# El torso y las piernas van juntos: de uno se pasa al otro.
+	var body: Array = _brief.rack(profile, "torso")["siblings"]
+	assert_eq(body.size(), 2)
+	assert_eq(body[1]["slot"], "legs")
+	assert_eq((_brief.rack(profile, "hook")["siblings"] as Array).size(), 0, "un hueco solo")
+	var picked: Array[String] = []
+	var rack := _rack(state)
+	rack.slot_picked.connect(func(slot: String) -> void: picked.append(slot))
+	rack._gui_input(_click(rack.sibling_rects()[2].get_center()))
+	assert_eq(picked, ["side2"] as Array[String])
+	assert_eq(_chosen.size(), 0)
+
+
+func test_obs008_la_tecla_de_subir_dice_lo_que_cambia() -> void:
+	var profile := _profile()
+	var key: Dictionary = _brief.rack(profile, "side1")["key"]
+	assert_string_contains(str(key["gain"]), "→")
+	assert_string_contains(str(key["gain"]), "daño")
+	# Un torso dice su vida; y lo que dice es lo que pasa al subirlo.
+	var torso_key: Dictionary = _brief.rack(profile, "torso")["key"]
+	assert_string_contains(str(torso_key["gain"]), Txt.t("stat_health"))
+	var id := Garage.get_slot(profile.build, "torso")
+	var before := _brief.resolved(profile, id).health
+	profile.parts[id] = {"tier": 0, "level": 1}
+	var after := _brief.resolved(profile, id).health
+	assert_gt(after, before, "subir de nivel sube la vida del torso")
+	assert_string_contains(str(torso_key["gain"]), "%d → %d" % [before, after])
+
+
+func test_obs009_cada_arma_de_balas_dispara_a_su_manera() -> void:
+	var burst := ShotFx.shot("rafaga")
+	var blast := ShotFx.shot("perdigones")
+	var slug := ShotFx.shot("bala_rifle")
+	assert_gt(int(burst["count"]), 8, "la ametralladora, muchas balas")
+	assert_gt(float(burst["gap"]), 0.0, "una detras de otra")
+	assert_gt(int(blast["count"]), 10, "la escopeta, muchos fragmentos")
+	assert_eq(float(blast["gap"]), 0.0, "de un solo tiro")
+	assert_gt(float(blast["spread"]), float(burst["spread"]) * 3.0, "muy abiertos")
+	assert_gt(float(blast["kick"]), float(burst["kick"]) * 2.0, "con mas culatazo")
+	assert_eq(int(slug["count"]), 1, "el rifle, un tiro")
+	# El arma da un golpe por bala en la rafaga y uno solo en la escopeta.
+	var stage := _stage()
+	for id: String in ShotFx.table():
+		ShotFx.kick(stage._mech, id, 0.3, "side1", 0.42)
+	assert_true(true, "ningun disparo rompe el gesto del arma")
+
+
+func test_obs023_la_rueda_gira_el_robot_con_el_cursor_sobre_el() -> void:
+	var stage := _stage()
+	var chest := _screen_point(stage, stage._world_rect("torso").get_center())
+	stage._gui_input(_click(chest, MOUSE_BUTTON_WHEEL_UP))
+	await wait_seconds(0.3)
+	assert_true(stage.is_turned(), "gira sin tener que acertar en la plataforma")
+	# Lejos del robot la rueda no lo mueve.
+	var before := stage.turn
+	stage._gui_input(_click(Vector2(40, 40), MOUSE_BUTTON_WHEEL_UP))
+	await wait_seconds(0.3)
+	assert_eq(stage.turn, before)
+
+
+func test_obs023_de_media_vuelta_se_tocan_las_armas_del_otro_lado() -> void:
+	var stage := _stage()
+	var both := stage._world_rect("side0").intersection(stage._world_rect("side2"))
+	var at := _screen_point(stage, both.get_center())
+	assert_eq(stage.slots_at(at)[0], "side0", "de perfil, delante el brazo cercano")
+	# A medio girar no se toca nada.
+	stage.turn = PI / 2.0
+	assert_eq(stage.slots_at(at).size(), 0)
+	# De media vuelta el robot se ve reflejado y manda el brazo del otro lado.
+	stage.turn = PI
+	assert_true(stage.is_flipped())
+	var mirrored := _screen_point(stage, stage._robot_point(both.get_center()))
+	var under := stage.slots_at(mirrored)
+	assert_gt(under.size(), 1)
+	assert_eq(under[0], "side2", "delante queda el brazo que de perfil estaba detras")
+	var picked: Array[String] = []
+	stage.picked.connect(func(slot: String) -> void: picked.append(slot))
+	stage._gui_input(_click(mirrored))
+	assert_eq(picked, ["side2"] as Array[String])
+
+
 func test_el_tablero_cuelga_a_la_derecha_sin_tapar_al_robot_ni_el_banco() -> void:
 	var stage := _stage()
 	var home := stage.parts_rack.home

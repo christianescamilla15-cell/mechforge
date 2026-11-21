@@ -389,10 +389,21 @@ func deploy(seconds: float) -> Tween:
 
 
 ## Retroceso del arma al disparar: la del hueco que dispara.
-func fire(seconds: float, slot: String = "") -> void:
+## Con varios proyectiles seguidos (`shots`, cada `gap` segundos) da un
+## golpe corto por cada uno; `strength` es la fuerza del culatazo.
+func fire(
+	seconds: float, slot: String = "", shots: int = 1, gap: float = 0.0, strength: float = 1.0
+) -> void:
 	_fired_slot = slot
 	var tween := create_tween()
-	tween.tween_property(self, "_recoil", RECOIL, seconds * 0.15)
+	var kick := RECOIL * strength
+	if shots > 1 and gap > 0.0:
+		for i in shots:
+			tween.tween_property(self, "_recoil", kick * 0.6, gap * 0.3)
+			tween.tween_property(self, "_recoil", kick * 0.12, gap * 0.7)
+		tween.tween_property(self, "_recoil", 0.0, seconds * 0.4).set_trans(Tween.TRANS_SINE)
+		return
+	tween.tween_property(self, "_recoil", kick, seconds * 0.15)
 	tween.tween_property(self, "_recoil", 0.0, seconds * 0.85).set_trans(Tween.TRANS_SINE)
 
 

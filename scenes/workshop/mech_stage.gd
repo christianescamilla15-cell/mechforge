@@ -133,7 +133,7 @@ func test_fire(slot: String, fx: String, color: Color) -> void:
 	var from := _mech.muzzle_point(drone, slot)
 	var to := _target_point()
 	if not drone:
-		_mech.fire(0.35, slot)
+		ShotFx.kick(_mech, fx, 0.35, slot, 0.42)
 	if ShotFx.is_known(fx):
 		await _shots.play(fx, from, to, color, 0.42)
 	_flash_target()
@@ -247,9 +247,9 @@ func _brackets(slot: String, color: Color, width: float) -> void:
 		return
 	for i in 4:
 		# Cada esquina, con sus dos lados.
-		var p := _mech.transform * quad[i]
-		var next := _mech.transform * quad[(i + 1) % 4] - p
-		var before := _mech.transform * quad[(i + 3) % 4] - p
+		var p := _robot_point(_mech.transform * quad[i])
+		var next := _robot_point(_mech.transform * quad[(i + 1) % 4]) - p
+		var before := _robot_point(_mech.transform * quad[(i + 3) % 4]) - p
 		var arm := minf(18.0, minf(next.length(), before.length()) * 0.35)
 		var corner := p - (next.normalized() + before.normalized()) * 6.0
 		_overlay.draw_line(corner, corner + next.normalized() * arm, color, width)
@@ -268,17 +268,47 @@ func _world_rect(slot: String) -> Rect2:
 
 ## Hueco cuya pieza esta bajo un punto de la pantalla del taller; "" si nada.
 func slot_at(at: Vector2) -> String:
+	var under := slots_at(at)
+	return under[0] if not under.is_empty() else ""
+
+
+## Todos los huecos cuya pieza esta bajo ese punto, del de encima al de mas
+## abajo. Un torso o unas piernas que faltan (su fantasma) tambien cuentan:
+## asi se elige su hueco en un robot recien adquirido.
+func slots_at(at: Vector2) -> Array[String]:
+	var out: Array[String] = []
 	if _mech.build == null:
-		return ""
-	var world := (at - _world.position) / _world.scale.x
+		return out
+	var world := _robot_point((at - _world.position) / _world.scale.x)
 	var local := _mech.transform.affine_inverse() * world
-	for slot in TOUCHABLE:
-		if _mech.slot_has_point(slot, local):
-			# Un hueco vacio (o una pieza fantasma) no se toca en el dibujo.
-			if _item_in(slot) == null:
-				continue
-			return slot
-	return ""
+	for slot in _touch_order():
+		if not _mech.slot_has_point(slot, local):
+			continue
+		if _item_in(slot) != null or slot in _mech.ghost_slots:
+			out.append(slot)
+	return out
+
+
+## El hueco que elige un clic en ese punto: el de encima o, si ese ya esta
+## elegido, el siguiente de los que tiene debajo. Asi se llega a un arma
+## tapada por otra pulsando otra vez.
+func slot_to_pick(at: Vector2) -> String:
+	var under := slots_at(at)
+	if under.is_empty():
+		return ""
+	var index := under.find(selected_slot)
+	return under[(index + 1) % under.size()] if index >= 0 else under[0]
+
+
+## Orden en que se miran los huecos (el primero gana).
+func _touch_order() -> Array[String]:
+	return TOUCHABLE
+
+
+## Un punto del mundo del taller, tal como cae sobre el robot (el hangar lo
+## refleja cuando el robot esta de media vuelta).
+func _robot_point(world: Vector2) -> Vector2:
+	return world
 
 
 func _gui_input(event: InputEvent) -> void:
@@ -292,7 +322,7 @@ func _gui_input(event: InputEvent) -> void:
 		return
 	var click := event as InputEventMouseButton
 	if click != null and click.pressed and click.button_index == MOUSE_BUTTON_LEFT:
-		var slot := slot_at(click.position)
+		var slot := slot_to_pick(click.position)
 		if slot != "":
 			picked.emit(slot)
 
