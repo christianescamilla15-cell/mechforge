@@ -66,6 +66,7 @@ func _ready() -> void:
 	_stage.rival_pressed.connect(_on_rival_pressed)
 	_stage.channel_picked.connect(open_missions)
 	_stage.pick_changed.connect(_on_pick_changed)
+	_stage.protection_picked.connect(_on_protection_picked)
 	_stage.sign_pressed.connect(show_page.bind("robot"))
 	_stage.target_pressed.connect(test_fire)
 	var rack := _stage.parts_rack
@@ -412,6 +413,14 @@ func _on_pick_changed(key: String, step: int) -> void:
 	main.change_free_pick(key, step)
 	if _channel == "free":
 		_stage.show_mission(main.mission_state("free"))
+
+
+## Una proteccion de la campana comprada en el monitor.
+func _on_protection_picked(kind: String) -> void:
+	var reason := main.buy_protection(kind)
+	if reason != "":
+		toast(reason)
+	refresh()
 
 
 ## Se pulso al primero de la fila: salir a combatir. Si tu robot no puede

@@ -143,6 +143,10 @@ func _ready() -> void:
 		# --xp=<n> y --chest=<id>: un perfil con huecos abiertos y arma de pecho.
 		if _args.has("xp"):
 			_profile.xp = int(_args["xp"])
+		# --gold=<n>: sus celdas; --en-campana: con la campana de la liga en marcha.
+		if _args.has("gold"):
+			_profile.gold = int(_args["gold"])
+		_profile.campaign_on = _args.has("en-campana")
 		if _args.has("chest"):
 			_profile.owned.append(_args["chest"])
 			_profile.build["chest"] = _args["chest"]
@@ -388,6 +392,9 @@ func _refresh_hangar() -> void:
 ## tu robot puede pelear ("can_fight", "problems") y tu historial ("record").
 func mission_state(channel: String = "campaign") -> Dictionary:
 	var state: Dictionary
+	# Con la campana de la liga en marcha solo queda la campana.
+	if _campaign.mode_locked(_profile, channel):
+		channel = "campaign"
 	match channel:
 		"arena":
 			var power := Campaign.mean_power(_rules, _profile, _player_items())
@@ -399,6 +406,10 @@ func mission_state(channel: String = "campaign") -> Dictionary:
 	var problems := _player_build().validate(_rules)
 	state["can_fight"] = problems.is_empty()
 	state["problems"] = Txt.t("mech_problems", [", ".join(problems)])
+	state["locks"] = {
+		"arena": _campaign.mode_locked(_profile, "arena"),
+		"free": _campaign.mode_locked(_profile, "free"),
+	}
 	state["record"] = Txt.t(
 		"mission_record",
 		[_profile.wins, _profile.losses, _profile.boss_wins, _campaign.world_bosses]
@@ -409,6 +420,8 @@ func mission_state(channel: String = "campaign") -> Dictionary:
 ## Sale a combatir en ese canal. El aviso del jefe (perder acaba la partida)
 ## ya lo dio el hangar, que pide pulsarlo dos veces.
 func start_mission(channel: String) -> void:
+	if _campaign.mode_locked(_profile, channel):
+		channel = "campaign"
 	match channel:
 		"arena":
 			_on_arena_pressed()
@@ -417,7 +430,21 @@ func start_mission(channel: String) -> void:
 		_:
 			var zone := _profile.zone
 			if zone < _campaign.zone_count() and not _campaign.is_complete(_profile):
+				# Desde el primer combate, la campana de la liga esta en marcha:
+				# la arena y el combate libre se cierran hasta terminarla.
+				_campaign.begin_fight(_profile)
+				_save()
 				_start_battle(_spec_for("campaign", zone, _campaign.fight_at(zone, _profile.fight)))
+
+
+## Compra una proteccion de la campana ("league" o "rematch"). Devuelve ""
+## o por que no se pudo.
+func buy_protection(kind: String) -> String:
+	var reason := _campaign.buy_protection(_profile, kind)
+	if reason == "":
+		Sfx.play("ui_comprar")
+		_save()
+	return reason
 
 
 ## Cambia algo de lo elegido en el combate libre ("enemy", "tier" o
@@ -655,8 +682,9 @@ func _start_battle(spec: Dictionary) -> void:
 	var boss: bool = (
 		spec["mode"] == "campaign" and _campaign.is_boss_fight(spec["zone"], _profile.fight)
 	)
-	# Rendirse contra un jefe acaba la partida, como perder: la pausa lo avisa.
-	_battle.surrender_ends_run = boss and _campaign.on_boss_loss == "new_game"
+	# Rendirse en la campana es perder: sin proteccion acaba la partida, y la
+	# pausa lo avisa.
+	_battle.surrender_ends_run = spec["mode"] == "campaign" and _campaign.loss_ends_run(_profile)
 	Sfx.music("jefe" if boss else "combate")
 	if rewarded:
 		_battle.finished.connect(_on_battle_finished)
@@ -722,6 +750,8 @@ func _on_battle_finished(player_won: bool) -> void:
 	if result["game_over"]:
 		_return = {}
 		_last_result = Txt.t("result_game_over")
+	elif str(result["protected"]) != "":
+		_last_result = Txt.t("result_protected_" + str(result["protected"]))
 	elif result["unique"]:
 		_last_result = Txt.t("result_unique", [result["gold"]])
 	elif result["zone_cleared"]:

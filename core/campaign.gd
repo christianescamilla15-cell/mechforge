@@ -1,10 +1,23 @@
 class_name Campaign
 extends RefCounted
-## Campana (GDD 9): un mundo dividido en zonas. Cada zona son sus combates
-## normales, en orden, y un jefe al final. El jugador avanza combate a
-## combate; la arena, aparte, sirve para juntar celdas sin avanzar.
+## Campana (GDD 9): un mundo dividido en zonas, que son ligas. Cada liga son
+## sus combates normales, en orden, y su campeon (el jefe) al final.
+##
+## Reglas de liga (decision del usuario, 2026-11-20, docs/OBSERVACIONES.md
+## OBS-020): antes de empezar la campana de una liga, la arena y el combate
+## libre estan abiertos (la arena sirve para juntar celdas). Al empezar su
+## primer combate, se cierran hasta terminarla. Perder un combate de la
+## campana acaba la partida entera y se vuelve al principio, salvo que el
+## jugador lleve una proteccion:
+## - "rematch" (la revancha, la cara): vuelve al rival anterior al que le
+##   vencio, es decir, contra el campeon, al penultimo; sigue en campana;
+## - "league" (el seguro de liga): vuelve al comienzo de esa liga, con la
+##   campana sin empezar.
+## Se gasta la mejor que lleve.
+##
 ## Datos en data/campaign.json:
-## {"schema_version", "world_bosses", "on_boss_loss", "zones": [{"id", "name",
+## {"schema_version", "world_bosses", "on_loss", "protections": {"league":
+##   precio, "rematch": precio}, "zones": [{"id", "name",
 ##   "tier", "level_cap", "reward_mult", "stage", "drops_unique",
 ##   "arena": {"difficulty"},
 ##   "fights": [{"enemy", "level", "difficulty"}], "boss": {...}}]}
@@ -21,15 +34,20 @@ extends RefCounted
 ## de la clase de la zona mientras este en ella: el del jefe. Lo que farmee
 ## de mas va a las mejoras de la armeria.
 
-## Que pasa al perder contra un jefe: "new_game" termina la partida y se
-## empieza de cero; "retry" deja volver a intentarlo.
-const BOSS_LOSS_RULES: Array[String] = ["new_game", "retry"]
+## Que pasa al perder un combate de la campana: "new_game" termina la
+## partida y se empieza de cero (salvo proteccion); "retry" deja volver a
+## intentarlo sin perder nada.
+const LOSS_RULES: Array[String] = ["new_game", "retry"]
+## Protecciones, de la mejor a la peor: es el orden en que se gastan.
+const PROTECTIONS: Array[String] = ["rematch", "league"]
 const DIFFICULTIES: Array[String] = ["EASY", "NORMAL", "HARD"]
 
 var zones: Array[Dictionary] = []
 ## Jefes que tendra el mundo entero; las zonas hechas pueden ser menos.
 var world_bosses: int = 0
-var on_boss_loss: String = "new_game"
+var on_loss: String = "new_game"
+## Precio de cada proteccion en la primera liga (sube con la liga).
+var protection_prices: Dictionary[String, int] = {}
 var errors: Array[String] = []
 
 
@@ -42,9 +60,18 @@ static func load_file(path: String, library: BuildLibrary) -> Campaign:
 	if not parsed is Dictionary or not parsed.get("zones") is Array:
 		campaign.errors.append("%s no tiene una lista 'zones'" % path)
 		return campaign
-	campaign.on_boss_loss = str(parsed.get("on_boss_loss", "new_game"))
-	if not campaign.on_boss_loss in BOSS_LOSS_RULES:
-		campaign.errors.append("'on_boss_loss' debe ser uno de %s" % [BOSS_LOSS_RULES])
+	campaign.on_loss = str(parsed.get("on_loss", "new_game"))
+	if not campaign.on_loss in LOSS_RULES:
+		campaign.errors.append("'on_loss' debe ser uno de %s" % [LOSS_RULES])
+	# Sin "protections" no se vende ninguna; si esta, lleva las dos.
+	var prices: Variant = parsed.get("protections")
+	for kind in PROTECTIONS:
+		if prices == null:
+			continue
+		if prices is Dictionary and int(prices.get(kind, 0)) > 0:
+			campaign.protection_prices[kind] = int(prices[kind])
+		else:
+			campaign.errors.append("falta el precio de la proteccion '%s'" % kind)
 	for raw: Variant in parsed["zones"]:
 		campaign._add_zone(raw, library)
 	campaign.world_bosses = maxi(int(parsed.get("world_bosses", 0)), campaign.zones.size())
@@ -187,12 +214,68 @@ static func mean_power(
 	return total / item_ids.size()
 
 
-## Apunta el resultado de un combate en el perfil del jugador: cobra, avanza
-## la campana o, si perdio contra un jefe, termina la partida. Los jefes que
-## lo dicen en los datos ("drops_unique") dan ademas un nucleo unico.
-## Con `progression`, suma la experiencia del combate. `mode` es "arena" o
-## "campaign". Devuelve {"gold", "game_over", "zone_cleared", "boss",
-## "unique", "xp", "level_up"}.
+## True si ese modo ("arena" o "free") esta cerrado: lo esta mientras la
+## campana de la liga este en marcha.
+func mode_locked(profile: PlayerProfile, mode: String) -> bool:
+	return mode != "campaign" and profile.campaign_on
+
+
+## Empieza un combate de la campana: desde el primero, la campana de la liga
+## esta en marcha y la arena y el combate libre se cierran.
+func begin_fight(profile: PlayerProfile) -> void:
+	if profile.zone < zone_count() and not is_complete(profile):
+		profile.campaign_on = true
+
+
+## Lo que cuesta una proteccion en la liga del jugador.
+func protection_price(kind: String, zone: int) -> int:
+	var at := mini(zone, zone_count() - 1)
+	return roundi(int(protection_prices.get(kind, 0)) * reward_mult(at))
+
+
+## Devuelve "" si puede comprar esa proteccion; si no, el motivo.
+func why_cant_protect(profile: PlayerProfile, kind: String) -> String:
+	if not kind in PROTECTIONS or not protection_prices.has(kind):
+		return "esa proteccion no existe"
+	if int(profile.protections.get(kind, 0)) > 0:
+		return "ya la tienes"
+	if is_complete(profile):
+		return "la campana ya esta completa"
+	if protection_price(kind, profile.zone) > profile.gold:
+		return "faltan celdas"
+	return ""
+
+
+## Compra una proteccion (una de cada tipo como mucho). Devuelve "" o el motivo.
+func buy_protection(profile: PlayerProfile, kind: String) -> String:
+	var reason := why_cant_protect(profile, kind)
+	if reason != "":
+		return reason
+	profile.gold -= protection_price(kind, profile.zone)
+	profile.protections[kind] = 1
+	return ""
+
+
+## La proteccion que se gastaria si pierde ahora: la mejor que lleve, o "".
+func protection_in_use(profile: PlayerProfile) -> String:
+	for kind in PROTECTIONS:
+		if int(profile.protections.get(kind, 0)) > 0:
+			return kind
+	return ""
+
+
+## True si perder ahora un combate de la campana acabaria la partida.
+func loss_ends_run(profile: PlayerProfile) -> bool:
+	return on_loss == "new_game" and protection_in_use(profile) == ""
+
+
+## Apunta el resultado de un combate en el perfil del jugador: cobra y avanza
+## la campana o, si perdio en ella, gasta su proteccion o termina la partida
+## (reglas de liga, arriba). Los jefes que lo dicen en los datos
+## ("drops_unique") dan ademas un nucleo unico. Con `progression`, suma la
+## experiencia del combate. `mode` es "arena" o "campaign". Devuelve {"gold",
+## "game_over", "zone_cleared", "boss", "unique", "protected" (la proteccion
+## gastada, "" si ninguna), "xp", "level_up"}.
 func finish_fight(
 	profile: PlayerProfile,
 	shop: ArenaShop,
@@ -218,7 +301,12 @@ func finish_fight(
 
 func _settle(profile: PlayerProfile, shop: ArenaShop, mode: String, won: bool) -> Dictionary:
 	var out := {
-		"gold": 0, "game_over": false, "zone_cleared": false, "boss": false, "unique": false
+		"gold": 0,
+		"game_over": false,
+		"zone_cleared": false,
+		"boss": false,
+		"unique": false,
+		"protected": "",
 	}
 	var mult := reward_mult(profile.zone)
 	if mode != "campaign" or profile.zone >= zone_count():
@@ -226,24 +314,44 @@ func _settle(profile: PlayerProfile, shop: ArenaShop, mode: String, won: bool) -
 		return out
 	var boss := is_boss_fight(profile.zone, profile.fight)
 	out["boss"] = boss
-	if not boss:
-		out["gold"] = profile.earn(shop, "campaign_win" if won else "campaign_loss", mult)
-		if won:
-			profile.fight += 1
-	elif won:
+	if won and boss:
 		out["gold"] = profile.earn(shop, "boss_win", mult)
 		if bool(zones[profile.zone].get("drops_unique", false)):
 			profile.unique_cores += 1
 			out["unique"] = true
+		# Liga ganada: la siguiente empieza con su campana sin tocar.
 		profile.zone += 1
 		profile.fight = 0
+		profile.campaign_on = false
 		out["zone_cleared"] = true
-	elif on_boss_loss == "new_game":
+	elif won:
+		out["gold"] = profile.earn(shop, "campaign_win", mult)
+		profile.fight += 1
+		profile.campaign_on = true
+	elif on_loss != "new_game":
+		out["gold"] = profile.earn(shop, "boss_loss" if boss else "campaign_loss", mult)
+	else:
+		_lose_campaign_fight(profile, out)
+	return out
+
+
+## Perder un combate de la campana: gasta la mejor proteccion que lleve o,
+## sin ninguna, termina la partida.
+func _lose_campaign_fight(profile: PlayerProfile, out: Dictionary) -> void:
+	var used := protection_in_use(profile)
+	out["protected"] = used
+	if used == "":
 		profile.end_run()
 		out["game_over"] = true
+		return
+	profile.losses += 1
+	profile.protections[used] = 0
+	if used == "rematch":
+		# Un paso atras: contra el campeon, al penultimo rival.
+		profile.fight = maxi(profile.fight - 1, 0)
 	else:
-		out["gold"] = profile.earn(shop, "boss_loss", mult)
-	return out
+		profile.fight = 0
+		profile.campaign_on = false
 
 
 func _add_zone(raw: Variant, library: BuildLibrary) -> void:

@@ -1,7 +1,8 @@
 {
   "schema_version": 1,
   "world_bosses": 10,
-  "on_boss_loss": "new_game",
+  "on_loss": "new_game",
+  "protections": {"league": 3000, "rematch": 7500},
   "zones": [
     {
       "id": "zona_1",

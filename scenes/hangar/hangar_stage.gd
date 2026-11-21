@@ -35,6 +35,8 @@ signal missions_pressed
 signal rival_pressed
 signal channel_picked(channel: String)
 signal pick_changed(key: String, step: int)
+## Una proteccion de la campana, comprada en el monitor de misiones.
+signal protection_picked(kind: String)
 ## El rotulo de la bahia: la ficha de tu robot.
 signal sign_pressed
 ## La diana, con un arma que se puede probar en el hueco elegido.
@@ -183,6 +185,7 @@ func _ready() -> void:
 	_board.opened.connect(func() -> void: missions_pressed.emit())
 	_board.channel_picked.connect(func(channel: String) -> void: channel_picked.emit(channel))
 	_board.pick_changed.connect(func(key: String, step: int) -> void: pick_changed.emit(key, step))
+	_board.protection_picked.connect(func(kind: String) -> void: protection_picked.emit(kind))
 	add_child(projector)
 	add_child(parts_rack)
 	add_child(console)
@@ -217,6 +220,8 @@ func show_mission(state: Dictionary, how: String = "enter", beaten: Dictionary =
 	_row.blocked = "" if bool(state.get("can_fight", true)) else str(state.get("problems", ""))
 	_row.warning = str(state.get("warning", ""))
 	_row.confirm = bool(state.get("confirm", false))
+	_row.confirm_text = str(state.get("confirm_text", ""))
+	_row.danger = bool(state.get("danger", true))
 	var rivals: Array[Dictionary] = []
 	rivals.assign(state.get("rivals", []))
 	_row.show_rivals(rivals, how, beaten)

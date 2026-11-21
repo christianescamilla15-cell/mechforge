@@ -89,8 +89,12 @@ var hover := false:
 var armed := false
 ## Lo que dice bajo el primero en vez de "combatir": por que no se puede.
 var blocked := ""
-## Aviso bajo el primero (el del jefe).
+## Aviso bajo el primero: lo que pasa si pierdes. En rojo si perder acaba
+## la partida (`danger`); en dorado si una proteccion lo cubre.
 var warning := ""
+var danger := true
+## Lo que dice al pulsarlo la primera vez ("" = lo de siempre).
+var confirm_text := ""
 ## Hay que pulsar dos veces.
 var confirm := false
 var font: Font
@@ -563,7 +567,7 @@ func _draw_label(front: Rival, live: bool) -> void:
 		cue_color = BAD
 		cue_alpha = 1.0
 	elif armed:
-		cue = Txt.t("mission_confirm")
+		cue = confirm_text if confirm_text != "" else Txt.t("mission_confirm")
 		cue_color = BAD.lerp(GOLD, 0.5 + 0.5 * sin(_time * 9.0))
 		cue_alpha = 1.0
 	elif live:
@@ -571,7 +575,8 @@ func _draw_label(front: Rival, live: bool) -> void:
 		cue_alpha = 0.8 + 0.2 * sin(_time * 7.0)
 	_text(Vector2(left - 60.0, y + 38.0), cue, width + 120.0, 13, cue_color, alpha * cue_alpha)
 	if warning != "" and blocked == "":
-		_text(Vector2(left - 60.0, y + 58.0), warning, width + 120.0, 11, BAD, alpha * 0.95)
+		var tone := BAD if danger else GOLD
+		_text(Vector2(left - 60.0, y + 58.0), warning, width + 120.0, 11, tone, alpha * 0.95)
 
 
 func _brackets(rect: Rect2, color: Color) -> void:

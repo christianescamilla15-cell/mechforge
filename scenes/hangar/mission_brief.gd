@@ -8,11 +8,14 @@ extends RefCounted
 ##
 ## Cada estado es un diccionario:
 ## {"channel", "zone_line", "title", "fights", "fight", "lines", "warning",
-##  "confirm", "pickers", "rivals"}
+##  "danger", "confirm", "confirm_text", "protections", "pickers", "rivals"}
 ## - "fights" y "fight": las luces de avance (combates normales de la zona y
 ##   el que toca; con "fights" 0 no hay luces);
 ## - "lines": lo que dice el monitor de ese combate;
-## - "confirm": hay que pulsar dos veces (el jefe, si perder acaba la partida);
+## - "warning": lo que pasa si pierdes; "danger": perder acaba la partida;
+## - "confirm": hay que pulsar dos veces (al entrar en la campana de una
+##   liga y contra su campeon); "confirm_text": lo que dice al armarlo;
+## - "protections": en la campana, las que se pueden comprar (protections());
 ## - "pickers": en el combate libre, [{"key", "value"}] para elegir;
 ## - "rivals": la fila, el primero es el que toca. Cada uno:
 ##   {"id", "build", "name", "boss", "tier", "level", "difficulty", "detail"}.
@@ -62,7 +65,8 @@ func campaign_state(profile: PlayerProfile) -> Dictionary:
 		# Un avance que no existe (mas alla del jefe): sin rival que ensenar.
 		state["lines"] = lines
 		return state
-	if campaign.is_boss_fight(zone, profile.fight):
+	var boss := campaign.is_boss_fight(zone, profile.fight)
+	if boss:
 		lines.append(Txt.t("mission_boss"))
 		var ability := boss_ability(str(rivals[0]["id"]))
 		if ability != "":
@@ -70,24 +74,47 @@ func campaign_state(profile: PlayerProfile) -> Dictionary:
 		if campaign.boss_skills(zone) > 0:
 			lines.append(Txt.t("campaign_boss_skills", [campaign.boss_skills(zone)]))
 		lines.append(Txt.t("mission_reward_boss", [roundi(shop.reward("boss_win") * mult)]))
-		if campaign.on_boss_loss == "new_game":
-			state["confirm"] = true
-			state["warning"] = Txt.t("mission_boss_warning")
 	else:
 		lines.append(Txt.t("mission_fight", [profile.fight + 1, state["fights"]]))
-		lines.append(
-			Txt.t(
-				"mission_reward",
-				[
-					roundi(shop.reward("campaign_win") * mult),
-					roundi(shop.reward("campaign_loss") * mult)
-				]
-			)
-		)
+		lines.append(Txt.t("mission_reward_win", [roundi(shop.reward("campaign_win") * mult)]))
 	if campaign.enemy_armory(zone) > 0:
 		lines.append(Txt.t("mission_order", [campaign.enemy_armory(zone)]))
 	state["lines"] = lines
+	# Lo que se juega: perder acaba la partida, salvo que lleve proteccion.
+	var guard := campaign.protection_in_use(profile)
+	state["warning"] = Txt.t("mission_loss_" + (guard if guard != "" else "all"))
+	state["danger"] = campaign.loss_ends_run(profile)
+	# Dos pulsaciones para entrar en la campana de la liga (se cierran la
+	# arena y el combate libre) y para desafiar al campeon.
+	var entering := not profile.campaign_on and profile.fight == 0
+	state["confirm"] = campaign.on_loss == "new_game" and (boss or entering)
+	if entering and not boss:
+		state["confirm_text"] = Txt.t("mission_confirm_enter")
+	state["protections"] = protections(profile)
 	return state
+
+
+## Las protecciones de la campana, de la mas barata a la mas cara: {"kind",
+## "name", "text" (lo que hace), "price", "owned", "reason" (por que no se
+## puede comprar; "" = se puede)}.
+func protections(profile: PlayerProfile) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	for i in range(Campaign.PROTECTIONS.size() - 1, -1, -1):
+		var kind := Campaign.PROTECTIONS[i]
+		(
+			out
+			. append(
+				{
+					"kind": kind,
+					"name": Txt.t("protection_" + kind),
+					"text": Txt.t("protection_text_" + kind),
+					"price": campaign.protection_price(kind, profile.zone),
+					"owned": int(profile.protections.get(kind, 0)) > 0,
+					"reason": campaign.why_cant_protect(profile, kind),
+				}
+			)
+		)
+	return out
 
 
 ## La arena: un rival al azar (de la semilla) a la medida del jugador. La
@@ -104,7 +131,7 @@ func arena_state(profile: PlayerProfile, seed_value: int, power: float) -> Dicti
 	var lines: Array[String] = [
 		Txt.t("mission_arena_info"),
 		Txt.t(
-			"mission_reward",
+			"mission_reward_arena",
 			[roundi(shop.reward("arena_win") * mult), roundi(shop.reward("arena_loss") * mult)]
 		)
 	]
@@ -179,7 +206,10 @@ func _blank(channel: String) -> Dictionary:
 		"fight": 0,
 		"lines": lines,
 		"warning": "",
+		"danger": false,
 		"confirm": false,
+		"confirm_text": "",
+		"protections": [] as Array[Dictionary],
 		"pickers": pickers,
 		"rivals": rivals,
 	}

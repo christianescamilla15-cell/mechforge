@@ -16,9 +16,13 @@ signal opened
 signal channel_picked(channel: String)
 ## Una flecha del combate libre: `step` es -1 o 1.
 signal pick_changed(key: String, step: int)
+## Una proteccion de la campana, confirmada con su segunda pulsacion.
+signal protection_picked(kind: String)
 
 const FEED_WIDTH := 92.0
 const TAB_HEIGHT := 22.0
+## Alto de la fila de protecciones, sobre los canales.
+const GUARD_HEIGHT := 18.0
 const REDRAW_SECONDS := 1.0 / 30.0
 const GOLD := Color("ffe27a")
 const BAD := Color("ff8a7a")
@@ -44,8 +48,11 @@ var open := 0.0:
 var _font: Font
 var _time := 0.0
 var _since_draw := 0.0
-## Zona bajo el raton: "", "board", "tab:<canal>" o "pick:<clave>:<paso>".
+## Zona bajo el raton: "", "board", "tab:<canal>", "pick:<clave>:<paso>" o
+## "guard:<proteccion>".
 var _hover := ""
+## Proteccion armada: la siguiente pulsacion la compra.
+var _armed := ""
 var _zones: Dictionary[String, Rect2] = {}
 var _feed_clip := Control.new()
 var _feed: MechView
@@ -113,15 +120,56 @@ func _gui_input(event: InputEvent) -> void:
 		return
 	accept_event()
 	var zone := zone_at(click.position)
+	var guard := zone.trim_prefix("guard:") if zone.begins_with("guard:") else ""
+	if guard == "" or guard != _armed:
+		_armed = ""
 	if zone == "board":
 		opened.emit()
+	elif guard != "":
+		_press_guard(guard)
 	elif zone.begins_with("tab:"):
+		if is_locked(zone.trim_prefix("tab:")):
+			# Con la campana en marcha, la arena y el libre estan cerrados.
+			Sfx.play("ui_cerrar")
+			return
 		Sfx.play("ui_clic")
 		channel_picked.emit(zone.trim_prefix("tab:"))
 	elif zone.begins_with("pick:"):
 		var parts := zone.split(":")
 		Sfx.play("ui_clic")
 		pick_changed.emit(parts[1], int(parts[2]))
+
+
+## True si ese canal esta cerrado (la campana de la liga esta en marcha).
+func is_locked(channel: String) -> bool:
+	return bool((state.get("locks", {}) as Dictionary).get(channel, false))
+
+
+## Proteccion de ese tipo en lo que ensena; vacio si no esta.
+func _guard(kind: String) -> Dictionary:
+	for entry: Dictionary in state.get("protections", []):
+		if str(entry["kind"]) == kind:
+			return entry
+	return {}
+
+
+## Comprar una proteccion pide dos pulsaciones, como todo lo que cuesta.
+func _press_guard(kind: String) -> void:
+	var entry := _guard(kind)
+	if entry.is_empty() or bool(entry["owned"]) or str(entry["reason"]) != "":
+		_armed = ""
+		Sfx.play("ui_cerrar")
+	elif _armed == kind:
+		_armed = ""
+		protection_picked.emit(kind)
+	else:
+		_armed = kind
+		Sfx.play("ui_habilidad")
+	queue_redraw()
+
+
+func armed_guard() -> String:
+	return _armed
 
 
 func _set_hover(zone: String) -> void:
@@ -142,10 +190,11 @@ func _screen() -> Rect2:
 
 func _feed_rect() -> Rect2:
 	var screen := _screen()
-	return Rect2(
-		screen.position + Vector2(8, 24),
-		Vector2(FEED_WIDTH, screen.size.y - 24.0 - TAB_HEIGHT - 12.0)
-	)
+	var height := screen.size.y - 24.0 - TAB_HEIGHT - 12.0
+	if not (state.get("protections", []) as Array).is_empty():
+		# Debajo, a todo lo ancho, va la fila de las protecciones.
+		height -= GUARD_HEIGHT + 4.0
+	return Rect2(screen.position + Vector2(8, 24), Vector2(FEED_WIDTH, height))
 
 
 ## La camara ensena al rival que toca, en el color de la pantalla.
@@ -259,12 +308,18 @@ func _draw_body(area: Rect2) -> void:
 	if not pickers.is_empty() and open > 0.5:
 		return
 	var lines: Array = state.get("lines", [])
+	var bottom := area.end.y + 4.0
+	if open > 0.5 and _hover.begins_with("guard:"):
+		# Con el raton en una proteccion, lo que hace.
+		var hovered := _guard(_hover.trim_prefix("guard:"))
+		if not hovered.is_empty():
+			lines = [str(hovered["name"]).to_upper(), str(hovered["text"])]
 	for i in lines.size():
 		var color := GOLD if i == 0 and str(lines[i]) == Txt.t("mission_boss") else text
 		var wrapped := _font.get_multiline_string_size(
 			str(lines[i]), HORIZONTAL_ALIGNMENT_LEFT, area.size.x, 10
 		)
-		if y + wrapped.y - 10.0 > area.end.y + 4.0:
+		if y + wrapped.y - 10.0 > bottom:
 			break
 		draw_multiline_string(
 			_font,
@@ -329,6 +384,16 @@ func _layout_zones() -> void:
 		_zones["tab:" + channels[i]] = Rect2(
 			screen.position.x + 8.0 + i * (w + gap), screen.end.y - TAB_HEIGHT - 5.0, w, TAB_HEIGHT
 		)
+	# Las protecciones de la campana, en una fila sobre los canales.
+	var guards: Array = state.get("protections", [])
+	for i in guards.size():
+		var each := (screen.size.x - 16.0 - gap * (guards.size() - 1)) / guards.size()
+		_zones["guard:" + str(guards[i]["kind"])] = Rect2(
+			screen.position.x + 8.0 + i * (each + gap),
+			screen.end.y - TAB_HEIGHT - 9.0 - GUARD_HEIGHT,
+			each,
+			GUARD_HEIGHT
+		)
 	var pickers: Array = state.get("pickers", [])
 	if pickers.is_empty():
 		return
@@ -351,6 +416,14 @@ func _draw_tabs() -> void:
 		var on := channel == current
 		var hot := _hover == "tab:" + channel
 		var line := HangarArt.SCREEN_LINE
+		if is_locked(channel):
+			# Cerrado mientras dure la campana: apagado y con su aviso.
+			draw_rect(rect, Color(0, 0, 0, 0.35))
+			draw_rect(rect, Color(MUTED, 0.35), false, 1.0)
+			var label := "%s · %s" % [Txt.t(TAB_KEYS[channel]), Txt.t("mission_locked")]
+			var at := Vector2(rect.position.x, rect.position.y + 15.0)
+			_text(at, label, rect.size.x, 9, Color(MUTED, 0.7), HORIZONTAL_ALIGNMENT_CENTER)
+			continue
 		draw_rect(rect, Color(line, 0.75 if on else (0.22 if hot else 0.08)))
 		draw_rect(rect, Color(GOLD if hot and not on else line, 0.9), false, 1.0)
 		if on:
@@ -364,6 +437,7 @@ func _draw_tabs() -> void:
 			HORIZONTAL_ALIGNMENT_CENTER,
 			not on
 		)
+	_draw_guards()
 	# Combate libre: cada cosa que se elige, entre sus dos flechas.
 	for picker: Dictionary in state.get("pickers", []):
 		var key := str(picker["key"])
@@ -381,6 +455,35 @@ func _draw_tabs() -> void:
 			HangarArt.SCREEN_TEXT,
 			HORIZONTAL_ALIGNMENT_CENTER
 		)
+
+
+## Las protecciones: la que llevas, encendida; la que puedes comprar, con
+## su precio; armada, pide la segunda pulsacion.
+func _draw_guards() -> void:
+	for entry: Dictionary in state.get("protections", []):
+		var kind := str(entry["kind"])
+		var rect: Rect2 = _zones.get("guard:" + kind, Rect2())
+		if rect.size == Vector2.ZERO:
+			continue
+		var owned := bool(entry["owned"])
+		var blocked := str(entry["reason"]) != "" and not owned
+		var hot := _hover == "guard:" + kind
+		var tone := GOLD if owned or hot else HangarArt.SCREEN_LINE
+		var label := "%s · %s" % [str(entry["name"]), HangarProps.thousands(int(entry["price"]))]
+		if owned:
+			label = "%s · %s" % [str(entry["name"]), Txt.t("protection_owned")]
+			draw_rect(rect, Color(GOLD, 0.28))
+		elif _armed == kind:
+			label = Txt.t("protection_confirm")
+			tone = Color(GOLD, 0.6 + 0.4 * sin(_time * 8.0))
+			draw_rect(rect, Color(GOLD, 0.2))
+		elif blocked:
+			tone = Color(BAD, 0.75)
+		else:
+			draw_rect(rect, Color(tone, 0.14 if hot else 0.06))
+		draw_rect(rect, Color(tone, 0.9), false, 1.0)
+		var at := Vector2(rect.position.x, rect.position.y + 13.0)
+		_text(at, label, rect.size.x, 9, tone, HORIZONTAL_ALIGNMENT_CENTER)
 
 
 func _draw_arrow(rect: Rect2, side: float, hot: bool) -> void:

@@ -106,9 +106,40 @@ func test_el_jefe_pide_confirmar_y_avisa() -> void:
 	var rivals: Array = state["rivals"]
 	assert_eq(rivals.size(), 1)
 	assert_true(rivals[0]["boss"])
-	assert_true(state["confirm"], "perder contra el jefe acaba la partida")
-	assert_eq(state["warning"], Txt.t("mission_boss_warning"))
+	assert_true(state["confirm"], "al campeon se le desafia con dos pulsaciones")
+	assert_eq(state["warning"], Txt.t("mission_loss_all"))
+	assert_true(state["danger"], "sin proteccion, perder acaba la partida")
 	assert_has(state["lines"], Txt.t("mission_boss"))
+
+
+func test_entrar_en_la_campana_de_una_liga_pide_confirmar() -> void:
+	var state := _brief.campaign_state(_profile(0))
+	assert_true(state["confirm"], "al entrar se cierran la arena y el combate libre")
+	assert_eq(state["confirm_text"], Txt.t("mission_confirm_enter"))
+	assert_eq(state["warning"], Txt.t("mission_loss_all"))
+	# Ya dentro, los combates normales salen a la primera.
+	var inside := _profile(3)
+	inside.campaign_on = true
+	state = _brief.campaign_state(inside)
+	assert_false(state["confirm"])
+	assert_true(state["danger"])
+
+
+func test_con_proteccion_el_aviso_dice_cual_y_ya_no_es_el_fin() -> void:
+	var profile := _profile(3)
+	profile.campaign_on = true
+	profile.protections["league"] = 1
+	var state := _brief.campaign_state(profile)
+	assert_false(state["danger"])
+	assert_eq(state["warning"], Txt.t("mission_loss_league"))
+	profile.protections["rematch"] = 1
+	assert_eq(_brief.campaign_state(profile)["warning"], Txt.t("mission_loss_rematch"))
+	var guards: Array = state["protections"]
+	assert_eq(guards.size(), 2)
+	assert_eq(guards[0]["kind"], "league", "primero la barata")
+	assert_true(guards[0]["owned"])
+	assert_false(guards[1]["owned"])
+	assert_gt(int(guards[1]["price"]), int(guards[0]["price"]))
 
 
 func test_con_la_campana_completa_no_hay_fila() -> void:
@@ -183,12 +214,14 @@ func test_el_modo_mision_proyecta_la_fila_delante_del_robot() -> void:
 
 func test_pulsar_al_primero_es_salir_a_combatir() -> void:
 	var stage := _stage()
-	stage.show_mission(_brief.campaign_state(_profile(0)), "none")
+	var inside := _profile(2)
+	inside.campaign_on = true
+	stage.show_mission(_brief.campaign_state(inside), "none")
 	watch_signals(stage)
 	var front := stage._row.front_rect().get_center()
 	stage._gui_input(_click(front))
 	assert_signal_emit_count(stage, "rival_pressed", 1)
-	assert_true(stage.confirm_rival(), "un combate normal sale a la primera")
+	assert_true(stage.confirm_rival(), "ya en campana, un combate normal sale a la primera")
 	# Fuera del modo mision ese sitio no es un rival.
 	stage.hide_mission()
 	stage._gui_input(_click(front))
@@ -286,3 +319,50 @@ func test_las_flechas_del_combate_libre_avisan() -> void:
 	# En la campana no hay flechas.
 	stage.show_mission(_brief.campaign_state(_profile(0)), "none")
 	assert_eq(board.zone_rect("pick:tier:1"), Rect2())
+
+
+# --- Reglas de liga en el monitor (OBS-020) -----------------------------------------
+
+
+func _open_board(state: Dictionary) -> MissionBoard:
+	var board := MissionBoard.new()
+	board.size = Vector2(326, 194)
+	add_child_autofree(board)
+	board.state = state
+	board.open = 1.0
+	return board
+
+
+func test_con_la_campana_en_marcha_la_arena_y_el_libre_no_se_abren() -> void:
+	var profile := _profile(2)
+	profile.campaign_on = true
+	var state := _brief.campaign_state(profile)
+	state["locks"] = {"arena": true, "free": true}
+	var board := _open_board(state)
+	watch_signals(board)
+	assert_true(board.is_locked("arena"))
+	board._gui_input(_click(board.zone_rect("tab:arena").get_center()))
+	board._gui_input(_click(board.zone_rect("tab:free").get_center()))
+	assert_signal_emit_count(board, "channel_picked", 0)
+	board._gui_input(_click(board.zone_rect("tab:campaign").get_center()))
+	assert_signal_emit_count(board, "channel_picked", 1)
+
+
+func test_una_proteccion_se_compra_con_dos_pulsaciones() -> void:
+	var profile := _profile(0)
+	profile.gold = 100000
+	var board := _open_board(_brief.campaign_state(profile))
+	watch_signals(board)
+	var at := board.zone_rect("guard:rematch").get_center()
+	assert_ne(board.zone_rect("guard:league"), Rect2())
+	board._gui_input(_click(at))
+	assert_eq(board.armed_guard(), "rematch")
+	assert_signal_emit_count(board, "protection_picked", 0)
+	board._gui_input(_click(at))
+	assert_signal_emit_count(board, "protection_picked", 1)
+	# Sin celdas no se arma.
+	profile.gold = 0
+	board.state = _brief.campaign_state(profile)
+	board._gui_input(_click(at))
+	assert_eq(board.armed_guard(), "")
+	assert_signal_emit_count(board, "protection_picked", 1)

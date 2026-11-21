@@ -7,7 +7,7 @@ extends RefCounted
 ## La moneda se llama `gold` en el codigo y en el guardado; en pantalla se
 ## muestra con el nombre de la tabla de textos (GDD 8).
 
-const SCHEMA_VERSION := 7
+const SCHEMA_VERSION := 8
 
 var gold: int = 0
 ## Experiencia total; de ella sale el nivel del jugador (Progression).
@@ -50,6 +50,13 @@ var mech: String = ""
 ## Cuando `fight` llega al numero de combates de la zona, toca el jefe.
 var zone: int = 0
 var fight: int = 0
+## La campana de su liga esta en marcha: empezo su primer combate y aun no
+## la ha terminado ni la ha perdido. Mientras, la arena y el combate libre
+## estan cerrados (Campaign.mode_locked).
+var campaign_on: bool = false
+## Protecciones compradas para la campana, por tipo (Campaign.PROTECTIONS):
+## cuantas lleva de cada una (0 o 1). Se gastan al perder.
+var protections: Dictionary[String, int] = {}
 var wins: int = 0
 var losses: int = 0
 var boss_wins: int = 0
@@ -153,6 +160,8 @@ func end_run() -> void:
 	mech = ""
 	zone = 0
 	fight = 0
+	campaign_on = false
+	protections.clear()
 	wins = 0
 	losses = 0
 	boss_wins = 0
@@ -295,6 +304,8 @@ func to_dict() -> Dictionary:
 		"mech": mech,
 		"zone": zone,
 		"fight": fight,
+		"campaign_on": campaign_on,
+		"protections": protections.duplicate(),
 		"wins": wins,
 		"losses": losses,
 		"boss_wins": boss_wins,
@@ -304,10 +315,10 @@ func to_dict() -> Dictionary:
 
 
 ## Migraciones: la version 1 no tenia campana ni mech elegido, la 2 no tenia
-## piezas, la 3 no tenia mech armado, la 4 no tenia experiencia y hasta la 6
-## habia un solo mech ("build"), que pasa a ser el primer robot; los campos
-## nuevos empiezan vacios y lo demas se conserva. Sin robots, el menu pide
-## elegir uno.
+## piezas, la 3 no tenia mech armado, la 4 no tenia experiencia, hasta la 6
+## habia un solo mech ("build"), que pasa a ser el primer robot, y hasta la 7
+## no habia campana en marcha ni protecciones; los campos nuevos empiezan
+## vacios y lo demas se conserva. Sin robots, el menu pide elegir uno.
 static func from_dict(data: Dictionary) -> PlayerProfile:
 	var profile := PlayerProfile.new()
 	profile.gold = maxi(0, int(data.get("gold", 0)))
@@ -339,6 +350,13 @@ static func from_dict(data: Dictionary) -> PlayerProfile:
 		profile.mechs.append({"name": "", "design": profile.mech, "build": data["build"]})
 	profile.zone = maxi(0, int(data.get("zone", 0)))
 	profile.fight = maxi(0, int(data.get("fight", 0)))
+	# Hasta la version 7 la campana no se "empezaba": lo esta quien ya ha
+	# ganado algun combate de su liga.
+	profile.campaign_on = bool(data.get("campaign_on", profile.fight > 0))
+	var saved_protections: Variant = data.get("protections", {})
+	if saved_protections is Dictionary:
+		for kind: String in saved_protections:
+			profile.protections[kind] = clampi(int(saved_protections[kind]), 0, 1)
 	profile.wins = int(data.get("wins", 0))
 	profile.losses = int(data.get("losses", 0))
 	profile.boss_wins = int(data.get("boss_wins", 0))

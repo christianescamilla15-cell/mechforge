@@ -1,6 +1,8 @@
 extends GutTest
-## Campana (GDD 9): cada zona son sus combates y un jefe; la arena da celdas
-## sin avanzar; perder contra un jefe termina la partida.
+## Campana (GDD 9): cada zona es una liga, con sus combates y su campeon;
+## la arena da celdas sin avanzar. Reglas de liga (docs/OBSERVACIONES.md,
+## OBS-020 y OBS-021): empezar la campana cierra la arena y el combate
+## libre; perder en ella acaba la partida, salvo que se lleve proteccion.
 
 const CAMPAIGN_PATH := "res://data/campaign.json"
 
@@ -67,14 +69,20 @@ func test_ganar_un_combate_de_campana_avanza_y_paga() -> void:
 	assert_false(result["game_over"])
 
 
-func test_perder_un_combate_normal_no_avanza_ni_termina_la_partida() -> void:
+func test_perder_un_combate_de_la_campana_acaba_la_partida() -> void:
 	var campaign := _campaign()
+	assert_eq(campaign.on_loss, "new_game")
 	var profile := PlayerProfile.new()
 	profile.fight = 3
+	profile.gold = 900
+	profile.shop_levels["damage"] = 4
 	var result := campaign.finish_fight(profile, _shop, "campaign", false)
-	assert_eq(profile.fight, 3)
-	assert_eq(profile.losses, 1)
-	assert_false(result["game_over"])
+	assert_true(result["game_over"], "sin proteccion, perder un combate cualquiera lo acaba todo")
+	assert_eq(result["protected"], "")
+	assert_eq(profile.fight, 0)
+	assert_eq(profile.gold, 0)
+	assert_eq(profile.level_of("damage"), 0)
+	assert_eq(profile.runs_lost, 1, "el historial si se conserva")
 
 
 func test_la_arena_paga_sin_avanzar_la_campana() -> void:
@@ -105,9 +113,8 @@ func test_vencer_al_jefe_abre_la_zona_siguiente() -> void:
 	assert_eq(profile.level_of("damage"), 4, "conserva lo comprado")
 
 
-func test_perder_contra_el_jefe_termina_la_partida() -> void:
+func test_perder_contra_el_campeon_termina_la_partida() -> void:
 	var campaign := _campaign()
-	assert_eq(campaign.on_boss_loss, "new_game")
 	var profile := _at_boss(campaign)
 	var result := campaign.finish_fight(profile, _shop, "campaign", false)
 	assert_true(result["game_over"])
@@ -116,18 +123,132 @@ func test_perder_contra_el_jefe_termina_la_partida() -> void:
 	assert_eq(profile.zone, 0)
 	assert_eq(profile.fight, 0)
 	assert_eq(profile.wins, 0)
+	assert_false(profile.campaign_on)
 	assert_eq(profile.runs_lost, 1, "el historial si se conserva")
 
 
-func test_con_la_regla_de_reintentar_el_jefe_no_borra_nada() -> void:
+func test_con_la_regla_de_reintentar_perder_no_borra_nada() -> void:
 	var campaign := _campaign()
-	campaign.on_boss_loss = "retry"
+	campaign.on_loss = "retry"
 	var profile := _at_boss(campaign)
 	var result := campaign.finish_fight(profile, _shop, "campaign", false)
 	assert_false(result["game_over"])
 	assert_eq(profile.fight, campaign.fights_in(0), "sigue delante del jefe")
 	assert_eq(profile.level_of("damage"), 4)
 	assert_eq(profile.gold, 900 + _shop.reward("boss_loss"))
+
+
+# --- Reglas de liga (OBS-020, OBS-021) ---------------------------------------------
+
+
+func test_empezar_la_campana_cierra_la_arena_y_el_combate_libre() -> void:
+	var campaign := _campaign()
+	var profile := PlayerProfile.new()
+	assert_false(campaign.mode_locked(profile, "arena"), "antes de empezar, la arena esta abierta")
+	assert_false(campaign.mode_locked(profile, "free"))
+	campaign.begin_fight(profile)
+	assert_true(profile.campaign_on)
+	assert_true(campaign.mode_locked(profile, "arena"))
+	assert_true(campaign.mode_locked(profile, "free"))
+	assert_false(campaign.mode_locked(profile, "campaign"), "la campana nunca se cierra")
+	# Ganar sigue dentro de la campana.
+	campaign.finish_fight(profile, _shop, "campaign", true)
+	assert_true(campaign.mode_locked(profile, "arena"))
+
+
+func test_vencer_al_campeon_abre_la_liga_siguiente_con_todo_abierto() -> void:
+	var campaign := _campaign()
+	var profile := _at_boss(campaign)
+	profile.campaign_on = true
+	campaign.finish_fight(profile, _shop, "campaign", true)
+	assert_eq(profile.zone, 1)
+	assert_false(profile.campaign_on, "la liga nueva empieza sin tocar")
+	assert_false(campaign.mode_locked(profile, "arena"))
+
+
+func test_el_seguro_de_liga_devuelve_al_comienzo_de_la_liga() -> void:
+	var campaign := _campaign()
+	var profile := PlayerProfile.new()
+	profile.zone = 1
+	profile.fight = 5
+	profile.campaign_on = true
+	profile.gold = 900
+	profile.shop_levels["damage"] = 4
+	profile.protections["league"] = 1
+	assert_false(campaign.loss_ends_run(profile))
+	var result := campaign.finish_fight(profile, _shop, "campaign", false)
+	assert_false(result["game_over"])
+	assert_eq(result["protected"], "league")
+	assert_eq(profile.zone, 1, "sigue en su liga")
+	assert_eq(profile.fight, 0, "desde el primer combate")
+	assert_false(profile.campaign_on, "con la campana sin empezar: arena abierta")
+	assert_eq(profile.gold, 900, "conserva lo suyo")
+	assert_eq(profile.level_of("damage"), 4)
+	assert_eq(profile.losses, 1)
+	assert_eq(int(profile.protections["league"]), 0, "el seguro se gasta")
+	assert_true(campaign.loss_ends_run(profile), "y la siguiente derrota ya no perdona")
+
+
+func test_la_revancha_devuelve_al_penultimo_rival() -> void:
+	var campaign := _campaign()
+	var profile := _at_boss(campaign)
+	profile.campaign_on = true
+	profile.protections["rematch"] = 1
+	var result := campaign.finish_fight(profile, _shop, "campaign", false)
+	assert_false(result["game_over"])
+	assert_eq(result["protected"], "rematch")
+	assert_eq(profile.fight, campaign.fights_in(0) - 1, "el rival de antes del campeon")
+	assert_true(profile.campaign_on, "sigue dentro de la campana")
+	assert_eq(profile.gold, 900)
+	assert_eq(int(profile.protections["rematch"]), 0)
+	# En el primer combate no hay rival anterior: se queda en el.
+	var first := PlayerProfile.new()
+	first.protections["rematch"] = 1
+	campaign.finish_fight(first, _shop, "campaign", false)
+	assert_eq(first.fight, 0)
+
+
+func test_con_las_dos_protecciones_se_gasta_la_revancha() -> void:
+	var campaign := _campaign()
+	var profile := _at_boss(campaign)
+	profile.protections["rematch"] = 1
+	profile.protections["league"] = 1
+	assert_eq(campaign.protection_in_use(profile), "rematch")
+	campaign.finish_fight(profile, _shop, "campaign", false)
+	assert_eq(int(profile.protections["league"]), 1, "el seguro sigue ahi")
+	assert_eq(campaign.protection_in_use(profile), "league")
+
+
+func test_las_protecciones_se_compran_una_de_cada_y_la_revancha_cuesta_mas() -> void:
+	var campaign := _campaign()
+	var profile := PlayerProfile.new()
+	var league := campaign.protection_price("league", 0)
+	var rematch := campaign.protection_price("rematch", 0)
+	assert_gt(league, 0)
+	assert_gt(rematch, league, "la revancha es la cara")
+	assert_gt(campaign.protection_price("league", 2), league, "en las ligas altas cuestan mas")
+	assert_eq(campaign.why_cant_protect(profile, "league"), "faltan celdas")
+	profile.gold = league + rematch + 10
+	assert_eq(campaign.buy_protection(profile, "league"), "")
+	assert_eq(profile.gold, rematch + 10)
+	assert_eq(campaign.buy_protection(profile, "league"), "ya la tienes")
+	assert_eq(campaign.buy_protection(profile, "rematch"), "")
+	assert_eq(profile.gold, 10)
+	assert_eq(campaign.buy_protection(profile, "otra"), "esa proteccion no existe")
+
+
+func test_la_campana_paga_mas_que_la_arena_y_el_campeon_mucho_mas() -> void:
+	var campaign_win := _shop.reward("campaign_win")
+	var arena_win := _shop.reward("arena_win")
+	var boss_win := _shop.reward("boss_win")
+	assert_gt(campaign_win, arena_win, "la arena paga menos que la campana")
+	assert_between(float(campaign_win) / arena_win, 1.4, 2.0, "como 500 contra 300")
+	assert_between(boss_win, 20000, 25000, "el premio grande del campeon")
+	# El premio no alcanza para protegerse y ademas equiparse entero.
+	var campaign := _campaign()
+	var both := campaign.protection_price("league", 0) + campaign.protection_price("rematch", 0)
+	assert_lt(both, boss_win, "las dos protecciones caben en un premio")
+	assert_gt(both, boss_win / 4, "pero se llevan una parte seria")
 
 
 func test_el_mejor_resultado_sobrevive_al_final_de_la_partida() -> void:
@@ -219,6 +340,7 @@ func test_una_zona_con_un_mech_que_no_existe_da_error() -> void:
 	var campaign := Campaign.load_file(path, _library)
 	assert_eq(campaign.zone_count(), 0)
 	assert_eq(campaign.errors.size(), 1)
+	assert_eq(campaign.why_cant_protect(PlayerProfile.new(), "league"), "esa proteccion no existe")
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
 
 
@@ -247,6 +369,24 @@ func test_el_avance_de_campana_se_guarda_y_se_recupera() -> void:
 	assert_eq(loaded.mech, "calor_horno")
 	assert_eq(loaded.runs_lost, 2)
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
+
+
+func test_la_campana_en_marcha_y_las_protecciones_se_guardan() -> void:
+	var profile := PlayerProfile.new()
+	profile.campaign_on = true
+	profile.protections["rematch"] = 1
+	var loaded := PlayerProfile.from_dict(profile.to_dict())
+	assert_true(loaded.campaign_on)
+	assert_eq(int(loaded.protections["rematch"]), 1)
+	# Un guardado de antes de las ligas: en campana quien ya gano algun combate.
+	var old := {"schema_version": 7, "zone": 2, "fight": 4}
+	assert_true(PlayerProfile.from_dict(old).campaign_on)
+	old["fight"] = 0
+	assert_false(PlayerProfile.from_dict(old).campaign_on)
+	# Perder la partida se lo lleva todo.
+	profile.end_run()
+	assert_false(profile.campaign_on)
+	assert_true(profile.protections.is_empty())
 
 
 func test_el_mundo_tiene_10_zonas_y_cada_clase_ocupa_dos() -> void:
