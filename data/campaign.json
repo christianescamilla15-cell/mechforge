@@ -2,7 +2,10 @@
   "schema_version": 1,
   "world_bosses": 10,
   "on_loss": "new_game",
-  "protections": {"league": 3000, "rematch": 7500},
+  "protections": {
+    "league": 3000,
+    "rematch": 7500
+  },
   "zones": [
     {
       "id": "zona_1",
@@ -31,37 +34,62 @@
         {
           "enemy": "hibrido_quimera",
           "level": 1,
-          "difficulty": "NORMAL"
+          "difficulty": "NORMAL",
+          "kits": {
+            "shield_uses": 1
+          }
         },
         {
           "enemy": "fisico_vanguardia",
           "level": 1,
-          "difficulty": "NORMAL"
+          "difficulty": "NORMAL",
+          "kits": {
+            "repair_uses": 1,
+            "repair_share": 0.2
+          }
         },
         {
           "enemy": "calor_horno",
           "level": 2,
-          "difficulty": "NORMAL"
+          "difficulty": "NORMAL",
+          "kits": {
+            "shield_uses": 1
+          }
         },
         {
           "enemy": "energia_tempestad",
           "level": 2,
-          "difficulty": "NORMAL"
+          "difficulty": "NORMAL",
+          "kits": {
+            "repair_uses": 1,
+            "repair_share": 0.2
+          }
         },
         {
           "enemy": "hibrido_quimera",
           "level": 2,
-          "difficulty": "HARD"
+          "difficulty": "HARD",
+          "kits": {
+            "shield_uses": 1
+          }
         },
         {
           "enemy": "calor_horno",
           "level": 3,
-          "difficulty": "HARD"
+          "difficulty": "HARD",
+          "kits": {
+            "shield_uses": 1
+          }
         },
         {
           "enemy": "energia_tempestad",
           "level": 3,
-          "difficulty": "HARD"
+          "difficulty": "HARD",
+          "kits": {
+            "shield_uses": 1,
+            "repair_uses": 1,
+            "repair_share": 0.1
+          }
         }
       ],
       "boss": {
@@ -105,37 +133,62 @@
         {
           "enemy": "fisico_vanguardia",
           "level": 4,
-          "difficulty": "NORMAL"
+          "difficulty": "NORMAL",
+          "kits": {
+            "shield_uses": 1
+          }
         },
         {
           "enemy": "calor_horno",
           "level": 4,
-          "difficulty": "NORMAL"
+          "difficulty": "NORMAL",
+          "kits": {
+            "repair_uses": 1,
+            "repair_share": 0.2
+          }
         },
         {
           "enemy": "energia_tempestad",
           "level": 5,
-          "difficulty": "HARD"
+          "difficulty": "HARD",
+          "kits": {
+            "shield_uses": 1
+          }
         },
         {
           "enemy": "hibrido_quimera",
           "level": 5,
-          "difficulty": "HARD"
+          "difficulty": "HARD",
+          "kits": {
+            "repair_uses": 1,
+            "repair_share": 0.2
+          }
         },
         {
           "enemy": "fisico_vanguardia",
           "level": 5,
-          "difficulty": "HARD"
+          "difficulty": "HARD",
+          "kits": {
+            "shield_uses": 1
+          }
         },
         {
           "enemy": "calor_horno",
           "level": 6,
-          "difficulty": "HARD"
+          "difficulty": "HARD",
+          "kits": {
+            "shield_uses": 1
+          }
         },
         {
           "enemy": "energia_tempestad",
           "level": 6,
-          "difficulty": "HARD"
+          "difficulty": "HARD",
+          "kits": {
+            "shield_uses": 1,
+            "repair_uses": 1,
+            "repair_share": 0.1
+          }
         }
       ],
       "boss": {
@@ -177,37 +230,62 @@
         {
           "enemy": "calor_horno_canon",
           "level": 2,
-          "difficulty": "NORMAL"
+          "difficulty": "NORMAL",
+          "kits": {
+            "shield_uses": 1
+          }
         },
         {
           "enemy": "energia_tempestad_canon",
           "level": 2,
-          "difficulty": "NORMAL"
+          "difficulty": "NORMAL",
+          "kits": {
+            "repair_uses": 1,
+            "repair_share": 0.2
+          }
         },
         {
           "enemy": "hibrido_quimera_canon",
           "level": 3,
-          "difficulty": "HARD"
+          "difficulty": "HARD",
+          "kits": {
+            "shield_uses": 1
+          }
         },
         {
           "enemy": "fisico_vanguardia_canon",
           "level": 4,
-          "difficulty": "HARD"
+          "difficulty": "HARD",
+          "kits": {
+            "repair_uses": 1,
+            "repair_share": 0.2
+          }
         },
         {
           "enemy": "calor_horno_canon",
           "level": 4,
-          "difficulty": "HARD"
+          "difficulty": "HARD",
+          "kits": {
+            "shield_uses": 1
+          }
         },
         {
           "enemy": "energia_tempestad_canon",
           "level": 5,
-          "difficulty": "HARD"
+          "difficulty": "HARD",
+          "kits": {
+            "shield_uses": 1
+          }
         },
         {
           "enemy": "hibrido_quimera_canon",
           "level": 6,
-          "difficulty": "HARD"
+          "difficulty": "HARD",
+          "kits": {
+            "shield_uses": 1,
+            "repair_uses": 1,
+            "repair_share": 0.1
+          }
         }
       ],
       "boss": {
@@ -248,37 +326,62 @@
         {
           "enemy": "energia_tempestad_canon",
           "level": 8,
-          "difficulty": "NORMAL"
+          "difficulty": "NORMAL",
+          "kits": {
+            "shield_uses": 1
+          }
         },
         {
           "enemy": "hibrido_quimera_canon",
           "level": 8,
-          "difficulty": "NORMAL"
+          "difficulty": "NORMAL",
+          "kits": {
+            "repair_uses": 1,
+            "repair_share": 0.2
+          }
         },
         {
           "enemy": "fisico_vanguardia_canon",
           "level": 9,
-          "difficulty": "HARD"
+          "difficulty": "HARD",
+          "kits": {
+            "shield_uses": 1
+          }
         },
         {
           "enemy": "calor_horno_canon",
           "level": 10,
-          "difficulty": "HARD"
+          "difficulty": "HARD",
+          "kits": {
+            "repair_uses": 1,
+            "repair_share": 0.2
+          }
         },
         {
           "enemy": "energia_tempestad_canon",
           "level": 10,
-          "difficulty": "HARD"
+          "difficulty": "HARD",
+          "kits": {
+            "shield_uses": 1
+          }
         },
         {
           "enemy": "hibrido_quimera_canon",
           "level": 11,
-          "difficulty": "HARD"
+          "difficulty": "HARD",
+          "kits": {
+            "shield_uses": 1
+          }
         },
         {
           "enemy": "fisico_vanguardia_canon",
           "level": 12,
-          "difficulty": "HARD"
+          "difficulty": "HARD",
+          "kits": {
+            "shield_uses": 1,
+            "repair_uses": 1,
+            "repair_share": 0.1
+          }
         }
       ],
       "boss": {
@@ -319,37 +422,62 @@
         {
           "enemy": "hibrido_quimera_blaster",
           "level": 3,
-          "difficulty": "NORMAL"
+          "difficulty": "NORMAL",
+          "kits": {
+            "shield_uses": 1
+          }
         },
         {
           "enemy": "fisico_vanguardia_blaster",
           "level": 4,
-          "difficulty": "NORMAL"
+          "difficulty": "NORMAL",
+          "kits": {
+            "repair_uses": 1,
+            "repair_share": 0.2
+          }
         },
         {
           "enemy": "calor_horno_blaster",
           "level": 4,
-          "difficulty": "HARD"
+          "difficulty": "HARD",
+          "kits": {
+            "shield_uses": 1
+          }
         },
         {
           "enemy": "energia_tempestad_blaster",
           "level": 5,
-          "difficulty": "HARD"
+          "difficulty": "HARD",
+          "kits": {
+            "repair_uses": 1,
+            "repair_share": 0.2
+          }
         },
         {
           "enemy": "hibrido_quimera_blaster",
           "level": 7,
-          "difficulty": "HARD"
+          "difficulty": "HARD",
+          "kits": {
+            "shield_uses": 1
+          }
         },
         {
           "enemy": "fisico_vanguardia_blaster",
           "level": 8,
-          "difficulty": "HARD"
+          "difficulty": "HARD",
+          "kits": {
+            "shield_uses": 1
+          }
         },
         {
           "enemy": "calor_horno_blaster",
           "level": 9,
-          "difficulty": "HARD"
+          "difficulty": "HARD",
+          "kits": {
+            "shield_uses": 1,
+            "repair_uses": 1,
+            "repair_share": 0.1
+          }
         }
       ],
       "boss": {
@@ -390,37 +518,62 @@
         {
           "enemy": "fisico_vanguardia_blaster",
           "level": 12,
-          "difficulty": "NORMAL"
+          "difficulty": "NORMAL",
+          "kits": {
+            "shield_uses": 1
+          }
         },
         {
           "enemy": "calor_horno_blaster",
           "level": 13,
-          "difficulty": "NORMAL"
+          "difficulty": "NORMAL",
+          "kits": {
+            "repair_uses": 1,
+            "repair_share": 0.2
+          }
         },
         {
           "enemy": "energia_tempestad_blaster",
           "level": 13,
-          "difficulty": "HARD"
+          "difficulty": "HARD",
+          "kits": {
+            "shield_uses": 1
+          }
         },
         {
           "enemy": "hibrido_quimera_blaster",
           "level": 14,
-          "difficulty": "HARD"
+          "difficulty": "HARD",
+          "kits": {
+            "repair_uses": 1,
+            "repair_share": 0.2
+          }
         },
         {
           "enemy": "fisico_vanguardia_blaster",
           "level": 16,
-          "difficulty": "HARD"
+          "difficulty": "HARD",
+          "kits": {
+            "shield_uses": 1
+          }
         },
         {
           "enemy": "calor_horno_blaster",
           "level": 17,
-          "difficulty": "HARD"
+          "difficulty": "HARD",
+          "kits": {
+            "shield_uses": 1
+          }
         },
         {
           "enemy": "energia_tempestad_blaster",
           "level": 18,
-          "difficulty": "HARD"
+          "difficulty": "HARD",
+          "kits": {
+            "shield_uses": 1,
+            "repair_uses": 1,
+            "repair_share": 0.1
+          }
         }
       ],
       "boss": {
@@ -461,37 +614,62 @@
         {
           "enemy": "calor_horno_laser",
           "level": 4,
-          "difficulty": "NORMAL"
+          "difficulty": "NORMAL",
+          "kits": {
+            "shield_uses": 1
+          }
         },
         {
           "enemy": "energia_tempestad_laser",
           "level": 5,
-          "difficulty": "NORMAL"
+          "difficulty": "NORMAL",
+          "kits": {
+            "repair_uses": 1,
+            "repair_share": 0.2
+          }
         },
         {
           "enemy": "hibrido_quimera_laser",
           "level": 6,
-          "difficulty": "HARD"
+          "difficulty": "HARD",
+          "kits": {
+            "shield_uses": 1
+          }
         },
         {
           "enemy": "fisico_vanguardia_laser",
           "level": 7,
-          "difficulty": "HARD"
+          "difficulty": "HARD",
+          "kits": {
+            "repair_uses": 1,
+            "repair_share": 0.2
+          }
         },
         {
           "enemy": "calor_horno_laser",
           "level": 9,
-          "difficulty": "HARD"
+          "difficulty": "HARD",
+          "kits": {
+            "shield_uses": 1
+          }
         },
         {
           "enemy": "energia_tempestad_laser",
           "level": 11,
-          "difficulty": "HARD"
+          "difficulty": "HARD",
+          "kits": {
+            "shield_uses": 1
+          }
         },
         {
           "enemy": "hibrido_quimera_laser",
           "level": 12,
-          "difficulty": "HARD"
+          "difficulty": "HARD",
+          "kits": {
+            "shield_uses": 1,
+            "repair_uses": 1,
+            "repair_share": 0.1
+          }
         }
       ],
       "boss": {
@@ -532,37 +710,62 @@
         {
           "enemy": "energia_tempestad_laser",
           "level": 16,
-          "difficulty": "NORMAL"
+          "difficulty": "NORMAL",
+          "kits": {
+            "shield_uses": 1
+          }
         },
         {
           "enemy": "hibrido_quimera_laser",
           "level": 17,
-          "difficulty": "NORMAL"
+          "difficulty": "NORMAL",
+          "kits": {
+            "repair_uses": 1,
+            "repair_share": 0.2
+          }
         },
         {
           "enemy": "fisico_vanguardia_laser",
           "level": 18,
-          "difficulty": "HARD"
+          "difficulty": "HARD",
+          "kits": {
+            "shield_uses": 1
+          }
         },
         {
           "enemy": "calor_horno_laser",
           "level": 19,
-          "difficulty": "HARD"
+          "difficulty": "HARD",
+          "kits": {
+            "repair_uses": 1,
+            "repair_share": 0.2
+          }
         },
         {
           "enemy": "energia_tempestad_laser",
           "level": 21,
-          "difficulty": "HARD"
+          "difficulty": "HARD",
+          "kits": {
+            "shield_uses": 1
+          }
         },
         {
           "enemy": "hibrido_quimera_laser",
           "level": 23,
-          "difficulty": "HARD"
+          "difficulty": "HARD",
+          "kits": {
+            "shield_uses": 1
+          }
         },
         {
           "enemy": "fisico_vanguardia_laser",
           "level": 24,
-          "difficulty": "HARD"
+          "difficulty": "HARD",
+          "kits": {
+            "shield_uses": 1,
+            "repair_uses": 1,
+            "repair_share": 0.1
+          }
         }
       ],
       "boss": {
@@ -604,37 +807,62 @@
         {
           "enemy": "hibrido_quimera_laser",
           "level": 4,
-          "difficulty": "NORMAL"
+          "difficulty": "NORMAL",
+          "kits": {
+            "shield_uses": 1
+          }
         },
         {
           "enemy": "fisico_vanguardia_laser",
           "level": 6,
-          "difficulty": "NORMAL"
+          "difficulty": "NORMAL",
+          "kits": {
+            "repair_uses": 1,
+            "repair_share": 0.2
+          }
         },
         {
           "enemy": "calor_horno_laser",
           "level": 8,
-          "difficulty": "HARD"
+          "difficulty": "HARD",
+          "kits": {
+            "shield_uses": 1
+          }
         },
         {
           "enemy": "energia_tempestad_laser",
           "level": 9,
-          "difficulty": "HARD"
+          "difficulty": "HARD",
+          "kits": {
+            "repair_uses": 1,
+            "repair_share": 0.2
+          }
         },
         {
           "enemy": "hibrido_quimera_laser",
           "level": 11,
-          "difficulty": "HARD"
+          "difficulty": "HARD",
+          "kits": {
+            "shield_uses": 1
+          }
         },
         {
           "enemy": "fisico_vanguardia_laser",
           "level": 14,
-          "difficulty": "HARD"
+          "difficulty": "HARD",
+          "kits": {
+            "shield_uses": 1
+          }
         },
         {
           "enemy": "calor_horno_laser",
           "level": 15,
-          "difficulty": "HARD"
+          "difficulty": "HARD",
+          "kits": {
+            "shield_uses": 1,
+            "repair_uses": 1,
+            "repair_share": 0.1
+          }
         }
       ],
       "boss": {
@@ -676,37 +904,62 @@
         {
           "enemy": "fisico_vanguardia_laser",
           "level": 19,
-          "difficulty": "NORMAL"
+          "difficulty": "NORMAL",
+          "kits": {
+            "shield_uses": 1
+          }
         },
         {
           "enemy": "calor_horno_laser",
           "level": 21,
-          "difficulty": "NORMAL"
+          "difficulty": "NORMAL",
+          "kits": {
+            "repair_uses": 1,
+            "repair_share": 0.2
+          }
         },
         {
           "enemy": "energia_tempestad_laser",
           "level": 23,
-          "difficulty": "HARD"
+          "difficulty": "HARD",
+          "kits": {
+            "shield_uses": 1
+          }
         },
         {
           "enemy": "hibrido_quimera_laser",
           "level": 24,
-          "difficulty": "HARD"
+          "difficulty": "HARD",
+          "kits": {
+            "repair_uses": 1,
+            "repair_share": 0.2
+          }
         },
         {
           "enemy": "fisico_vanguardia_laser",
           "level": 26,
-          "difficulty": "HARD"
+          "difficulty": "HARD",
+          "kits": {
+            "shield_uses": 1
+          }
         },
         {
           "enemy": "calor_horno_laser",
           "level": 29,
-          "difficulty": "HARD"
+          "difficulty": "HARD",
+          "kits": {
+            "shield_uses": 1
+          }
         },
         {
           "enemy": "energia_tempestad_laser",
           "level": 30,
-          "difficulty": "HARD"
+          "difficulty": "HARD",
+          "kits": {
+            "shield_uses": 1,
+            "repair_uses": 1,
+            "repair_share": 0.1
+          }
         }
       ],
       "boss": {

@@ -228,6 +228,8 @@ const ES := {
 	"mission_fight": "Combate %d de %d",
 	"mission_boss": "JEFE DE ZONA",
 	"mission_zone_of": "ZONA %d DE %d",
+	"mission_rival_kits": "con %s",
+	"mission_kit_repair": "reparación",
 	"mission_reward_win": "Premio +%d celdas",
 	"mission_reward_arena": "Premio +%d · si pierdes +%d",
 	"mission_loss_all": "Si pierdes, vuelves a empezar de cero",

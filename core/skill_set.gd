@@ -4,6 +4,11 @@ extends Resource
 ## mejoras pasivas, las del arma de pecho y las habilidades que se activan en
 ## combate (escudo, reparacion y materia oscura).
 
+## Efectos que se cuentan en enteros (usos y marcas); los demas son fracciones.
+const WHOLE: Array[String] = [
+	"chest_uses", "shield_uses", "repair_uses", "dark_matter_uses", "point_blank"
+]
+
 ## Fracciones que se suman: dano de las armas, energia y regeneracion, calor y
 ## enfriamiento, resistencias y vida.
 @export var damage: float = 0.0
@@ -25,6 +30,19 @@ extends Resource
 @export var dark_matter_uses: int = 0
 ## Parte de la vida maxima del rival que quita la materia oscura.
 @export var dark_matter_share: float = 0.0
+
+
+## Suma un grupo de efectos ({campo: cuanto}): lo que da un tipo de robot
+## (StyleLibrary) o lo que lleva un rival de la campana (Campaign.KITS). Los
+## de WHOLE se cuentan en enteros; lo que no sea un campo se ignora.
+func add(effects: Dictionary) -> void:
+	for effect: String in effects:
+		if not effect in self:
+			continue
+		if effect in WHOLE:
+			set(effect, int(get(effect)) + int(effects[effect]))
+		else:
+			set(effect, float(get(effect)) + float(effects[effect]))
 
 
 ## Aplica las mejoras pasivas a las estadisticas sumadas de un mech.

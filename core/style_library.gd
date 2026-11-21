@@ -10,10 +10,9 @@ extends RefCounted
 ## arma que monta; vacio = todas), "effects" (lo que da el tipo), "build" (con
 ## lo que empieza)}]}.
 
-## Lo que puede dar un tipo: los efectos del arbol de habilidades (menos la
-## materia oscura) y disparar a quemarropa. Los de esta lista se cuentan en
-## enteros; los demas son fracciones.
-const WHOLE_EFFECTS: Array[String] = ["chest_uses", "shield_uses", "repair_uses", "point_blank"]
+## Lo que puede dar un tipo ademas de los efectos del arbol de habilidades
+## (menos la materia oscura): disparar a quemarropa.
+const OWN_EFFECTS: Array[String] = ["point_blank"]
 ## Huecos de arma que limita el tipo, con su lista en los datos.
 const LISTS := {ItemDef.Type.SIDE: "sides", ItemDef.Type.TOP: "tops"}
 
@@ -102,13 +101,8 @@ func why_cant_mount(id: String, def: ItemDef) -> String:
 ## Suma a las habilidades de un mech lo que da su tipo.
 func add_effects(id: String, skills: SkillSet) -> void:
 	var effects: Variant = _field(id, "effects")
-	if not effects is Dictionary or skills == null:
-		return
-	for effect: String in effects:
-		if effect in WHOLE_EFFECTS:
-			skills.set(effect, int(skills.get(effect)) + int(effects[effect]))
-		else:
-			skills.set(effect, float(skills.get(effect)) + float(effects[effect]))
+	if effects is Dictionary and skills != null:
+		skills.add(effects)
 
 
 func _field(id: String, key: String) -> Variant:
@@ -131,7 +125,7 @@ func _add(raw: Variant, catalog: Catalog) -> void:
 			errors.append("%s: falta '%s'" % [id, key])
 	for effect: String in style.get("effects", {}):
 		var known := effect in SkillTree.EFFECTS and effect != "dark_matter"
-		if not known and not effect in WHOLE_EFFECTS:
+		if not known and not effect in OWN_EFFECTS:
 			errors.append("%s: efecto desconocido '%s'" % [id, effect])
 	var spec: Variant = style.get("build")
 	if (

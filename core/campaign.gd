@@ -28,6 +28,10 @@ extends RefCounted
 ## abre al vencer jefes no se compra por adelantado.
 ## "boss": {"skills"} son los puntos de habilidad del jefe: los jefes del
 ## Orden entrenan y los reparten por igual entre las ramas del arbol.
+## "kits" en un combate son las habilidades que lleva ese rival (campos de
+## KITS, de SkillSet): un escudo, un kit de reparacion. Decision tras medir
+## OBS-014 (2026-11-21): sin ellas, un rival normal gastaba del 80 al 95 % de
+## sus acciones en disparar y ninguna en otra cosa.
 ## "tier" es la clase de los rivales de la zona y la mas alta a la que el
 ## jugador puede transformar sus piezas mientras este en ella.
 ## "level_cap" es el nivel mas alto al que el jugador puede subir sus piezas
@@ -41,6 +45,8 @@ const LOSS_RULES: Array[String] = ["new_game", "retry"]
 ## Protecciones, de la mejor a la peor: es el orden en que se gastan.
 const PROTECTIONS: Array[String] = ["rematch", "league"]
 const DIFFICULTIES: Array[String] = ["EASY", "NORMAL", "HARD"]
+## Habilidades que puede llevar un rival ("kits" de su combate).
+const KITS: Array[String] = ["shield_uses", "repair_uses", "repair_share"]
 
 var zones: Array[Dictionary] = []
 ## Jefes que tendra el mundo entero; las zonas hechas pueden ser menos.
@@ -125,6 +131,13 @@ func fight_at(zone: int, fight: int) -> Dictionary:
 	if is_boss_fight(zone, fight):
 		return zones[zone]["boss"]
 	return zones[zone]["fights"][fight]
+
+
+## Las habilidades que lleva el rival de un combate ({campo de SkillSet:
+## cuanto}); vacio si no lleva ninguna.
+static func kits_of(fight: Dictionary) -> Dictionary:
+	var kits: Variant = fight.get("kits", {})
+	return kits if kits is Dictionary else {}
 
 
 ## La escalera de la zona: el combate que toca y los que le siguen, en
@@ -430,4 +443,7 @@ func _fight_problem(raw: Variant, library: BuildLibrary) -> String:
 		return "la dificultad no es valida"
 	if int(raw.get("level", -1)) < 0:
 		return "falta el nivel"
+	for kit: String in kits_of(raw):
+		if not kit in KITS:
+			return "habilidad desconocida en 'kits': %s" % kit
 	return ""

@@ -225,6 +225,18 @@ func rival(entry: Dictionary, zone_tier: int) -> Dictionary:
 	var tier := int(entry.get("tier", zone_tier))
 	var level := int(entry["level"])
 	var difficulty := maxi(Campaign.DIFFICULTIES.find(str(entry["difficulty"])), 0)
+	var detail := Txt.t(
+		"mission_rival", [Txt.TIER_NAMES[tier], level, Txt.t(DIFFICULTY_KEYS[difficulty])]
+	)
+	# Lo que sabe hacer ademas de disparar: se ve antes de salir.
+	var kits := Campaign.kits_of(entry)
+	var known: Array[String] = []
+	if int(kits.get("shield_uses", 0)) > 0:
+		known.append(Txt.t("ability_shield").to_lower())
+	if int(kits.get("repair_uses", 0)) > 0:
+		known.append(Txt.t("mission_kit_repair"))
+	if not known.is_empty():
+		detail += " · " + Txt.t("mission_rival_kits", [" y ".join(known)])
 	return {
 		"id": id,
 		"build":
@@ -236,6 +248,6 @@ func rival(entry: Dictionary, zone_tier: int) -> Dictionary:
 		"tier": tier,
 		"level": level,
 		"difficulty": difficulty,
-		"detail":
-		Txt.t("mission_rival", [Txt.TIER_NAMES[tier], level, Txt.t(DIFFICULTY_KEYS[difficulty])]),
+		"detail": detail,
+		"kits": kits,
 	}

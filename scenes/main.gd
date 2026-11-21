@@ -585,6 +585,7 @@ func _spec_for(mode: String, zone: int, fight: Dictionary) -> Dictionary:
 		"enemy_tier": int(fight.get("tier", _campaign.tier_of(zone))),
 		"enemy_level": int(fight["level"]),
 		"enemy_skills": int(fight.get("skills", 0)),
+		"enemy_kits": Campaign.kits_of(fight),
 		"enemy_loadout": fight.get("loadout", {}),
 		"difficulty": DIFFICULTY_IDS.find(fight["difficulty"]),
 		"seed": randi(),
@@ -674,6 +675,8 @@ func _start_battle(spec: Dictionary) -> void:
 	# Los jefes del Orden llevan su entrenamiento (GDD 9.3).
 	var trained := _skills.spread(int(spec.get("enemy_skills", 0)))
 	enemy_build.skills = _skills.effects_for(trained)
+	# Y los rivales normales, sus habilidades (el escudo, la reparacion).
+	enemy_build.skills.add(spec.get("enemy_kits", {}))
 	_battle.start(
 		_rules, player_build, enemy_build, spec["seed"], MENU_DIFFICULTIES[spec["difficulty"]]
 	)

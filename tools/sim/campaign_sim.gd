@@ -48,7 +48,11 @@ func _initialize() -> void:
 	var count := campaign.fights_in(zone) + 1
 	for fight in count:
 		var spec := campaign.fight_at(zone, fight)
-		_rivals.append(library.make(spec["enemy"], catalog, _rules, tier, spec["level"], chassis))
+		var rival := library.make(spec["enemy"], catalog, _rules, tier, spec["level"], chassis)
+		# Lo que lleva ese rival ademas de sus armas (escudo, reparacion).
+		rival.skills = SkillSet.new()
+		rival.skills.add(Campaign.kits_of(spec))
+		_rivals.append(rival)
 		_difficulties.append(DIFFICULTY[spec["difficulty"]])
 	for id in library.band_ids(campaign.band_of(zone)):
 		_players[id] = library.make(id, catalog, _rules, tier, campaign.level_cap(zone))
