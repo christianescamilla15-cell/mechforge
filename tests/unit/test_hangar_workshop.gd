@@ -351,10 +351,10 @@ func test_el_plano_tiene_una_casilla_por_hueco() -> void:
 func test_las_casillas_de_las_armas_van_a_los_lados_del_robot() -> void:
 	var screen := _loadout(_profile())
 	var robot := screen._robot_rect()
-	for slot: String in ["side0", "side1"]:
-		assert_lt(screen.box_rect(slot).end.x, robot.position.x, slot + " a un lado")
-	for slot: String in ["chest", "assist"]:
-		assert_gt(screen.box_rect(slot).position.x, robot.end.x, slot + " al otro")
+	# Las armas y el pecho, del lado al que mira el robot; el asistente, detras.
+	for slot: String in ["side0", "side1", "chest"]:
+		assert_gt(screen.box_rect(slot).position.x, robot.end.x, slot + " delante")
+	assert_lt(screen.box_rect("assist").end.x, robot.position.x, "el asistente, detras")
 	for slot: String in ["top0", "torso"]:
 		assert_lt(screen.box_rect(slot).end.y, robot.position.y + 4.0, slot + " arriba")
 	assert_gt(screen.box_rect("legs").position.y, robot.end.y - 4.0, "las piernas, abajo")
@@ -377,17 +377,24 @@ func test_pulsar_una_casilla_la_elige_y_la_tecla_de_la_esquina_cierra() -> void:
 	assert_false(screen.visible)
 
 
-func test_el_plano_ensena_tu_robot_de_frente() -> void:
+## Desde OBS-036 (sin giro en 3D) el plano ensena el robot de perfil, con su
+## dibujo de verdad, y cada casilla de arma apunta a su pieza.
+func test_el_plano_ensena_tu_robot_y_cada_linea_va_a_su_pieza() -> void:
 	var profile := _profile()
 	var screen := _loadout(profile)
 	var build := _brief.build_of(profile, profile.build)
 	screen.show_build(build, [] as Array[String])
 	var plan := screen._blueprint
 	assert_true(plan.has_robot())
-	assert_almost_eq(plan._turntable.angle, MechBlueprint.FRONT, 0.0001, "girado de cara")
-	assert_true(plan._turntable.visible, "con la pantalla delante, se ve")
-	screen.close(true)
-	assert_false(plan._turntable.visible, "y recogida, el giro deja de trabajar")
+	assert_true(plan._mech.visible, "su dibujo de perfil")
+	var inside := Rect2(Vector2.ZERO, plan.size).grow(2.0)
+	for slot: String in ["torso", "legs", "side0", "side1", "top0"]:
+		var point := plan.point_of(slot)
+		assert_ne(point, Vector2.INF, slot + " tiene pieza a la vista")
+		assert_true(inside.has_point(point), slot + " cae dentro del plano")
+	# El torso, arriba de las piernas.
+	assert_lt(plan.point_of("torso").y, plan.point_of("legs").y)
+	assert_eq(plan.point_of("module0"), Vector2.INF, "un modulo no se ve en el robot")
 
 
 func test_el_catalogo_va_dentro_de_la_pantalla() -> void:
@@ -796,19 +803,26 @@ func test_obs030_las_piezas_ya_no_se_eligen_tocando_el_robot() -> void:
 	assert_false(stage.has_method("slot_at"), "el robot ya no sabe que pieza se toca")
 
 
-func test_obs030_arrastrar_el_robot_lo_gira_y_no_abre_nada() -> void:
+func test_obs036_el_robot_del_hangar_ya_no_gira() -> void:
+	# Del usuario: "quitemos la parte de la rotacion en 3D, eso ya queda
+	# cancelado. Aqui no funciona".
 	var stage := _stage()
+	assert_false(stage.has_method("turn_to"), "sin giro de 360 grados")
+	assert_false("turn" in stage)
 	var pressed := [0]
 	stage.robot_pressed.connect(func() -> void: pressed[0] += 1)
 	var chest := _screen_point(stage, stage._world_rect("torso").get_center())
-	stage._gui_input(_click(chest))
+	# Arrastrar o la rueda no hacen nada; se ve su dibujo de perfil.
 	var drag := InputEventMouseMotion.new()
 	drag.position = chest + Vector2(90, 0)
 	drag.relative = Vector2(90, 0)
 	stage._gui_input(drag)
-	stage._gui_input(_release(chest + Vector2(90, 0)))
-	assert_true(stage.is_turned(), "arrastrarlo por cualquier parte lo gira")
+	stage._gui_input(_click(chest, MOUSE_BUTTON_WHEEL_UP))
 	assert_eq(pressed[0], 0)
+	assert_true(stage._mech.visible, "de perfil, con el dibujo del combate")
+	# Un clic en el robot acerca la computadora del taller.
+	stage._gui_input(_click(chest))
+	assert_eq(pressed[0], 1)
 
 
 func test_obs030_la_computadora_del_taller_crece_desde_su_pantalla() -> void:
@@ -857,19 +871,6 @@ func test_obs009_cada_arma_de_balas_dispara_a_su_manera() -> void:
 	for id: String in ShotFx.table():
 		ShotFx.kick(stage._mech, id, 0.3, "side1", 0.42)
 	assert_true(true, "ningun disparo rompe el gesto del arma")
-
-
-func test_obs023_la_rueda_gira_el_robot_con_el_cursor_sobre_el() -> void:
-	var stage := _stage()
-	var chest := _screen_point(stage, stage._world_rect("torso").get_center())
-	stage._gui_input(_click(chest, MOUSE_BUTTON_WHEEL_UP))
-	await wait_seconds(0.3)
-	assert_true(stage.is_turned(), "gira sin tener que acertar en la plataforma")
-	# Lejos del robot la rueda no lo mueve.
-	var before := stage.turn
-	stage._gui_input(_click(Vector2(40, 40), MOUSE_BUTTON_WHEEL_UP))
-	await wait_seconds(0.3)
-	assert_eq(stage.turn, before)
 
 
 func test_cada_pantalla_crece_desde_su_sitio() -> void:

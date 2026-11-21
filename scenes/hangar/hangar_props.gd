@@ -579,29 +579,3 @@ static func dim(
 		)
 		c.draw_colored_polygon(cone, Color(1.0, 0.2, 0.1, 0.16 * alarm))
 		c.draw_circle(lamp, 7.0, Color(1.0, 0.3, 0.2, 0.9 * alarm * beat))
-
-
-## Muescas de la plataforma giratoria (`feet`, de ancho `width`): dan la
-## vuelta con el robot (`turn`); la larga marca hacia donde mira. Con `live`
-## (el raton encima o girandola) el borde se enciende.
-static func turn_marks(c: CanvasItem, feet: Vector2, width: float, turn: float, live: bool) -> void:
-	var rx := width * 0.5
-	var ry := maxf(width * 0.09, 4.0)
-	if live:
-		for i in 48:
-			var a0 := TAU * i / 48.0
-			var a1 := TAU * (i + 1) / 48.0
-			c.draw_line(
-				feet + Vector2(cos(a0) * rx, sin(a0) * ry),
-				feet + Vector2(cos(a1) * rx, sin(a1) * ry),
-				Color(SOCKET, 0.95),
-				3.0
-			)
-	for k in 12:
-		# De perfil el robot mira a la derecha; al girar se aleja de quien mira.
-		var a := -turn + TAU * k / 12.0
-		var out := Vector2(cos(a) * rx, sin(a) * ry)
-		var reach := 0.78 if k == 0 else 0.9
-		var alpha := (0.9 if k == 0 else 0.4) * (1.0 if sin(a) > -0.2 else 0.55)
-		var color := Color(Color("ffe27a") if k == 0 else SOCKET, alpha if live else alpha * 0.7)
-		c.draw_line(feet + out * reach, feet + out * 0.97, color, 2.5 if k == 0 else 1.5)

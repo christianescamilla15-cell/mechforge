@@ -120,11 +120,6 @@ func _build_hud() -> void:
 # --- Estado ------------------------------------------------------------------
 
 
-## Gira el robot del hangar a ese angulo, en grados (0 = de perfil).
-func turn_robot(degrees: float) -> void:
-	_stage.turn = deg_to_rad(degrees)
-
-
 ## Vuelve a pintar todo con el perfil actual.
 func refresh() -> void:
 	var brief := main._bench

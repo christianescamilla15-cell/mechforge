@@ -76,7 +76,7 @@ var facing: int = 1
 ## hueco sin que el mech se quede flotando.
 var ghost_slots: Array[String] = []
 ## Solo se dibuja esta capa del robot ("" = todas), para el giro del hangar
-## (TurntableMech; desde OBS-033 ya no pide las del lado lejano): "far" y
+## (lo usaba el giro con volumen del hangar, quitado el 2026-11-21): "far" y
 ## "far_top" (armas de brazo y de hombro del lado
 ## lejano), "far_leg", "body" (torso y piernas de una pieza), "chest" (canon
 ## de pecho), "near_leg", "near_top" y "near" (armas del lado cercano) y

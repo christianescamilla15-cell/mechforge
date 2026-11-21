@@ -21,11 +21,9 @@ extends MechStage
 ##   ver su ficha), sus celdas en la pantalla de la tienda, su nivel en la de
 ##   habilidades, sus mejoras en la de mejoras y su peso en la bascula que
 ##   hay junto a la plataforma;
-## - la plataforma del robot es giratoria: arrastrar el robot o su
-##   plataforma (o la rueda del raton) lo gira 360 grados (TurntableMech);
-##   doble clic lo devuelve al perfil. Sus piezas ya no se eligen tocandolo
-##   (decision del usuario, 2026-11-21, OBS-030): pulsarlo acerca la
-##   computadora del taller.
+## - el robot, de perfil sobre su plataforma: pulsarlo acerca la computadora
+##   del taller (OBS-030). Ya no gira (OBS-036, del usuario: "quitemos la
+##   parte de la rotacion en 3D, eso ya queda cancelado").
 ## Pulsar el hangar vacio recoge lo que este abierto.
 
 signal terminal_pressed(terminal: String)
@@ -56,20 +54,6 @@ const COLOR_SCREEN := Color("0b2a33")
 const COLOR_SCREEN_LINE := Color("3fd0e6")
 const COLOR_TEXT := Color("bfefff")
 const COLOR_SOCKET := Color("57d3ff")
-## Giro por pixel arrastrado, por muesca de la rueda, y a cuanto de una
-## vista dibujada (de perfil, de espalda, del otro perfil o de frente) el
-## robot se coloca solo en ella al soltar.
-const TURN_PER_PIXEL := TAU / 620.0
-const TURN_PER_NOTCH := TAU / 16.0
-const TURN_SNAP := deg_to_rad(9.0)
-## Hacia donde gira cada rueda: la de arriba y abajo y la de los lados (el
-## desplazamiento con dos dedos de un panel tactil llega como una de ellas).
-const WHEEL_TURN := {
-	MOUSE_BUTTON_WHEEL_UP: 1.0,
-	MOUSE_BUTTON_WHEEL_DOWN: -1.0,
-	MOUSE_BUTTON_WHEEL_RIGHT: 1.0,
-	MOUSE_BUTTON_WHEEL_LEFT: -1.0,
-}
 ## Modo mision: lo que tarda en bajar la luz.
 const MISSION_SECONDS := 0.35
 ## Radio de la diana al tocarla.
@@ -107,12 +91,6 @@ var mission := 0.0:
 ## Robots de las bahias: [{"index", "build", "name"}]; uno con "index" -1 es
 ## una bahia vacia.
 var bays: Array[Dictionary] = []
-## Giro del robot sobre su plataforma, en radianes: 0 = de perfil, como en
-## combate. Girado no se tocan sus piezas (se le da la vuelta para verlo).
-var turn: float = 0.0:
-	set(value):
-		turn = wrapf(value, 0.0, TAU)
-		_apply_turn()
 
 var _bay_layer := Node2D.new()
 var _bay_views: Array[MechView] = []
@@ -125,14 +103,10 @@ var _pressed_bay: int = -1
 var _hover_sign := false
 var _hover_target := false
 var _font: Font
-var _turntable := TurntableMech.new()
-## Lo que ocupa el robot en el taller (para las capas del giro).
+## Lo que ocupa el robot en el taller (para saber si se pulsa).
 var _bounds := Rect2()
-var _turning := false
-## Si el arrastre que gira el robot llego a moverse.
-var _turn_moved := false
-var _hover_platform := false
-var _turn_tween: Tween
+## El raton sobre tu robot: se pulsa para acercar la computadora.
+var _hover_robot := false
 var _dim := Node2D.new()
 var _row := RivalRow.new()
 var _board := MissionBoard.new()
@@ -173,9 +147,6 @@ func _ready() -> void:
 	add_child(loadout)
 	mouse_exited.connect(_clear_hover)
 	_mech.footstep.connect(_on_footstep)
-	_world.add_child(_turntable)
-	_world.move_child(_turntable, _mech.get_index() + 1)
-	_turntable.set_active(false)
 	_font = get_theme_default_font()
 	_row.font = _font
 	_still.disable_3d = true
@@ -256,8 +227,6 @@ func launch_out(speed: float = 1.0) -> void:
 	_launch_center = _platform_center()
 	_launching = true
 	_row.hover = false
-	if is_turned():
-		await turn_to(0.0, 0.2)
 	Sfx.play("despliegue")
 	_row.collapse(0.25 / speed)
 	create_tween().tween_property(self, "_alarm", 1.0, 0.2 / speed)
@@ -368,56 +337,12 @@ func target_rect() -> Rect2:
 
 
 func _on_target(at: Vector2) -> bool:
-	return can_test and not _mission_on and not is_turned() and target_rect().has_point(at)
-
-
-## Ensena el robot girado (con sus capas) o el de siempre si esta de perfil.
-func _apply_turn() -> void:
-	var turned := is_turned() and _mech.build != null
-	_mech.visible = not turned
-	_turntable.angle = turn
-	_turntable.set_active(turned)
-	_overlay.queue_redraw()
-	queue_redraw()
-
-
-func is_turned() -> bool:
-	return not (is_zero_approx(turn) or is_equal_approx(turn, TAU))
-
-
-## De media vuelta: se ve su otro perfil, con las armas del otro lado
-## delante. Ahi sus piezas se tocan igual que de perfil.
-func is_flipped() -> bool:
-	return is_equal_approx(turn, PI)
-
-
-## Se tocan sus piezas de perfil y de media vuelta; a medio girar, no.
-func _can_touch() -> bool:
-	return not is_turned() or is_flipped()
-
-
-## Eje del giro, en el mundo del taller.
-func _pivot() -> float:
-	var legs := _world_rect("legs")
-	return legs.get_center().x if legs.size != Vector2.ZERO else 0.0
-
-
-## Gira el robot hasta ese angulo con un movimiento suave, por el camino corto.
-func turn_to(target: float, seconds: float = 0.3) -> void:
-	if _turn_tween != null:
-		_turn_tween.kill()
-	var from := turn
-	var delta := wrapf(target - from, -PI, PI)
-	_turn_tween = create_tween().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-	_turn_tween.tween_method(func(t: float) -> void: turn = from + delta * t, 0.0, 1.0, seconds)
-	await _turn_tween.finished
+	return can_test and not _mission_on and target_rect().has_point(at)
 
 
 ## Probar un arma: primero el robot vuelve al perfil. Si salta a la diana
 ## (un arma cuerpo a cuerpo), su plataforma se queda donde esta.
 func test_fire(slot: String, fx: String, color: Color) -> void:
-	if is_turned():
-		await turn_to(0.0)
 	if not _striking:
 		_launch_center = _platform_center()
 	await super.test_fire(slot, fx, color)
@@ -446,11 +371,6 @@ func _fit() -> void:
 	var legs := _world_rect("legs")
 	_platform_width = maxf(legs.size.x, 80.0) * zoom * 1.7
 	_layout()
-	# Las capas del giro se arman con el mismo equipo y a la misma medida.
-	var pivot := legs.get_center().x if legs.size != Vector2.ZERO else 0.0
-	var deployed := _mech.build.chest != null
-	_turntable.setup(_mech.build, _mech.ghost_slots, bounds, pivot, deployed)
-	_apply_turn()
 	_refresh_still()
 
 
@@ -528,9 +448,6 @@ func _draw() -> void:
 			HangarProps.terminal_live(self, _font, terminal, rect, hover, info, _time)
 	var center := _platform_center()
 	HangarArt.draw_light_dust(self, Rect2(Vector2.ZERO, size), center, _floor_y, _time)
-	if _mech.build != null:
-		var live := _hover_platform or _turning
-		HangarProps.turn_marks(self, Vector2(center, _floor_y), _platform_width, turn, live)
 	if str(info.get("name", "")) != "":
 		HangarProps.bay_sign(
 			self,
@@ -656,9 +573,9 @@ func _draw_bays_live() -> void:
 
 func _draw_overlay() -> void:
 	super._draw_overlay()
-	if _mech.build == null or not _can_touch() or _mission_on:
+	if _mech.build == null or _mission_on:
 		return
-	if can_test and not is_turned():
+	if can_test:
 		# La diana llama: un aro que late y, debajo, que hace.
 		var target := _target_point()
 		var beat := 0.5 + 0.5 * sin(_time * 4.0)
@@ -704,7 +621,7 @@ func _clear_hover() -> void:
 	_hover_bay = -2
 	_hover_sign = false
 	_hover_target = false
-	_hover_platform = false
+	_hover_robot = false
 	_row.hover = false
 	_overlay.queue_redraw()
 
@@ -727,21 +644,6 @@ func _bay_at(at: Vector2) -> int:
 	return -2
 
 
-## True si ese punto agarra la plataforma giratoria: la plataforma y, con el
-## robot ya girado, tambien el robot.
-func _grabs_platform(at: Vector2) -> bool:
-	if _mech.build == null:
-		return false
-	var legs := _world_rect("legs")
-	var feet := Vector2(_world.position.x + legs.get_center().x * _world.scale.x, _floor_y)
-	var rx := _platform_width * 0.5
-	var ry := maxf(_platform_width * 0.09, 4.0) * 1.5
-	var on_platform := (
-		Vector2((at.x - feet.x) / rx, (at.y - feet.y - ry * 0.25) / ry).length() <= 1.0
-	)
-	return on_platform or _over_robot(at)
-
-
 ## True si ese punto cae sobre el robot (lo que ocupa de perfil).
 func _over_robot(at: Vector2) -> bool:
 	if _mech.build == null:
@@ -752,32 +654,8 @@ func _over_robot(at: Vector2) -> bool:
 	return body.grow(12.0).has_point(at)
 
 
-## La rueda o el desplazamiento del panel tactil giran el robot `steps`
-## muescas (pueden ser fracciones). Cerca de una vista dibujada se coloca
-## en ella.
-func turn_by(steps: float) -> void:
-	var target := turn + steps * TURN_PER_NOTCH
-	var quarter := snappedf(target, PI / 2.0)
-	if absf(wrapf(target - quarter, -PI, PI)) < TURN_SNAP:
-		target = quarter
-	turn_to(target, 0.16)
-
-
 func _gui_input(event: InputEvent) -> void:
 	if _launching:
-		return
-	var pan := event as InputEventPanGesture
-	if pan != null and (_over_robot(pan.position) or _grabs_platform(pan.position)):
-		turn_by((pan.delta.x if absf(pan.delta.x) > absf(pan.delta.y) else -pan.delta.y) * 0.25)
-		accept_event()
-		return
-	var button := event as InputEventMouseButton
-	if button != null and _turn_input(button):
-		return
-	var dragged := event as InputEventMouseMotion
-	if dragged != null and _turning:
-		turn += dragged.relative.x * TURN_PER_PIXEL
-		_turn_moved = true
 		return
 	var motion := event as InputEventMouseMotion
 	if motion != null:
@@ -801,18 +679,11 @@ func _gui_input(event: InputEvent) -> void:
 			_hover_bay = bay
 			if terminal != "" or bay >= 0:
 				Sfx.play("ui_tic")
-		var platform := terminal == "" and bay < 0 and _grabs_platform(motion.position)
-		if platform != _hover_platform:
-			_hover_platform = platform
-			queue_redraw()
+		var free := terminal == "" and bay < 0 and not on_rival and not on_sign and not on_target
+		_hover_robot = free and _over_robot(motion.position)
+		var pointing := terminal != "" or bay >= 0 or on_rival or on_sign or on_target
 		mouse_default_cursor_shape = (
-			Control.CURSOR_HSIZE
-			if platform
-			else (
-				Control.CURSOR_POINTING_HAND
-				if (terminal != "" or bay >= 0 or on_rival or on_sign or on_target)
-				else Control.CURSOR_ARROW
-			)
+			Control.CURSOR_POINTING_HAND if pointing or _hover_robot else Control.CURSOR_ARROW
 		)
 		return
 	var click := event as InputEventMouseButton
@@ -835,52 +706,8 @@ func _gui_input(event: InputEvent) -> void:
 			_pressed_bay = bay
 			bay_pressed.emit(int(bays[bay]["index"]))
 			return
+		# Tu robot: se acerca la computadora del taller.
+		if _over_robot(click.position):
+			robot_pressed.emit()
+			return
 		background_pressed.emit()
-
-
-## El raton sobre la plataforma giratoria: arrastrar gira, la rueda gira a
-## saltos y doble clic devuelve el robot al perfil. True si el gesto era suyo.
-func _turn_input(button: InputEventMouseButton) -> bool:
-	if button.button_index == MOUSE_BUTTON_LEFT and not button.pressed and _turning:
-		_turning = false
-		queue_redraw()
-		if not _turn_moved:
-			# Un clic sin arrastrar no es girarlo: es pulsar el robot (se
-			# acerca la computadora del taller) o, en su plataforma, el hangar.
-			if _over_robot(button.position):
-				robot_pressed.emit()
-			else:
-				background_pressed.emit()
-			return true
-		# Casi en una vista dibujada: se coloca en ella (de perfil, ademas,
-		# se pueden tocar sus piezas).
-		var quarter := snappedf(turn, PI / 2.0)
-		if absf(wrapf(turn - quarter, -PI, PI)) < TURN_SNAP:
-			turn_to(quarter, 0.18)
-		return true
-	if not button.pressed:
-		return false
-	# La rueda (o desplazar con dos dedos) lo gira con el cursor en cualquier
-	# parte del robot o de su plataforma.
-	var wheel := WHEEL_TURN.get(button.button_index, 0.0) as float
-	if wheel != 0.0:
-		if not (_over_robot(button.position) or _grabs_platform(button.position)):
-			return false
-		turn_by(wheel * (button.factor if button.factor > 0.0 else 1.0))
-		return true
-	if not _grabs_platform(button.position):
-		return false
-	if _terminal_at(button.position) != "" or _bay_at(button.position) >= 0:
-		return false
-	match button.button_index:
-		MOUSE_BUTTON_LEFT:
-			if button.double_click:
-				turn_to(0.0)
-			else:
-				if _turn_tween != null:
-					_turn_tween.kill()
-				_turning = true
-				_turn_moved = false
-				queue_redraw()
-			return true
-	return false

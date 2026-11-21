@@ -81,6 +81,35 @@ func test_un_combate_nuevo_borra_la_nota_del_anterior() -> void:
 	await wait_for_signal(screen.finished, 60.0)
 
 
+## OBS-035, del usuario: "cuando sale una bonificacion y esta el rival cerca, yo no
+## tengo forma de transportarme hasta el lugar si esta lejos, pero el rival si
+## puede... en cuanto yo le de en baliza de salto, el mapa se agranda para tener
+## todo el alcance como el rival".
+func test_con_la_baliza_de_salto_se_ve_la_arena_entera() -> void:
+	var screen := _new_screen()
+	var hero := _build("fisico_vanguardia")
+	hero.teleport = ItemScaling.resolve(
+		_catalog.get_item("esp_baliza"), _rules, ItemDef.Tier.EPIC, 0
+	)
+	screen.start(_rules, hero, _build("calor_horno"), 4, D.RANDOM)
+	var waited := 0.0
+	while not screen._can_act() and waited < 20.0:
+		await wait_seconds(0.1)
+		waited += 0.1
+	assert_true(screen._can_act(), "le toca al jugador")
+	var arena := screen._arena
+	assert_false(arena.overview)
+	screen._on_teleport_requested()
+	assert_true(arena.overview, "con la baliza en la mano se ve todo")
+	await wait_seconds(2.5)
+	for cell in screen.rules.arena_size:
+		var x := arena._world.position.x + arena.cell_point(cell).x * arena._zoom
+		assert_between(x, 0.0, arena.size.x, "la casilla %d se ve y se puede pulsar" % cell)
+	# Soltar la baliza (o saltar) devuelve la camara a los mechs.
+	screen._on_teleport_requested()
+	assert_false(arena.overview)
+
+
 func _new_screen() -> BattleScreen:
 	var screen := BattleScreen.new()
 	screen.speed = 400.0

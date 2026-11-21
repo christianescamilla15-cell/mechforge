@@ -485,6 +485,9 @@ func _refresh() -> void:
 	if engine == null:
 		return
 	var can_act := _can_act()
+	# Con la baliza en la mano se ve la arena entera, para saltar a donde sea
+	# (OBS-035): el rival elige entre todas las casillas, y el jugador tambien.
+	_arena.overview = _teleport_mode and can_act
 	_hud.refresh(can_act, _reason_for, _uses_left_for)
 	if engine.turn != _announced and not engine.is_over() and not _surrendered:
 		# El turno no esta fijo en pantalla: se anuncia al cambiar y se va.

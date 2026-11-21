@@ -203,29 +203,13 @@ func _ready() -> void:
 		elif _args["menu-shot"] == "misiones":
 			_live_test().missions_test()
 			return
-		elif _args["menu-shot"] == "giro":
-			# El robot dando la vuelta entera sobre su plataforma, cuadro a
-			# cuadro (--step=<grados>, 10 si no se dice).
-			var hangar := _menu as WorkshopScreen
-			var step := float(_args.get("step", "10"))
-			var live := _live_test()
-			await get_tree().create_timer(0.6).timeout
-			for i in roundi(360.0 / step):
-				hangar.turn_robot(i * step)
-				await get_tree().create_timer(0.1).timeout
-				await live.shot("giro")
-			get_tree().quit(0)
-			return
 		# --channel=<canal>: el hangar en modo mision, en ese canal (campaign,
 		# arena o free). Se espera a que los rivales terminen de encenderse.
 		if _args.has("channel") and _menu is WorkshopScreen:
 			(_menu as WorkshopScreen).open_missions(_args["channel"])
 			await get_tree().create_timer(1.5).timeout
-		# --turn=<grados>: el robot del hangar, girado.
-		if _args.has("turn") and _menu is WorkshopScreen:
-			(_menu as WorkshopScreen).turn_robot(float(_args["turn"]))
 		# --fps: cuadros por segundo tras tres segundos (con --disable-vsync
-		# delante de "++" se ve lo que da de si el giro).
+		# delante de "++" se ve lo que da de si el hangar).
 		if _args.has("fps"):
 			await get_tree().create_timer(3.0).timeout
 			print("FPS %d" % Engine.get_frames_per_second())

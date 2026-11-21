@@ -9,7 +9,8 @@ extends Control
 ## pulsar tu robot). Sustituye al tablero que colgaba junto al robot, al banco
 ## de equipo y a elegir las piezas tocandolas en el propio robot.
 ##
-## A la izquierda, el plano: tu robot de frente (MechBlueprint) y, alrededor,
+## A la izquierda, el plano: tu robot (MechBlueprint, de perfil desde que se
+## cancelo el giro en 3D, OBS-036) y, alrededor,
 ## una casilla por hueco, unida con una linea a su sitio en el robot; dentro,
 ## la pieza que lleva. A la derecha, el catalogo de la casilla elegida
 ## (PartsRack): tus piezas y las de la tienda, por tipo, con su ficha, la
@@ -42,11 +43,13 @@ const ROBOT_AREA := Rect2(0.2, 0.16, 0.6, 0.56)
 ## abajo; lo que no se ve en el robot, al pie.
 const BOXES := {
 	"torso": Vector2(0.5, 0.075),
-	"top0": Vector2(0.25, 0.1),
-	"side0": Vector2(0.085, 0.33),
-	"side1": Vector2(0.085, 0.52),
-	"chest": Vector2(0.915, 0.33),
-	"assist": Vector2(0.915, 0.52),
+	# El robot mira a la derecha, como en el hangar: sus armas y su pecho
+	# quedan de ese lado, y el asistente, que flota detras, del otro.
+	"top0": Vector2(0.75, 0.1),
+	"side0": Vector2(0.915, 0.33),
+	"side1": Vector2(0.915, 0.52),
+	"chest": Vector2(0.915, 0.71),
+	"assist": Vector2(0.085, 0.33),
 	"legs": Vector2(0.5, 0.795),
 	"charge": Vector2(0.075, 0.805),
 	"teleport": Vector2(0.175, 0.805),
@@ -397,9 +400,15 @@ func _draw_box(entry: Dictionary, alpha: float) -> void:
 		edge = GOLD
 	elif hot:
 		edge = edge.lightened(0.45)
-	if ANCHORS.has(slot):
+	# La linea va a la pieza en el robot; si no se ve, a su sitio de siempre.
+	var on_robot := _blueprint.point_of(slot)
+	if on_robot != Vector2.INF or ANCHORS.has(slot):
 		var area := _robot_rect()
-		var to: Vector2 = area.position + area.size * (ANCHORS[slot] as Vector2)
+		var to: Vector2 = (
+			area.position + on_robot
+			if on_robot != Vector2.INF
+			else area.position + area.size * (ANCHORS[slot] as Vector2)
+		)
 		var from := rect.get_center() + (to - rect.get_center()).normalized() * rect.size.x * 0.56
 		var glow := 0.85 if selected or hot else 0.32
 		draw_line(from, to, Color(edge if selected else LINE, glow * alpha), 1.0)

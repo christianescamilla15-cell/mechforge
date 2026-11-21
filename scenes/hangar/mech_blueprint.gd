@@ -1,31 +1,30 @@
 class_name MechBlueprint
 extends Control
-## El robot visto de frente, como plano en la pantalla de la computadora del
-## taller (decision del usuario, 2026-11-21, OBS-030: "una pantalla de
-## computadora donde se va a mostrar un grafico... de robot de frente"). No
-## es un dibujo aparte: es tu robot, con las piezas que lleva, girado de
-## cara con el mismo giro con volumen del hangar (TurntableMech) y tenido
-## como una proyeccion. Solo se mira: las casillas de sus huecos las pone la
-## pantalla alrededor (LoadoutScreen).
+## Tu robot en la pantalla de la computadora del taller (OBS-030), tenido como
+## una proyeccion. Es tu robot de verdad, con las piezas que lleva y su dibujo
+## de perfil, el mismo del hangar y del combate.
+##
+## Hasta el 2026-11-21 se ensenaba de frente, con el giro con volumen del
+## hangar (TurntableMech). El usuario cancelo ese giro ("quitemos la parte de
+## la rotacion en 3D... aqui no funciona", OBS-036) y en la computadora el
+## robot de frente "se ve todo mal": las armas no tienen dibujo de frente y
+## salian como cajas. De perfil se ve como es.
+##
+## Solo se mira: las casillas de sus huecos las pone la pantalla alrededor
+## (LoadoutScreen), y cada linea va a su pieza (point_of).
 
-## El angulo en el que el giro ensena el frente.
-const FRONT := deg_to_rad(270.0)
 ## El color de la proyeccion.
 const TINT := Color(0.56, 0.93, 1.0, 0.96)
 ## Aire que se deja alrededor, en pixeles.
 const PAD := 10.0
+## Huecos con pieza a la vista: de ellos sale lo que ocupa el robot.
+const SEEN: Array[String] = ["torso", "legs", "side0", "side1", "top0", "chest", "assist"]
 
 var _world := Node2D.new()
-## Un robot de perfil que no se ve: de el salen las medidas.
-var _probe := MechView.new()
-var _turntable := TurntableMech.new()
+var _mech := MechView.new()
 var _build: MechBuild
-var _ghosts: Array[String] = []
-## Lo que mide de frente, en unidades del dibujo: medio ancho y alto.
-var _half := 100.0
-var _tall := 300.0
-## El eje del giro, en unidades del dibujo: es el centro del robot de frente.
-var _pivot := 0.0
+## Lo que ocupa el robot, en unidades del dibujo (los pies en el 0).
+var _bounds := Rect2(-100.0, -300.0, 200.0, 300.0)
 
 
 func _ready() -> void:
@@ -33,42 +32,32 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_world)
 	_world.modulate = TINT
-	_probe.visible = false
-	_world.add_child(_probe)
-	_world.add_child(_turntable)
-	_turntable.set_active(false)
+	_world.add_child(_mech)
+	_mech.visible = false
 	resized.connect(_frame)
-	visibility_changed.connect(_wake)
 
 
 ## El robot que se ensena. `ghosts`: piezas que le faltan ("torso", "legs")
 ## y salen transparentes.
 func show_build(build: MechBuild, ghosts: Array[String]) -> void:
 	_build = build
-	_ghosts = ghosts
-	if build == null or build.torso == null or build.legs == null:
-		_turntable.set_active(false)
+	_mech.visible = has_robot()
+	if not has_robot():
 		return
-	_probe.setup(build, 1)
-	_probe.ghost_slots = ghosts
+	_mech.setup(build, 1)
+	_mech.ghost_slots = ghosts
 	if build.chest != null:
-		_probe.show_deployed()
-	_probe.place(Vector2.ZERO)
+		_mech.show_deployed()
+	_mech.place(Vector2.ZERO)
 	var bounds := Rect2()
-	for slot in MechStage.TOUCHABLE:
-		var rect := _rect(slot)
-		if rect.size != Vector2.ZERO:
-			bounds = bounds.merge(rect)
-	var legs := _rect("legs")
-	var pivot := legs.get_center().x if legs.size != Vector2.ZERO else 0.0
-	_turntable.setup(build, ghosts, bounds, pivot, build.chest != null)
-	_turntable.angle = FRONT
-	_tall = maxf(-bounds.position.y, 200.0)
-	# De frente, las armas de brazo quedan a los lados del cuerpo.
-	_half = maxf(_turntable.body_width() * 1.25, 90.0)
-	_pivot = pivot
+	for slot in SEEN:
+		var rect := _mech.slot_rect(slot)
+		if rect.size == Vector2.ZERO:
+			continue
+		bounds = rect if bounds.size == Vector2.ZERO else bounds.merge(rect)
+	if bounds.size != Vector2.ZERO:
+		_bounds = bounds
 	_frame()
-	_wake()
 
 
 ## True si hay un robot que ensenar.
@@ -76,24 +65,24 @@ func has_robot() -> bool:
 	return _build != null and _build.torso != null and _build.legs != null
 
 
-func _rect(slot: String) -> Rect2:
-	var rect := _probe.slot_rect(slot)
+## Centro de la pieza de un hueco, en coordenadas de este plano; Vector2.INF
+## si ese hueco no tiene pieza a la vista.
+func point_of(slot: String) -> Vector2:
+	if not has_robot() or not slot in SEEN:
+		return Vector2.INF
+	var rect := _mech.slot_rect(slot)
 	if rect.size == Vector2.ZERO:
-		return Rect2()
-	var a := _probe.transform * rect.position
-	var b := _probe.transform * rect.end
-	return Rect2(Vector2(minf(a.x, b.x), minf(a.y, b.y)), (b - a).abs())
+		return Vector2.INF
+	return _world.position + rect.get_center() * _world.scale.x
 
 
 ## Lo encaja en el sitio que tiene, con los pies abajo y centrado.
 func _frame() -> void:
 	if size.x <= 0.0 or size.y <= 0.0:
 		return
-	var zoom := minf((size.y - PAD * 2.0) / _tall, (size.x - PAD * 2.0) / (_half * 2.0))
+	var zoom := minf(
+		(size.y - PAD * 2.0) / maxf(-_bounds.position.y, 1.0),
+		(size.x - PAD * 2.0) / maxf(_bounds.size.x, 1.0)
+	)
 	_world.scale = Vector2(zoom, zoom)
-	_world.position = Vector2(size.x * 0.5 - _pivot * zoom, size.y - PAD)
-
-
-## El giro solo trabaja (y gasta) mientras el plano se ve.
-func _wake() -> void:
-	_turntable.set_active(is_visible_in_tree() and has_robot())
+	_world.position = Vector2(size.x * 0.5 - _bounds.get_center().x * zoom, size.y - PAD)

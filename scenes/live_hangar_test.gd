@@ -126,21 +126,6 @@ func observations_test() -> void:
 			await get_tree().create_timer(0.09).timeout
 			await shot("disparo_" + item.fx)
 		await get_tree().create_timer(0.7).timeout
-	# La rueda sobre el robot lo gira.
-	var body := stage._world.position + stage._bounds.get_center() * stage._world.scale.x
-	var chest := stage.global_position + body
-	await _move(chest)
-	for i in 8:
-		await _wheel(chest, MOUSE_BUTTON_WHEEL_UP)
-		await get_tree().create_timer(0.2).timeout
-	await get_tree().create_timer(0.4).timeout
-	print(
-		(
-			"OBS tras 8 muescas de rueda: giro=%.0f grados, media vuelta=%s"
-			% [rad_to_deg(stage.turn), stage.is_flipped()]
-		)
-	)
-	await shot("media_vuelta")
 	get_tree().quit(0)
 
 

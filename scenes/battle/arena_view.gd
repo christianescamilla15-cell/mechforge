@@ -25,6 +25,10 @@ const TOP_MARGIN := 12.0
 const VIEW_MARGIN_CELLS := 1.6
 ## Rapidez con la que la camara alcanza su objetivo.
 const CAMERA_SPEED := 4.0
+## Con la vista de toda la arena: aire a cada lado (en casillas) y lo mas
+## que se puede alejar.
+const OVERVIEW_MARGIN_CELLS := 0.25
+const OVERVIEW_MIN_ZOOM := 0.3
 ## Color de la caja de bonificacion segun lo que da (GDD 2.8).
 const DROP_COLORS := {"armor": Color("6fb6ff"), "firepower": Color("ffb347")}
 ## Paisaje provisional, dibujado por codigo hasta que haya escenarios con el
@@ -54,6 +58,11 @@ const PARALLAX_NEAR := 0.5
 var cells: int = 10
 var mechs: Array[MechView] = []
 
+## Toda la arena a la vista (del usuario, 2026-11-21, OBS-035: con la baliza
+## de salto "el mapa se agranda para tener todo el alcance como el rival").
+## Mientras esta puesta, la camara se aleja hasta que cabe el campo entero y
+## se puede pulsar cualquier casilla.
+var overview := false
 ## Casillas resaltadas: {indice: color}.
 var _highlights: Dictionary = {}
 var _hovered: int = -1
@@ -399,6 +408,13 @@ func _follow(delta: float) -> void:
 		target_zoom = minf(target_zoom, (size.y - FLOOR_MARGIN - TOP_MARGIN) / tallest)
 	target_zoom = clampf(target_zoom, MIN_ZOOM, MAX_ZOOM)
 	var target_x := (a + b) / 2.0
+	if overview:
+		var whole := world_width() + 2.0 * OVERVIEW_MARGIN_CELLS * CELL_WIDTH
+		target_zoom = size.x / whole
+		if tallest > 0.0:
+			target_zoom = minf(target_zoom, (size.y - FLOOR_MARGIN - TOP_MARGIN) / tallest)
+		target_zoom = clampf(target_zoom, OVERVIEW_MIN_ZOOM, MAX_ZOOM)
+		target_x = world_width() / 2.0
 	if _camera_x < 0.0:
 		_camera_x = target_x
 		_zoom = target_zoom
