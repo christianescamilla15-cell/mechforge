@@ -197,7 +197,7 @@ func test_el_superblindaje_resiste_mucho_mas_con_las_mismas_acciones() -> void:
 	assert_eq(armored.extra_actions, 0, "su ventaja es la coraza, no la velocidad")
 	var plain := _build(null).summary(r)
 	var boss := _build(armored).summary(r)
-	assert_gte(boss["res_physical"], plain["res_physical"] * 2, "al menos el doble")
+	assert_gte(boss["res_physical"], plain["res_physical"] * 1.5, "mucho mas que uno normal")
 	var engine := BattleEngine.new(r, _build(armored), _build(null), 1, 0, 0)
 	assert_eq(engine.actions_left, r.actions_per_turn)
 

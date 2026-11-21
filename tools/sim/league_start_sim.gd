@@ -16,6 +16,9 @@ extends SceneTree
 ##   --level=N       nivel de las piezas del jugador (por defecto 0; "tope" =
 ##                   el maximo de la zona)
 ##   --stage=N       solo ese momento (0 a 3)
+##   --fight=N       solo ese combate (0 es el primero; 10, el campeon)
+##   --assist        el jugador lleva tambien el robot de asistencia con sus
+##                   dos armas (se compra desde el nivel 3)
 ##   --parity        en vez de los cuatro momentos, en cada combate el jugador
 ##                   lleva el mismo equipo que su rival (tantas armas y
 ##                   modulos como el): lo que da para comprar la campana
@@ -38,6 +41,8 @@ var _configs: Array[AIConfig] = []
 var _player_ai := BattleAI.Difficulty.HARD
 ## Equipo del rival de cada combate ({} = armado entero).
 var _gears: Array[Dictionary] = []
+## El asistente de los mechs de ejemplo, para darselo al jugador (--assist).
+var _assist: Array[ItemDef] = []
 
 
 func _initialize() -> void:
@@ -49,6 +54,7 @@ func _initialize() -> void:
 	var battles := int(args.get("battles", "16"))
 	var seed_value := int(args.get("seed", "1"))
 	var only := int(args.get("stage", "-1"))
+	var only_fight := int(args.get("fight", "-1"))
 	_player_ai = DIFFICULTY[str(args.get("player", "HARD"))]
 	_rules.drops_enabled = true
 
@@ -72,6 +78,9 @@ func _initialize() -> void:
 			levels[track] = campaign.armory_cap(zone, shop)
 		bought = shop.upgrades_for(levels)
 
+	if args.has("assist"):
+		for id: String in ["asistente_blindaje", "artillero_balas_cin", "artillero_balas_cin"]:
+			_assist.append(ItemScaling.resolve(catalog.get_item(id), _rules, tier, level))
 	var labels: Array[String] = []
 	for fight in campaign.fights_in(zone) + 1:
 		var spec := campaign.fight_at(zone, fight)
@@ -104,6 +113,7 @@ func _initialize() -> void:
 				gear.erase("shift")
 				var same := StarterSim.player_with(styles, catalog, _rules, style_id, gear, level)
 				same.upgrades = bought
+				_give_assist(same)
 				var same_key := "%s@p%d" % [style_id, fight]
 				_players[same_key] = same
 				for n in battles:
@@ -117,9 +127,12 @@ func _initialize() -> void:
 				continue
 			var build := StarterSim.player_build(styles, catalog, _rules, style_id, stage, level)
 			build.upgrades = bought
+			_give_assist(build)
 			var key := "%s@%d" % [style_id, stage]
 			_players[key] = build
 			for fight in _rivals.size():
+				if only_fight >= 0 and fight != only_fight:
+					continue
 				for n in battles:
 					seed_value += 1
 					_tasks.append(
@@ -166,9 +179,19 @@ func _initialize() -> void:
 			var line := "  %-16s %-9s" % [StarterSim.STAGES[stage]["name"], style_id]
 			for fight in _rivals.size():
 				var cell := "%s@%d|%d" % [style_id, stage, fight]
-				line += " %4.0f%%" % (100.0 * wins[cell] / games[cell])
+				if games.has(cell):
+					line += " %4.0f%%" % (100.0 * wins[cell] / games[cell])
+				else:
+					line += "     -"
 			print(line)
 	quit(0)
+
+
+func _give_assist(build: MechBuild) -> void:
+	if _assist.size() == 3:
+		build.assist = _assist[0]
+		build.drone = _assist[1]
+		build.drone_low = _assist[2]
 
 
 func _run_task(index: int) -> void:

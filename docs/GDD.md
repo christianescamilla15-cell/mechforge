@@ -453,7 +453,8 @@ Unas 58 piezas con nombres propios (nunca los del original).
   | Guardián, ídem | 100 % | 100 % | 100 % | 100 % | 100 % | 100 % | 100 % | 100 % | 100 % | 100 % | 0 % |
   | Tirador, ídem | 100 % | 100 % | 100 % | 100 % | 100 % | 100 % | 100 % | 100 % | 100 % | 100 % | 0 % |
 
-- **Lo que significa:** los cuatro primeros combates se ganan con lo que la propia campaña deja comprar; del quinto en adelante hacen falta mejoras de la armería y subir las piezas, que es para lo que está la arena antes de entrar en la liga (dentro de la liga está cerrada). **Sin resolver:** el campeón es demasiado para el Tirador y el Guardián aun con todo comprado; las otras nueve ligas no cambian (a ellas se llega con el robot ya armado); y falta medir cuánta arena pide de verdad la liga 1 a un jugador y no a la IA.
+- **Lo que significa:** los cuatro primeros combates se ganan con lo que la propia campaña deja comprar; del quinto en adelante hacen falta mejoras de la armería y subir las piezas, que es para lo que está la arena antes de entrar en la liga (dentro de la liga está cerrada). Las otras nueve ligas no cambian (a ellas se llega con el robot ya armado). **Sin resolver:** falta medir cuánta arena pide de verdad la liga 1 a un jugador y no a la IA.
+- **El campeón de la liga 1, a la medida de los tres tipos (mismo día).** Con el superblindaje al doble, la resistencia se comía casi todo el daño de las armas medias y largas: armado entero, con asistente, todas las mejoras y piezas a nivel 3 (jugador con la IA difícil, 24 combates), el Asalto le ganaba el 88 %, el Tirador el 25 % y el Guardián el 4 % (sin asistente: 42, 0 y 0 %). Con el 60 % más (`resistance_mult` 1.6 en data/chassis.json): Asalto 96 %, Tirador 75 % y Guardián 58 %; con el 40 %: 100, 79 y 75 %. Queda en 1.6: sigue siendo el más duro de la liga y nadie se queda sin opción. Es un número que aprobó el usuario ("de momento"): si lo quiere al doble, hay que darles al Guardián y al Tirador un arma que perfore.
 
 ### 9.1 Los jefes
 **Reglas que fijó el usuario:**
@@ -466,7 +467,7 @@ Unas 58 piezas con nombres propios (nunca los del original).
 
 | Zona | Jefe | Habilidad | Qué hace | Punto débil |
 |---|---|---|---|---|
-| 1 | Capataz del Orden | Superblindaje | Sus resistencias valen el doble | Se enfría un 30 % peor |
+| 1 | Capataz del Orden | Superblindaje | Sus resistencias valen un 60 % más (eran el doble hasta el 2026-11-21, ver abajo) | Se enfría un 30 % peor |
 | 2 | Verdugo del Orden | Poder de daño | Sus armas pegan un 30 % más | Resistencias al 60 % |
 | 3 | Reactor del Orden | Energía infinita | Sus armas no gastan energía y no se le puede drenar (ni romper su energía) | Se enfría un 15 % peor |
 | 4 | Hidra del Orden | Regeneración | Repara el 5 % de su vida al empezar cada turno | Daño concentrado en pocos turnos |
