@@ -112,7 +112,8 @@ def seamless_loop(audio, rate, bpm, lead_bars=4, fade_beats=2.0, search=0.25):
     bar = 4.0 * beat
     start = int(round(lead_bars * bar * rate))
     total = len(audio) / rate
-    bars = int((total - lead_bars * bar - bar) // bar)
+    # Deja sitio al final para comparar lo que sigue al bucle con su principio.
+    bars = int((total - lead_bars * bar - 4.0 - search - 0.1) // bar)
     bars -= bars % 4
     if bars < 8:
         raise ValueError("la pista es demasiado corta para un bucle (%d compases)" % bars)
@@ -221,7 +222,10 @@ def finish(name, seed, raw_path):
     loop, bars, match = seamless_loop(audio, rate, bpm)
     loop = level(loop)
     out = OUT / ("%s_%d.ogg" % (name, seed))
-    sf.write(out, loop, rate, format="OGG", subtype="VORBIS")
+    # Por tramos: libsndfile se cae al codificar en Vorbis una pista larga de una vez.
+    with sf.SoundFile(out, "w", samplerate=rate, channels=loop.shape[1], format="OGG", subtype="VORBIS") as ogg:
+        for at in range(0, len(loop), rate):
+            ogg.write(loop[at : at + rate])
     m = measures(loop, rate, bpm)
     print(
         "ok  %s  %.1f s  %d compases a %d  nivel %.1f dB  pico %.1f dB  empalme %.2f  pulso %.2f  "

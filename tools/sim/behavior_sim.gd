@@ -72,7 +72,17 @@ func _initialize() -> void:
 	var labels: Array[String] = []
 	for fight in campaign.fights_in(zone) + 1:
 		var spec := campaign.fight_at(zone, fight)
-		var rival := library.make(spec["enemy"], catalog, _rules, tier, spec["level"], chassis)
+		# Con el equipo que su combate le deja llevar (en la liga 1 van creciendo).
+		var rival := library.make(
+			spec["enemy"],
+			catalog,
+			_rules,
+			tier,
+			spec["level"],
+			chassis,
+			{},
+			spec.get("loadout", {})
+		)
 		rival.upgrades = campaign.enemy_upgrades(zone, shop)
 		rival.skills = skills.effects_for(skills.spread(int(spec.get("skills", 0))))
 		rival.skills.add(Campaign.kits_of(spec))

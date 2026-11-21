@@ -38,17 +38,17 @@ func test_la_campana_carga_con_las_habilidades_de_sus_rivales() -> void:
 	assert_eq(_campaign.errors, [] as Array[String])
 	for zone in _campaign.zone_count():
 		var with_kits := 0
+		# La liga 1 empieza desde abajo (OBS-031): un combate mas sin habilidades.
+		var plain := 4 if zone == 0 else 3
 		for fight in _campaign.fights_in(zone):
 			var kits := Campaign.kits_of(_campaign.fight_at(zone, fight))
-			if fight < 3:
-				assert_true(kits.is_empty(), "los tres primeros de la zona %d solo disparan" % zone)
+			if fight < plain:
+				assert_true(kits.is_empty(), "los primeros de la zona %d solo disparan" % zone)
 			elif not kits.is_empty():
 				with_kits += 1
 			for kit: String in kits:
 				assert_has(Campaign.KITS, kit)
-		assert_eq(
-			with_kits, _campaign.fights_in(zone) - 3, "zona %d: del cuarto en adelante" % zone
-		)
+		assert_eq(with_kits, _campaign.fights_in(zone) - plain, "zona %d: los demas, todos" % zone)
 
 
 func test_no_todos_llevan_lo_mismo() -> void:
@@ -170,3 +170,65 @@ func test_los_cuerpos_que_pide_la_campana_estan_dibujados() -> void:
 	# Un cuerpo mal escrito no carga.
 	var bad := {"enemy": "calor_horno", "level": 0, "difficulty": "EASY", "body": 3}
 	assert_ne(_campaign._fight_problem(bad, _library), "")
+
+
+# --- La liga 1 empieza desde abajo (OBS-031) ----------------------------------------
+
+
+## Cuantas piezas lleva el rival de un combate, armado como sale.
+func _gear(fight: int) -> Dictionary:
+	var build: MechBuild = _brief.rival(_campaign.fight_at(0, fight), 0)["build"]
+	return {
+		"sides": build.sides.size(),
+		"tops": build.tops.size(),
+		"modules": build.modules.size(),
+		"assist": build.assist != null
+	}
+
+
+func test_el_primer_rival_de_la_campana_sale_como_tu_con_una_sola_arma() -> void:
+	# Del usuario: "esta muy roto el primer rival de la campana, me derroto a
+	# pesar de llevar todas las mejoras". Salia armado entero.
+	assert_eq(_gear(0), {"sides": 1, "tops": 0, "modules": 0, "assist": false})
+	var first := _campaign.fight_at(0, 0)
+	assert_eq(first["difficulty"], "EASY")
+	assert_eq(int(first["level"]), 0)
+	# Y de ahi crece combate a combate, sin dar pasos atras.
+	var before := 0
+	for fight in _campaign.fights_in(0):
+		var gear := _gear(fight)
+		var total: int = gear["sides"] + gear["tops"] + gear["modules"]
+		assert_gte(total, before, "combate %d" % (fight + 1))
+		before = total
+	assert_gte(_gear(9)["sides"], 4, "el decimo ya va con sus cuatro armas")
+	# Las demas ligas no cambian: se llega a ellas con el robot armado.
+	for fight in _campaign.fights_in(1):
+		assert_false(_campaign.fight_at(1, fight).has("loadout"))
+
+
+func test_un_robot_inicial_puede_con_el_primer_rival() -> void:
+	var styles := StyleLibrary.load_file("res://data/styles.json", _catalog)
+	var tempers := TemperLibrary.load_file("res://data/tempers.json")
+	var spec := _campaign.fight_at(0, 0)
+	var rival: MechBuild = _brief.rival(spec, 0)["build"]
+	for style_id in styles.ids():
+		var player := _catalog.make_build(styles.build(style_id), _rules, ItemDef.Tier.COMMON, 0)
+		player.skills = SkillSet.new()
+		styles.add_effects(style_id, player.skills)
+		var wins := 0
+		for seed_value in 6:
+			var result := BattleRunner.run(
+				_rules,
+				player,
+				rival,
+				BattleAI.new(BattleAI.Difficulty.NORMAL, seed_value * 2 + 1),
+				BattleAI.new(
+					BattleAI.Difficulty.EASY,
+					seed_value * 2 + 2,
+					tempers.config(_library.temper_of(spec["enemy"]))
+				),
+				seed_value + 1,
+				seed_value % 2
+			)
+			wins += 1 if result["winner"] == 0 else 0
+		assert_gte(wins, 4, "%s, con su unica arma: %d de 6" % [style_id, wins])

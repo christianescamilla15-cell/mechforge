@@ -19,83 +19,120 @@
         {
           "enemy": "fisico_vanguardia",
           "level": 0,
-          "difficulty": "EASY"
+          "difficulty": "EASY",
+          "loadout": {
+            "sides": 1,
+            "shift": 2
+          }
         },
         {
           "enemy": "calor_horno",
           "level": 0,
-          "difficulty": "EASY"
+          "difficulty": "EASY",
+          "loadout": {
+            "sides": 1,
+            "modules": 1,
+            "shift": 2
+          }
         },
         {
           "enemy": "energia_tempestad",
-          "level": 1,
-          "difficulty": "EASY"
+          "level": 0,
+          "difficulty": "EASY",
+          "loadout": {
+            "sides": 2
+          }
         },
         {
           "enemy": "hibrido_quimera",
-          "level": 1,
-          "difficulty": "NORMAL",
-          "kits": {
-            "shield_uses": 1
+          "level": 0,
+          "difficulty": "EASY",
+          "loadout": {
+            "sides": 2,
+            "modules": 1
           }
         },
         {
           "enemy": "fisico_vanguardia",
+          "level": 0,
+          "difficulty": "NORMAL",
+          "kits": {
+            "shield_uses": 1
+          },
+          "loadout": {
+            "sides": 2,
+            "modules": 2
+          }
+        },
+        {
+          "enemy": "calor_horno",
           "level": 1,
           "difficulty": "NORMAL",
           "kits": {
             "repair_uses": 1,
             "repair_share": 0.2
-          }
-        },
-        {
-          "enemy": "calor_horno",
-          "level": 2,
-          "difficulty": "NORMAL",
-          "kits": {
-            "shield_uses": 1,
-            "repair_uses": 1,
-            "repair_share": 0.2
+          },
+          "loadout": {
+            "sides": 3,
+            "modules": 2
           }
         },
         {
           "enemy": "energia_tempestad",
-          "level": 2,
+          "level": 1,
+          "difficulty": "NORMAL",
+          "kits": {
+            "shield_uses": 1
+          },
+          "loadout": {
+            "sides": 3,
+            "modules": 3
+          }
+        },
+        {
+          "enemy": "hibrido_quimera",
+          "level": 1,
           "difficulty": "NORMAL",
           "kits": {
             "shield_uses": 1,
             "repair_uses": 1,
             "repair_share": 0.2
-          }
-        },
-        {
-          "enemy": "hibrido_quimera",
-          "level": 2,
-          "difficulty": "HARD",
-          "kits": {
-            "shield_uses": 1,
-            "repair_uses": 1,
-            "repair_share": 0.2
+          },
+          "loadout": {
+            "sides": 3,
+            "tops": 1,
+            "modules": 3
           }
         },
         {
           "enemy": "calor_horno",
-          "level": 3,
+          "level": 2,
           "difficulty": "HARD",
           "kits": {
             "shield_uses": 1,
             "repair_uses": 1,
             "repair_share": 0.15
+          },
+          "loadout": {
+            "sides": 4,
+            "tops": 1,
+            "modules": 3
           }
         },
         {
           "enemy": "energia_tempestad",
-          "level": 3,
+          "level": 2,
           "difficulty": "HARD",
           "kits": {
             "shield_uses": 1,
             "repair_uses": 1,
             "repair_share": 0.25
+          },
+          "loadout": {
+            "sides": 4,
+            "tops": 1,
+            "modules": 4,
+            "specials": 1
           }
         }
       ],

@@ -426,6 +426,35 @@ Unas 58 piezas con nombres propios (nunca los del original).
 - Para farmear está la arena; los combates de campaña se ganan una sola vez.
 - La curva de dificultad se valida con el simulador: el build "esperado" del jugador en cada capítulo debe ganar entre el 55 % y el 70 % de las veces contra los enemigos normales.
 
+**La liga 1 empieza desde abajo (2026-11-21, OBS-031).** Del usuario, tras perder contra el primer rival de la campaña: "creo que está muy roto el primer rival de la campaña, me derrotó a pesar de llevar todas las mejoras". Era cierto: los rivales salían armados enteros desde el primer combate y el jugador empieza con una sola arma (medido con `tools/sim/league_start_sim.gd`: con una o dos armas, 0 % de victorias contra cualquier combate de la liga; el Tirador con una sola arma y todas las mejoras, 0 % contra el primero). Ahora cada combate de la liga 1 dice con qué sale su rival (`loadout` en data/campaign.json, el mismo recorte de la arena, `BuildLibrary.trim`), y crece con lo que paga la campaña (500 celdas por combate):
+
+| Combate | Rival | Lleva | Nivel | IA | Habilidades |
+|---|---|---|---|---|---|
+| 1 | Vanguardia | 1 arma (la media, no su hoja) | 0 | fácil | — |
+| 2 | Horno | 1 arma y 1 módulo | 0 | fácil | — |
+| 3 | Tempestad | 2 armas | 0 | fácil | — |
+| 4 | Quimera | 2 armas y 1 módulo | 0 | fácil | — |
+| 5 | Vanguardia | 2 armas y 2 módulos | 0 | normal | escudo |
+| 6 | Horno | 3 armas y 2 módulos | 1 | normal | reparación |
+| 7 | Tempestad | 3 armas y 3 módulos | 1 | normal | escudo |
+| 8 | Quimera | 3 armas, 1 de hombro y 3 módulos | 1 | normal | escudo y reparación |
+| 9 | Horno | 4 armas, 1 de hombro y 3 módulos | 2 | difícil | escudo y reparación |
+| 10 | Tempestad | 4 armas, 1 de hombro, 4 módulos y un especial | 2 | difícil | escudo y reparación |
+| Campeón | Capataz del Orden | entero | 3 | difícil | su entrenamiento |
+
+- **Medido** (16 combates por casilla, el jugador con la IA normal y llevando las mismas armas y módulos que el rival de cada combate):
+
+  | | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | Campeón |
+  |---|---|---|---|---|---|---|---|---|---|---|---|
+  | Asalto, sin mejoras | 100 % | 100 % | 94 % | 100 % | 100 % | 75 % | 25 % | 6 % | 0 % | 0 % | 0 % |
+  | Guardián, sin mejoras | 100 % | 100 % | 100 % | 100 % | 38 % | 6 % | 19 % | 6 % | 0 % | 6 % | 0 % |
+  | Tirador, sin mejoras | 81 % | 100 % | 100 % | 100 % | 44 % | 13 % | 25 % | 19 % | 0 % | 0 % | 0 % |
+  | Asalto, con todas las mejoras y piezas a nivel 3 | 100 % | 100 % | 100 % | 100 % | 100 % | 100 % | 100 % | 100 % | 100 % | 100 % | 31 % |
+  | Guardián, ídem | 100 % | 100 % | 100 % | 100 % | 100 % | 100 % | 100 % | 100 % | 100 % | 100 % | 0 % |
+  | Tirador, ídem | 100 % | 100 % | 100 % | 100 % | 100 % | 100 % | 100 % | 100 % | 100 % | 100 % | 0 % |
+
+- **Lo que significa:** los cuatro primeros combates se ganan con lo que la propia campaña deja comprar; del quinto en adelante hacen falta mejoras de la armería y subir las piezas, que es para lo que está la arena antes de entrar en la liga (dentro de la liga está cerrada). **Sin resolver:** el campeón es demasiado para el Tirador y el Guardián aun con todo comprado; las otras nueve ligas no cambian (a ellas se llega con el robot ya armado); y falta medir cuánta arena pide de verdad la liga 1 a un jugador y no a la IA.
+
 ### 9.1 Los jefes
 **Reglas que fijó el usuario:**
 - Vencer a un jefe debe ser extremadamente difícil, **no por la cantidad de vida**; usando las bonificaciones y los ataques con táctica, en teoría se puede ganar. La otra vía es reunir celdas en la arena para comprar mejoras (2026-11-16).

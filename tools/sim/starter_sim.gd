@@ -127,9 +127,28 @@ func _initialize() -> void:
 
 
 ## El robot de ese tipo en uno de los momentos de STAGES, con lo que da su
-## tipo. Lo usa tambien starter_trace.gd.
+## tipo y sus piezas a ese nivel. Lo usan tambien starter_trace.gd y
+## league_start_sim.gd.
 static func player_build(
-	styles: StyleLibrary, catalog: Catalog, rules: RulesConfig, style_id: String, stage: int
+	styles: StyleLibrary,
+	catalog: Catalog,
+	rules: RulesConfig,
+	style_id: String,
+	stage: int,
+	level: int = 0
+) -> MechBuild:
+	return player_with(styles, catalog, rules, style_id, STAGES[stage]["gear"], level)
+
+
+## El robot de ese tipo con un equipo dado ({"sides", "tops", "modules",
+## "specials"}: cuantos lleva), con lo que da su tipo.
+static func player_with(
+	styles: StyleLibrary,
+	catalog: Catalog,
+	rules: RulesConfig,
+	style_id: String,
+	gear: Dictionary,
+	level: int = 0
 ) -> MechBuild:
 	var full: Dictionary = styles.build(style_id)
 	full.merge(FULL[style_id], true)
@@ -139,8 +158,8 @@ static func player_build(
 	full["modules"] = MODULES[catalog.get_item(str(full["torso"])).element]
 	full["charge"] = "esp_embestida"
 	full["hook"] = "esp_garfio"
-	var items := BuildLibrary.trim(full, STAGES[stage]["gear"], catalog)
-	var build := catalog.make_build(items, rules, ItemDef.Tier.COMMON, 0)
+	var items := BuildLibrary.trim(full, gear, catalog)
+	var build := catalog.make_build(items, rules, ItemDef.Tier.COMMON, level)
 	build.skills = SkillSet.new()
 	styles.add_effects(style_id, build.skills)
 	return build

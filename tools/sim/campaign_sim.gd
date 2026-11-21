@@ -53,7 +53,17 @@ func _initialize() -> void:
 	var count := campaign.fights_in(zone) + 1
 	for fight in count:
 		var spec := campaign.fight_at(zone, fight)
-		var rival := library.make(spec["enemy"], catalog, _rules, tier, spec["level"], chassis)
+		# Con el equipo que su combate le deja llevar (en la liga 1 van creciendo).
+		var rival := library.make(
+			spec["enemy"],
+			catalog,
+			_rules,
+			tier,
+			spec["level"],
+			chassis,
+			{},
+			spec.get("loadout", {})
+		)
 		# Lo que lleva ese rival ademas de sus armas (escudo, reparacion).
 		rival.skills = SkillSet.new()
 		rival.skills.add(Campaign.kits_of(spec))

@@ -66,9 +66,9 @@ Generado por `tools/audio/curate.py`. Todo es **CC0** (dominio público, https:/
 | `mech/carga_oscura.ogg` | Sci-fi Sounds · spaceEngineLarge_000.ogg | Kenney (kenney.nl) | https://opengameart.org/content/sci-fi-sounds |
 | `musica/victoria.ogg` | Dark Sci-Fi Audio Pack · victory.ogg | SRG774 | https://opengameart.org/content/dark-sci-fi-audio-pack |
 | `musica/derrota.ogg` | 63 Digital sound effects · lowThreeTone.mp3 | Kenney (kenney.nl) | https://opengameart.org/node/12493 |
-| `musica/base.ogg` | Dark Sci-Fi Audio Pack · title.ogg | SRG774 | https://opengameart.org/content/dark-sci-fi-audio-pack |
-| `musica/combate.ogg` | Space Battle · space_battle_bpm130_0.ogg | MintoDog | https://opengameart.org/content/space-battle |
-| `musica/jefe.ogg` | Friendly Talk On a Robotic Battlefield (Looped) · Friendly_Talk_On_a_Robotic_Battlefield_0.ogg | illin | https://opengameart.org/content/friendly-talk-on-a-robotic-battlefield-looped |
+| `musica/base.ogg` | Generada en este equipo con ACE-Step 1.5 (`tools/audio/music.py`, semilla 11) | MechForge | https://github.com/ACE-Step/ACE-Step-1.5 (modelo y código, licencia MIT) |
+| `musica/combate.ogg` | Generada en este equipo con ACE-Step 1.5 (`tools/audio/music.py`, semilla 12) | MechForge | https://github.com/ACE-Step/ACE-Step-1.5 (modelo y código, licencia MIT) |
+| `musica/jefe.ogg` | Generada en este equipo con ACE-Step 1.5 (`tools/audio/music.py`, semilla 11) | MechForge | https://github.com/ACE-Step/ACE-Step-1.5 (modelo y código, licencia MIT) |
 | `armas/bala_1.ogg` | diseñado por capas (tools/audio/design.py) | MechForge |  |
 | `armas/bala_2.ogg` | diseñado por capas (tools/audio/design.py) | MechForge |  |
 | `armas/bala_3.ogg` | diseñado por capas (tools/audio/design.py) | MechForge |  |

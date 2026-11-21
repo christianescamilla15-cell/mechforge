@@ -117,8 +117,8 @@
     "drain": "impacto_drenaje"
   },
   "music": {
-    "base": {"file": "musica/base", "volume_db": -1.0},
-    "combate": {"file": "musica/combate", "volume_db": -14.0},
-    "jefe": {"file": "musica/jefe", "volume_db": -19.0}
+    "base": {"file": "musica/base", "volume_db": -6.0},
+    "combate": {"file": "musica/combate", "volume_db": -9.0},
+    "jefe": {"file": "musica/jefe", "volume_db": -9.0}
   }
 }
