@@ -5,6 +5,8 @@ extends Resource
 const SIDE_SLOTS := 4
 const TOP_SLOTS := 2
 const MODULE_SLOTS := 8
+## Dos modulos que dan la misma resistencia: se nombran los dos.
+const RESISTANCE_CLASH := "dos módulos dan la misma resistencia (%s y %s): solo va uno de cada tipo"
 
 ## Chasis sobre el que va montado (docs/CHASIS.md); null = sin bonificaciones.
 @export var chassis: ChassisDef
@@ -75,16 +77,24 @@ func validate(rules: RulesConfig) -> Array[String]:
 		problems.append("demasiados modulos")
 	if total_weight() > rules.max_weight + rules.overload:
 		problems.append("demasiado peso")
-	var seen := [false, false, false]
+	# Como maximo un modulo por tipo de resistencia: se dice cuales chocan,
+	# una vez por pareja.
+	var first: Array[ItemDef] = [null, null, null]
+	var clashes: Array[String] = []
 	for module in modules:
 		if module == null:
 			continue
 		var res := [module.res_physical, module.res_heat, module.res_energy]
 		for i in 3:
-			if res[i] > 0:
-				if seen[i]:
-					problems.append("resistencia repetida en modulos")
-				seen[i] = true
+			if res[i] <= 0:
+				continue
+			if first[i] == null:
+				first[i] = module
+				continue
+			var clash := RESISTANCE_CLASH % [first[i].display_name, module.display_name]
+			if not clash in clashes:
+				clashes.append(clash)
+	problems.append_array(clashes)
 	return problems
 
 

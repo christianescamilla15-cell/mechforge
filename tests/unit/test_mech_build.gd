@@ -49,9 +49,21 @@ func test_un_solo_modulo_por_tipo_de_resistencia() -> void:
 	var ok := Fx.build([], {"modules": [phys, heat]})
 	assert_eq(ok.validate(Fx.rules()), [] as Array[String])
 	var dup := Fx.build([], {"modules": [phys, phys]})
-	assert_has(dup.validate(Fx.rules()), "resistencia repetida en modulos")
+	var clash := "dos módulos dan la misma resistencia"
+	var problems := dup.validate(Fx.rules())
+	assert_eq(problems.size(), 1)
+	assert_true(problems[0].begins_with(clash))
 	var mixed := Fx.build([], {"modules": [phys, combo]})
-	assert_has(mixed.validate(Fx.rules()), "resistencia repetida en modulos")
+	problems = mixed.validate(Fx.rules())
+	assert_eq(problems.size(), 1)
+	assert_true(problems[0].begins_with(clash))
+	# El aviso nombra los dos modulos y sale una sola vez, aunque choquen
+	# en varias resistencias a la vez.
+	combo.display_name = "Matriz"
+	var twice := Fx.build([], {"modules": [combo, combo]})
+	problems = twice.validate(Fx.rules())
+	assert_eq(problems.size(), 1, "una vez por pareja")
+	assert_string_contains(problems[0], "Matriz y Matriz")
 
 
 func test_limites_de_huecos() -> void:
