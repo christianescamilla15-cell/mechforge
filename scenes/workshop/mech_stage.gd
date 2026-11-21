@@ -26,6 +26,11 @@ const MAX_ZOOM := 1.45
 ## Sitio que se deja a la derecha para la diana y a los lados.
 const TARGET_SPACE := 90.0
 const SIDE_MARGIN := 14.0
+## Probar un arma cuerpo a cuerpo: cuanto pasa la punta de la hoja del centro
+## de la diana y lo que duran el salto de ida, el tajo y la vuelta.
+const STRIKE_PAST := 18.0
+const STRIKE_JUMP := 0.5
+const STRIKE_SWING := 0.5
 
 var selected_slot: String = ""
 var hover_slot: String = ""
@@ -40,6 +45,8 @@ var _flash_slot: String = ""
 var _flash: float = 0.0
 var _flash_color := Color.WHITE
 var _target_hit: float = 0.0
+## Probando un arma cuerpo a cuerpo: el robot esta fuera de su sitio.
+var _striking := false
 ## Cuanto se ve la diana (el hangar la apaga en el modo mision).
 var _target_alpha: float = 1.0
 var _floor_y: float = 0.0
@@ -115,15 +122,51 @@ func _set_flash(value: float) -> void:
 	_overlay.queue_redraw()
 
 
-## Dispara el arma de un hueco contra la diana, con su efecto de combate.
+## Prueba el arma de un hueco contra la diana, con su efecto de combate:
+## las que disparan, desde su sitio; las de cuerpo a cuerpo, como en el
+## combate: el robot salta junto a la diana, da el tajo y vuelve.
 func test_fire(slot: String, fx: String, color: Color) -> void:
 	var drone := slot.begins_with("drone")
+	if not drone and _mech.is_melee(slot):
+		await _test_strike(slot, fx, color)
+		return
 	var from := _mech.muzzle_point(drone, slot)
 	var to := _target_point()
 	if not drone:
 		_mech.fire(0.35, slot)
 	if ShotFx.is_known(fx):
 		await _shots.play(fx, from, to, color, 0.42)
+	_flash_target()
+
+
+## El robot salta hasta que su hoja alcanza la diana (andando si sus piernas
+## no saltan), da el tajo y vuelve a su plataforma.
+func _test_strike(slot: String, fx: String, color: Color) -> void:
+	if _striking:
+		return
+	_striking = true
+	var home := _mech.position
+	var to := _target_point()
+	var reach := _mech.muzzle_point(false, slot).x - home.x
+	var near := Vector2(to.x - reach + STRIKE_PAST, home.y)
+	if _mech.build.legs != null and _mech.build.legs.jump > 0:
+		await _mech.jump_to(near, STRIKE_JUMP).finished
+	else:
+		await _mech.move_to(near, STRIKE_JUMP).finished
+	_mech.lunge(STRIKE_SWING)
+	var fall := _mech.swing(STRIKE_SWING, slot)
+	await get_tree().create_timer(fall).timeout
+	if ShotFx.is_known(fx):
+		_shots.play(fx, _mech.muzzle_point(false, slot), to, color, 0.42)
+	_flash_target()
+	await get_tree().create_timer(STRIKE_SWING).timeout
+	await _mech.hop_back(home, STRIKE_JUMP).finished
+	_mech.place(home)
+	_striking = false
+
+
+## La diana acusa el golpe.
+func _flash_target() -> void:
 	_target_hit = 1.0
 	var tween := create_tween()
 	tween.tween_method(

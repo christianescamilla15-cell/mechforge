@@ -377,10 +377,13 @@ func turn_to(target: float, seconds: float = 0.3) -> void:
 	await _turn_tween.finished
 
 
-## Probar un arma: primero el robot vuelve al perfil.
+## Probar un arma: primero el robot vuelve al perfil. Si salta a la diana
+## (un arma cuerpo a cuerpo), su plataforma se queda donde esta.
 func test_fire(slot: String, fx: String, color: Color) -> void:
 	if is_turned():
 		await turn_to(0.0)
+	if not _striking:
+		_launch_center = _platform_center()
 	await super.test_fire(slot, fx, color)
 
 
@@ -596,7 +599,7 @@ func _scale_rect() -> Rect2:
 
 ## Centro de la plataforma del robot, en la pantalla: bajo sus piernas.
 func _platform_center() -> float:
-	if _launching:
+	if _launching or _striking:
 		return _launch_center
 	var legs := _world_rect("legs")
 	if legs.size == Vector2.ZERO:

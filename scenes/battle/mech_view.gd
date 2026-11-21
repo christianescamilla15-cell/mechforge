@@ -40,6 +40,12 @@ const SIDE_MOUNTS: Array[Vector2] = [
 const TOP_MOUNTS: Array[Vector2] = [Vector2(0.0, 0.0), Vector2(-48.0, 10.0)]
 ## A partir de que indice las armas van del lado lejano.
 const FAR_SIDE_FROM := 2
+## Eje del hombro de un arma de brazo respecto a la cintura del robot (el
+## de tools/art/export_weapons.py, ARM_UNION, en unidades de MechView): sobre
+## el gira la hoja al dar un tajo. Y cuanto se levanta y cuanto cae.
+const WEAPON_SHOULDER := Vector2(-30.0, -65.0) * MechSprites.UNIT_SCALE
+const SWING_RAISE := -0.62
+const SWING_FALL := 0.42
 const FAR_TOP_FROM := 1
 const FAR_WEAPON_DIM := 0.62
 ## Donde flota el robot de asistencia respecto a los pies del mech: detras
@@ -91,6 +97,10 @@ var _walking := false
 var _recoil := 0.0
 ## Hueco del arma que acaba de disparar (la que retrocede).
 var _fired_slot := ""
+## Giro del arma que da un tajo, en radianes (negativo = levantada), y su
+## hueco.
+var _swing := 0.0
+var _swing_slot := ""
 ## Cuanto ha salido el arma del torso: 0 guardada, 1 desplegada.
 var _deploy := 0.0
 var _deployed := false
@@ -299,6 +309,27 @@ func lunge(seconds: float) -> Tween:
 	tween.tween_property(self, "position", forward, seconds * 0.4)
 	tween.tween_property(self, "position", _base_position, seconds * 0.6)
 	return tween
+
+
+## El tajo de un arma cuerpo a cuerpo: la hoja se levanta sobre su hombro,
+## cae de golpe y vuelve a su sitio. Con un arma que no es de cuerpo a
+## cuerpo (o sin arte) no hace nada. Devuelve cuanto tarda en caer el golpe.
+func swing(seconds: float, slot: String) -> float:
+	var mounted := _mount_of(slot)
+	if mounted.is_empty() or not (mounted["item"] as ItemDef).has_tag(ItemDef.TAG_MELEE):
+		return 0.0
+	_swing_slot = slot
+	var tween := create_tween()
+	tween.tween_property(self, "_swing", SWING_RAISE, seconds * 0.38).set_trans(Tween.TRANS_SINE)
+	tween.tween_property(self, "_swing", SWING_FALL, seconds * 0.14).set_trans(Tween.TRANS_QUAD)
+	tween.tween_property(self, "_swing", 0.0, seconds * 0.48).set_trans(Tween.TRANS_SINE)
+	return seconds * 0.52
+
+
+## True si el arma de ese hueco pega cuerpo a cuerpo.
+func is_melee(slot: String) -> bool:
+	var mounted := _mount_of(slot)
+	return not mounted.is_empty() and (mounted["item"] as ItemDef).has_tag(ItemDef.TAG_MELEE)
 
 
 ## Destello y sacudida al recibir un golpe.
@@ -669,6 +700,15 @@ func _draw_weapons(tint: Color, body: Vector2, far: bool) -> void:
 		if slot == disabled_slot:
 			# Inutilizada por un critico: apagada y echando humo.
 			shade = Color(weapon_tint.r * 0.45, weapon_tint.g * 0.45, weapon_tint.b * 0.45, tint.a)
+		if slot == _swing_slot and _swing != 0.0:
+			# El tajo: la hoja gira sobre el eje de su hombro.
+			var pivot := at + _sprites.hip_point() + WEAPON_SHOULDER
+			draw_set_transform(pivot, _swing, Vector2.ONE)
+			_sprites.draw_piece(
+				self, MechSprites.WEAPON_SET, mounted["kind"], element, shade, at - pivot
+			)
+			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+			continue
 		_sprites.draw_piece(self, MechSprites.WEAPON_SET, mounted["kind"], element, shade, at)
 		if slot == disabled_slot:
 			var joint := _sprites.piece_tip(MechSprites.WEAPON_SET, mounted["kind"]) + at

@@ -161,6 +161,9 @@ func _ready() -> void:
 		elif _args["menu-shot"] == "ajustes":
 			_live_test().settings_test()
 			return
+		elif _args["menu-shot"] == "espada":
+			_live_test().sword_test()
+			return
 		elif _args["menu-shot"] == "taller":
 			_live_test().workshop_test(open_workshop())
 			return

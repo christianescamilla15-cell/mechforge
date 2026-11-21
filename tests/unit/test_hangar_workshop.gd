@@ -695,6 +695,42 @@ func test_la_diana_solo_prueba_si_hay_un_arma_elegida() -> void:
 	assert_eq(_counts["target"], 1)
 
 
+func test_una_hoja_se_prueba_con_su_tajo_y_no_con_un_disparo() -> void:
+	var stage := _stage()
+	var blade := ""
+	var gun := ""
+	for i in 4:
+		var slot := "side%d" % i
+		if stage._item_in(slot) == null:
+			continue
+		if stage._mech.is_melee(slot):
+			blade = slot
+		else:
+			gun = slot
+	assert_ne(blade, "", "el robot de la prueba lleva una hoja")
+	assert_ne(gun, "", "y un arma que dispara")
+	# Un arma que dispara no da tajo ni mueve al robot.
+	assert_eq(stage._mech.swing(0.4, gun), 0.0)
+	var home := stage._mech.position
+	stage.test_fire(gun, "rafaga", Color.WHITE)
+	await wait_seconds(0.3)
+	assert_false(stage._striking)
+	assert_true(stage._mech.position.distance_to(home) < 1.0)
+	await wait_seconds(0.6)
+	# La hoja: como en el combate, salta junto a la diana, da el tajo y vuelve.
+	var center := stage._platform_center()
+	stage.test_fire(blade, "tajo_vibrante", Color.WHITE)
+	await wait_seconds(0.7)
+	assert_true(stage._striking)
+	assert_gt(stage._mech.position.x, home.x + 10.0, "se acerca a la diana")
+	assert_ne(stage._mech._swing, 0.0, "la hoja se mueve")
+	assert_eq(stage._platform_center(), center, "su plataforma no se va con el")
+	await wait_seconds(1.6)
+	assert_false(stage._striking)
+	assert_true(stage._mech.position.distance_to(home) < 0.5, "vuelve a su sitio")
+	assert_eq(stage._mech._swing, 0.0)
+
+
 func test_el_tablero_cuelga_a_la_derecha_sin_tapar_al_robot_ni_el_banco() -> void:
 	var stage := _stage()
 	var home := stage.parts_rack.home

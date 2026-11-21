@@ -243,10 +243,13 @@ func dark_matter(actor: int, target: int, chest_type: String, color: Color, seco
 	impact(target, "ultimate", seconds)
 
 
-## Golpe cuerpo a cuerpo: el mech se lanza y, si su arma tiene tajo (las
-## hojas), lo dibuja sobre el rival. No espera a que termine.
-func strike(actor: int, target: int, fx: String, color: Color, seconds: float) -> void:
+## Golpe cuerpo a cuerpo: el mech se lanza, su hoja (`slot`) da el tajo y,
+## si su arma lo tiene, se dibuja sobre el rival. No espera a que termine.
+func strike(
+	actor: int, target: int, fx: String, color: Color, seconds: float, slot: String = ""
+) -> void:
 	mechs[actor].lunge(seconds)
+	mechs[actor].swing(seconds, slot)
 	if fx == "" or ShotFx.shot(fx)["path"] != "melee":
 		return
 	var from := mechs[actor].hit_point()

@@ -308,6 +308,50 @@ func _empty_bay(stage: HangarStage) -> Vector2:
 	return Vector2.ZERO
 
 
+## Prueba en vivo de probar una espada (`--menu-shot=espada`), con el raton:
+## se elige el brazo que lleva la hoja y se pulsa la diana. El robot debe
+## saltar junto a la diana, dar el tajo y volver a su plataforma; se guarda
+## un cuadro cada poco para verlo.
+func sword_test() -> void:
+	var hangar := main._menu as WorkshopScreen
+	var stage := hangar._stage
+	var slot := ""
+	for i in 4:
+		var id := Garage.get_slot(main._profile.build, "side%d" % i)
+		var def := main._catalog.get_item(id) if id != "" else null
+		if slot == "" and def != null and def.has_tag(ItemDef.TAG_SWORD):
+			slot = "side%d" % i
+	await get_tree().create_timer(0.8).timeout
+	if slot == "":
+		print("ESPADA el robot no lleva ninguna hoja")
+		get_tree().quit(1)
+		return
+	await _click(stage.slot_screen_point(slot))
+	await get_tree().create_timer(0.7).timeout
+	var home := stage._mech.position
+	var center := stage._platform_center()
+	await _click(stage.target_rect().get_center())
+	var farthest := 0.0
+	for i in 16:
+		await get_tree().create_timer(0.11).timeout
+		farthest = maxf(farthest, stage._mech.position.x - home.x)
+		await shot("tajo")
+	await get_tree().create_timer(0.6).timeout
+	print(
+		(
+			"ESPADA hueco=%s avanza=%.0f vuelve=%s plataforma quieta=%s"
+			% [
+				slot,
+				farthest,
+				stage._mech.position.is_equal_approx(home),
+				is_equal_approx(center, stage._platform_center())
+			]
+		)
+	)
+	await shot("vuelta")
+	get_tree().quit(0)
+
+
 ## Prueba en vivo de los ajustes (`--menu-shot=ajustes`), con el raton y sin
 ## guardar nada: pulsar el cuadro de control de la pared, cambiar la
 ## velocidad, pulsar y arrastrar un volumen, armar la salida sin salir,
