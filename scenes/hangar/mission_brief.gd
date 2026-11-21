@@ -245,12 +245,14 @@ func rival(entry: Dictionary, zone_tier: int) -> Dictionary:
 	if not known.is_empty():
 		traits.append(Txt.t("mission_rival_kits", [" y ".join(known)]))
 	var manner := " · ".join(traits)
+	var build := library.make(
+		id, catalog, rules, tier as ItemDef.Tier, level, chassis, {}, entry.get("loadout", {})
+	)
+	# Con su cuerpo propio, si su combate se lo da (OBS-011).
+	build.body = Campaign.body_of(entry)
 	return {
 		"id": id,
-		"build":
-		library.make(
-			id, catalog, rules, tier as ItemDef.Tier, level, chassis, {}, entry.get("loadout", {})
-		),
+		"build": build,
 		"name": library.display_name(id),
 		"boss": library.is_boss(id),
 		"tier": tier,

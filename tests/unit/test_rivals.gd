@@ -127,3 +127,46 @@ func test_el_hangar_dice_lo_que_sabe_hacer_el_rival() -> void:
 		0
 	)
 	assert_string_contains(str(both["traits"]), "escudo y reparación")
+
+
+# --- Un cuerpo propio (OBS-011: "cada enemigo de cada liga debe ser diferente") ---
+
+
+func test_un_rival_puede_llevar_un_cuerpo_propio() -> void:
+	assert_eq(Campaign.body_of({"enemy": "calor_horno"}), "")
+	assert_eq(Campaign.body_of({"enemy": "calor_horno", "body": "jefe_103"}), "jefe_103")
+	assert_eq(Campaign.body_of({"body": 7}), "", "lo que no es un nombre no cuenta")
+	# El hangar lo arma con ese cuerpo: entero, de un solo juego de dibujos.
+	var entry := {"enemy": "calor_horno", "level": 0, "difficulty": "EASY", "body": "jefe_103"}
+	var build: MechBuild = _brief.rival(entry, 0)["build"]
+	assert_eq(build.body, "jefe_103")
+	var sprites := MechSprites.for_build(build)
+	assert_eq(sprites.torso_set, "jefe_103")
+	assert_eq(sprites.legs_set, "jefe_103")
+	assert_false(sprites.is_boss, "no es un jefe: lleva sus armas a la vista")
+	# Sin cuerpo propio, o con uno que no existe, se ve por sus piezas.
+	entry.erase("body")
+	var plain: MechBuild = _brief.rival(entry, 0)["build"]
+	assert_eq(plain.body, "")
+	assert_true(MechSprites.for_build(plain).torso_set in MechSprites.TORSO_SETS)
+	plain.body = "no_existe"
+	assert_true(MechSprites.for_build(plain).torso_set in MechSprites.TORSO_SETS)
+	# El cuerpo no cambia como pelea: pesa y mide lo mismo.
+	assert_eq(build.summary(_rules), plain.summary(_rules))
+
+
+func test_los_cuerpos_que_pide_la_campana_estan_dibujados() -> void:
+	for zone in _campaign.zone_count():
+		for fight in _campaign.fights_in(zone) + 1:
+			var body := Campaign.body_of(_campaign.fight_at(zone, fight))
+			if body == "":
+				continue
+			var drawn := (
+				MechSprites.has_piece(body, "torso") and MechSprites.has_piece(body, "legs")
+			)
+			assert_true(
+				drawn, "liga %d, combate %d: falta el dibujo de '%s'" % [zone + 1, fight + 1, body]
+			)
+	# Un cuerpo mal escrito no carga.
+	var bad := {"enemy": "calor_horno", "level": 0, "difficulty": "EASY", "body": 3}
+	assert_ne(_campaign._fight_problem(bad, _library), "")

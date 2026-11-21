@@ -133,6 +133,9 @@ func _ready() -> void:
 			_profile.skills.assign(["asalto_1", "asalto_2", "asalto_3", "blindaje_1", "sistemas_1"])
 		if _args["menu-shot"] == "jefe":
 			_profile.fight = _campaign.fights_in(0)
+		# --zone=<n>: en esa liga (0 es la primera), para ver a sus rivales.
+		if _args.has("zone"):
+			_profile.zone = clampi(int(_args["zone"]), 0, _campaign.zone_count() - 1)
 		# --legs=<id>: otras piernas (para ver las de orugas, ruedas o levitar).
 		if _args.has("legs"):
 			_profile.owned.append(_args["legs"])
@@ -591,6 +594,7 @@ func _spec_for(mode: String, zone: int, fight: Dictionary) -> Dictionary:
 		"enemy_level": int(fight["level"]),
 		"enemy_skills": int(fight.get("skills", 0)),
 		"enemy_kits": Campaign.kits_of(fight),
+		"enemy_body": Campaign.body_of(fight),
 		"enemy_loadout": fight.get("loadout", {}),
 		"difficulty": DIFFICULTY_IDS.find(fight["difficulty"]),
 		"seed": randi(),
@@ -680,6 +684,8 @@ func _start_battle(spec: Dictionary) -> void:
 	# Los jefes del Orden llevan su entrenamiento (GDD 9.3).
 	var trained := _skills.spread(int(spec.get("enemy_skills", 0)))
 	enemy_build.skills = _skills.effects_for(trained)
+	# Su cuerpo propio, si su combate se lo da (OBS-011).
+	enemy_build.body = str(spec.get("enemy_body", ""))
 	# Y los rivales normales, sus habilidades (el escudo, la reparacion).
 	enemy_build.skills.add(spec.get("enemy_kits", {}))
 	_battle.start(

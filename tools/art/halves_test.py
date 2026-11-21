@@ -13,6 +13,11 @@ Las imagenes van a art_raw/parts/<tanda>/.
 Uso:
   tools/art/run.ps1 tools/art/halves_test.py maniqui.png --batch aro --zones ring --ring 530 493
   tools/art/run.ps1 tools/art/halves_test.py maniqui.png --batch mitades --ring 530 493 --control-scale 0
+
+Con --extra se suman etiquetas de diseno al sujeto del torso y de las piernas
+(los rivales de cada liga, OBS-011: mas presencia de liga en liga):
+  tools/art/run.ps1 tools/art/halves_test.py maniqui.png --batch rival_2 --ring 530 493
+      --control-scale 0 --strength 1.0 --extra "heavy armor, horns"
 """
 
 import argparse
@@ -105,6 +110,7 @@ def main():
         default=0.9,
         help="cuanto se aparta del maniqui en la zona repintada; por debajo de 1 hereda sus formas",
     )
+    parser.add_argument("--extra", default="", help="etiquetas de diseno que se suman al torso y a las piernas")
     args = parser.parse_args()
 
     out = OUT / args.batch
@@ -126,10 +132,18 @@ def main():
         else:
             control, scale, end = block_control, args.control_scale, args.control_end
         subject = ZONE_SUBJECT.get(zone, style.subject_for("chassis"))
+        if args.extra and zone in ("torso", "legs"):
+            subject += ", " + args.extra
+        # Lo que pasa de 77 tokens se pierde sin avisar (y es el final: el estilo).
+        prompt = style.prompt(subject, colors)
+        tokens = len(pipe.tokenizer(prompt).input_ids)
+        if tokens > 77:
+            raise SystemExit("prompt de %d tokens (maximo 77): %s" % (tokens, prompt))
+        print("zona %s: %d tokens" % (zone, tokens), flush=True)
         for seed in args.seeds:
             started = time.time()
             image = pipe(
-                prompt=style.prompt(subject, colors),
+                prompt=prompt,
                 negative_prompt=style.negative_for("chassis") + ZONE_NEGATIVE.get(zone, ""),
                 image=mannequin,
                 mask_image=mask,

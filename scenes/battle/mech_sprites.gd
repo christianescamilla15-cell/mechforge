@@ -72,6 +72,12 @@ static func for_build(build: MechBuild) -> MechSprites:
 		out.legs_set = BOSS_SET
 		out.is_boss = true
 		return out
+	# Un rival con cuerpo propio (OBS-011): entero, de un solo juego, y con
+	# sus armas montadas como cualquiera.
+	if build.body != "" and has_piece(build.body, "torso") and has_piece(build.body, "legs"):
+		out.torso_set = build.body
+		out.legs_set = build.body
+		return out
 	out.torso_set = torsos[absi(build.torso.id.hash()) % torsos.size()]
 	out.legs_set = legs[absi(build.legs.id.hash()) % legs.size()]
 	for tag: String in SPECIAL_LEGS:

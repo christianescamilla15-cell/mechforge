@@ -34,6 +34,10 @@ const RESISTANCE_CLASH := "dos módulos dan la misma resistencia (%s y %s): solo
 ## -> elemento (ItemDef.Element) con cuyo color se dibuja su pieza. Lo que no
 ## esta aqui se dibuja con el color de su elemento. Solo cambia el dibujo.
 @export var paints: Dictionary = {}
+## Cuerpo propio (OBS-011: "cada enemigo de cada liga debe ser diferente al
+## anterior"): el juego de dibujos con el que se ve entero, torso y piernas,
+## en vez de salir de sus piezas. "" = por sus piezas. Solo cambia el dibujo.
+@export var body: String = ""
 
 
 ## La pieza de un hueco ("torso", "side0", "top1", "module3", "chest"...), o

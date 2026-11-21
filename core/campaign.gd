@@ -140,6 +140,13 @@ static func kits_of(fight: Dictionary) -> Dictionary:
 	return kits if kits is Dictionary else {}
 
 
+## El cuerpo con el que se ve el rival de un combate (un juego de dibujos de
+## assets/mechs); "" si se ve por sus piezas, como siempre.
+static func body_of(fight: Dictionary) -> String:
+	var body: Variant = fight.get("body", "")
+	return body if body is String else ""
+
+
 ## La escalera de la zona: el combate que toca y los que le siguen, en
 ## orden, con el jefe al final; como mucho `count`. Cada uno es su combate
 ## ({"enemy", "level", "difficulty"...}) con "fight" (su numero en la zona) y
@@ -443,6 +450,8 @@ func _fight_problem(raw: Variant, library: BuildLibrary) -> String:
 		return "la dificultad no es valida"
 	if int(raw.get("level", -1)) < 0:
 		return "falta el nivel"
+	if raw.has("body") and not raw["body"] is String:
+		return "'body' no es un nombre"
 	for kit: String in kits_of(raw):
 		if not kit in KITS:
 			return "habilidad desconocida en 'kits': %s" % kit
