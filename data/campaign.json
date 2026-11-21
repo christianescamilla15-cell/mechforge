@@ -125,7 +125,8 @@
         {
           "enemy": "calor_horno",
           "level": 3,
-          "difficulty": "EASY"
+          "difficulty": "EASY",
+          "body": "liga2_horno"
         },
         {
           "enemy": "energia_tempestad",
@@ -152,7 +153,8 @@
           "kits": {
             "repair_uses": 1,
             "repair_share": 0.2
-          }
+          },
+          "body": "liga2_horno"
         },
         {
           "enemy": "energia_tempestad",
@@ -192,7 +194,8 @@
             "shield_uses": 1,
             "repair_uses": 1,
             "repair_share": 0.15
-          }
+          },
+          "body": "liga2_horno"
         },
         {
           "enemy": "energia_tempestad",

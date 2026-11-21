@@ -136,6 +136,9 @@ func _ready() -> void:
 		# --zone=<n>: en esa liga (0 es la primera), para ver a sus rivales.
 		if _args.has("zone"):
 			_profile.zone = clampi(int(_args["zone"]), 0, _campaign.zone_count() - 1)
+		# --combate=<n>: con ese combate de la liga por delante (0 es el primero).
+		if _args.has("combate"):
+			_profile.fight = clampi(int(_args["combate"]), 0, _campaign.fights_in(_profile.zone))
 		# --legs=<id>: otras piernas (para ver las de orugas, ruedas o levitar).
 		if _args.has("legs"):
 			_profile.owned.append(_args["legs"])
