@@ -16,6 +16,10 @@ extends Control
 ## (PartsRack): tus piezas y las de la tienda, por tipo, con su ficha, la
 ## tecla para subirla y la lectura del robot.
 ##
+## Al acercarla, la sala se queda a oscuras detras y la pantalla se enciende
+## como un monitor viejo: una raya de luz que se abre (OBS-039, del usuario:
+## "me gustaria que fuera mas inmersivo... como Resident Evil").
+##
 ## Ensena un estado (WorkshopBrief.loadout) y avisa de lo que se pulsa; no
 ## decide nada.
 
@@ -25,6 +29,11 @@ signal slot_picked(slot: String)
 signal close_pressed
 
 const GROW_SECONDS := 0.24
+## Lo que tarda en encenderse la pantalla ya delante.
+const POWER_SECONDS := 0.38
+## Cuanto se oscurece la sala detras de la pantalla, y su cristal.
+const ROOM_DIM := 0.74
+const GLASS_DIM := 0.42
 const REDRAW_SECONDS := 1.0 / 30.0
 const BIG := 54.0
 const SMALL := 38.0
@@ -104,6 +113,10 @@ var _open := 0.0:
 		queue_redraw()
 var _wanted := false
 var _grow: Tween
+## El encendido: 0 = apagada (solo la raya de luz); 1 = encendida.
+var _power := 1.0
+## Lo que va encima de todo: el encendido y la vineta del cristal.
+var _fx := Control.new()
 var _hover := ""
 var _flash_slot := ""
 var _flash := 0.0
@@ -123,6 +136,10 @@ func _ready() -> void:
 	add_child(_veil)
 	rack.embedded = true
 	add_child(rack)
+	_fx.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_fx.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_fx.draw.connect(_draw_fx)
+	add_child(_fx)
 	_show_contents(false)
 	mouse_exited.connect(_set_hover.bind(""))
 	resized.connect(_layout)
@@ -137,6 +154,7 @@ func _process(delta: float) -> void:
 		_since_draw = 0.0
 		queue_redraw()
 		_veil.queue_redraw()
+		_fx.queue_redraw()
 
 
 # --- Acercarla y devolverla -----------------------------------------------------------
@@ -191,10 +209,15 @@ func _tween_open(to: float, seconds: float) -> void:
 		_grow.kill()
 	if seconds <= 0.0:
 		_open = to
+		_power = 1.0
 		visible = to > 0.0
 		return
 	_grow = create_tween().set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	_grow.tween_property(self, "_open", to, seconds)
+	if to > 0.5:
+		# Ya delante, se enciende.
+		_power = 0.0
+		_grow.tween_property(self, "_power", 1.0, POWER_SECONDS).set_trans(Tween.TRANS_LINEAR)
 	if to <= 0.0:
 		_grow.tween_callback(func() -> void: visible = false)
 
@@ -326,8 +349,13 @@ func _set_hover(zone: String) -> void:
 
 
 func _draw() -> void:
+	# La sala, a oscuras detras: solo queda la pantalla.
+	var room := get_global_transform().affine_inverse() * get_viewport_rect()
+	draw_rect(room, Color(0.0, 0.005, 0.012, ROOM_DIM * _open))
 	var glass := HangarArt.draw_screen(self, Rect2(Vector2.ZERO, size), false, _time)
 	var alpha := clampf((_open - 0.55) / 0.45, 0.0, 1.0)
+	# El cristal, mas hondo: lo que se ensena resalta sobre el.
+	draw_rect(glass, Color(0.0, 0.01, 0.016, GLASS_DIM * alpha))
 	_text(glass.position + Vector2(10, 22), str(state.get("title", "")), 120.0, 16, TEXT, alpha)
 	if alpha <= 0.0:
 		return
@@ -489,6 +517,36 @@ func _draw_veil() -> void:
 	var sweep := fposmod(_time * 46.0, rect.size.y)
 	_veil.draw_rect(Rect2(0, sweep - 5.0, rect.size.x, 10.0), Color(LINE, 0.07))
 	_veil.draw_line(Vector2(0, sweep), Vector2(rect.size.x, sweep), Color(LINE, 0.4), 1.0)
+
+
+## Encima de todo: la vineta del cristal y, al encenderse, el negro con la
+## raya de luz que se abre desde el centro.
+func _draw_fx() -> void:
+	if _open < 0.999:
+		return
+	var glass := _glass()
+	HangarArt.draw_vignette(_fx, glass, 2.2)
+	if _power >= 1.0:
+		return
+	# Primero la raya crece a lo ancho; luego se abre a lo alto.
+	var wide := clampf(_power / 0.3, 0.0, 1.0)
+	var high := clampf((_power - 0.3) / 0.7, 0.0, 1.0)
+	var band := glass.size.y * high * high
+	var mid := glass.get_center()
+	var top := mid.y - band * 0.5
+	var black := Color(0.0, 0.004, 0.008)
+	_fx.draw_rect(Rect2(glass.position, Vector2(glass.size.x, top - glass.position.y)), black)
+	_fx.draw_rect(
+		Rect2(glass.position.x, top + band, glass.size.x, glass.end.y - top - band), black
+	)
+	var glow := 1.0 - high
+	var light := Color(0.85, 0.97, 1.0, glow)
+	var line := glass.size.x * wide
+	for y: float in [top, top + band]:
+		_fx.draw_rect(Rect2(mid.x - line * 0.5, y - 1.0, line, 2.0), light)
+	_fx.draw_rect(
+		Rect2(glass.position.x, top, glass.size.x, band), Color(0.7, 0.9, 1.0, 0.22 * glow)
+	)
 
 
 func _text(

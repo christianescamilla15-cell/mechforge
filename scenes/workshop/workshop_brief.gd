@@ -254,6 +254,7 @@ func rack(profile: PlayerProfile, slot: String) -> Dictionary:
 	return {
 		"slot": slot,
 		"title": slot_title(slot),
+		"kind": slot_kind(slot),
 		"locked": locked,
 		"style": arms,
 		"hint": hint if arms == "" else "%s. %s" % [arms, hint],
@@ -264,6 +265,19 @@ func rack(profile: PlayerProfile, slot: String) -> Dictionary:
 		"can_test": can_test,
 		"paints": paints(profile, slot),
 	}
+
+
+## Que cabe en un hueco de arma, para la cabecera del catalogo (OBS-038: "si
+## es brazo izquierdo, nada mas armas de mediano y corto alcance. Parte
+## superior unicamente armas de largo alcance"). Vacio en los demas.
+static func slot_kind(slot: String) -> String:
+	if slot.begins_with("side"):
+		return Txt.t("rack_kind_side")
+	if slot.begins_with("top"):
+		return Txt.t("rack_kind_top")
+	if slot == "chest":
+		return Txt.t("rack_kind_chest")
+	return ""
 
 
 ## El color con el que se ve hoy la pieza de un hueco (uno de Garage.PAINTS):

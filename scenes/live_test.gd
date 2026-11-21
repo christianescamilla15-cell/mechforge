@@ -466,7 +466,10 @@ func workshop_test(workshop: WorkshopScreen) -> void:
 	await _click(stage.global_position + robot)
 	await get_tree().create_timer(0.12).timeout
 	await shot("taller_acercando")
-	await get_tree().create_timer(0.5).timeout
+	# Ya delante, la pantalla se enciende (una raya de luz que se abre).
+	await get_tree().create_timer(0.2).timeout
+	await shot("taller_encendiendo")
+	await get_tree().create_timer(0.4).timeout
 	print("TALLER clic en el robot: abierto='%s'" % workshop.current_page())
 	await shot("taller_computadora")
 	# La casilla del brazo 1: a su lado, lo que le cabe.
