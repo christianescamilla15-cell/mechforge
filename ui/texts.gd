@@ -206,6 +206,7 @@ const ES := {
 	"hud_robot_hint": "Tu robot: su ficha",
 	"terminal_taller": "TALLER",
 	"loadout_modules": "MÓDULOS",
+	"loadout_paint": "PINTURA",
 	"loadout_drone": "DRON %d",
 	"terminal_mejoras": "MEJORAS",
 	"terminal_habilidades": "HABILIDADES",

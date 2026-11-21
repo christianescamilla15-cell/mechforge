@@ -129,7 +129,7 @@ func setup(p_build: MechBuild, p_facing: int) -> void:
 	_sprites = MechSprites.for_build(build)
 	_rig = null
 	if _sprites != null and not _sprites.rigid_legs:
-		_rig = _sprites.leg_rig(build.legs.element)
+		_rig = _sprites.leg_rig(build.paint_of("legs"))
 	_locomotion = locomotion_of(build.legs)
 	# Con otro equipo, el arma de pecho vuelve a estar guardada.
 	_deployed = false
@@ -375,6 +375,11 @@ func _cannon_item() -> ItemDef:
 	return build.chest if build.chest != null else build.tops[0]
 
 
+## Color con el que se dibuja el arma de pecho: su pintura o su elemento.
+func _chest_paint() -> int:
+	return int(build.paints.get("chest", _cannon_item().element))
+
+
 ## Guarda el arma de pecho dentro del torso: se despliega cada vez que se usa
 ## (decision del usuario, 2026-11-20, OBS-025). Null si no estaba fuera.
 func stow(seconds: float) -> Tween:
@@ -474,9 +479,7 @@ func _draw_sprites(dim: float) -> void:
 	var cannon_at := body + Vector2((1.0 - _deploy) * -RETRACT - _recoil, 0.0)
 	var cannon_tint := Color(tint.r, tint.g, tint.b, clampf(_deploy * 1.5, 0.0, 1.0))
 	if has_cannon() and _deploy > 0.0 and _deploy < 1.0 and _layer("chest"):
-		_sprites.draw_piece(
-			self, CHEST_SET, "chest", _cannon_item().element, cannon_tint, cannon_at
-		)
+		_sprites.draw_piece(self, CHEST_SET, "chest", _chest_paint(), cannon_tint, cannon_at)
 	# El brazo y el hombro del lado lejano van detras del torso.
 	if _layer("far") or _layer("far_top"):
 		_draw_weapons(tint, body, true)
@@ -484,11 +487,11 @@ func _draw_sprites(dim: float) -> void:
 	if _layer("body"):
 		var torso_tint := _ghost_tint(tint, "torso")
 		_sprites.draw_piece(
-			self, _sprites.torso_set, "torso", build.torso.element, torso_tint, body
+			self, _sprites.torso_set, "torso", build.paint_of("torso"), torso_tint, body
 		)
 		MechWear.draw_marks(self, torso, health_ratio, _wear_salt())
 	if has_cannon() and _deploy >= 1.0 and _layer("chest"):
-		_sprites.draw_piece(self, CHEST_SET, "chest", _cannon_item().element, tint, cannon_at)
+		_sprites.draw_piece(self, CHEST_SET, "chest", _chest_paint(), tint, cannon_at)
 	if _layer("near") or _layer("near_top"):
 		_draw_weapons(tint, body, false)
 	if _layer("body"):
@@ -506,7 +509,7 @@ func _draw_sprites(dim: float) -> void:
 			Vector2(-_recoil * 0.4, 0.0) if _fired_slot.begins_with("drone") else Vector2.ZERO
 		)
 		MechSprites.draw_assist(
-			self, _assist_kind(), build.torso.element, tint, _assist_at() + bob + kick
+			self, _assist_kind(), build.paint_of("assist"), tint, _assist_at() + bob + kick
 		)
 		return
 	var drone_kind := _drone_kind()
@@ -694,7 +697,7 @@ func _draw_weapons(tint: Color, body: Vector2, far: bool) -> void:
 			continue
 		var kick := Vector2(-_recoil, 0.0) if slot == _fired_slot else Vector2.ZERO
 		var at: Vector2 = body + mounted["at"] + kick
-		var element: int = mounted["item"].element
+		var element := build.paint_of(slot)
 		var shade := weapon_tint
 		if slot == disabled_slot:
 			# Inutilizada por un critico: apagada y echando humo.
@@ -753,7 +756,7 @@ func _mount_of(slot: String) -> Dictionary:
 ## levitar. Devuelve cuanto sube o baja el cuerpo para que el pie de apoyo
 ## toque el suelo (o para flotar).
 func _draw_legs(tint: Color) -> float:
-	var texture := _sprites.legs_texture(build.legs.element)
+	var texture := _sprites.legs_texture(build.paint_of("legs"))
 	if _rig == null or texture == null:
 		return _draw_rigid_legs(tint)
 	var origin := _sprites.legs_origin()
@@ -795,7 +798,7 @@ func _draw_rigid_legs(tint: Color) -> float:
 		lift = sin(_time * 47.0) * 0.9
 	if _layer("body"):
 		_sprites.draw_piece(
-			self, _sprites.legs_set, "legs", build.legs.element, tint, Vector2(0.0, lift)
+			self, _sprites.legs_set, "legs", build.paint_of("legs"), tint, Vector2(0.0, lift)
 		)
 	return lift
 

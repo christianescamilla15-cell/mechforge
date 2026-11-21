@@ -155,6 +155,9 @@ func _ready() -> void:
 		if _args.has("chest"):
 			_profile.owned.append(_args["chest"])
 			_profile.build["chest"] = _args["chest"]
+		# --paint=torso:ENERGY,side0:HEAT: piezas pintadas (Garage.PAINTS).
+		for pair: String in str(_args.get("paint", "")).split(",", false):
+			Garage.set_paint(_profile.build, pair.get_slice(":", 0), pair.get_slice(":", 1))
 		# --real-profile: la partida de verdad del jugador. No se guarda nada:
 		# en esta prueba _persist es false.
 		if _args.has("real-profile"):

@@ -198,32 +198,34 @@ static func weapon_look(item: ItemDef) -> String:
 
 
 ## Dibujo de una pieza para su miniatura en el taller (el mismo que lleva el
-## mech); null si esa pieza no tiene arte.
-static func icon_for(item: ItemDef) -> Texture2D:
+## mech); null si esa pieza no tiene arte. `paint`: el color (elemento) con
+## el que esta pintada; -1, el de su elemento.
+static func icon_for(item: ItemDef, paint: int = -1) -> Texture2D:
 	if item == null:
 		return null
+	var element := paint if paint >= 0 else int(item.element)
 	match item.type:
 		ItemDef.Type.SIDE, ItemDef.Type.TOP:
 			var kind := weapon_look(item)
-			return _texture(WEAPON_SET, kind, item.element) if kind != "" else null
+			return _texture(WEAPON_SET, kind, element) if kind != "" else null
 		ItemDef.Type.TORSO:
 			var torsos := _available(TORSO_SETS, "torso")
 			if torsos.is_empty():
 				return null
-			return _texture(torsos[absi(item.id.hash()) % torsos.size()], "torso", item.element)
+			return _texture(torsos[absi(item.id.hash()) % torsos.size()], "torso", element)
 		ItemDef.Type.LEGS:
 			for tag: String in SPECIAL_LEGS:
 				if item.has_tag(tag) and has_piece(SPECIAL_LEGS[tag], "legs"):
-					return _texture(SPECIAL_LEGS[tag], "legs", item.element)
+					return _texture(SPECIAL_LEGS[tag], "legs", element)
 			var legs := _available(LEGS_SETS, "legs")
 			if legs.is_empty():
 				return null
-			return _texture(legs[absi(item.id.hash()) % legs.size()], "legs", item.element)
+			return _texture(legs[absi(item.id.hash()) % legs.size()], "legs", element)
 		ItemDef.Type.CHEST:
-			return _texture(MechView.CHEST_SET, "chest", item.element)
+			return _texture(MechView.CHEST_SET, "chest", element)
 		ItemDef.Type.ASSIST:
 			var form := assist_kind(item.tier)
-			return _texture(ASSIST_SET, form, item.element) if form != "" else null
+			return _texture(ASSIST_SET, form, element) if form != "" else null
 	return null
 
 

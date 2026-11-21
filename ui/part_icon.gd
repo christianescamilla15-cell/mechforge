@@ -45,14 +45,19 @@ func _draw() -> void:
 
 
 ## Pinta una pieza centrada en `rect` de un lienzo: su dibujo o su cartucho.
-## `tint` la colorea (los hologramas de la tienda). False si no hay nada
-## que pintar.
+## `tint` la colorea (los hologramas de la tienda); `color`, el elemento con
+## el que esta pintada (-1: el suyo). False si no hay nada que pintar.
 static func paint(
-	c: CanvasItem, rect: Rect2, def: ItemDef, p_alpha: float = 1.0, tint: Color = Color.WHITE
+	c: CanvasItem,
+	rect: Rect2,
+	def: ItemDef,
+	p_alpha: float = 1.0,
+	tint: Color = Color.WHITE,
+	color: int = -1
 ) -> bool:
 	if def == null or rect.size.x <= 0.0 or rect.size.y <= 0.0:
 		return false
-	var drawing := MechSprites.icon_for(def)
+	var drawing := MechSprites.icon_for(def, color)
 	if drawing != null:
 		paint_texture(c, rect, drawing, p_alpha, tint)
 		return true

@@ -415,7 +415,7 @@ func _draw_box(entry: Dictionary, alpha: float) -> void:
 		draw_rect(rect.grow(3.0), Color(GOLD, (0.14 + 0.06 * sin(_time * 5.0)) * alpha))
 	var fade := alpha * (0.4 if locked else 1.0)
 	if item != null:
-		PartIcon.paint(self, rect.grow(-5.0), item, fade)
+		PartIcon.paint(self, rect.grow(-5.0), item, fade, Color.WHITE, int(entry.get("paint", -1)))
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	else:
 		var mid := rect.get_center()

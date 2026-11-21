@@ -73,6 +73,7 @@ func _ready() -> void:
 	rack.bought.connect(buy)
 	rack.hovered.connect(hover_item)
 	rack.upgrade_pressed.connect(upgrade_selected)
+	rack.paint_picked.connect(paint_selected)
 	var console := _stage.console
 	console.upgrade_picked.connect(buy_upgrade)
 	console.skill_picked.connect(learn)
@@ -478,6 +479,21 @@ func equip(slot: String, id: String) -> void:
 	var item := main._bench.resolved(main._profile, id)
 	if item != null:
 		_stage.loadout.flash(slot, PartIcon.TIER_COLORS[item.tier])
+
+
+## Pinta de ese color (Garage.PAINTS) la pieza del hueco elegido (OBS-010).
+## Volver al color de su elemento es quitarle la pintura.
+func paint_selected(color: String) -> void:
+	var profile := main._profile
+	if main._bench.paints(profile, _selected).is_empty():
+		return
+	Garage.set_paint(profile.build, _selected, "")
+	if main._bench.paint_shown(profile, _selected) != color:
+		Garage.set_paint(profile.build, _selected, color)
+	main._save()
+	Sfx.play("taller_montar")
+	refresh()
+	_stage.loadout.flash(_selected, WorkshopBrief.PAINT_COLORS[color])
 
 
 ## Deja un hueco vacio.

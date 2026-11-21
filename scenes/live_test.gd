@@ -499,6 +499,20 @@ func workshop_test(workshop: WorkshopScreen) -> void:
 		await get_tree().create_timer(0.3).timeout
 		print("TALLER clic en %s -> brazo 1: %s" % [clicked, Garage.get_slot(build, "side0")])
 		await shot("taller_montada")
+	# La pintura (OBS-010): una muestra de la cabecera pinta la pieza del brazo 1.
+	if not rack._paints().is_empty():
+		await _click(rack.global_position + rack.paint_rect(2).get_center())
+		await get_tree().create_timer(0.5).timeout
+		print("TALLER pintar el brazo 1 de azul: pintura='%s'" % Garage.paint_of(build, "side0"))
+		await shot("taller_pintada")
+		await _click(_box_point(stage, "torso"))
+		await get_tree().create_timer(0.3).timeout
+		await _click(rack.global_position + rack.paint_rect(2).get_center())
+		await get_tree().create_timer(0.5).timeout
+		print("TALLER pintar el torso de azul: pintura='%s'" % Garage.paint_of(build, "torso"))
+		await shot("taller_torso_pintado")
+		await _click(_box_point(stage, "side0"))
+		await get_tree().create_timer(0.3).timeout
 	# Una de la tienda: la primera pulsacion la arma, la segunda la compra.
 	var store := -1
 	for index in rack._parts.size():

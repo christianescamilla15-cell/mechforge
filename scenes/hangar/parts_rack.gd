@@ -28,6 +28,8 @@ signal bought(id: String)
 signal hovered(id: String, inside: bool)
 ## La tecla del lector: subir de nivel o transformar la pieza del hueco.
 signal upgrade_pressed
+## Se pulso una muestra de color: pintar con el la pieza del hueco.
+signal paint_picked(id: String)
 
 const COLUMNS := 4
 ## Alto minimo de una fila: caben las que quepan y se reparten el sitio.
@@ -36,6 +38,9 @@ const RAIL_HEIGHT := 14.0
 const HEAD_HEIGHT := 24.0
 const PAGER_HEIGHT := 12.0
 const READER_HEIGHT := 84.0
+## Las muestras de pintura, en la cabecera.
+const SWATCH := Vector2(22.0, 13.0)
+const SWATCH_GAP := 6.0
 const STATS_HEIGHT := 56.0
 const STATS_COLUMNS := 3
 const GOOD := Color("7dff9b")
@@ -54,7 +59,9 @@ const BOARD := Color(0.055, 0.08, 0.115, 0.93)
 ## Lo que ensena: {"slot", "title", "locked", "hint", "cells", "parts":
 ## [{"id", "item", "group" (su tipo), "owned", "mounted", "detail", "stats",
 ## "price", "reason", "note"}], "mounted": {} o {"item", "detail", "stats"},
-## "key": {} o {"label", "enabled", "reason"}}.
+## "key": {} o {"label", "enabled", "reason"}, "paints": [{"id", "color",
+## "selected"}] (los colores con los que se pinta la pieza del hueco; vacio
+## si no se pinta)}.
 var state: Dictionary = {}:
 	set(value):
 		var same := str(value.get("slot", "")) == str(state.get("slot", ""))
@@ -233,8 +240,23 @@ func _pager_rect(zone: String) -> Rect2:
 	return Rect2(x, y - 1.0, 24.0, PAGER_HEIGHT + 2.0)
 
 
-## Zona bajo un punto: "part:<n>", "key", "up", "down" o "".
+## Las muestras de pintura de la cabecera, en fila y centradas.
+func _paints() -> Array:
+	return state.get("paints", [])
+
+
+func paint_rect(index: int) -> Rect2:
+	var count := _paints().size()
+	var wide := count * SWATCH.x + (count - 1) * SWATCH_GAP
+	var x := size.x * 0.5 - wide * 0.5 + 34.0 + index * (SWATCH.x + SWATCH_GAP)
+	return Rect2(Vector2(x, RAIL_HEIGHT + 4.0), SWATCH)
+
+
+## Zona bajo un punto: "part:<n>", "paint:<n>", "key", "up", "down" o "".
 func zone_at(at: Vector2) -> String:
+	for index in _paints().size():
+		if paint_rect(index).grow(2.0).has_point(at):
+			return "paint:%d" % index
 	for index in _parts.size():
 		if part_rect(index).has_point(at):
 			return "part:%d" % index
@@ -299,6 +321,11 @@ func _gui_input(event: InputEvent) -> void:
 func _press(zone: String) -> void:
 	if zone == "up" or zone == "down":
 		scroll_rows(-1 if zone == "up" else 1)
+		return
+	if zone.begins_with("paint:"):
+		var paint: Dictionary = _paints()[int(zone.trim_prefix("paint:"))]
+		if not bool(paint["selected"]):
+			paint_picked.emit(str(paint["id"]))
 		return
 	if zone == "key":
 		var key: Dictionary = state.get("key", {})
@@ -428,12 +455,43 @@ func _draw_head() -> void:
 	var x := size.x - MARGIN - 6.0 - wide - unit_wide - 4.0
 	HangarProps.text(self, _font, Vector2(x, y), cells, wide + 2.0, 12, HangarProps.SCREEN_TEXT)
 	HangarProps.text(self, _font, Vector2(x + wide + 4.0, y), unit, unit_wide + 2.0, 9, MUTED)
+	_draw_paints(y)
 	draw_line(
 		Vector2(MARGIN, RAIL_HEIGHT + HEAD_HEIGHT - 3.0),
 		Vector2(size.x - MARGIN, RAIL_HEIGHT + HEAD_HEIGHT - 3.0),
 		Color("4f6380", 0.6),
 		1.0
 	)
+
+
+## Las muestras de pintura de la pieza del hueco: la que lleva, con su marco
+## dorado; la del raton, encendida.
+func _draw_paints(baseline: float) -> void:
+	var paints := _paints()
+	if paints.is_empty():
+		return
+	var label := Txt.t("loadout_paint")
+	var label_wide := _font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, 9).x
+	var first := paint_rect(0)
+	HangarProps.text(
+		self,
+		_font,
+		Vector2(first.position.x - label_wide - 8.0, baseline),
+		label,
+		label_wide + 2.0,
+		9,
+		MUTED
+	)
+	for index in paints.size():
+		var rect := paint_rect(index)
+		var color: Color = paints[index]["color"]
+		var lit := _hover == "paint:%d" % index
+		draw_rect(rect, color if lit else color.darkened(0.12))
+		draw_rect(rect, Color(0, 0, 0, 0.55), false, 1.0)
+		if bool(paints[index]["selected"]):
+			draw_rect(rect.grow(2.5), GOLD, false, 1.5)
+		elif lit:
+			draw_rect(rect.grow(2.5), Color(HOLO, 0.8), false, 1.0)
 
 
 ## Una pieza colgada de su gancho: solida si es tuya, holograma con su
@@ -475,7 +533,7 @@ func _draw_part(index: int, rect: Rect2, slide: float) -> void:
 			self, _font, tag, group.to_upper(), rect.size.x - 8.0, 8, Color(MUTED, fade)
 		)
 	if owned:
-		PartIcon.paint(self, well, item, fade)
+		PartIcon.paint(self, well, item, fade, Color.WHITE, int(part.get("paint", -1)))
 	else:
 		# Holograma: tenido de azul, con lineas de barrido y un parpadeo.
 		var flicker := 0.72 + 0.1 * sin(_time * 5.0 + index * 1.7)

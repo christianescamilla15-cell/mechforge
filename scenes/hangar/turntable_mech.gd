@@ -290,7 +290,7 @@ func setup(
 ) -> void:
 	_canvas = bounds.grow(MARGIN)
 	_pivot_x = pivot_x
-	var base: Color = MechView.ELEMENT_COLORS[build.torso.element]
+	var base: Color = MechView.ELEMENT_COLORS[build.paint_of("torso")]
 	_wall_color = base.darkened(0.5).lerp(MechView.OUTLINE, 0.22)
 	var pixels := Vector2i((_canvas.size * RENDER_SCALE).ceil())
 	for layer: Dictionary in LAYERS:
@@ -438,18 +438,18 @@ func _bake(mech: MechView, build: MechBuild) -> void:
 		var legs_set := prefix + mech.legs_set()
 		var body := _blank()
 		if mech.has_rigid_legs():
-			_paste(body, legs_set, "legs", build.legs.element, hip, 0, legs_fit)
+			_paste(body, legs_set, "legs", build.paint_of("legs"), hip, 0, legs_fit)
 		else:
 			# De frente, el lado cercano del robot queda a la izquierda; de
 			# espalda, a la derecha.
 			var near_half := -1 if prefix == FRONT else 1
 			var near := _blank()
-			_paste(near, legs_set, "legs", build.legs.element, hip, near_half, legs_fit)
+			_paste(near, legs_set, "legs", build.paint_of("legs"), hip, near_half, legs_fit)
 			into["near_leg"] = ImageTexture.create_from_image(near)
 			var far := _blank()
-			_paste(far, legs_set, "legs", build.legs.element, hip, -near_half, legs_fit)
+			_paste(far, legs_set, "legs", build.paint_of("legs"), hip, -near_half, legs_fit)
 			into["far_leg"] = ImageTexture.create_from_image(far)
-		_paste(body, torso_set, "torso", build.torso.element, hip, 0, torso_fit)
+		_paste(body, torso_set, "torso", build.paint_of("torso"), hip, 0, torso_fit)
 		into["body"] = ImageTexture.create_from_image(body)
 
 

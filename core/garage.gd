@@ -36,6 +36,11 @@ const SLOTS: Array[String] = [
 ]
 ## Huecos que son listas en el formato de builds.json, con su prefijo.
 const LISTS := {"side": "sides", "top": "tops", "module": "modules"}
+## Colores con los que se puede pintar una pieza (OBS-010): los tres en los
+## que existe su dibujo, con el nombre de su elemento (blanco, rojo, azul).
+const PAINTS: Array[String] = ["PHYSICAL", "HEAT", "ENERGY"]
+## Huecos cuya pieza se ve en el robot y se puede pintar.
+const PAINTABLE: Array[String] = ["torso", "legs", "chest", "assist", "side", "top"]
 
 ## Precio base de una pieza nueva por tipo (nombre de ItemDef.Type).
 var base_prices: Dictionary = {}
@@ -98,6 +103,42 @@ static func set_slot(build: Dictionary, slot: String, id: String) -> void:
 		build.erase(slot)
 	else:
 		build[slot] = id
+
+
+## True si la pieza de ese hueco se ve en el robot y se puede pintar.
+static func can_paint(slot: String) -> bool:
+	for prefix in PAINTABLE:
+		if slot == prefix or (prefix in LISTS and slot.begins_with(prefix)):
+			return true
+	return false
+
+
+## Color con el que esta pintado un hueco (uno de PAINTS); "" si va con el
+## color de su elemento.
+static func paint_of(build: Dictionary, slot: String) -> String:
+	var paint: Variant = build.get("paint")
+	if not paint is Dictionary:
+		return ""
+	var color := str(paint.get(slot, ""))
+	return color if color in PAINTS else ""
+
+
+## Pinta un hueco de ese color (uno de PAINTS); "" le quita la pintura. Lo
+## que no se puede pintar, o un color que no existe, no cambia nada.
+static func set_paint(build: Dictionary, slot: String, color: String) -> void:
+	if not can_paint(slot) or not (color == "" or color in PAINTS):
+		return
+	var paint: Dictionary = {}
+	if build.get("paint") is Dictionary:
+		paint = (build["paint"] as Dictionary).duplicate()
+	if color == "":
+		paint.erase(slot)
+	else:
+		paint[slot] = color
+	if paint.is_empty():
+		build.erase("paint")
+	else:
+		build["paint"] = paint
 
 
 ## Devuelve "" si el jugador puede montar esa pieza en ese hueco; si no, el

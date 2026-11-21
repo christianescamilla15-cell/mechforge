@@ -44,7 +44,8 @@ func by_type(type: ItemDef.Type) -> Array[ItemDef]:
 
 ## Arma un mech a partir de ids, con todas sus piezas al mismo tier y nivel.
 ## spec: {"torso", "legs", "sides": [], "tops": [], "drone", "modules": [],
-## "charge", "teleport", "hook"}. Los ids desconocidos se anotan en errors.
+## "charge", "teleport", "hook" y, si se pinto, "paint": {hueco: color}
+## (Garage.PAINTS)}. Los ids desconocidos se anotan en errors.
 ## Arma un mech con todas sus piezas en esa clase y nivel. `parts` puede dar
 ## a cada pieza su propia clase y nivel: {id: {"tier", "level"}} (las piezas
 ## del jugador, PlayerProfile.parts).
@@ -84,6 +85,13 @@ func make_build(
 		while not list.is_empty() and list[-1] == null:
 			list.pop_back()
 		build.set(key, list)
+	# La pintura de cada hueco: solo cambia con que color se dibuja.
+	var paint: Variant = spec.get("paint")
+	if paint is Dictionary:
+		for slot: Variant in paint:
+			var color := Garage.PAINTS.find(str(paint[slot]))
+			if color >= 0:
+				build.paints[str(slot)] = ItemDef.Element[Garage.PAINTS[color]]
 	return build
 
 

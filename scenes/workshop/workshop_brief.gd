@@ -35,6 +35,11 @@ const GROUP_KEYS: Array[String] = [
 	"artillero",
 	"zapador"
 ]
+## Con que se ensena cada color de pintura (Garage.PAINTS): blanco, rojo y
+## azul, los tonos de los tres dibujos de cada pieza (tools/art/recolor.py).
+const PAINT_COLORS := {
+	"PHYSICAL": Color("e8edf2"), "HEAT": Color("e26030"), "ENERGY": Color("3e76de")
+}
 ## Los nombres de los tipos, en su orden (se arma una vez, con los textos).
 static var group_order: Array[String] = _group_order()
 
@@ -173,6 +178,10 @@ func rack(profile: PlayerProfile, slot: String) -> Dictionary:
 	var tier := zone_tier(profile)
 	var locked := lock_reason(profile, slot)
 	var owned: Array[Dictionary] = []
+	# La que lleva se ve con su pintura, como en el robot.
+	var shown := -1
+	if mounted_id != "" and Garage.can_paint(slot):
+		shown = ItemDef.Element[paint_shown(profile, slot)]
 	for id in Garage.owned_for(profile, catalog, slot):
 		# Lo que su tipo no monta no cuelga en el tablero de este robot.
 		if styles.why_cant_mount(profile.style, catalog.get_item(id)) != "":
@@ -187,6 +196,7 @@ func rack(profile: PlayerProfile, slot: String) -> Dictionary:
 					"group": group_of(item),
 					"owned": true,
 					"mounted": id == mounted_id,
+					"paint": shown if id == mounted_id else -1,
 					"detail": progress_text(profile, item),
 					"stats": item_stats(item, false),
 					"price": -1,
@@ -252,7 +262,36 @@ func rack(profile: PlayerProfile, slot: String) -> Dictionary:
 		"mounted": mounted,
 		"key": key,
 		"can_test": can_test,
+		"paints": paints(profile, slot),
 	}
+
+
+## El color con el que se ve hoy la pieza de un hueco (uno de Garage.PAINTS):
+## su pintura o, sin pintar, el de su elemento (el asistente, el del torso).
+func paint_shown(profile: PlayerProfile, slot: String) -> String:
+	var painted := Garage.paint_of(profile.build, slot)
+	if painted != "":
+		return painted
+	if slot == "assist":
+		return paint_shown(profile, "torso")
+	var def := catalog.get_item(Garage.get_slot(profile.build, slot))
+	var own: String = ItemDef.Element.keys()[def.element] if def != null else ""
+	return own if own in Garage.PAINTS else Garage.PAINTS[0]
+
+
+## Los colores con los que se puede pintar la pieza de un hueco (OBS-010):
+## [{"id", "color", "selected"}], con el que lleva hoy elegido. Vacio si el
+## hueco no se pinta, no tiene pieza o esta cerrado.
+func paints(profile: PlayerProfile, slot: String) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	if not Garage.can_paint(slot) or Garage.get_slot(profile.build, slot) == "":
+		return out
+	if lock_reason(profile, slot) != "":
+		return out
+	var shown := paint_shown(profile, slot)
+	for id in Garage.PAINTS:
+		out.append({"id": id, "color": PAINT_COLORS[id], "selected": id == shown})
+	return out
 
 
 ## El tipo de una pieza, para agruparla en el catalogo: su forma si es un
@@ -290,13 +329,19 @@ static func _by_group(parts: Array[Dictionary]) -> Array[Dictionary]:
 func slots(profile: PlayerProfile, selected: String) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	for slot in Garage.SLOTS:
+		var item := resolved(profile, Garage.get_slot(profile.build, slot))
+		# Con que color se ve en el robot: su pintura o el de su elemento.
+		var color := -1
+		if item != null and Garage.can_paint(slot):
+			color = ItemDef.Element[paint_shown(profile, slot)]
 		(
 			out
 			. append(
 				{
 					"slot": slot,
 					"title": slot_title(slot),
-					"item": resolved(profile, Garage.get_slot(profile.build, slot)),
+					"item": item,
+					"paint": color,
 					"locked": lock_reason(profile, slot),
 					"selected": slot == selected,
 				}

@@ -29,6 +29,39 @@ const RESISTANCE_CLASH := "dos módulos dan la misma resistencia (%s y %s): solo
 @export var charge: ItemDef
 @export var teleport: ItemDef
 @export var hook: ItemDef
+## Pintura de sus piezas (decision del usuario, 2026-11-20, OBS-010: "elegir
+## un color, ya sea blanco, rojo, azul, de acuerdo al color del robot"): hueco
+## -> elemento (ItemDef.Element) con cuyo color se dibuja su pieza. Lo que no
+## esta aqui se dibuja con el color de su elemento. Solo cambia el dibujo.
+@export var paints: Dictionary = {}
+
+
+## La pieza de un hueco ("torso", "side0", "top1", "module3", "chest"...), o
+## null si esta vacio o no existe.
+func item_at(slot: String) -> ItemDef:
+	for prefix: String in ["side", "top", "module"]:
+		if slot.begins_with(prefix):
+			var list: Array[ItemDef] = get(prefix + "s")
+			var index := int(slot.trim_prefix(prefix))
+			return list[index] if index >= 0 and index < list.size() else null
+	if (
+		slot
+		in ["torso", "legs", "assist", "drone", "drone_low", "chest", "charge", "teleport", "hook"]
+	):
+		return get(slot)
+	return null
+
+
+## Color (elemento) con el que se dibuja la pieza de un hueco: el que se le
+## pinto o, si no, el de su elemento. El robot de asistencia, sin pintar, va
+## del color del torso para hacer juego con su mech.
+func paint_of(slot: String) -> int:
+	if paints.has(slot):
+		return int(paints[slot])
+	if slot == "assist":
+		return paint_of("torso")
+	var item := item_at(slot)
+	return item.element if item != null else ItemDef.Element.PHYSICAL
 
 
 func all_items() -> Array[ItemDef]:
