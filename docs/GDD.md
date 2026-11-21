@@ -185,7 +185,7 @@ Pedido por el usuario el 2026-11-18. El golpe empuja al rival según el tamaño 
 | `costo_calor`, `costo_energia` | costos por uso | armas, dron, especiales |
 
 ## 4. Armado
-- **Huecos:** torso, piernas, **2 armas de brazo y 1 de hombro**, 1 arma de pecho, 1 robot de asistencia, 8 módulos y un hueco por especial (embestida, salto y garfio). El arma de pecho va **aparte** de las armas (decisión del usuario, 2026-11-17) y su hueco se abre en el nivel 10.
+- **Huecos:** torso, piernas, **2 armas de brazo y 1 de hombro**, 1 arma de pecho, 1 robot de asistencia, **9 módulos en tres familias** (abajo) y un hueco por especial (embestida, salto y garfio). El arma de pecho va **aparte** de las armas (decisión del usuario, 2026-11-17) y su hueco se abre en el nivel 10.
 - **Tres armas, una por alcance (decisión del usuario, 2026-11-21, OBS-033):** "Pensándolo bien, no van a ser 4 armas de brazos, solamente van a ser 2. Y las armas superior… nada más va a ser de un solo lado, que es el lado que se muestra. Entonces en total van a ser 3 armas. Y van a poder dividirse en una de corto alcance, mediano alcance y largo alcance para la superior. Y el torso en ese caso, que es la especial, de un solo disparo por partida. Y el asistente… y todos los módulos que puedes ir añadiendo. La parte de salto, garfio y embestida… En lateral 1 y 2 podemos poner armas de corto y mediano alcance. Y lo que es la parte de arma superior nada más queda una, que vendría siendo esta de largo alcance. Y eventualmente el asistente en el nivel 5 y el arma de pecho en el nivel 10." Hasta entonces eran cuatro de brazo y dos de hombro, como en el original.
   - **Los dos brazos, de corto y medio alcance:** hojas, cortas, medias y saboteadores (alcance máximo de 2 a 4). Cualquiera de las dos casillas acepta las dos distancias; el tipo de robot limita además qué formas lleva (§9).
   - **El hombro, de largo alcance:** baterías, obuses, arpones y, desde este cambio, **los rifles**, que eran arma de brazo (alcance 3 a 6) y pasan al hombro en lugar de desaparecer; así el Tirador conserva su rifle. Su dibujo de hombro, de momento, es el mismo rifle subido al hombro.
@@ -211,7 +211,8 @@ Pedido por el usuario el 2026-11-18. El golpe empuja al rival según el tamaño 
   - En el código: piezas `ASSIST` de data/catalog.json (tools/catalog_gen.py), progreso común en `PlayerProfile.parts["asistente"]`, `BattleEngine._fire_assist`, `BattleMech.assist_power` y tests/unit/test_assist.gd.
 - **Peso:** límite de 1000 kg. Se permite sobrecarga hasta +10 kg, con −15 de vida por cada kg de más. Por encima de 1010 kg el mech no puede pelear.
 - **Obligatorio:** torso y piernas.
-- **Resistencias:** como máximo 1 módulo por tipo de resistencia.
+- **Resistencias:** como máximo 1 módulo por tipo de resistencia. Desde el 2026-11-21 se avisa al elegir, no después (OBS-040): el módulo que repetiría una resistencia sale en rojo con el nombre y el hueco del que choca.
+- **Módulos por familias (del usuario, 2026-11-21, OBS-040):** "En la parte de los módulos son muy limitados y además no puedes tenerlos todos, o sea, en algún momento te dice que no puedes usar ese módulo porque se está repitiendo. Entonces ahí te tendrían que indicar. O sea, para cada módulo tendría que haber una selección especial. Por ejemplo, 3 módulos dedicados a resistencia, a los que ya tienes hechos. 3 módulos dedicados a ataque y así. Para que tengas de dónde elegir entre cada uno y no tengas que limitarte a elegir los módulos totales mostrados ahí." Nueve huecos (`MechBuild.MODULE_SLOTS`), tres por familia (`Garage.MODULE_FAMILIES`), y cada módulo tiene la suya en el catálogo (`family`): **Resistencia** (vida y resistencias: blindaje, placas, aislante, Faraday, matriz), **Ataque** (Servo de Brazos, Servo de Hombro, Cebador de Especiales y Sobrealimentador) y **Sistemas** (batería, generador, sumidero, disipador, núcleo dual). Un hueco solo monta los de su familia; un módulo va en un solo hueco (pulsarlo desde otro lo pasa). Los de ataque dan **daño de más por golpe** (`dmg_bonus`, que escala con la clase y el nivel como todo) a un grupo de armas (`boost`): las de brazo, la de hombro, las especiales (pecho y las dos del asistente) o todas, menos. Se suma antes de los multiplicadores (`BattleEngine._damage`, `MechBuild.module_damage`). En Básica nivel 0 son +4, +6, +7 y +3 por golpe (un 8–10 % de un arma de esa clase), por 26, 24, 22 y 34 kg. Los rivales no llevan módulos de ataque. El crítico está apagado en las reglas, así que no hay módulo de puntería.
 - Las estadísticas del mech son la suma de las de sus piezas.
 
 ## 5. Elementos y arquetipos
@@ -236,7 +237,7 @@ Unas 58 piezas con nombres propios (nunca los del original).
 | Arma lateral | 6 (cuerpo a cuerpo, corta, media, larga y 2 de utilidad con empuje, jalón o retroceso) | 18 |
 | Arma superior | 3 | 9 |
 | Dron | 2 | 6 |
-| Módulo | — | 10 (vida, cada resistencia, calor, energía y combinados) |
+| Módulo | — | 14 (vida, cada resistencia, calor, energía, combinados y, desde OBS-040, 4 de ataque) |
 | Especiales | — | 3 (carga, teletransporte, gancho) |
 
 **Cómo se guardan:** `data/catalog.json` tiene las estadísticas de cada pieza en el tier máximo (Divino a nivel máximo). El resto de tiers y niveles se calcula bajándolas en proporción (§8). `data/validation.json` fija los rangos de peso y la composición mínima que exige el validador, y `data/builds.json` los mechs de ejemplo (uno por elemento y un híbrido).

@@ -27,12 +27,28 @@ const SLOTS: Array[String] = [
 	"module5",
 	"module6",
 	"module7",
+	"module8",
 	"charge",
 	"teleport",
 	"hook",
 ]
 ## Huecos que son listas en el formato de builds.json, con su prefijo.
 const LISTS := {"side": "sides", "top": "tops", "module": "modules"}
+## La familia de cada hueco de modulo, en orden (OBS-040, del usuario:
+## "para cada modulo tendria que haber una seleccion especial... 3 modulos
+## dedicados a resistencia... 3 dedicados a ataque y asi"). Cada hueco solo
+## monta modulos de su familia.
+const MODULE_FAMILIES: Array[String] = [
+	"resistencia",
+	"resistencia",
+	"resistencia",
+	"ataque",
+	"ataque",
+	"ataque",
+	"sistemas",
+	"sistemas",
+	"sistemas",
+]
 ## Colores con los que se puede pintar una pieza (OBS-010): los tres en los
 ## que existe su dibujo, con el nombre de su elemento (blanco, rojo, azul).
 const PAINTS: Array[String] = ["PHYSICAL", "HEAT", "ENERGY"]
@@ -153,6 +169,10 @@ static func why_cant_equip(
 		return "no tienes esa pieza"
 	if catalog.get_item(id) == null or catalog.get_item(id).type != slot_type(slot):
 		return "no va en ese hueco"
+	if not fits(catalog.get_item(id), slot):
+		return "ese modulo es de otra familia"
+	if module_clash(profile.build, catalog, slot, id) != "":
+		return "repite una resistencia"
 	if styles != null:
 		return styles.why_cant_mount(profile.style, catalog.get_item(id))
 	return ""
@@ -163,6 +183,10 @@ static func equip(
 ) -> String:
 	var reason := why_cant_equip(profile, catalog, slot, id, styles)
 	if reason == "":
+		# Un modulo va en un solo hueco: si ya iba en otro, se pasa a este.
+		var before := module_slot_of(profile.build, id, slot) if id != "" else ""
+		if before != "":
+			set_slot(profile.build, before, "")
 		set_slot(profile.build, slot, id)
 	return reason
 
@@ -233,9 +257,54 @@ static func owned_for(profile: PlayerProfile, catalog: Catalog, slot: String) ->
 	var out: Array[String] = []
 	for id in profile.owned:
 		var def := catalog.get_item(id)
-		if def != null and def.type == slot_type(slot):
+		if def != null and fits(def, slot):
 			out.append(id)
 	return out
+
+
+## True si la pieza va en ese hueco: su tipo y, en los modulos, su familia.
+static func fits(def: ItemDef, slot: String) -> bool:
+	if def == null or def.type != slot_type(slot):
+		return false
+	return def.type != ItemDef.Type.MODULE or def.family == slot_family(slot)
+
+
+## Familia de un hueco de modulo (MODULE_FAMILIES); "" si no es de modulo.
+static func slot_family(slot: String) -> String:
+	if not slot.begins_with("module"):
+		return ""
+	var index := int(slot.trim_prefix("module"))
+	return MODULE_FAMILIES[index] if index >= 0 and index < MODULE_FAMILIES.size() else ""
+
+
+## Hueco de modulo en el que ya va esa pieza, sin contar `except`; "".
+static func module_slot_of(build: Dictionary, id: String, except: String = "") -> String:
+	for slot in SLOTS:
+		if slot.begins_with("module") and slot != except and get_slot(build, slot) == id:
+			return slot
+	return ""
+
+
+## Si montar ese modulo en ese hueco repetiria una resistencia que ya da
+## otro (GDD: un modulo por tipo de resistencia), el hueco de ese otro; "".
+## No cuentan el que se quita de ese hueco ni el mismo modulo si se mueve.
+static func module_clash(build: Dictionary, catalog: Catalog, slot: String, id: String) -> String:
+	var def := catalog.get_item(id)
+	if def == null or def.type != ItemDef.Type.MODULE:
+		return ""
+	var res := [def.res_physical, def.res_heat, def.res_energy]
+	for other_slot in SLOTS:
+		if not other_slot.begins_with("module") or other_slot == slot:
+			continue
+		var other_id := get_slot(build, other_slot)
+		var other := catalog.get_item(other_id) if other_id != id else null
+		if other == null:
+			continue
+		var theirs := [other.res_physical, other.res_heat, other.res_energy]
+		for i in 3:
+			if res[i] > 0 and theirs[i] > 0:
+				return other_slot
+	return ""
 
 
 ## Piezas que vende la tienda en una zona de esa clase, por tipo y por id.

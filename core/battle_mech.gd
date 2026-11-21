@@ -235,6 +235,11 @@ func damage_mult() -> float:
 	return base * (1.0 + buff_amount("firepower"))
 
 
+## Dano de mas por golpe de los modulos de ataque al arma de ese hueco.
+func module_damage(slot: String) -> int:
+	return build.module_damage(slot) if build != null else 0
+
+
 ## Dano de mas del arma de pecho por las habilidades.
 func chest_damage_mult() -> float:
 	if build == null or build.skills == null:

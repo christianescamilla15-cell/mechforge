@@ -7,7 +7,21 @@ extends RefCounted
 ## La moneda se llama `gold` en el codigo y en el guardado; en pantalla se
 ## muestra con el nombre de la tabla de textos (GDD 8).
 
-const SCHEMA_VERSION := 10
+const SCHEMA_VERSION := 11
+## Familia de los modulos que habia antes de las familias (OBS-040): los de
+## los rivales y los de las partidas de la version 10.
+const LEGACY_MODULE_FAMILY := {
+	"mod_blindaje": "resistencia",
+	"mod_placas": "resistencia",
+	"mod_aislante": "resistencia",
+	"mod_faraday": "resistencia",
+	"mod_matriz": "resistencia",
+	"mod_bateria": "sistemas",
+	"mod_generador": "sistemas",
+	"mod_sumidero": "sistemas",
+	"mod_disipador": "sistemas",
+	"mod_nucleo_dual": "sistemas",
+}
 
 var gold: int = 0
 ## Experiencia total; de ella sale el nivel del jugador (Progression).
@@ -130,6 +144,8 @@ func start_run(library: BuildLibrary, mech_id: String) -> void:
 			}
 		)
 	)
+	# Los modulos del rival, cada uno en un hueco de su familia.
+	place_modules(mechs[0]["build"])
 	active = 0
 	owned.clear()
 	for id in library.item_ids(mech_id):
@@ -418,6 +434,8 @@ static func from_dict(data: Dictionary) -> PlayerProfile:
 		profile._from_before_styles()
 	if int(data.get("schema_version", 1)) < 10:
 		profile._to_three_weapons()
+	if int(data.get("schema_version", 1)) < 11:
+		profile._to_module_families()
 	return profile
 
 
@@ -426,6 +444,39 @@ static func from_dict(data: Dictionary) -> PlayerProfile:
 ## sus dos primeras armas de brazo y su primera de hombro; si llevaba un
 ## rifle y el hombro estaba libre, el rifle pasa al hombro. Lo que no cabe
 ## sigue siendo suyo: solo se desmonta.
+## Hasta la version 10 los ocho huecos de modulo montaban cualquiera (y el
+## mismo dos veces). Desde la 11 son tres familias de tres (OBS-040): cada
+## modulo pasa, en el orden en que iba, al primer hueco libre de su familia;
+## el que no cabe o se repetia se queda en el inventario.
+func _to_module_families() -> void:
+	for robot: Dictionary in mechs:
+		place_modules(robot["build"])
+
+
+## Pone los modulos de un equipo (una lista suelta, como la de los rivales)
+## cada uno en el primer hueco libre de su familia, en el orden en que iban.
+## Los de familia desconocida, los repetidos y los que no caben se quitan.
+static func place_modules(build: Dictionary) -> void:
+	var placed: Array = []
+	placed.resize(Garage.MODULE_FAMILIES.size())
+	placed.fill("")
+	for id: Variant in build.get("modules", []):
+		var text := str(id) if id != null else ""
+		var family := str(LEGACY_MODULE_FAMILY.get(text, ""))
+		if family == "" or text in placed:
+			continue
+		for index in placed.size():
+			if Garage.MODULE_FAMILIES[index] == family and str(placed[index]) == "":
+				placed[index] = text
+				break
+	while not placed.is_empty() and str(placed[-1]) == "":
+		placed.pop_back()
+	if placed.is_empty():
+		build.erase("modules")
+	else:
+		build["modules"] = placed
+
+
 func _to_three_weapons() -> void:
 	for robot: Dictionary in mechs:
 		var build: Dictionary = robot["build"]

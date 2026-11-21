@@ -297,8 +297,8 @@ func preview(action: BattleAction) -> Dictionary:
 		if action.type == BattleAction.Type.TELEPORT:
 			hits = absi(action.position - foe.position) == 1
 		if hits:
-			out["dmg_min"] = _damage(def, me, foe, 0.0)
-			out["dmg_max"] = _damage(def, me, foe, 1.0)
+			out["dmg_min"] = _damage(def, me, foe, 0.0, 0.0, key)
+			out["dmg_max"] = _damage(def, me, foe, 1.0, 0.0, key)
 			out["crit_chance"] = crit_chance(def, foe)
 			out["crit_effect"] = def.crit_effect
 			out["target_heat"] = foe.heat + def.heat_dmg
@@ -509,7 +509,7 @@ func _use(
 		else:
 			var draw := fixed_crit if fixed_crit >= 0.0 else _rng.randf()
 			crit = 1.0 if draw < chance else 0.0
-	var damage := _damage(def, user, target, roll, crit)
+	var damage := _damage(def, user, target, roll, crit, key)
 	if shielded:
 		if target.shield_left > 0:
 			target.shield_left -= 1
@@ -614,15 +614,22 @@ func _spend_use(slot: BattleMech.Slot) -> void:
 
 
 ## Dano final (GDD 2.4). roll en [0, 1]. crit: 1 si es critico, 0 si no, y
-## entre medias el dano esperado (GDD 2.9).
+## entre medias el dano esperado (GDD 2.9). `key`: el hueco del que dispara,
+## para el dano de mas de los modulos de ataque (OBS-040).
 func _damage(
-	def: ItemDef, attacker: BattleMech, target: BattleMech, roll: float, crit: float = 0.0
+	def: ItemDef,
+	attacker: BattleMech,
+	target: BattleMech,
+	roll: float,
+	crit: float = 0.0,
+	key: String = ""
 ) -> int:
 	if def.deals_damage() and (target.shield_left > 0 or target.barrier > 0):
 		return 0
 	var damage := 0
 	if def.deals_damage():
 		damage = def.dmg_min + roundi(roll * (def.dmg_max - def.dmg_min))
+		damage += attacker.module_damage(key)
 		# Con potencia 1.0 el resultado es exactamente el de antes.
 		damage = roundi(damage * attacker.damage_mult())
 		if attacker.build != null and def == attacker.build.chest:

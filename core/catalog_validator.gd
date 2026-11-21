@@ -71,6 +71,7 @@ static func validate(
 		_check_damage(def, rules, problems)
 		_check_range(def, rules, problems)
 		_check_type(def, problems)
+		_check_module_fields(def, problems)
 		_check_element(def, problems)
 		for i in range(before, problems.size()):
 			problems[i] = "%s: %s" % [def.id, problems[i]]
@@ -173,16 +174,29 @@ static func _check_type(def: ItemDef, problems: Array[String]) -> void:
 				problems.append("un robot de asistencia debe dar alguna bonificacion")
 			_forbid(def, ATTACK_STATS + ["walk", "jump"], problems)
 		ItemDef.Type.MODULE:
-			var gives_something := false
+			# Los de ataque dan dano de mas a unas armas (OBS-040).
+			var gives_something := def.dmg_bonus > 0
 			for key in BODY_STATS:
 				gives_something = gives_something or def.get(key) > 0
 			if not gives_something:
-				problems.append("un modulo debe dar alguna estadistica de cuerpo")
+				problems.append("un modulo debe dar alguna estadistica de cuerpo o dano de mas")
+			if def.family == "":
+				problems.append("un modulo debe tener familia")
+			if (def.dmg_bonus > 0) != (def.boost != ""):
+				problems.append("el dano de mas de un modulo debe decir a que armas va")
 			_forbid(def, ATTACK_STATS + ["walk", "jump"], problems)
 		_:
 			if def.uses < 1:
 				problems.append("un especial debe tener usos limitados")
 			_forbid(def, BODY_STATS + ["walk", "jump", "range_min", "range_max"], problems)
+
+
+## Familia, armas y dano de mas: solo los modulos.
+static func _check_module_fields(def: ItemDef, problems: Array[String]) -> void:
+	if def.type == ItemDef.Type.MODULE:
+		return
+	if def.family != "" or def.boost != "" or def.dmg_bonus > 0:
+		problems.append("familia, armas y dano de mas son solo de los modulos")
 
 
 static func _check_element(def: ItemDef, problems: Array[String]) -> void:

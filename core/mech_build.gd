@@ -7,7 +7,8 @@ extends Resource
 ## lado que se ve. Hasta entonces eran cuatro de brazo y dos de hombro.
 const SIDE_SLOTS := 2
 const TOP_SLOTS := 1
-const MODULE_SLOTS := 8
+## Tres familias de tres (OBS-040): resistencia, ataque y sistemas.
+const MODULE_SLOTS := 9
 ## Dos modulos que dan la misma resistencia: se nombran los dos.
 const RESISTANCE_CLASH := "dos módulos dan la misma resistencia (%s y %s): solo va uno de cada tipo"
 
@@ -110,6 +111,32 @@ func max_weight(rules: RulesConfig) -> int:
 	if chest == null or upgrades == null:
 		return rules.max_weight
 	return rules.max_weight + mini(roundi(upgrades.core), chest.weight)
+
+
+## Dano de mas que dan los modulos de ataque a un arma, segun el hueco del
+## que dispara ("side0", "top0", "chest", "drone"...): suma el de los que
+## van a ese grupo de armas y el de los que van a todas.
+func module_damage(slot: String) -> int:
+	var group := weapon_group(slot)
+	if group == "":
+		return 0
+	var total := 0
+	for module in modules:
+		if module != null and module.dmg_bonus > 0 and module.boost in [group, "all"]:
+			total += module.dmg_bonus
+	return total
+
+
+## Grupo de armas de un hueco para los modulos de ataque: "arms", "shoulder",
+## "special" (pecho y asistente) o "" si no es un arma.
+static func weapon_group(slot: String) -> String:
+	if slot.begins_with("side"):
+		return "arms"
+	if slot.begins_with("top"):
+		return "shoulder"
+	if slot in ["chest", "drone", "drone_low"]:
+		return "special"
+	return ""
 
 
 ## Devuelve los motivos por los que el mech no puede pelear; vacio si es valido.

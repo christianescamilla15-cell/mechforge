@@ -61,6 +61,8 @@ static func _group_order() -> Array[String]:
 		out.append(Txt.t("form_" + key))
 	for element_name in Txt.ELEMENT_NAMES:
 		out.append(element_name.to_lower())
+	for boost in ItemDef.BOOSTS:
+		out.append(Txt.t("boost_" + boost))
 	out.append("")
 	return out
 
@@ -200,8 +202,9 @@ func rack(profile: PlayerProfile, slot: String) -> Dictionary:
 					"detail": progress_text(profile, item),
 					"stats": item_stats(item, false),
 					"price": -1,
-					"reason": "",
+					"reason": module_clash_text(profile, slot, id),
 					"note": "",
+					"where": module_where(profile, slot, id),
 				}
 			)
 		)
@@ -213,6 +216,9 @@ func rack(profile: PlayerProfile, slot: String) -> Dictionary:
 		var def := catalog.get_item(id)
 		var item := ItemScaling.resolve(def, rules, tier, 0)
 		var reason := garage.why_cant_buy(profile, catalog, rules, workshop, id, tier)
+		# Un modulo que repetiria una resistencia se puede comprar, pero se
+		# avisa ya de con cual chocaria (OBS-040).
+		var clash := module_clash_text(profile, slot, id)
 		if def.type == ItemDef.Type.ASSIST and locked != "":
 			# El asistente se ve desde el principio, pero no se compra hasta
 			# que el nivel del jugador abre su hueco.
@@ -231,7 +237,7 @@ func rack(profile: PlayerProfile, slot: String) -> Dictionary:
 					"stats": item_stats(item, false),
 					"price": garage.price(catalog, rules, workshop, id, tier),
 					"reason": reason,
-					"note": note,
+					"note": clash if clash != "" else note,
 				}
 			)
 		)
@@ -270,6 +276,34 @@ func rack(profile: PlayerProfile, slot: String) -> Dictionary:
 ## Que cabe en un hueco de arma, para la cabecera del catalogo (OBS-038: "si
 ## es brazo izquierdo, nada mas armas de mediano y corto alcance. Parte
 ## superior unicamente armas de largo alcance"). Vacio en los demas.
+## Posicion de un hueco de modulo dentro de su familia (0, 1 o 2).
+static func family_index(slot: String) -> int:
+	var family := Garage.slot_family(slot)
+	var index := int(slot.trim_prefix("module"))
+	var count := 0
+	for i in index:
+		count += 1 if Garage.MODULE_FAMILIES[i] == family else 0
+	return count
+
+
+## Si un modulo repetiria una resistencia que ya da otro: "Repite la
+## resistencia de Placas Balisticas (Resistencia 1)..."; "" si no.
+func module_clash_text(profile: PlayerProfile, slot: String, id: String) -> String:
+	var other := Garage.module_clash(profile.build, catalog, slot, id)
+	if other == "":
+		return ""
+	var def := catalog.get_item(Garage.get_slot(profile.build, other))
+	return Txt.t("rack_module_clash", [def.display_name, slot_title(other)])
+
+
+## El otro hueco de modulo en el que ya va esa pieza ("Ataque 2"); "".
+func module_where(profile: PlayerProfile, slot: String, id: String) -> String:
+	if not slot.begins_with("module"):
+		return ""
+	var other := Garage.module_slot_of(profile.build, id, slot)
+	return slot_title(other) if other != "" else ""
+
+
 static func slot_kind(slot: String) -> String:
 	if slot.begins_with("side"):
 		return Txt.t("rack_kind_side")
@@ -277,6 +311,8 @@ static func slot_kind(slot: String) -> String:
 		return Txt.t("rack_kind_top")
 	if slot == "chest":
 		return Txt.t("rack_kind_chest")
+	if Garage.slot_family(slot) != "":
+		return Txt.t("rack_kind_" + Garage.slot_family(slot))
 	return ""
 
 
@@ -313,6 +349,9 @@ func paints(profile: PlayerProfile, slot: String) -> Array[Dictionary]:
 static func group_of(item: ItemDef) -> String:
 	if item.form != "":
 		return Txt.t("form_" + item.form)
+	# Los de ataque, por las armas a las que dan dano de mas (OBS-040).
+	if item.boost != "":
+		return Txt.t("boost_" + item.boost)
 	if item.type in [ItemDef.Type.TORSO, ItemDef.Type.LEGS, ItemDef.Type.MODULE]:
 		return Txt.ELEMENT_NAMES[item.element].to_lower()
 	return ""
@@ -395,7 +434,7 @@ func _on_sale(profile: PlayerProfile, slot: String, tier: int) -> Array[String]:
 		return out
 	for id in garage.stock_for(catalog, tier):
 		var def := catalog.get_item(id)
-		if def.type != Garage.slot_type(slot) or id in profile.owned:
+		if not Garage.fits(def, slot) or id in profile.owned:
 			continue
 		if styles.why_cant_mount(profile.style, def) == "":
 			out.append(id)
@@ -703,6 +742,10 @@ static func slot_title(slot: String) -> String:
 	var base := slot.rstrip("0123456789")
 	var digits := slot.trim_prefix(base)
 	var number := " %d" % (int(digits) + 1) if digits != "" else ""
+	# Los modulos, por familia (OBS-040): "Resistencia 2", "Ataque 1".
+	var family := Garage.slot_family(slot)
+	if family != "":
+		return "%s %d" % [Txt.t("fam_" + family), family_index(slot) + 1]
 	# Un arma en cada brazo (OBS-033): el cercano, de perfil mirando a la
 	# derecha, es el derecho.
 	if slot == "side0":
@@ -727,6 +770,8 @@ static func item_stats(item: ItemDef, long: bool) -> String:
 			parts.append(Txt.t("cost_heat", [item.heat_cost]))
 		if item.uses > 0:
 			parts.append(Txt.t("uses", [item.uses]))
+	if item.dmg_bonus > 0:
+		parts.append(Txt.t("stat_dmg_bonus", [item.dmg_bonus, Txt.t("boost_" + item.boost)]))
 	for key in ["health", "energy_cap", "energy_regen", "heat_cap", "cooling"]:
 		var value: int = item.get(key)
 		if value != 0:

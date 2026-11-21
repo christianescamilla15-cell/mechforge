@@ -561,13 +561,20 @@ func workshop_test(workshop: WorkshopScreen) -> void:
 		)
 		await shot("taller_subir")
 	# Las demas casillas del plano.
-	for slot: String in ["module0", "charge", "drone", "assist", "chest", "torso", "legs"]:
+	var slots: Array[String] = ["module0", "module3", "module6", "charge", "drone", "assist"]
+	slots.append_array(["chest", "torso", "legs"])
+	for slot: String in slots:
 		await _click(_box_point(stage, slot))
 		await get_tree().create_timer(0.4).timeout
 		print(
 			"TALLER casilla %s: hueco=%s piezas=%d" % [slot, workshop._selected, rack._parts.size()]
 		)
 		await shot("taller_" + slot)
+		if slot == "module3" and not rack._parts.is_empty():
+			# Un modulo de ataque (OBS-040), examinado en la vitrina.
+			await _move(_rack_point(rack, 0))
+			await get_tree().create_timer(0.5).timeout
+			await shot("taller_module3_examinar")
 	# La tecla de la esquina la devuelve a la pared.
 	await _click(_box_point(stage, gun))
 	await get_tree().create_timer(0.3).timeout

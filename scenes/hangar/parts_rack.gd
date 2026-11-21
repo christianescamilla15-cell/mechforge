@@ -402,7 +402,11 @@ func _press(zone: String) -> void:
 		_armed = ""
 		return
 	var id := str(part["id"])
-	if bool(part["owned"]):
+	if bool(part["owned"]) and str(part.get("reason", "")) != "":
+		# Tuya, pero no se puede montar aqui (repite una resistencia).
+		_armed = ""
+		Sfx.play("ui_cerrar")
+	elif bool(part["owned"]):
 		_armed = ""
 		chosen.emit(id)
 	elif str(part.get("reason", "")) != "":
@@ -609,10 +613,11 @@ func _draw_part(index: int, rect: Rect2, slide: float) -> void:
 			self, _font, tag, group.to_upper(), cut.size.x - 14.0, 8, Color(MUTED, fade)
 		)
 	if owned:
-		if hover:
+		if hover and not blocked:
 			# Se levanta de la espuma.
 			well = Rect2(well.position + Vector2(0, -3), well.size).grow(3.0)
-		PartIcon.paint(self, well, item, fade, Color.WHITE, int(part.get("paint", -1)))
+		var shade := fade * (0.4 if blocked else 1.0)
+		PartIcon.paint(self, well, item, shade, Color.WHITE, int(part.get("paint", -1)))
 	else:
 		# Proyectada: tenida de azul, con lineas de barrido y un parpadeo.
 		var flicker := 0.72 + 0.1 * sin(_time * 5.0 + index * 1.7)
@@ -632,6 +637,12 @@ func _draw_part(index: int, rect: Rect2, slide: float) -> void:
 	if owned:
 		var label := Txt.t("workshop_mounted").to_upper() if mounted else str(part["detail"])
 		var tone := GOLD if mounted else tier
+		if not mounted and str(part.get("where", "")) != "":
+			# Ya va en otro hueco de modulo: se dice cual.
+			label = str(part["where"]).to_upper()
+			tone = MUTED
+		if blocked:
+			tone = BAD
 		HangarProps.text(self, _font, foot, label, cut.size.x - 14.0, 9, Color(tone, fade))
 	else:
 		var price := HangarProps.thousands(int(part["price"]))
@@ -847,6 +858,10 @@ func _part_action(part: Dictionary) -> Array:
 	if bool(part["owned"]):
 		if bool(part.get("mounted", false)):
 			return [_upper_first(Txt.t("rack_click_remove")), GOLD]
+		if str(part.get("reason", "")) != "":
+			return [str(part["reason"]), BAD]
+		if str(part.get("where", "")) != "":
+			return [Txt.t("rack_click_move", [str(part["where"])]), TEXT]
 		return [_upper_first(Txt.t("rack_click_mount")), TEXT]
 	if str(part.get("reason", "")) != "":
 		return ["%s · %s" % [Txt.t("rack_click_buy", [price]), str(part["reason"])], BAD]

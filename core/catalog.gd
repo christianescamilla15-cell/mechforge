@@ -151,6 +151,14 @@ func _parse_item(raw: Dictionary) -> ItemDef:
 	def.form = str(raw.get("form", ""))
 	def.fx = str(raw.get("fx", ""))
 	def.crit_effect = str(raw.get("crit_effect", ""))
+	def.family = str(raw.get("family", ""))
+	if def.family != "" and not def.family in ItemDef.MODULE_FAMILIES:
+		errors.append("%s: familia de modulo desconocida '%s'" % [id, def.family])
+		return null
+	def.boost = str(raw.get("boost", ""))
+	if def.boost != "" and not def.boost in ItemDef.BOOSTS:
+		errors.append("%s: armas de un modulo de ataque desconocidas '%s'" % [id, def.boost])
+		return null
 	if def.crit_effect != "" and not def.crit_effect in ItemDef.CRIT_EFFECTS:
 		errors.append("%s: efecto de critico desconocido '%s'" % [id, def.crit_effect])
 		return null
@@ -186,6 +194,8 @@ func _parse_item(raw: Dictionary) -> ItemDef:
 				"form",
 				"fx",
 				"crit_effect",
+				"family",
+				"boost",
 			]
 		):
 			errors.append("%s: campo desconocido '%s'" % [id, extra])

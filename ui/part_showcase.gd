@@ -33,6 +33,7 @@ const DUST := 9
 ## Los datos de la ficha, en orden: [campo, texto, mejor ("high", "low" o ""
 ## si no es ni mejor ni peor)]. "damage" y "range" solo salen en las armas.
 const FIELDS := [
+	["dmg_bonus", "sheet_boost_", "high"],
 	["damage", "sheet_damage", "high"],
 	["range", "sheet_range", ""],
 	["heat_dmg", "sheet_heat_dmg", "high"],
@@ -85,7 +86,7 @@ static func rows(item: ItemDef, base: ItemDef = null, peers: Array = []) -> Arra
 			. append(
 				{
 					"key": key,
-					"label": Txt.t(field[1]),
+					"label": _label(field[1], item),
 					"value": value,
 					"base": before,
 					"top": maxf(top, float(RANGE_CELLS) if key == "range" else 1.0),
@@ -102,6 +103,13 @@ static func rows(item: ItemDef, base: ItemDef = null, peers: Array = []) -> Arra
 	while out.size() > MAX_ROWS:
 		out.remove_at(out.size() - 2)
 	return out
+
+
+## El nombre de una fila; el dano de mas, con las armas a las que va.
+static func _label(key: String, item: ItemDef) -> String:
+	if key.ends_with("_"):
+		return Txt.t(key + (item.boost if item.boost != "" else "all"))
+	return Txt.t(key)
 
 
 ## El numero de un dato de una pieza (el dano, su media).

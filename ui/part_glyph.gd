@@ -28,6 +28,9 @@ static func has(item: ItemDef) -> bool:
 
 ## Simbolo de un modulo, segun lo que da.
 static func module_symbol(item: ItemDef) -> String:
+	# Los de ataque (OBS-040): una mira.
+	if item.dmg_bonus > 0:
+		return "target"
 	var resists := 0
 	for value: int in [item.res_physical, item.res_heat, item.res_energy]:
 		if value > 0:
@@ -158,6 +161,12 @@ static func _symbol(
 	var r := minf(window.size.x, window.size.y) * 0.36
 	var line := maxf(1.2, r * 0.22)
 	match symbol:
+		"target":
+			# Una mira: aro, cruz que no llega al centro y un punto.
+			c.draw_arc(mid, r * 0.8, 0, TAU, 24, color, line * 0.8)
+			for dir: Vector2 in [Vector2.LEFT, Vector2.RIGHT, Vector2.UP, Vector2.DOWN]:
+				c.draw_line(mid + dir * r * 0.35, mid + dir * r * 1.15, color, line)
+			c.draw_circle(mid, r * 0.14, color)
 		"armor":
 			# Una placa con su cruz.
 			c.draw_rect(Rect2(mid - Vector2(r, r), Vector2(r, r) * 2.0), color, false, line)

@@ -11,7 +11,7 @@ const FORBIDDEN_PATH := "res://docs/reference/original-item-names.txt"
 func test_el_catalogo_real_carga_sin_errores() -> void:
 	var catalog := Catalog.load_file(CATALOG_PATH)
 	assert_eq(catalog.errors, [] as Array[String])
-	assert_eq(catalog.items.size(), 140)
+	assert_eq(catalog.items.size(), 144)
 
 
 func test_el_catalogo_real_pasa_el_validador() -> void:
@@ -30,7 +30,9 @@ func test_composicion_del_catalogo_real() -> void:
 	assert_eq(catalog.by_type(ItemDef.Type.SIDE).size(), 39, "13 disenos de brazo x 3 municiones")
 	assert_eq(catalog.by_type(ItemDef.Type.TOP).size(), 39, "13 disenos de hombro x 3")
 	assert_eq(catalog.by_type(ItemDef.Type.DRONE).size(), 18, "6 robots de soporte x 3")
-	assert_eq(catalog.by_type(ItemDef.Type.MODULE).size(), 10)
+	assert_eq(
+		catalog.by_type(ItemDef.Type.MODULE).size(), 14, "10 de antes y 4 de ataque (OBS-040)"
+	)
 
 
 func test_cada_tipo_de_arma_existe_en_sus_clases() -> void:

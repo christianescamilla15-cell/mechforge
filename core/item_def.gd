@@ -40,6 +40,7 @@ const SCALED_STATS: Array[String] = [
 	"cooling_dmg",
 	"energy_cap_dmg",
 	"energy_regen_dmg",
+	"dmg_bonus",
 	"backfire",
 	"heat_cost",
 	"energy_cost",
@@ -65,6 +66,14 @@ const FIXED_STATS: Array[String] = [
 ## sistemas y pierde una accion en su turno; "disable" (laser) le inutiliza un
 ## arma durante su turno.
 const CRIT_EFFECTS: Array[String] = ["pierce", "immobilize", "stun", "disable"]
+## Familias de modulos (OBS-040, del usuario: "para cada modulo tendria que
+## haber una seleccion especial... para que tengas de donde elegir"): cada
+## hueco de modulo es de una familia (Garage.MODULE_FAMILIES) y solo monta
+## las suyas.
+const MODULE_FAMILIES: Array[String] = ["resistencia", "ataque", "sistemas"]
+## A que armas da su dano de mas un modulo de ataque: las de brazo, la de
+## hombro, las especiales (pecho y asistente) o todas.
+const BOOSTS: Array[String] = ["arms", "shoulder", "special", "all"]
 
 @export var id: String = ""
 @export var display_name: String = ""
@@ -91,6 +100,10 @@ const CRIT_EFFECTS: Array[String] = ["pierce", "immobilize", "stun", "disable"]
 @export var fx: String = ""
 ## Lo que hace un critico de esta arma (CRIT_EFFECTS); vacio si no tiene.
 @export var crit_effect: String = ""
+## Familia de un modulo (MODULE_FAMILIES); vacio en lo que no es modulo.
+@export var family: String = ""
+## A que armas da su dano de mas un modulo de ataque (BOOSTS).
+@export var boost: String = ""
 
 @export_group("Cuerpo")
 @export var weight: int = 0
@@ -115,6 +128,8 @@ const CRIT_EFFECTS: Array[String] = ["pierce", "immobilize", "stun", "disable"]
 @export var cooling_dmg: int = 0
 @export var energy_cap_dmg: int = 0
 @export var energy_regen_dmg: int = 0
+## Dano de mas por golpe que da un modulo de ataque a las armas de `boost`.
+@export var dmg_bonus: int = 0
 @export var range_min: int = 0
 @export var range_max: int = 0
 

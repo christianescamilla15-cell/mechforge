@@ -65,14 +65,17 @@ const BOXES := {
 	"hook": Vector2(0.275, 0.805),
 	"drone": Vector2(0.775, 0.805),
 	"drone_low": Vector2(0.875, 0.805),
-	"module0": Vector2(0.0875, 0.93),
-	"module1": Vector2(0.205, 0.93),
-	"module2": Vector2(0.3225, 0.93),
-	"module3": Vector2(0.44, 0.93),
-	"module4": Vector2(0.5575, 0.93),
-	"module5": Vector2(0.675, 0.93),
-	"module6": Vector2(0.7925, 0.93),
-	"module7": Vector2(0.91, 0.93),
+	# Los modulos, en tres grupos de tres (OBS-040): resistencia, ataque y
+	# sistemas, cada grupo con su rotulo.
+	"module0": Vector2(0.08, 0.93),
+	"module1": Vector2(0.17, 0.93),
+	"module2": Vector2(0.26, 0.93),
+	"module3": Vector2(0.39, 0.93),
+	"module4": Vector2(0.48, 0.93),
+	"module5": Vector2(0.57, 0.93),
+	"module6": Vector2(0.7, 0.93),
+	"module7": Vector2(0.79, 0.93),
+	"module8": Vector2(0.88, 0.93),
 }
 ## A que punto del robot apunta la linea de cada casilla (fraccion de la
 ## zona del robot). Lo que no tiene sitio en el dibujo no lleva linea.
@@ -403,10 +406,16 @@ func _draw_plan(plan: Rect2, alpha: float) -> void:
 		Color(LINE, 0.4 * alpha),
 		1.0
 	)
-	var modules := box_rect("module0")
-	if modules.size != Vector2.ZERO:
-		var at := Vector2(plan.position.x + 8.0, modules.position.y - 6.0)
-		_text(at, Txt.t("loadout_modules"), 120.0, 8, MUTED, alpha)
+	# El rotulo de cada familia de modulos, sobre su primer hueco.
+	var seen: Array[String] = []
+	for index in Garage.MODULE_FAMILIES.size():
+		var family := Garage.MODULE_FAMILIES[index]
+		var box := box_rect("module%d" % index)
+		if family in seen or box.size == Vector2.ZERO:
+			continue
+		seen.append(family)
+		var at := Vector2(box.position.x, box.position.y - 6.0)
+		_text(at, Txt.t("fam_" + family).to_upper(), 120.0, 8, MUTED, alpha)
 
 
 ## Una casilla del plano: la pieza que lleva (o un "+" si esta vacia), con el
@@ -484,7 +493,7 @@ func _draw_box(entry: Dictionary, alpha: float) -> void:
 func _caption(entry: Dictionary) -> String:
 	var slot := str(entry["slot"])
 	if slot.begins_with("module"):
-		return str(int(slot.trim_prefix("module")) + 1)
+		return str(WorkshopBrief.family_index(slot) + 1)
 	if slot.begins_with("drone"):
 		return Txt.t("loadout_drone", [2 if slot == "drone_low" else 1])
 	return str(entry["title"]).to_upper()
