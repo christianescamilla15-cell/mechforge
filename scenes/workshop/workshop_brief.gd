@@ -19,15 +19,24 @@ const DIAGNOSTIC_KEYS: Array[String] = [
 	"res_energy"
 ]
 
-## Huecos que se eligen juntos en la cabecera del tablero: los de un mismo
-## tipo y, aparte, el torso con las piernas.
-const SIBLINGS: Array = [
-	["side0", "side1", "side2", "side3"],
-	["top0", "top1"],
-	["module0", "module1", "module2", "module3", "module4", "module5", "module6", "module7"],
-	["drone", "drone_low"],
-	["torso", "legs"],
+## Orden de los tipos de pieza en el catalogo: las formas de arma de cerca a
+## lejos y, lo que no es arma, por elemento. Son las claves de texto.
+const GROUP_KEYS: Array[String] = [
+	"hoja",
+	"corto",
+	"medio",
+	"largo",
+	"saboteador",
+	"bateria",
+	"ancla",
+	"artilleria",
+	"canon_pesado",
+	"nova",
+	"artillero",
+	"zapador"
 ]
+## Los nombres de los tipos, en su orden (se arma una vez, con los textos).
+static var group_order: Array[String] = _group_order()
 
 var rules: RulesConfig
 var catalog: Catalog
@@ -39,6 +48,17 @@ var shop: ArenaShop
 var skills: SkillTree
 var progression: Progression
 var styles: StyleLibrary
+
+
+static func _group_order() -> Array[String]:
+	var out: Array[String] = []
+	for key in GROUP_KEYS:
+		out.append(Txt.t("form_" + key))
+	for element_name in Txt.ELEMENT_NAMES:
+		out.append(element_name.to_lower())
+	out.append("")
+	return out
+
 
 # --- El jugador -------------------------------------------------------------------
 
@@ -144,10 +164,11 @@ func slot_for(profile: PlayerProfile, id: String, preferred: String) -> String:
 # --- El tablero de piezas ----------------------------------------------------------
 
 
-## Lo que cuelga en el tablero para un hueco (PartsRack.state): tus piezas de
-## ese tipo y las que vende la tienda en tu zona (`store_first`: la tienda
-## delante), la que lleva el hueco y la tecla para subirla.
-func rack(profile: PlayerProfile, slot: String, store_first: bool = false) -> Dictionary:
+## El catalogo de un hueco (PartsRack.state): tus piezas de ese tipo y las
+## que vende la tienda en tu zona, juntas y ordenadas por tipo (cada una con
+## su "group": hojas, cortas...; las tuyas delante dentro de cada tipo), la
+## que lleva el hueco y la tecla para subirla.
+func rack(profile: PlayerProfile, slot: String) -> Dictionary:
 	var mounted_id := Garage.get_slot(profile.build, slot)
 	var tier := zone_tier(profile)
 	var locked := lock_reason(profile, slot)
@@ -163,6 +184,7 @@ func rack(profile: PlayerProfile, slot: String, store_first: bool = false) -> Di
 				{
 					"id": id,
 					"item": item,
+					"group": group_of(item),
 					"owned": true,
 					"mounted": id == mounted_id,
 					"detail": progress_text(profile, item),
@@ -191,6 +213,7 @@ func rack(profile: PlayerProfile, slot: String, store_first: bool = false) -> Di
 				{
 					"id": id,
 					"item": item,
+					"group": group_of(item),
 					"owned": false,
 					"mounted": false,
 					"detail":
@@ -225,11 +248,78 @@ func rack(profile: PlayerProfile, slot: String, store_first: bool = false) -> Di
 		"style": arms,
 		"hint": hint if arms == "" else "%s. %s" % [arms, hint],
 		"cells": profile.gold,
-		"siblings": siblings(profile, slot),
-		"parts": sold + owned if store_first else owned + sold,
+		"parts": _by_group(owned + sold),
 		"mounted": mounted,
 		"key": key,
 		"can_test": can_test,
+	}
+
+
+## El tipo de una pieza, para agruparla en el catalogo: su forma si es un
+## arma ("hojas", "cortas"...) y, si no, su elemento.
+static func group_of(item: ItemDef) -> String:
+	if item.form != "":
+		return Txt.t("form_" + item.form)
+	if item.type in [ItemDef.Type.TORSO, ItemDef.Type.LEGS, ItemDef.Type.MODULE]:
+		return Txt.ELEMENT_NAMES[item.element].to_lower()
+	return ""
+
+
+## Las piezas juntas por tipo, en el orden en que aparece cada tipo; dentro
+## de un tipo quedan como venian (las tuyas delante de las de la tienda).
+static func _by_group(parts: Array[Dictionary]) -> Array[Dictionary]:
+	var order: Array[String] = []
+	for part in parts:
+		if not str(part["group"]) in order:
+			order.append(str(part["group"]))
+	# Los tipos, en el orden de las formas del catalogo (de cerca a lejos).
+	order.sort_custom(
+		func(a: String, b: String) -> bool: return group_order.find(a) < group_order.find(b)
+	)
+	var out: Array[Dictionary] = []
+	for group in order:
+		for part in parts:
+			if str(part["group"]) == group:
+				out.append(part)
+	return out
+
+
+## Las casillas del plano del robot (LoadoutScreen): una por hueco, con lo
+## que lleva: {"slot", "title", "item" (o null), "locked" (por que esta
+## cerrado, "" si no), "selected"}.
+func slots(profile: PlayerProfile, selected: String) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	for slot in Garage.SLOTS:
+		(
+			out
+			. append(
+				{
+					"slot": slot,
+					"title": slot_title(slot),
+					"item": resolved(profile, Garage.get_slot(profile.build, slot)),
+					"locked": lock_reason(profile, slot),
+					"selected": slot == selected,
+				}
+			)
+		)
+	return out
+
+
+## Lo que ensena la computadora del taller (LoadoutScreen): el plano con sus
+## casillas y, al lado, el catalogo de la casilla elegida.
+func loadout(profile: PlayerProfile, robot_name: String, selected: String) -> Dictionary:
+	var list := rack(profile, selected)
+	var style := ""
+	if styles.has(profile.style):
+		style = Txt.t("robot_style", [styles.role(profile.style), arms_text(profile.style)])
+	return {
+		"title": Txt.t("terminal_taller"),
+		"robot": robot_name,
+		"style": style,
+		"cells": profile.gold,
+		"selected": selected,
+		"slots": slots(profile, selected),
+		"list": list,
 	}
 
 
@@ -250,32 +340,6 @@ func _on_sale(profile: PlayerProfile, slot: String, tier: int) -> Array[String]:
 			continue
 		if styles.why_cant_mount(profile.style, def) == "":
 			out.append(id)
-	return out
-
-
-## Los huecos hermanos de uno (los de su mismo tipo, o el torso con las
-## piernas), para pasar de uno a otro sin tener que acertar en el dibujo:
-## [{"slot", "label", "filled", "selected", "locked"}]; vacio si va solo.
-func siblings(profile: PlayerProfile, slot: String) -> Array[Dictionary]:
-	var out: Array[Dictionary] = []
-	for group: Array in SIBLINGS:
-		if not slot in group:
-			continue
-		for i in group.size():
-			var other: String = group[i]
-			var numbered := other.rstrip("0123456789") != other or other.begins_with("drone")
-			(
-				out
-				. append(
-					{
-						"slot": other,
-						"label": str(i + 1) if numbered else slot_title(other).to_upper(),
-						"filled": Garage.get_slot(profile.build, other) != "",
-						"selected": other == slot,
-						"locked": lock_reason(profile, other) != "",
-					}
-				)
-			)
 	return out
 
 

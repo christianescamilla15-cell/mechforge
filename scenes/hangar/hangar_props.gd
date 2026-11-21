@@ -187,22 +187,40 @@ static func target_stand(c: CanvasItem, target: Vector2, floor_y: float) -> void
 # --- Las pantallas ----------------------------------------------------------------
 
 
-## Tienda: armas colgadas en un expositor.
-static func store_art(c: CanvasItem, art: Rect2) -> void:
-	for i in 3:
-		var y := art.position.y + art.size.y * (0.22 + 0.3 * i)
-		var x := art.position.x + 6.0
-		c.draw_rect(Rect2(x, y - 4.0, art.size.x * 0.7, 8.0), Color(SCREEN_LINE, 0.55))
-		c.draw_rect(
-			Rect2(x + art.size.x * 0.7, y - 2.0, art.size.x * 0.18, 4.0), Color(SCREEN_LINE, 0.8)
-		)
-		c.draw_rect(Rect2(x + 4.0, y + 4.0, 8.0, 7.0), Color(SCREEN_LINE, 0.4))
-	c.draw_line(
-		art.position + Vector2(2, 0),
-		Vector2(art.position.x + 2, art.end.y),
-		Color(SCREEN_LINE, 0.3),
-		1.0
+## Taller: el plano de un robot de frente con sus casillas alrededor.
+static func plan_art(c: CanvasItem, art: Rect2) -> void:
+	var mid := art.get_center()
+	var u := minf(art.size.x, art.size.y) / 10.0
+	var line := Color(SCREEN_LINE, 0.75)
+	# Cabeza, tronco, brazos y piernas.
+	c.draw_rect(Rect2(mid + Vector2(-u, -4.4 * u), Vector2(2.0 * u, 1.5 * u)), line, false, 1.5)
+	c.draw_rect(
+		Rect2(mid + Vector2(-2.2 * u, -2.7 * u), Vector2(4.4 * u, 3.4 * u)), line, false, 1.5
 	)
+	for side: float in [-1.0, 1.0]:
+		c.draw_rect(
+			Rect2(mid + Vector2(side * 3.1 * u - 0.6 * u, -2.3 * u), Vector2(1.2 * u, 3.0 * u)),
+			line,
+			false,
+			1.5
+		)
+		c.draw_rect(
+			Rect2(mid + Vector2(side * 1.2 * u - 0.7 * u, 0.9 * u), Vector2(1.4 * u, 3.3 * u)),
+			line,
+			false,
+			1.5
+		)
+		# Su casilla, unida con una linea.
+		var box := Rect2(
+			mid + Vector2(side * 5.6 * u - 0.9 * u, -1.9 * u), Vector2(1.8 * u, 1.8 * u)
+		)
+		c.draw_rect(box, Color(SCREEN_TEXT, 0.9), false, 1.5)
+		c.draw_line(
+			box.get_center() - Vector2(side * 0.9 * u, 0),
+			mid + Vector2(side * 3.7 * u, -1.0 * u),
+			Color(SCREEN_LINE, 0.5),
+			1.0
+		)
 
 
 ## Mejoras: una barra por mejora de la armeria, a su nivel (`levels`, de 0
@@ -293,10 +311,10 @@ static func terminal_live(
 	var foot := Vector2(screen.position.x + 8.0, screen.end.y - 8.0)
 	var wide := screen.size.x - 16.0
 	match terminal:
-		"tienda":
+		"taller":
 			# Abajo, tus celdas.
 			art.size.y -= 16.0
-			store_art(c, art)
+			plan_art(c, art)
 			cells_line(c, font, foot, wide, int(info.get("cells", 0)))
 		"mejoras":
 			upgrades_art(c, art, info.get("upgrades", []), time)
@@ -313,22 +331,6 @@ static func terminal_live(
 ## Cable que baja de una pantalla a la pared.
 static func cable(c: CanvasItem, from: Vector2) -> void:
 	c.draw_line(from, from + Vector2(6.0, 28.0), Color("0e141c"), 3.0)
-
-
-## El banco de equipo: una placa con su rotulo; las cunas van encima.
-static func shelf(c: CanvasItem, font: Font, rect: Rect2) -> void:
-	var style := TechStyle.plate(Color("161e2a"), Color("3c4c62"), 0.0, 8.0)
-	style.groove = false
-	style.draw(c.get_canvas_item(), rect)
-	text(
-		c,
-		font,
-		rect.position + Vector2(10, -4),
-		Txt.t("rack_title"),
-		rect.size.x,
-		11,
-		Color("9aa7b8")
-	)
 
 
 # --- El cuadro de control ----------------------------------------------------------

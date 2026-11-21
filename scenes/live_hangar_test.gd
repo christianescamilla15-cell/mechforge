@@ -8,7 +8,8 @@ extends LiveTest
 
 
 ## Prueba en vivo de probar una espada (`--menu-shot=espada`), con el raton:
-## se elige el brazo que lleva la hoja y se pulsa la diana. El robot debe
+## se elige la casilla del brazo que lleva la hoja y se pulsa la diana. El
+## robot debe
 ## saltar junto a la diana, dar el tajo y volver a su plataforma; se guarda
 ## un cuadro cada poco para verlo.
 func sword_test() -> void:
@@ -25,7 +26,13 @@ func sword_test() -> void:
 		print("ESPADA el robot no lleva ninguna hoja")
 		get_tree().quit(1)
 		return
-	await _click(stage.slot_screen_point(slot))
+	# Su casilla en la computadora del taller; con ella elegida y la pantalla
+	# de vuelta en la pared, la diana prueba esa arma.
+	hangar.open_parts()
+	await get_tree().create_timer(0.6).timeout
+	await _click(_box_point(stage, slot))
+	await get_tree().create_timer(0.4).timeout
+	hangar.close_panels()
 	await get_tree().create_timer(0.7).timeout
 	var home := stage._mech.position
 	var center := stage._platform_center()
@@ -69,7 +76,6 @@ func evolution_test() -> void:
 		print("EVOLUCION el robot no lleva ninguna hoja")
 		get_tree().quit(1)
 		return
-	hangar.pick(slot)
 	var top: int = main._rules.tier_max_level[1]
 	var steps: Array = [[0, 0], [0, 1], [0, 2], [0, 3], [0, 4], [0, 5], [0, 6], [1, 0], [1, top]]
 	for step: Array in steps:
@@ -87,46 +93,42 @@ func evolution_test() -> void:
 	get_tree().quit(0)
 
 
-## Prueba en vivo de las observaciones del 2026-11-20 (`--menu-shot=observaciones`,
-## docs/OBSERVACIONES.md), con el raton y sin guardar nada: las casillas de
-## la cabecera del tablero, lo que da una mejora, el disparo de la
-## ametralladora y el de la escopeta, y el robot de media vuelta con la rueda
-## para pulsar un arma del otro lado.
+## Prueba en vivo de las observaciones (`--menu-shot=observaciones`,
+## docs/OBSERVACIONES.md), con el raton y sin guardar nada: las casillas del
+## plano en la computadora del taller (OBS-030), el disparo de la
+## ametralladora, el de la escopeta y el del rifle en la diana (OBS-009) y el
+## robot girado con la rueda (OBS-006).
 func observations_test() -> void:
 	var hangar := main._menu as WorkshopScreen
 	var stage := hangar._stage
-	var rack := stage.parts_rack
+	var rack := stage.loadout.rack
 	await get_tree().create_timer(0.8).timeout
-	await _click(stage.slot_screen_point("side1"))
+	hangar.open_parts()
 	await get_tree().create_timer(0.7).timeout
-	print("OBS tablero: hueco=%s casillas=%d" % [hangar._selected, rack.sibling_rects().size()])
-	await shot("tablero_casillas")
-	# Pulsar otra vez en el mismo sitio pasa al arma de detras.
-	var first := hangar._selected
-	await _click(stage.slot_screen_point("side1"))
-	await get_tree().create_timer(0.4).timeout
-	print("OBS segundo clic en el mismo sitio: %s -> %s" % [first, hangar._selected])
-	# La casilla 3 de la cabecera elige ese brazo directamente.
-	await _click(rack.global_position + rack.sibling_rects()[2].get_center())
-	await get_tree().create_timer(0.4).timeout
-	print("OBS casilla 3: hueco=%s" % hangar._selected)
-	await shot("casilla_3")
-	# Cada arma de balas con su disparo.
+	for slot: String in ["side1", "side3", "top0"]:
+		await _click(_box_point(stage, slot))
+		await get_tree().create_timer(0.4).timeout
+		print("OBS casilla %s: hueco=%s piezas=%d" % [slot, hangar._selected, rack._parts.size()])
+	await shot("plano_casillas")
+	# Cada arma de balas con su disparo: su casilla, y la diana.
 	for slot: String in ["side2", "side1", "side3"]:
 		var id := Garage.get_slot(main._profile.build, slot)
 		if id == "":
 			continue
 		hangar.pick(slot)
-		await get_tree().create_timer(0.5).timeout
+		await get_tree().create_timer(0.4).timeout
+		hangar.close_panels()
+		await get_tree().create_timer(0.6).timeout
 		var item := hangar._selected_item()
 		print("OBS disparo de %s: %s" % [id, item.fx])
-		hangar.test_fire()
+		await _click(stage.target_rect().get_center())
 		for i in 4:
 			await get_tree().create_timer(0.09).timeout
 			await shot("disparo_" + item.fx)
 		await get_tree().create_timer(0.7).timeout
-	# La rueda sobre el robot lo gira; de media vuelta se pulsa el otro lado.
-	var chest := stage.slot_screen_point("torso")
+	# La rueda sobre el robot lo gira.
+	var body := stage._world.position + stage._bounds.get_center() * stage._world.scale.x
+	var chest := stage.global_position + body
 	await _move(chest)
 	for i in 8:
 		await _wheel(chest, MOUSE_BUTTON_WHEEL_UP)
@@ -139,10 +141,6 @@ func observations_test() -> void:
 		)
 	)
 	await shot("media_vuelta")
-	await _click(stage.slot_screen_point("side2"))
-	await get_tree().create_timer(0.5).timeout
-	print("OBS clic en el brazo del otro lado: hueco=%s" % hangar._selected)
-	await shot("media_vuelta_elegida")
 	get_tree().quit(0)
 
 
@@ -197,8 +195,8 @@ func starter_test() -> void:
 	)
 	await shot("hangar_recien_empezado")
 	var stage := hangar._stage
-	var rack := stage.parts_rack
-	# El segundo brazo: su tablero solo cuelga lo que monta su tipo.
+	var rack := stage.loadout.rack
+	# El segundo brazo: su catalogo solo ensena lo que monta su tipo.
 	hangar.pick("side1")
 	await get_tree().create_timer(0.7).timeout
 	var forms: Array[String] = []

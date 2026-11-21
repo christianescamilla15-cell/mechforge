@@ -1,15 +1,18 @@
 class_name PartsRack
 extends Control
-## El tablero de piezas del hangar: un panel de herramientas que cuelga de
-## un riel y entra rodando desde la derecha cuando eliges un hueco del robot
-## (pedido del usuario el 2026-11-20: "casi como si no existiera un menu").
-## En el cuelgan, dibujadas, las piezas que caben en ese hueco: las tuyas,
-## solidas, y las que vende la tienda, como hologramas con su precio.
+## El catalogo de piezas de la computadora del taller (LoadoutScreen): la
+## mitad de la pantalla donde se despliegan las piezas que caben en la
+## casilla elegida del plano, "por tipo" (decision del usuario, 2026-11-21,
+## OBS-030: "se te va a desplegar a un lado de esa pantalla las armas
+## disponibles"). Las tuyas, solidas; las que vende la tienda, como
+## hologramas con su precio.
 ## - pulsar una tuya la monta; pulsar la que ya llevas ahi la quita;
 ## - pulsar un holograma lo deja armado y una segunda pulsacion lo compra;
-## - cualquiera se arrastra al robot o a su cuna (un holograma se compra al
-##   soltarlo); soltar aqui una pieza montada la quita;
-## - la rueda del raton (o sus flechas) pasa las filas.
+## - la rueda del raton (o sus flechas) pasa las filas;
+## - cada tipo de pieza ("hojas", "cortas"...) lleva su rotulo en la primera.
+## Hasta el 2026-11-21 era un tablero que colgaba de un riel junto al robot;
+## con `embedded` (como va ahora) no tiene riel ni rueda: es parte de la
+## pantalla que lo contiene.
 ## Abajo, su lector: la ficha de la pieza bajo el raton o, si no hay, la del
 ## hueco, con la tecla de subirla de nivel o transformarla. Y al pie, la
 ## lectura del robot (peso, vida, energia, calor, resistencias): al pasar el
@@ -25,10 +28,6 @@ signal bought(id: String)
 signal hovered(id: String, inside: bool)
 ## La tecla del lector: subir de nivel o transformar la pieza del hueco.
 signal upgrade_pressed
-## Se solto aqui la pieza de un hueco.
-signal unmounted(slot: String)
-## Una casilla de la cabecera: pasar a ese otro hueco del mismo tipo.
-signal slot_picked(slot: String)
 
 const COLUMNS := 4
 ## Alto minimo de una fila: caben las que quepan y se reparten el sitio.
@@ -52,12 +51,10 @@ const MUTED := Color("8fa3b8")
 const HOLO := Color("57d3ff")
 const BOARD := Color(0.055, 0.08, 0.115, 0.93)
 
-## Lo que ensena: {"slot", "title", "locked", "hint", "cells", "siblings":
-## [{"slot", "label", "filled", "selected", "locked"}] (los huecos de su mismo
-## tipo, para pasar de uno a otro; el torso y las piernas van juntos), "parts":
-## [{"id", "item", "owned", "mounted", "detail", "stats", "price", "reason",
-## "note"}], "mounted": {} o {"item", "detail", "stats"}, "key": {} o
-## {"label", "enabled", "reason"}}.
+## Lo que ensena: {"slot", "title", "locked", "hint", "cells", "parts":
+## [{"id", "item", "group" (su tipo), "owned", "mounted", "detail", "stats",
+## "price", "reason", "note"}], "mounted": {} o {"item", "detail", "stats"},
+## "key": {} o {"label", "enabled", "reason"}}.
 var state: Dictionary = {}:
 	set(value):
 		var same := str(value.get("slot", "")) == str(state.get("slot", ""))
@@ -76,12 +73,15 @@ var stats: Array = []:
 	set(value):
 		stats = value
 		queue_redraw()
-## Donde cuelga cuando esta fuera (lo pone HangarStage).
+## Dentro de una pantalla (LoadoutScreen): sin riel, sin tablero perforado y
+## sin entrar rodando; su sitio lo pone quien lo contiene.
+var embedded := false
+## Donde cuelga cuando esta fuera (lo pone quien lo contiene).
 var home := Rect2():
 	set(value):
 		home = value
 		size = value.size
-		position = value.position + Vector2((1.0 - _out) * (value.size.x + 30.0), 0.0)
+		_place()
 
 var _parts: Array[Dictionary] = []
 var _font: Font
@@ -97,7 +97,7 @@ var _shown_row := 0.0
 var _out := 0.0:
 	set(value):
 		_out = value
-		position = home.position + Vector2((1.0 - value) * (home.size.x + 30.0), 0.0)
+		_place()
 ## Si esta sacado (o saliendo); al recogerlo pasa a false enseguida.
 var _wanted := false
 var _slide: Tween
@@ -123,6 +123,11 @@ func _process(delta: float) -> void:
 		queue_redraw()
 
 
+func _place() -> void:
+	var offset := 0.0 if embedded else (1.0 - _out) * (home.size.x + 30.0)
+	position = home.position + Vector2(offset, 0.0)
+
+
 # --- Entrar y salir ---------------------------------------------------------------
 
 
@@ -133,7 +138,7 @@ func open(p_state: Dictionary, instant: bool = false) -> void:
 		return
 	_wanted = true
 	visible = true
-	_tween_out(1.0, 0.0 if instant else SLIDE_SECONDS)
+	_tween_out(1.0, 0.0 if instant or embedded else SLIDE_SECONDS)
 
 
 ## Lo recoge tras el borde.
@@ -143,7 +148,7 @@ func close(instant: bool = false) -> void:
 	_wanted = false
 	_armed = ""
 	_set_hover("")
-	_tween_out(0.0, 0.0 if instant else SLIDE_SECONDS * 0.8)
+	_tween_out(0.0, 0.0 if instant or embedded else SLIDE_SECONDS * 0.8)
 
 
 func is_open() -> bool:
@@ -228,28 +233,8 @@ func _pager_rect(zone: String) -> Rect2:
 	return Rect2(x, y - 1.0, 24.0, PAGER_HEIGHT + 2.0)
 
 
-## Casillas de los huecos hermanos, a la derecha del titulo.
-func sibling_rects() -> Array[Rect2]:
-	var out: Array[Rect2] = []
-	var title := str(state.get("title", "")).to_upper()
-	var x := MARGIN + 16.0 + _font.get_string_size(title, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
-	for entry: Dictionary in state.get("siblings", []):
-		var label := str(entry["label"])
-		var wide := maxf(
-			18.0, _font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, 10).x + 10.0
-		)
-		out.append(Rect2(x, RAIL_HEIGHT + 3.0, wide, 16.0))
-		x += wide + 3.0
-	return out
-
-
-## Zona bajo un punto: "part:<n>", "slot:<hueco>", "key", "up", "down" o "".
+## Zona bajo un punto: "part:<n>", "key", "up", "down" o "".
 func zone_at(at: Vector2) -> String:
-	var boxes := sibling_rects()
-	var siblings: Array = state.get("siblings", [])
-	for i in boxes.size():
-		if boxes[i].grow(1.5).has_point(at):
-			return "slot:" + str(siblings[i]["slot"])
 	for index in _parts.size():
 		if part_rect(index).has_point(at):
 			return "part:%d" % index
@@ -315,10 +300,6 @@ func _press(zone: String) -> void:
 	if zone == "up" or zone == "down":
 		scroll_rows(-1 if zone == "up" else 1)
 		return
-	if zone.begins_with("slot:"):
-		_armed = ""
-		slot_picked.emit(zone.trim_prefix("slot:"))
-		return
 	if zone == "key":
 		var key: Dictionary = state.get("key", {})
 		if bool(key.get("enabled", false)):
@@ -378,40 +359,6 @@ func _set_hover(zone: String) -> void:
 	queue_redraw()
 
 
-## Las piezas se arrastran al robot o a su cuna; un holograma se compra al
-## soltarlo (si se puede comprar).
-func _get_drag_data(at: Vector2) -> Variant:
-	var data: Variant = drag_data_at(at)
-	if data != null:
-		set_drag_preview(PartIcon.drag_preview(_part_of(zone_at(at))["item"]))
-	return data
-
-
-## Lo que se arrastra desde un punto del tablero; null si ahi no hay nada
-## que se pueda llevar.
-func drag_data_at(at: Vector2) -> Variant:
-	var part := _part_of(zone_at(at))
-	if part.is_empty():
-		return null
-	var owned := bool(part["owned"])
-	if not owned and str(part.get("reason", "")) != "":
-		return null
-	var item: ItemDef = part["item"]
-	var data := {"id": item.id, "type": item.type}
-	if not owned:
-		data["buy"] = true
-	return data
-
-
-## Soltar aqui la pieza de un hueco la quita.
-func _can_drop_data(_at: Vector2, data: Variant) -> bool:
-	return data is Dictionary and data.has("from_slot")
-
-
-func _drop_data(_at: Vector2, data: Variant) -> void:
-	unmounted.emit(str(data["from_slot"]))
-
-
 # --- Dibujo -----------------------------------------------------------------------
 
 
@@ -430,6 +377,12 @@ func _draw() -> void:
 
 ## El panel: riel con sus dos carros, tablero perforado y borde.
 func _draw_board() -> void:
+	if embedded:
+		# Dentro de una pantalla solo queda un marco fino sobre el cristal.
+		var frame := Rect2(Vector2.ZERO, size)
+		draw_rect(frame, Color(HOLO, 0.05))
+		draw_rect(frame, Color(HOLO, 0.35), false, 1.0)
+		return
 	var c := get_canvas_item()
 	# El riel sigue hasta el borde de la pantalla.
 	draw_rect(Rect2(-12.0, 2.0, size.x + 60.0, 5.0), Color("0e141c"))
@@ -468,29 +421,6 @@ func _draw_head() -> void:
 		13,
 		GOLD
 	)
-	# Los huecos de su mismo tipo: lleno, vacio, el elegido en dorado.
-	var boxes := sibling_rects()
-	var siblings: Array = state.get("siblings", [])
-	for i in boxes.size():
-		var entry: Dictionary = siblings[i]
-		var chosen := bool(entry["selected"])
-		var hover := _hover == "slot:" + str(entry["slot"])
-		var fade := 0.4 if bool(entry["locked"]) else 1.0
-		var edge := GOLD if chosen or hover else (HOLO if bool(entry["filled"]) else MUTED)
-		if chosen:
-			draw_rect(boxes[i], Color(GOLD, 0.9))
-		elif bool(entry["filled"]):
-			draw_rect(boxes[i], Color(HOLO, 0.22 * fade))
-		draw_rect(boxes[i], Color(edge, (0.95 if chosen or hover else 0.6) * fade), false, 1.0)
-		draw_string(
-			_font,
-			Vector2(boxes[i].position.x, boxes[i].position.y + 12.0),
-			str(entry["label"]),
-			HORIZONTAL_ALIGNMENT_CENTER,
-			boxes[i].size.x,
-			10,
-			Color(Color("10151c") if chosen else Color.WHITE, fade)
-		)
 	var cells := HangarProps.thousands(int(state.get("cells", 0)))
 	var wide := _font.get_string_size(cells, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
 	var unit := Txt.t("hud_cells")
@@ -518,7 +448,7 @@ func _draw_part(index: int, rect: Rect2, slide: float) -> void:
 	var armed := _armed == str(part["id"])
 	var fade := clampf(1.0 - absf(slide) / _cell_height(), 0.0, 1.0)
 	rect.position.y += slide
-	var tier := SlotCell.TIER_COLORS[item.tier]
+	var tier := PartIcon.TIER_COLORS[item.tier]
 	# El hueco del tablero donde cuelga.
 	var back := Color(0.1, 0.14, 0.2, 0.75 if owned else 0.35)
 	if hover:
@@ -532,10 +462,18 @@ func _draw_part(index: int, rect: Rect2, slide: float) -> void:
 	elif hover:
 		edge = edge.lightened(0.4)
 	draw_rect(rect, Color(edge, edge.a * fade), false, 2.0 if mounted or armed or hover else 1.0)
-	# El gancho.
-	var hook := Vector2(rect.get_center().x, rect.position.y)
-	draw_line(hook, hook + Vector2(0, 5), Color("8fa3b8", 0.8 * fade), 2.0)
+	if not embedded:
+		# El gancho.
+		var hook := Vector2(rect.get_center().x, rect.position.y)
+		draw_line(hook, hook + Vector2(0, 5), Color("8fa3b8", 0.8 * fade), 2.0)
 	var well := Rect2(rect.position + Vector2(4, 6), rect.size - Vector2(8, 22))
+	# El rotulo de su tipo, en la primera pieza de cada uno.
+	var group := str(part.get("group", ""))
+	if group != "" and (index == 0 or str(_parts[index - 1].get("group", "")) != group):
+		var tag := Vector2(rect.position.x + 4.0, rect.position.y + 10.0)
+		HangarProps.text(
+			self, _font, tag, group.to_upper(), rect.size.x - 8.0, 8, Color(MUTED, fade)
+		)
 	if owned:
 		PartIcon.paint(self, well, item, fade)
 	else:
@@ -668,7 +606,7 @@ func _draw_card(
 	at: Vector2, wide: float, item: ItemDef, detail: Array, effect: String, part: Dictionary
 ) -> void:
 	HangarProps.text(self, _font, at + Vector2(0, 18), item.display_name, wide, 14, Color.WHITE)
-	var tone := SlotCell.TIER_COLORS[item.tier]
+	var tone := PartIcon.TIER_COLORS[item.tier]
 	match str(detail[1]):
 		"gold":
 			tone = GOLD

@@ -1,16 +1,17 @@
 extends GutTest
 ## El taller del hangar sin cajon ni listas (pedido del usuario el
-## 2026-11-20: "casi como si no existiera un menu"): el tablero de piezas que
-## cuelga junto al robot (PartsRack), las cunas del banco de equipo
-## (SlotCell), las pantallas de mejoras y habilidades que se usan de cerca
-## (WallConsole) y lo que todos ensenan (WorkshopBrief).
+## 2026-11-20: "casi como si no existiera un menu") y, desde el 2026-11-21
+## (OBS-030), con el menu de armas dentro de una computadora: el plano del
+## robot de frente con una casilla por hueco (LoadoutScreen, MechBlueprint)
+## y, al lado, el catalogo de la casilla elegida (PartsRack); las pantallas
+## de mejoras y habilidades que se usan de cerca (WallConsole) y lo que
+## todos ensenan (WorkshopBrief).
 
 var _brief: WorkshopBrief
 var _library: BuildLibrary
 var _catalog: Catalog
 var _chosen: Array[String] = []
 var _bought: Array[String] = []
-var _unmounted: Array[String] = []
 var _picked: Array[String] = []
 ## Ajustes cambiados en la pantalla: [clave, valor].
 var _changes: Array = []
@@ -37,7 +38,6 @@ func before_all() -> void:
 func before_each() -> void:
 	_chosen.clear()
 	_bought.clear()
-	_unmounted.clear()
 	_picked.clear()
 	_changes.clear()
 	_pressed.clear()
@@ -59,7 +59,6 @@ func _rack(state: Dictionary) -> PartsRack:
 	rack.open(state, true)
 	rack.chosen.connect(func(id: String) -> void: _chosen.append(id))
 	rack.bought.connect(func(id: String) -> void: _bought.append(id))
-	rack.unmounted.connect(func(slot: String) -> void: _unmounted.append(slot))
 	rack.upgrade_pressed.connect(func() -> void: _counts["upgrade"] += 1)
 	return rack
 
@@ -99,32 +98,49 @@ func _first(parts: Array, owned: bool, buyable: bool = true) -> int:
 # --- Lo que cuelga en el tablero (WorkshopBrief.rack) ----------------------------
 
 
-func test_el_tablero_cuelga_tus_piezas_y_luego_las_de_la_tienda() -> void:
+func test_el_catalogo_trae_tus_piezas_y_las_de_la_tienda_por_tipo() -> void:
 	var profile := _profile()
 	var state := _brief.rack(profile, "side0")
 	var parts: Array = state["parts"]
 	assert_gt(parts.size(), 4, "las tuyas y las de la tienda")
-	var seen_store := false
+	var groups: Array[String] = []
+	var store_seen := {}
+	var owned := 0
 	for part: Dictionary in parts:
 		var item: ItemDef = part["item"]
 		assert_eq(item.type, ItemDef.Type.SIDE, "solo lo que cabe en el hueco")
+		var group := str(part["group"])
+		assert_eq(group, Txt.t("form_" + item.form), "su tipo es su forma")
+		if groups.is_empty() or groups[-1] != group:
+			assert_false(group in groups, "cada tipo va junto, no repartido")
+			groups.append(group)
 		if bool(part["owned"]):
-			assert_false(seen_store, "las tuyas van delante")
+			owned += 1
+			assert_false(store_seen.has(group), "dentro de un tipo, las tuyas delante")
 			assert_true(str(part["id"]) in profile.owned)
 			assert_eq(int(part["price"]), -1)
 		else:
-			seen_store = true
+			store_seen[group] = true
 			assert_false(str(part["id"]) in profile.owned, "lo que ya tienes no se vende")
 			assert_gt(int(part["price"]), 0)
-	assert_true(seen_store)
+	assert_gt(owned, 0)
+	assert_gt(store_seen.size(), 0)
+	# De cerca a lejos: hojas, cortas, medias y largas.
+	var order: Array[String] = []
+	for key: String in ["hoja", "corto", "medio", "largo"]:
+		order.append(Txt.t("form_" + key))
+	assert_eq(groups, order)
 	assert_eq(state["title"], "Lateral 1")
 	assert_eq(int(state["cells"]), 5000)
 
 
-func test_la_tienda_delante_cuando_se_abre_desde_su_pantalla() -> void:
-	var parts: Array = _brief.rack(_profile(), "side0", true)["parts"]
-	assert_false(bool(parts[0]["owned"]), "primero lo que se vende")
-	assert_true(bool(parts[-1]["owned"]), "al final las tuyas")
+func test_lo_que_no_es_arma_va_por_elemento() -> void:
+	var state := _brief.rack(_profile(), "torso")
+	var groups := {}
+	for part: Dictionary in state["parts"]:
+		groups[str(part["group"])] = true
+	for element_name: String in ["físico", "calor", "energía"]:
+		assert_true(groups.has(element_name), element_name)
 
 
 func test_el_tablero_marca_la_pieza_que_lleva_el_hueco() -> void:
@@ -242,7 +258,7 @@ func test_pulsar_otra_cosa_desarma_el_holograma() -> void:
 	assert_eq(_bought.size(), 0, "vuelve a pedir las dos pulsaciones")
 
 
-func test_un_holograma_que_no_puedes_pagar_no_se_compra_ni_se_arrastra() -> void:
+func test_un_holograma_que_no_puedes_pagar_no_se_compra() -> void:
 	var state := _brief.rack(_profile(0), "side0")
 	var rack := _rack(state)
 	var index := _first(state["parts"], false, false)
@@ -251,31 +267,6 @@ func test_un_holograma_que_no_puedes_pagar_no_se_compra_ni_se_arrastra() -> void
 	rack._gui_input(_click(at))
 	assert_eq(_bought.size(), 0)
 	assert_eq(rack.armed_id(), "")
-	assert_null(rack.drag_data_at(at))
-
-
-func test_arrastrar_un_holograma_lleva_la_compra() -> void:
-	var state := _brief.rack(_profile(), "side0")
-	var rack := _rack(state)
-	var holo: Dictionary = rack.drag_data_at(
-		rack.part_rect(_first(state["parts"], false)).get_center()
-	)
-	assert_true(bool(holo.get("buy", false)))
-	assert_eq(int(holo["type"]), ItemDef.Type.SIDE)
-	var mine: Dictionary = rack.drag_data_at(
-		rack.part_rect(_first(state["parts"], true)).get_center()
-	)
-	assert_false(mine.has("buy"), "una tuya no se compra")
-
-
-func test_soltar_en_el_tablero_la_pieza_de_un_hueco_la_quita() -> void:
-	var rack := _rack(_brief.rack(_profile(), "side0"))
-	var data := {"id": "hoja_balas_ter", "type": ItemDef.Type.SIDE, "from_slot": "side2"}
-	assert_true(rack._can_drop_data(Vector2(50, 50), data))
-	rack._drop_data(Vector2(50, 50), data)
-	assert_eq(_unmounted, ["side2"] as Array[String])
-	# Lo que viene del propio tablero no se suelta en el.
-	assert_false(rack._can_drop_data(Vector2(50, 50), {"id": "x", "type": 2}))
 
 
 func test_la_tecla_del_lector_solo_avisa_si_se_puede() -> void:
@@ -320,27 +311,94 @@ func test_cambiar_de_hueco_vuelve_al_principio_y_recogerlo_lo_cierra() -> void:
 	assert_false(rack.visible)
 
 
-# --- Las cunas del banco (SlotCell) -------------------------------------------------
+# --- La computadora del taller (LoadoutScreen) -----------------------------------------
 
 
-func test_una_cuna_dice_que_lleva_y_acepta_solo_su_tipo() -> void:
-	var cell := SlotCell.new()
-	cell.slot = "module0"
-	cell.accepts = ItemDef.Type.MODULE
-	cell.title = "Módulo 1"
-	add_child_autofree(cell)
-	assert_eq(cell.tag_lines()[1], Txt.t("slot_empty"))
-	cell.item = _brief.resolved(_profile(), "mod_blindaje")
-	cell.progress_text = "Básica 0/6"
-	assert_eq(cell.tag_lines(), ["Blindaje Reforzado", "Básica 0/6"] as Array[String])
-	assert_true(cell.accepts_data({"id": "mod_matriz", "type": ItemDef.Type.MODULE}))
-	assert_false(cell.accepts_data({"id": "x", "type": ItemDef.Type.SIDE}))
-	var own := {"id": "mod_blindaje", "type": ItemDef.Type.MODULE, "from_slot": "module0"}
-	assert_false(cell.accepts_data(own), "no sobre si misma")
-	cell.locked_text = "Nivel 10"
-	assert_eq(cell.tag_lines()[1], "Nivel 10")
-	assert_false(cell.accepts_data({"id": "mod_matriz", "type": ItemDef.Type.MODULE}))
-	assert_null(cell._get_drag_data(Vector2.ZERO), "cerrada no se arrastra")
+func _loadout(profile: PlayerProfile, slot: String = "side0") -> LoadoutScreen:
+	var screen := LoadoutScreen.new()
+	add_child_autofree(screen)
+	var state := _brief.loadout(profile, "Horno", slot)
+	screen.open(state, Rect2(40, 60, 170, 144), Rect2(38, 29, 1203, 662), true)
+	screen.slot_picked.connect(func(picked: String) -> void: _picked.append(picked))
+	screen.close_pressed.connect(func() -> void: _counts["quit"] += 1)
+	return screen
+
+
+func test_el_plano_tiene_una_casilla_por_hueco() -> void:
+	var profile := _profile()
+	var state := _brief.loadout(profile, "Horno", "side1")
+	var slots: Array = state["slots"]
+	assert_eq(slots.size(), Garage.SLOTS.size(), "todos los huecos del robot")
+	for entry: Dictionary in slots:
+		var slot := str(entry["slot"])
+		assert_eq(bool(entry["selected"]), slot == "side1")
+		var id := Garage.get_slot(profile.build, slot)
+		assert_eq(entry["item"] != null, id != "", slot)
+		assert_eq(str(entry["locked"]), _brief.lock_reason(profile, slot))
+	assert_eq(state["selected"], "side1")
+	assert_eq((state["list"] as Dictionary)["slot"], "side1", "al lado, el catalogo de esa casilla")
+	var screen := _loadout(profile, "side1")
+	var boxes: Array[Rect2] = []
+	for slot in Garage.SLOTS:
+		var box := screen.box_rect(slot)
+		assert_gt(box.get_area(), 0.0, "%s tiene su casilla" % slot)
+		assert_true(screen.plan_rect().encloses(box), "%s cae dentro del plano" % slot)
+		for other in boxes:
+			assert_false(box.intersects(other), "%s no pisa otra casilla" % slot)
+		boxes.append(box)
+
+
+func test_las_casillas_de_las_armas_van_a_los_lados_del_robot() -> void:
+	var screen := _loadout(_profile())
+	var robot := screen._robot_rect()
+	for slot: String in ["side0", "side1"]:
+		assert_lt(screen.box_rect(slot).end.x, robot.position.x, slot + " a un lado")
+	for slot: String in ["side2", "side3"]:
+		assert_gt(screen.box_rect(slot).position.x, robot.end.x, slot + " al otro")
+	for slot: String in ["top0", "top1", "torso"]:
+		assert_lt(screen.box_rect(slot).end.y, robot.position.y + 4.0, slot + " arriba")
+	assert_gt(screen.box_rect("legs").position.y, robot.end.y - 4.0, "las piernas, abajo")
+	assert_false(screen._catalog_rect().intersects(screen.plan_rect()), "el catalogo va al lado")
+
+
+func test_pulsar_una_casilla_la_elige_y_la_tecla_de_la_esquina_cierra() -> void:
+	var screen := _loadout(_profile())
+	assert_true(screen.is_open())
+	screen._gui_input(_click(screen.box_rect("module2").get_center()))
+	screen._gui_input(_click(screen.box_rect("top1").get_center()))
+	assert_eq(_picked, ["module2", "top1"] as Array[String])
+	# Fuera de las casillas no se elige nada.
+	screen._gui_input(_click(screen._robot_rect().get_center()))
+	assert_eq(_picked.size(), 2)
+	screen._gui_input(_click(screen._close_rect().get_center()))
+	assert_eq(_counts["quit"], 1)
+	screen.close(true)
+	assert_false(screen.is_open())
+	assert_false(screen.visible)
+
+
+func test_el_plano_ensena_tu_robot_de_frente() -> void:
+	var profile := _profile()
+	var screen := _loadout(profile)
+	var build := _brief.build_of(profile, profile.build)
+	screen.show_build(build, [] as Array[String])
+	var plan := screen._blueprint
+	assert_true(plan.has_robot())
+	assert_almost_eq(plan._turntable.angle, MechBlueprint.FRONT, 0.0001, "girado de cara")
+	assert_true(plan._turntable.visible, "con la pantalla delante, se ve")
+	screen.close(true)
+	assert_false(plan._turntable.visible, "y recogida, el giro deja de trabajar")
+
+
+func test_el_catalogo_va_dentro_de_la_pantalla() -> void:
+	var screen := _loadout(_profile())
+	assert_true(screen.rack.embedded, "sin riel ni tablero: es parte de la pantalla")
+	assert_true(screen.rack.visible)
+	var home := screen._catalog_rect()
+	assert_eq(screen.rack.position, home.position)
+	assert_eq(screen.rack.size, home.size)
+	assert_true(Rect2(Vector2.ZERO, screen.size).encloses(home))
+	assert_gt(screen.rack._parts.size(), 0)
 
 
 func test_todas_las_piezas_del_catalogo_tienen_dibujo() -> void:
@@ -649,7 +707,7 @@ func test_el_cuadro_de_control_esta_en_la_pared_y_se_pulsa() -> void:
 	stage.terminal_pressed.connect(func(terminal: String) -> void: _pressed.append(terminal))
 	var box: Rect2 = stage._terminal_rects["ajustes"]
 	assert_true(Rect2(Vector2.ZERO, stage.size).encloses(box))
-	for other: String in ["tienda", "mejoras", "habilidades"]:
+	for other: String in ["taller", "mejoras", "habilidades"]:
 		assert_false(box.intersects(stage._terminal_rects[other]), "no pisa " + other)
 	stage._gui_input(_click(box.get_center()))
 	assert_eq(_pressed, ["ajustes"] as Array[String])
@@ -724,58 +782,49 @@ func _screen_point(stage: HangarStage, world: Vector2) -> Vector2:
 	return stage._world.position + world * stage._world.scale.x
 
 
-func test_obs004_las_piernas_que_faltan_se_eligen_en_su_fantasma() -> void:
+func test_obs030_las_piezas_ya_no_se_eligen_tocando_el_robot() -> void:
 	var stage := _stage()
-	var build: MechBuild = stage._mech.build
-	stage.show_build(build, ["legs"] as Array[String])
-	var legs := _screen_point(stage, stage._world_rect("legs").get_center())
-	assert_true("legs" in stage.slots_at(legs), "el fantasma se puede pulsar")
 	var picked: Array[String] = []
 	stage.picked.connect(func(slot: String) -> void: picked.append(slot))
-	# Un punto de las piernas que no tape ningun arma.
-	var foot := _screen_point(
-		stage,
-		stage._world_rect("legs").position + stage._world_rect("legs").size * Vector2(0.5, 0.85)
-	)
-	stage._gui_input(_click(foot))
-	assert_eq(picked, ["legs"] as Array[String])
-	assert_null(stage._get_drag_data(foot), "un fantasma no se arrastra")
+	var pressed := [0]
+	stage.robot_pressed.connect(func() -> void: pressed[0] += 1)
+	var arm := _screen_point(stage, stage._world_rect("side0").get_center())
+	stage._gui_input(_click(arm))
+	stage._gui_input(_release(arm))
+	assert_eq(picked.size(), 0, "tocar un arma del robot ya no elige su hueco")
+	assert_eq(pressed[0], 1, "pulsar el robot acerca la computadora del taller")
+	assert_null(stage._get_drag_data(arm), "ni se arrastran sus piezas")
+	var data := {"id": "hoja_balas_ter", "type": ItemDef.Type.SIDE}
+	assert_false(stage._can_drop_data(arm, data), "ni se le sueltan encima")
 
 
-func test_obs005_pulsar_otra_vez_pasa_al_arma_de_detras() -> void:
+func test_obs030_arrastrar_el_robot_lo_gira_y_no_abre_nada() -> void:
 	var stage := _stage()
-	var both := stage._world_rect("side0").intersection(stage._world_rect("side2"))
-	assert_gt(both.get_area(), 0.0, "el brazo de detras queda tapado por el de delante")
-	var at := _screen_point(stage, both.get_center())
-	var under := stage.slots_at(at)
-	assert_true("side0" in under and "side2" in under)
-	assert_eq(stage.slot_to_pick(at), under[0], "el primer clic, el de encima")
-	stage.selected_slot = under[0]
-	assert_eq(stage.slot_to_pick(at), under[1], "el segundo, el de debajo")
-	stage.selected_slot = under[under.size() - 1]
-	assert_eq(stage.slot_to_pick(at), under[0], "y da la vuelta")
+	var pressed := [0]
+	stage.robot_pressed.connect(func() -> void: pressed[0] += 1)
+	var chest := _screen_point(stage, stage._world_rect("torso").get_center())
+	stage._gui_input(_click(chest))
+	var drag := InputEventMouseMotion.new()
+	drag.position = chest + Vector2(90, 0)
+	drag.relative = Vector2(90, 0)
+	stage._gui_input(drag)
+	stage._gui_input(_release(chest + Vector2(90, 0)))
+	assert_true(stage.is_turned(), "arrastrarlo por cualquier parte lo gira")
+	assert_eq(pressed[0], 0)
 
 
-func test_obs005_la_cabecera_del_tablero_tiene_una_casilla_por_hueco() -> void:
-	var profile := _profile()
-	var state := _brief.rack(profile, "side1")
-	var siblings: Array = state["siblings"]
-	assert_eq(siblings.size(), 4, "los cuatro brazos")
-	for entry: Dictionary in siblings:
-		assert_eq(bool(entry["selected"]), entry["slot"] == "side1")
-		assert_eq(bool(entry["filled"]), Garage.get_slot(profile.build, entry["slot"]) != "")
-	assert_eq((_brief.rack(profile, "top0")["siblings"] as Array).size(), 2)
-	# El torso y las piernas van juntos: de uno se pasa al otro.
-	var body: Array = _brief.rack(profile, "torso")["siblings"]
-	assert_eq(body.size(), 2)
-	assert_eq(body[1]["slot"], "legs")
-	assert_eq((_brief.rack(profile, "hook")["siblings"] as Array).size(), 0, "un hueco solo")
-	var picked: Array[String] = []
-	var rack := _rack(state)
-	rack.slot_picked.connect(func(slot: String) -> void: picked.append(slot))
-	rack._gui_input(_click(rack.sibling_rects()[2].get_center()))
-	assert_eq(picked, ["side2"] as Array[String])
-	assert_eq(_chosen.size(), 0)
+func test_obs030_la_computadora_del_taller_crece_desde_su_pantalla() -> void:
+	var stage := _stage()
+	var rects := stage.loadout_rects()
+	assert_eq(rects[0], stage._terminal_rects["taller"])
+	assert_true(Rect2(Vector2.ZERO, stage.size).encloses(rects[1]), "cabe en el hangar")
+	assert_gt(rects[1].get_area(), stage.size.x * stage.size.y * 0.75, "ocupa casi todo")
+	assert_false(stage.loadout.visible, "en la pared hasta que se pulsa")
+	stage.show_loadout(_brief.loadout(_profile(), "Horno", "side0"), true)
+	assert_true(stage.loadout.is_open())
+	assert_eq(stage.loadout.position, rects[1].position)
+	stage.hide_loadout()
+	assert_false(stage.loadout.is_open())
 
 
 func test_obs008_la_tecla_de_subir_dice_lo_que_cambia() -> void:
@@ -823,37 +872,6 @@ func test_obs023_la_rueda_gira_el_robot_con_el_cursor_sobre_el() -> void:
 	stage._gui_input(_click(Vector2(40, 40), MOUSE_BUTTON_WHEEL_UP))
 	await wait_seconds(0.3)
 	assert_eq(stage.turn, before)
-
-
-func test_obs023_de_media_vuelta_se_tocan_las_armas_del_otro_lado() -> void:
-	var stage := _stage()
-	var both := stage._world_rect("side0").intersection(stage._world_rect("side2"))
-	var at := _screen_point(stage, both.get_center())
-	assert_eq(stage.slots_at(at)[0], "side0", "de perfil, delante el brazo cercano")
-	# A medio girar no se toca nada.
-	stage.turn = PI / 2.0
-	assert_eq(stage.slots_at(at).size(), 0)
-	# De media vuelta el robot se ve reflejado y manda el brazo del otro lado.
-	stage.turn = PI
-	assert_true(stage.is_flipped())
-	var mirrored := _screen_point(stage, stage._robot_point(both.get_center()))
-	var under := stage.slots_at(mirrored)
-	assert_gt(under.size(), 1)
-	assert_eq(under[0], "side2", "delante queda el brazo que de perfil estaba detras")
-	var picked: Array[String] = []
-	stage.picked.connect(func(slot: String) -> void: picked.append(slot))
-	stage._gui_input(_click(mirrored))
-	assert_eq(picked, ["side2"] as Array[String])
-
-
-func test_el_tablero_cuelga_a_la_derecha_sin_tapar_al_robot_ni_el_banco() -> void:
-	var stage := _stage()
-	var home := stage.parts_rack.home
-	assert_true(Rect2(Vector2.ZERO, stage.size).encloses(home), "cabe en la pantalla")
-	assert_gt(home.position.x, stage.slot_screen_point("torso").x, "a la derecha del robot")
-	assert_false(home.intersects(stage._shelf_rect()), "no tapa el banco")
-	assert_false(home.intersects(Rect2(stage._board.position, stage._board.size)))
-	assert_false(stage.parts_rack.visible, "recogido hasta que se elige un hueco")
 
 
 func test_cada_pantalla_crece_desde_su_sitio() -> void:

@@ -3,20 +3,20 @@ extends Control
 ## El hangar: la pantalla de inicio, inmersiva y "casi como si no existiera
 ## un menu" (pedidos del usuario del 2026-11-18 y el 2026-11-20). Es el
 ## taller y la armeria a la vez, todo dentro de la escena (HangarStage):
-## - tu robot en el centro: un clic en una pieza (o en el enchufe de un hueco
-##   vacio) elige su hueco y saca el tablero de piezas (PartsRack): cuelgan
-##   las tuyas y, como hologramas con su precio, las de la tienda. Se pulsan
-##   o se arrastran al robot; al pie del tablero va la lectura del robot con
-##   lo que cambiaria, y la diana prueba el arma del hueco;
-## - el banco de equipo bajo el robot: las cunas de pecho, especiales,
-##   asistente y modulos, que se eligen igual;
+## - tu robot en el centro, sobre su plataforma giratoria. Sus piezas no se
+##   eligen tocandolo: pulsarlo acerca la computadora del taller;
+## - la computadora del taller (LoadoutScreen; decision del usuario del
+##   2026-11-21, OBS-030): la pantalla "TALLER" de la pared. De cerca ensena
+##   el plano del robot de frente con una casilla por hueco y, al lado, las
+##   piezas que caben en la casilla elegida, las tuyas y las de la tienda, por
+##   tipo: se pulsan para montarlas o comprarlas, y ahi mismo se suben de
+##   nivel. La diana del hangar prueba el arma de la ultima casilla tocada;
 ## - tus otros robots en las bahias del fondo: un clic y pasas a usarlo; una
 ##   bahia vacia proyecta lo que puede fabricar (BayProjector): un armazon
-##   vacio o un diseno ya armado, que se adquiere pulsandolo dos veces;
-## - las pantallas de la pared: la de la tienda saca el tablero con la
-##   tienda delante; las de mejoras y habilidades se usan ahi mismo, de
-##   cerca (WallConsole); el rotulo de tu robot ensena su ficha y el
-##   cuadro de control de la esquina, los ajustes;
+##   de cada tipo de robot, que se adquiere pulsandolo dos veces;
+## - las pantallas de mejoras y habilidades se usan ahi mismo, de cerca
+##   (WallConsole); el rotulo de tu robot ensena su ficha y el cuadro de
+##   control de la esquina, los ajustes;
 ## - el monitor de misiones: al pulsarlo el hangar se queda en penumbra y los
 ##   rivales se proyectan delante de tu robot (RivalRow); pulsar al primero
 ##   es salir a combatir.
@@ -37,9 +37,8 @@ var _selected: String = "side0"
 var _hover_id: String = ""
 ## Hueco con el que se compara la pieza bajo el raton.
 var _hover_slot: String = ""
-## El tablero de piezas esta fuera; y si ensena la tienda delante.
+## La computadora del taller esta de cerca.
 var _arming := false
-var _store_first := false
 ## Pantalla que esta de cerca: "mejoras", "habilidades", "robot" o "".
 var _console: String = ""
 ## Una bahia vacia esta proyectando lo que se puede adquirir.
@@ -56,9 +55,7 @@ func _ready() -> void:
 	_stage = HangarStage.new()
 	_stage.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(_stage)
-	_stage.picked.connect(_on_part_picked)
-	_stage.dropped.connect(_on_stage_dropped)
-	_stage.dropped_on.connect(_on_cell_dropped)
+	_stage.robot_pressed.connect(_on_robot_pressed)
 	_stage.terminal_pressed.connect(show_page)
 	_stage.bay_pressed.connect(_on_bay_pressed)
 	_stage.background_pressed.connect(_on_background_pressed)
@@ -69,13 +66,13 @@ func _ready() -> void:
 	_stage.protection_picked.connect(_on_protection_picked)
 	_stage.sign_pressed.connect(show_page.bind("robot"))
 	_stage.target_pressed.connect(test_fire)
-	var rack := _stage.parts_rack
+	_stage.loadout.slot_picked.connect(pick)
+	_stage.loadout.close_pressed.connect(close_panels)
+	var rack := _stage.loadout.rack
 	rack.chosen.connect(_on_rack_chosen)
 	rack.bought.connect(buy)
 	rack.hovered.connect(hover_item)
 	rack.upgrade_pressed.connect(upgrade_selected)
-	rack.unmounted.connect(clear_slot)
-	rack.slot_picked.connect(_on_part_picked)
 	var console := _stage.console
 	console.upgrade_picked.connect(buy_upgrade)
 	console.skill_picked.connect(learn)
@@ -83,7 +80,6 @@ func _ready() -> void:
 	console.setting_changed.connect(_on_setting_changed)
 	console.quit_pressed.connect(func() -> void: get_tree().quit(0))
 	_stage.projector.bought.connect(_on_offer_bought)
-	_build_bench()
 	_build_hud()
 	refresh()
 
@@ -102,20 +98,6 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 # --- Construccion ------------------------------------------------------------
-
-
-## Las cunas del banco (los huecos que no se ven en el dibujo del robot).
-func _build_bench() -> void:
-	for slot in HangarStage.RACK_TOP + HangarStage.RACK_BOTTOM:
-		var cell := SlotCell.new()
-		cell.slot = slot
-		cell.accepts = Garage.slot_type(slot)
-		cell.title = slot_title(slot)
-		cell.picked.connect(_on_part_picked)
-		cell.dropped.connect(_on_cell_dropped)
-		cell.hovered.connect(_on_cell_hovered)
-		_stage.add_child(cell)
-		_stage.rack[slot] = cell
 
 
 ## Lo unico que queda fuera de la escena: el aviso pasajero (lo que se cobro
@@ -159,7 +141,6 @@ func refresh() -> void:
 			shown.legs = _placeholder(ItemDef.Type.LEGS)
 			ghosts.append("legs")
 	_stage.show_build(shown, ghosts)
-	_stage.selected_slot = _selected if _arming else ""
 	# El monitor de misiones siempre ensena la campana; en el modo mision, su
 	# canal, con la fila de rivales delante.
 	if _channel == "":
@@ -167,17 +148,23 @@ func refresh() -> void:
 	else:
 		_stage.show_mission(main.mission_state(_channel))
 	_stage.set_bays(_bays())
-	for slot: String in _stage.rack:
-		_refresh_cell(_stage.rack[slot])
-	_refresh_info()
-	# El tablero de piezas, con lo del hueco elegido.
+	# La computadora del taller: el plano y el catalogo de la casilla elegida.
 	if _arming:
-		var state := brief.rack(profile, _selected, _store_first)
-		_stage.parts_rack.open(state)
-		_stage.can_test = bool(state["can_test"])
+		_stage.loadout.show_build(shown, ghosts)
+		_stage.show_loadout(brief.loadout(profile, main.robot_name(profile.active), _selected))
 	else:
-		_stage.parts_rack.close()
-		_stage.can_test = false
+		_stage.hide_loadout()
+	_refresh_info()
+	# Con todo recogido, la diana prueba el arma de la ultima casilla tocada.
+	var item := _selected_item()
+	_stage.can_test = (
+		current_page() == ""
+		and _channel == ""
+		and item != null
+		and item.deals_damage()
+		and item.fx != ""
+		and brief.lock_reason(profile, _selected) == ""
+	)
 	if _console != "":
 		_stage.show_console(_console_state())
 	else:
@@ -212,7 +199,7 @@ func _refresh_info() -> void:
 		"overload": main._rules.overload,
 		"upgrades": upgrades,
 	}
-	_stage.parts_rack.stats = reading["rows"]
+	_stage.loadout.rack.stats = reading["rows"]
 
 
 func _console_state() -> Dictionary:
@@ -256,16 +243,6 @@ func _bays() -> Array[Dictionary]:
 	return out
 
 
-func _refresh_cell(cell: SlotCell) -> void:
-	var brief := main._bench
-	var id := Garage.get_slot(main._profile.build, cell.slot)
-	cell.item = brief.resolved(main._profile, id)
-	cell.selected = cell.slot == _selected and _arming
-	cell.locked_text = brief.lock_reason(main._profile, cell.slot)
-	cell.progress_text = brief.progress_text(main._profile, cell.item)
-	cell.refresh()
-
-
 ## Pieza con la que se dibuja un torso o unas piernas que faltan.
 func _placeholder(type: ItemDef.Type) -> ItemDef:
 	for id in main._profile.owned:
@@ -278,30 +255,26 @@ func _placeholder(type: ItemDef.Type) -> ItemDef:
 # --- Lo que se abre ------------------------------------------------------------
 
 
-## Abre algo del hangar por su nombre: "pieza" (el tablero de piezas del
-## hueco elegido), "tienda" (el tablero con la tienda delante), "mejoras",
-## "habilidades" o "robot" (su pantalla, de cerca) o "misiones" (el modo
-## mision).
+## Abre algo del hangar por su nombre: "taller" (la computadora del taller,
+## con la casilla elegida), "mejoras", "habilidades", "robot" o "ajustes" (su
+## pantalla, de cerca) o "misiones" (el modo mision).
 func show_page(page: String) -> void:
 	if page == "misiones":
 		open_missions()
 	elif page in CONSOLES:
 		open_console(page)
 	else:
-		open_parts(page == "tienda")
+		open_parts()
 
 
-## Saca el tablero de piezas del hueco elegido.
-func open_parts(store_first: bool = false) -> void:
+## Acerca la computadora del taller, con la casilla elegida.
+func open_parts() -> void:
 	if _launching:
 		return
 	close_missions()
 	_console = ""
 	_offering = false
-	if not _arming:
-		Sfx.play("ui_pagina")
 	_arming = true
-	_store_first = store_first
 	_hover_id = ""
 	_hover_slot = ""
 	refresh()
@@ -355,15 +328,15 @@ func close_panels() -> void:
 	refresh()
 
 
-## Lo que esta abierto: "pieza", "tienda", "mejoras", "habilidades", "robot",
-## "adquirir" o "".
+## Lo que esta abierto: "taller", "mejoras", "habilidades", "robot",
+## "ajustes", "adquirir" o "".
 func current_page() -> String:
 	if _console != "":
 		return _console
 	if _offering:
 		return "adquirir"
 	if _arming:
-		return "tienda" if _store_first else "pieza"
+		return "taller"
 	return ""
 
 
@@ -448,12 +421,16 @@ func pick(slot: String) -> void:
 	if not slot in Garage.SLOTS:
 		return
 	_selected = slot
-	open_parts(_store_first and _arming)
+	open_parts()
 
 
-func _on_part_picked(slot: String) -> void:
-	Sfx.play("ui_tic")
-	pick(slot)
+## Se pulso tu robot: se acerca la computadora del taller; con algo ya
+## abierto, se recoge.
+func _on_robot_pressed() -> void:
+	if current_page() != "" or _channel != "":
+		_on_background_pressed()
+	else:
+		open_parts()
 
 
 func _on_bay_pressed(index: int) -> void:
@@ -500,7 +477,7 @@ func equip(slot: String, id: String) -> void:
 		open_parts()
 	var item := main._bench.resolved(main._profile, id)
 	if item != null:
-		_stage.flash(slot, SlotCell.TIER_COLORS[item.tier])
+		_stage.loadout.flash(slot, PartIcon.TIER_COLORS[item.tier])
 
 
 ## Deja un hueco vacio.
@@ -538,7 +515,7 @@ func level_up_selected() -> void:
 	main._save()
 	Sfx.play("ui_subir_nivel")
 	refresh()
-	_stage.flash(_selected, SlotCell.TIER_COLORS[item.tier])
+	_stage.loadout.flash(_selected, PartIcon.TIER_COLORS[item.tier])
 
 
 func transform_selected() -> void:
@@ -556,7 +533,7 @@ func transform_selected() -> void:
 	Sfx.play("ui_transformar")
 	refresh()
 	var now := main._bench.resolved(main._profile, item.id)
-	_stage.flash(_selected, SlotCell.TIER_COLORS[now.tier])
+	_stage.loadout.flash(_selected, PartIcon.TIER_COLORS[now.tier])
 
 
 func _selected_item() -> ItemDef:
@@ -633,38 +610,12 @@ func toast(text: String) -> void:
 	fade.tween_property(_toast, "modulate:a", 0.0, 1.0)
 
 
-func _on_cell_dropped(slot: String, data: Dictionary) -> void:
-	if data.get("buy", false) and not _pay(data["id"]):
-		return
-	var from: String = data.get("from_slot", "")
-	if from != "":
-		# De un hueco a otro de su tipo: se cambian.
-		var other := Garage.get_slot(main._profile.build, slot)
-		Garage.equip(main._profile, main._catalog, from, other)
-	equip(slot, data["id"])
-
-
-func _on_stage_dropped(data: Dictionary) -> void:
-	var slot := _slot_for(data["id"])
-	if slot == "":
-		return
-	if data.get("buy", false) and not _pay(data["id"]):
-		return
-	equip(slot, data["id"])
-
-
-## Pasar el raton por una pieza del tablero: la lectura del robot ensena
-## cuanto cambia con ella en el hueco donde iria, y ese hueco se marca en el
-## dibujo.
+## Pasar el raton por una pieza del catalogo: la lectura del robot ensena
+## cuanto cambia con ella en la casilla elegida.
 func hover_item(id: String, inside: bool) -> void:
 	_hover_id = id if inside else ""
-	_hover_slot = _slot_for(id) if inside else ""
-	_stage.hover_slot = _hover_slot
+	_hover_slot = _selected if inside else ""
 	_refresh_info()
-
-
-func _on_cell_hovered(slot: String, inside: bool) -> void:
-	_stage.hover_slot = slot if inside else ""
 
 
 # --- Textos ------------------------------------------------------------------

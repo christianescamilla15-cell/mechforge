@@ -6,26 +6,26 @@ extends MechStage
 ## (MechStage) anade:
 ## - tus otros robots en tres bahias al fondo, mas pequenos y en penumbra
 ##   (un clic y pasas a usarlo; una bahia vacia es para adquirir uno);
-## - tres pantallas en la pared: la de la tienda saca el tablero de piezas
-##   y las de mejoras y habilidades se usan ahi mismo, de cerca (WallConsole);
-##   en la esquina, el cuadro de control de los ajustes, que se usa igual;
-## - el tablero de piezas (PartsRack): al elegir un hueco entra rodando a la
-##   derecha con las piezas que caben en el, las tuyas y las de la tienda, y
-##   la lectura del robot; la diana prueba el arma del hueco;
+## - tres pantallas en la pared: la del taller es la computadora donde se
+##   arma el robot (LoadoutScreen: su plano de frente con una casilla por
+##   hueco y, al lado, las piezas disponibles); las de mejoras y habilidades
+##   se usan ahi mismo, de cerca (WallConsole); en la esquina, el cuadro de
+##   control de los ajustes, que se usa igual;
+## - la diana, que prueba el arma de la ultima casilla que tocaste;
 ## - el monitor de misiones (MissionBoard): el cuadro de campana. Al pulsarlo
 ##   el hangar pasa al modo mision: se queda en penumbra y los rivales se
 ##   proyectan en el suelo delante de tu robot (RivalRow); pulsar al primero
 ##   es salir a combatir;
-## - enchufes que brillan en los huecos de arma vacios del robot;
 ## - lo que antes iba en una barra de arriba, repartido por la escena: el
 ##   nombre de tu robot en el rotulo que cuelga sobre su bahia (se pulsa para
 ##   ver su ficha), sus celdas en la pantalla de la tienda, su nivel en la de
 ##   habilidades, sus mejoras en la de mejoras y su peso en la bascula que
 ##   hay junto a la plataforma;
-## - la plataforma del robot es giratoria: arrastrarla (o la rueda del raton)
-##   lo gira 360 grados (TurntableMech); doble clic lo devuelve al perfil;
-## - un banco de equipo con los huecos que no se ven en el dibujo (pecho,
-##   especiales, asistente y modulos): cunas con su pieza dentro (SlotCell).
+## - la plataforma del robot es giratoria: arrastrar el robot o su
+##   plataforma (o la rueda del raton) lo gira 360 grados (TurntableMech);
+##   doble clic lo devuelve al perfil. Sus piezas ya no se eligen tocandolo
+##   (decision del usuario, 2026-11-21, OBS-030): pulsarlo acerca la
+##   computadora del taller.
 ## Pulsar el hangar vacio recoge lo que este abierto.
 
 signal terminal_pressed(terminal: String)
@@ -43,18 +43,12 @@ signal sign_pressed
 signal target_pressed
 signal bay_pressed(index: int)
 signal background_pressed
-signal dropped_on(slot: String, data: Dictionary)
+## Se pulso tu robot, sin arrastrarlo.
+signal robot_pressed
 
 ## Lo que hay en la pared y se pulsa: tres pantallas y el cuadro de control
 ## de los ajustes.
-const TERMINALS: Array[String] = ["tienda", "mejoras", "habilidades", "ajustes"]
-## Huecos del estante: arriba lo especial, abajo los modulos.
-const RACK_TOP: Array[String] = [
-	"chest", "charge", "teleport", "hook", "assist", "drone", "drone_low"
-]
-const RACK_BOTTOM: Array[String] = [
-	"module0", "module1", "module2", "module3", "module4", "module5", "module6", "module7"
-]
+const TERMINALS: Array[String] = ["taller", "mejoras", "habilidades", "ajustes"]
 ## Centro de cada bahia, como parte del ancho. Las dos de la izquierda van
 ## separadas para que el arma de un robot no tape al de al lado.
 const BAY_X: Array[float] = [0.085, 0.225, 0.815]
@@ -62,14 +56,6 @@ const COLOR_SCREEN := Color("0b2a33")
 const COLOR_SCREEN_LINE := Color("3fd0e6")
 const COLOR_TEXT := Color("bfefff")
 const COLOR_SOCKET := Color("57d3ff")
-const SOCKET_RADIUS := 13.0
-## Huecos de arma: vacios, llevan un enchufe que se pulsa.
-const SOCKETS: Array[String] = ["side0", "side1", "side2", "side3", "top0", "top1"]
-## Orden de los huecos con el robot de media vuelta: delante quedan las
-## armas del otro lado.
-const FLIPPED_ORDER: Array[String] = [
-	"top1", "top0", "side2", "side3", "side0", "side1", "chest", "assist", "torso", "legs"
-]
 ## Giro por pixel arrastrado, por muesca de la rueda, y a cuanto de una
 ## vista dibujada (de perfil, de espalda, del otro perfil o de frente) el
 ## robot se coloca solo en ella al soltar.
@@ -97,13 +83,13 @@ const LAUNCH_WALK := 250.0
 ##  "weight", "max_weight", "overload", "upgrades" (de 0 a 1, una por mejora)
 ##  y "weight_delta" (lo que cambiaria el peso con la pieza bajo el raton)}.
 var info: Dictionary = {}
-## El tablero de piezas y la pantalla de cerca: WorkshopScreen les da lo que
-## ensenan y oye lo que se pulsa en ellos.
-var parts_rack := PartsRack.new()
+## La computadora del taller y la pantalla de cerca: WorkshopScreen les da
+## lo que ensenan y oye lo que se pulsa en ellas.
+var loadout := LoadoutScreen.new()
 var console := WallConsole.new()
 ## El proyector de la bahia vacia que se pulso: lo que se puede adquirir.
 var projector := BayProjector.new()
-## El hueco elegido lleva un arma que se puede probar: la diana se enciende.
+## La casilla elegida lleva un arma que se puede probar: la diana se enciende.
 var can_test := false:
 	set(value):
 		can_test = value
@@ -116,15 +102,11 @@ var mission := 0.0:
 		mission = value
 		_target_alpha = 1.0 - value
 		_board.open = value
-		for cell: SlotCell in rack.values():
-			cell.modulate = Color.WHITE.lerp(Color(0.3, 0.36, 0.46), value)
 		_dim.queue_redraw()
 		_overlay.queue_redraw()
 ## Robots de las bahias: [{"index", "build", "name"}]; uno con "index" -1 es
 ## una bahia vacia.
 var bays: Array[Dictionary] = []
-## Celdas del estante, por hueco (las crea WorkshopScreen).
-var rack: Dictionary[String, SlotCell] = {}
 ## Giro del robot sobre su plataforma, en radianes: 0 = de perfil, como en
 ## combate. Girado no se tocan sus piezas (se le da la vuelta para verlo).
 var turn: float = 0.0:
@@ -187,8 +169,8 @@ func _ready() -> void:
 	_board.pick_changed.connect(func(key: String, step: int) -> void: pick_changed.emit(key, step))
 	_board.protection_picked.connect(func(kind: String) -> void: protection_picked.emit(kind))
 	add_child(projector)
-	add_child(parts_rack)
 	add_child(console)
+	add_child(loadout)
 	mouse_exited.connect(_clear_hover)
 	_mech.footstep.connect(_on_footstep)
 	_world.add_child(_turntable)
@@ -344,6 +326,25 @@ func console_rects(kind: String) -> Array[Rect2]:
 	return [plate, Rect2(plate.get_center().x - wide * 0.5, plate.end.y + 6.0, wide, 198.0)]
 
 
+## Acerca la computadora del taller con ese estado (WorkshopBrief.loadout).
+func show_loadout(state: Dictionary, instant: bool = false) -> void:
+	var rects := loadout_rects()
+	loadout.open(state, rects[0], rects[1], instant)
+
+
+func hide_loadout() -> void:
+	loadout.close()
+
+
+## Sitio de la computadora del taller en la pared y el que ocupa de cerca:
+## casi todo el hangar, que queda asomando por los bordes.
+func loadout_rects() -> Array[Rect2]:
+	return [
+		_terminal_rects.get("taller", Rect2()),
+		Rect2(size.x * 0.03, size.y * 0.04, size.x * 0.94, size.y * 0.92)
+	]
+
+
 ## Enciende el proyector de la bahia vacia que se pulso (o de la primera
 ## vacia) con lo que se puede adquirir.
 func show_offers(state: Dictionary) -> void:
@@ -410,26 +411,6 @@ func _robot_point(world: Vector2) -> Vector2:
 	return Vector2(2.0 * _pivot() - world.x, world.y) if is_flipped() else world
 
 
-## De media vuelta mandan las armas del otro lado, que quedan delante.
-func _touch_order() -> Array[String]:
-	return FLIPPED_ORDER if is_flipped() else TOUCHABLE
-
-
-## Huecos bajo un punto: primero el enchufe de un hueco de arma vacio y
-## despues las piezas del robot.
-func slots_at(at: Vector2) -> Array[String]:
-	var out: Array[String] = []
-	if not _can_touch() or _mech.build == null:
-		return out
-	var world := _robot_point((at - _world.position) / _world.scale.x)
-	for socket: String in SOCKETS:
-		var radius := SOCKET_RADIUS * 1.6 / _world.scale.x
-		if _item_in(socket) == null and world.distance_to(socket_point(socket)) <= radius:
-			out.append(socket)
-	out.append_array(super.slots_at(at))
-	return out
-
-
 ## Gira el robot hasta ese angulo con un movimiento suave, por el camino corto.
 func turn_to(target: float, seconds: float = 0.3) -> void:
 	if _turn_tween != null:
@@ -485,7 +466,7 @@ func _fit() -> void:
 ## Bahias, terminales y estante, a la medida de la pantalla.
 func _layout() -> void:
 	_terminal_rects = {
-		"tienda": Rect2(size.x * 0.025, size.y * 0.085, size.x * 0.135, size.y * 0.2),
+		"taller": Rect2(size.x * 0.025, size.y * 0.085, size.x * 0.135, size.y * 0.2),
 		"mejoras": Rect2(size.x * 0.175, size.y * 0.085, size.x * 0.12, size.y * 0.2),
 		"habilidades": Rect2(size.x * 0.585, size.y * 0.085, size.x * 0.12, size.y * 0.2),
 		"ajustes": Rect2(size.x * 0.944, size.y * 0.012, size.x * 0.046, size.y * 0.05),
@@ -494,9 +475,8 @@ func _layout() -> void:
 	_board.size = Vector2(size.x * 0.255, size.y * 0.27)
 	var under_board := _board.position.y + _board.size.y
 	_row.layout(size, _floor_y, _world.scale.x, under_board + 4.0)
-	parts_rack.home = Rect2(
-		size.x * 0.692, under_board + 10.0, size.x * 0.3, size.y - under_board - 20.0
-	)
+	if loadout.is_open():
+		show_loadout(loadout.state)
 	_bay_rects.clear()
 	for i in BAY_X.size():
 		var feet := Vector2(size.x * BAY_X[i], _bay_floor())
@@ -511,26 +491,10 @@ func _layout() -> void:
 		view.place(feet)
 		view.set_facing(1)
 		view.scale *= factor
-	# El banco: dos filas de cunas bajo el robot.
-	var shelf := _shelf_rect()
-	var row_h := (shelf.size.y - 14.0) / 2.0
-	for row in 2:
-		var slots: Array[String] = RACK_TOP if row == 0 else RACK_BOTTOM
-		var w := (shelf.size.x - 16.0) / RACK_BOTTOM.size()
-		for i in slots.size():
-			if not rack.has(slots[i]):
-				continue
-			var cell := rack[slots[i]]
-			cell.position = shelf.position + Vector2(8.0 + i * w, 6.0 + row * (row_h + 2.0))
-			cell.size = Vector2(w - 4.0, row_h)
 
 
 func _bay_floor() -> float:
 	return size.y * 0.715
-
-
-func _shelf_rect() -> Rect2:
-	return Rect2(size.x * 0.02, size.y * 0.835, size.x * 0.6, size.y * 0.155)
 
 
 ## Pone los robots de las bahias.
@@ -621,7 +585,6 @@ func _draw_still(c: CanvasItem) -> void:
 		HangarArt.draw_platform(c, Vector2(center, _floor_y), _platform_width)
 	HangarProps.clutter(c, size, _floor_y)
 	HangarProps.target_stand(c, _world.position + _target_point() * _world.scale.x, _floor_y)
-	HangarProps.shelf(c, _font, _shelf_rect())
 	HangarArt.draw_vignette(c, rect, 1.2)
 
 
@@ -727,34 +690,11 @@ func _draw_overlay() -> void:
 			13,
 			Color(COLOR_SELECTED, 0.55 + 0.45 * glow)
 		)
-	# Enchufes de los huecos de arma vacios: un anillo que late.
-	for slot: String in SOCKETS:
-		if _item_in(slot) != null:
-			continue
-		var at := _robot_point(socket_point(slot))
-		var pulse := 0.5 + 0.5 * sin(_time * 4.0)
-		var selected := slot == selected_slot
-		var color := COLOR_SELECTED if selected else COLOR_SOCKET
-		var radius := SOCKET_RADIUS / _world.scale.x
-		_overlay.draw_circle(at, radius * (1.2 + 0.4 * pulse), Color(color, 0.12 + 0.1 * pulse))
-		_overlay.draw_arc(at, radius, 0, TAU, 20, Color(color, 0.85), 2.0 / _world.scale.x)
-		_overlay.draw_circle(at, radius * 0.35, Color(color, 0.9))
 
 
 ## La diana del campo de pruebas: a la derecha del robot, sobre su poste.
 func _target_point() -> Vector2:
 	return Vector2((size.x * 0.655 - _world.position.x) / _world.scale.x, -180.0)
-
-
-## Punto del enchufe de un hueco de arma, en el mundo del taller.
-func socket_point(slot: String) -> Vector2:
-	return _mech.transform * _mech.slot_socket(slot)
-
-
-## Punto de la pantalla donde esta un hueco (su pieza o su enchufe).
-func slot_screen_point(slot: String) -> Vector2:
-	var world := socket_point(slot) if _item_in(slot) == null else _world_rect(slot).get_center()
-	return get_global_rect().position + _world.position + _robot_point(world) * _world.scale.x
 
 
 func _text(
@@ -810,10 +750,7 @@ func _grabs_platform(at: Vector2) -> bool:
 	var on_platform := (
 		Vector2((at.x - feet.x) / rx, (at.y - feet.y - ry * 0.25) / ry).length() <= 1.0
 	)
-	if is_turned() and not is_flipped():
-		return on_platform or _over_robot(at)
-	# Con las piezas a mano, el robot se agarra por donde no hay ninguna.
-	return (on_platform or _over_robot(at)) and slot_at(at) == ""
+	return on_platform or _over_robot(at)
 
 
 ## True si ese punto cae sobre el robot (lo que ocupa de perfil).
@@ -884,18 +821,10 @@ func _gui_input(event: InputEvent) -> void:
 			if platform
 			else (
 				Control.CURSOR_POINTING_HAND
-				if (
-					terminal != ""
-					or bay >= 0
-					or on_rival
-					or on_sign
-					or on_target
-					or slot_at(motion.position) != ""
-				)
+				if (terminal != "" or bay >= 0 or on_rival or on_sign or on_target)
 				else Control.CURSOR_ARROW
 			)
 		)
-		super._gui_input(event)
 		return
 	var click := event as InputEventMouseButton
 	if click != null and click.pressed and click.button_index == MOUSE_BUTTON_LEFT:
@@ -917,10 +846,7 @@ func _gui_input(event: InputEvent) -> void:
 			_pressed_bay = bay
 			bay_pressed.emit(int(bays[bay]["index"]))
 			return
-		if slot_at(click.position) == "":
-			background_pressed.emit()
-			return
-	super._gui_input(event)
+		background_pressed.emit()
 
 
 ## El raton sobre la plataforma giratoria: arrastrar gira, la rueda gira a
@@ -930,8 +856,12 @@ func _turn_input(button: InputEventMouseButton) -> bool:
 		_turning = false
 		queue_redraw()
 		if not _turn_moved:
-			# Un clic sin arrastrar no es girarlo: es pulsar el hangar.
-			background_pressed.emit()
+			# Un clic sin arrastrar no es girarlo: es pulsar el robot (se
+			# acerca la computadora del taller) o, en su plataforma, el hangar.
+			if _over_robot(button.position):
+				robot_pressed.emit()
+			else:
+				background_pressed.emit()
 			return true
 		# Casi en una vista dibujada: se coloca en ella (de perfil, ademas,
 		# se pueden tocar sus piezas).
@@ -967,18 +897,11 @@ func _turn_input(button: InputEventMouseButton) -> bool:
 	return false
 
 
-func _can_drop_data(at: Vector2, data: Variant) -> bool:
-	if not data is Dictionary or not data.has("id"):
-		return false
-	var slot := slot_at(at)
-	if slot != "" and Garage.slot_type(slot) == int(data.get("type", -1)):
-		return data.get("from_slot", "") != slot
-	return not data.has("from_slot")
+## Las piezas ya no se arrastran al robot ni desde el: se montan en la
+## computadora del taller.
+func _get_drag_data(_at: Vector2) -> Variant:
+	return null
 
 
-func _drop_data(at: Vector2, data: Variant) -> void:
-	var slot := slot_at(at)
-	if slot != "" and Garage.slot_type(slot) == int(data.get("type", -1)):
-		dropped_on.emit(slot, data)
-	else:
-		dropped.emit(data)
+func _can_drop_data(_at: Vector2, _data: Variant) -> bool:
+	return false

@@ -159,7 +159,7 @@ func _ready() -> void:
 			_profile = PlayerProfile.load_or_new(SAVE_PATH)
 			Garage.ensure_assist(_profile, _catalog)
 		_show_menu()
-		if _args["menu-shot"] in ["pieza", "tienda", "mejoras", "habilidades", "robot"]:
+		if _args["menu-shot"] in ["equipo", "mejoras", "habilidades", "robot"]:
 			# El hangar con eso abierto (--slot=<hueco>: el hueco elegido).
 			var hangar := open_workshop()
 			if _args.has("slot"):

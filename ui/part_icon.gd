@@ -5,6 +5,16 @@ extends Control
 ## dibujo propio (modulos, especiales, armas del asistente) salen como su
 ## cartucho (PartGlyph). `paint` lo pinta en cualquier lienzo, sin nodo.
 
+## Color de cada clase de pieza, de Basica a Unica.
+const TIER_COLORS: Array[Color] = [
+	Color("8a94a3"),
+	Color("5fd07a"),
+	Color("4aa8ff"),
+	Color("b77bff"),
+	Color("ffae3d"),
+	Color("ff5a6e")
+]
+
 var texture: Texture2D:
 	set(value):
 		texture = value

@@ -244,15 +244,13 @@ func garage_test() -> void:
 		)
 	)
 	await shot("taller_armazon")
-	# Las piernas que faltan se eligen pulsando su fantasma (OBS-004).
-	var ghost := stage._world_rect("legs")
-	var foot := ghost.position + ghost.size * Vector2(0.5, 0.85)
-	await _click(stage.global_position + stage._world.position + foot * stage._world.scale.x)
+	# Las piernas que faltan se eligen en su casilla del plano.
+	await _click(_box_point(stage, "legs"))
 	await get_tree().create_timer(0.5).timeout
 	print(
 		(
-			"GARAJE clic en las piernas que faltan: hueco=%s piezas=%d"
-			% [hangar._selected, stage.parts_rack._parts.size()]
+			"GARAJE casilla de las piernas que faltan: hueco=%s piezas=%d"
+			% [hangar._selected, stage.loadout.rack._parts.size()]
 		)
 	)
 	await shot("armazon_piernas")
@@ -308,10 +306,9 @@ func _empty_bay(stage: HangarStage) -> Vector2:
 ## Prueba en vivo de la armeria (`--menu-shot=armeria`, con `--real-profile`
 ## sobre la partida de verdad, sin guardar nada): la pantalla de mejoras de
 ## cerca (se sube una con el raton y luego todo lo que deje la zona, para
-## comprobar que lo que para es el tope y no el dinero), la tienda en el
-## tablero de piezas (comparar, comprar arrastrando al robot y comprar con dos
-## pulsaciones), el arbol de habilidades y la ficha del robot. Sigue con la
-## prueba del taller.
+## comprobar que lo que para es el tope y no el dinero), la tienda en la
+## computadora del taller (comparar y comprar con dos pulsaciones), el arbol
+## de habilidades y la ficha del robot. Sigue con la prueba del taller.
 func armory_test() -> void:
 	var profile := main._profile
 	var level := main._player_level()
@@ -369,12 +366,12 @@ func armory_test() -> void:
 	await _click(Vector2(stage.size.x * 0.55, stage.size.y * 0.9))
 	await get_tree().create_timer(0.5).timeout
 	print("ARMERIA tras pulsar fuera: abierto='%s'" % workshop.current_page())
-	# La pantalla de la tienda saca el tablero con la tienda delante.
+	# La pantalla del taller: la computadora, con el catalogo del brazo 1.
 	workshop._selected = "side0"
-	await _click(stage._terminal_rects["tienda"].get_center())
-	await get_tree().create_timer(0.6).timeout
+	await _click(stage._terminal_rects["taller"].get_center())
+	await get_tree().create_timer(0.7).timeout
 	await shot("tienda")
-	var rack := stage.parts_rack
+	var rack := stage.loadout.rack
 	var sold: Array[int] = []
 	for index in rack._parts.size():
 		var part: Dictionary = rack._parts[index]
@@ -387,19 +384,9 @@ func armory_test() -> void:
 		)
 	)
 	if not sold.is_empty():
-		var bought := str(rack._parts[sold[0]]["id"])
 		await _move(_rack_point(rack, sold[0]))
 		await get_tree().create_timer(0.3).timeout
 		await shot("tienda_comparar")
-		await _drag_at(_rack_point(rack, sold[0]), stage.slot_screen_point("torso"))
-		await get_tree().create_timer(0.6).timeout
-		print(
-			(
-				"ARMERIA comprada al arrastrar: %s (la tienes: %s, celdas %d)"
-				% [bought, bought in profile.owned, profile.gold]
-			)
-		)
-		await shot("tienda_arrastrada")
 	# Otra, con dos pulsaciones: la primera solo la deja armada.
 	var other := -1
 	for index in rack._parts.size():
@@ -462,66 +449,86 @@ func armory_test() -> void:
 	workshop_test(workshop)
 
 
-## Prueba en vivo del taller (`--menu-shot=taller`), con el raton: pulsar un
-## hueco del robot (sale el tablero), dejarlo vacio, comparar una pieza,
-## arrastrarla al enchufe del hueco, montar otra de un clic y quitarla con
-## otro, subir un arma con la tecla del lector, probarla en la diana y elegir
-## una cuna del banco.
+## Prueba en vivo del taller (`--menu-shot=taller`), con el raton: pulsar tu
+## robot (se acerca la computadora del taller), elegir casillas del plano,
+## quitar la pieza de una, montar otra, comprar una de la tienda con dos
+## pulsaciones, subir un arma con la tecla, pasar por las demas casillas,
+## cerrar con su tecla y probar el arma en la diana.
 func workshop_test(workshop: WorkshopScreen) -> void:
 	var stage := workshop._stage
-	var rack := stage.parts_rack
+	var screen := stage.loadout
+	var rack := screen.rack
 	var build := main._profile.build
 	await get_tree().create_timer(0.8).timeout
 	await shot("taller")
-	# Un clic en el arma del brazo 1: sale el tablero de ese hueco.
-	await _click(stage.slot_screen_point("side0"))
-	await get_tree().create_timer(0.15).timeout
-	await shot("taller_tablero_entrando")
+	# Un clic en tu robot acerca la computadora.
+	var robot := stage._world.position + stage._bounds.get_center() * stage._world.scale.x
+	await _click(stage.global_position + robot)
+	await get_tree().create_timer(0.12).timeout
+	await shot("taller_acercando")
 	await get_tree().create_timer(0.5).timeout
+	print("TALLER clic en el robot: abierto='%s'" % workshop.current_page())
+	await shot("taller_computadora")
+	# La casilla del brazo 1: a su lado, lo que le cabe.
+	await _click(_box_point(stage, "side0"))
+	await get_tree().create_timer(0.4).timeout
 	print(
-		(
-			"TALLER clic en el brazo 1: abierto='%s' hueco=%s piezas=%d"
-			% [workshop.current_page(), workshop._selected, rack._parts.size()]
-		)
+		"TALLER casilla del brazo 1: hueco=%s piezas=%d" % [workshop._selected, rack._parts.size()]
 	)
-	await shot("taller_tablero")
-	# Soltar su pieza en el tablero la quita.
-	await _drag_at(stage.slot_screen_point("side0"), rack.global_position + rack.size * 0.5)
-	await get_tree().create_timer(0.5).timeout
-	print("TALLER brazo 1 tras soltarlo en el tablero: '%s'" % Garage.get_slot(build, "side0"))
-	await shot("taller_brazo_vacio")
+	await shot("taller_casilla")
 	var owned: Array[int] = []
+	var mounted := -1
 	for index in rack._parts.size():
 		if bool(rack._parts[index]["owned"]):
 			owned.append(index)
-	print("TALLER piezas tuyas en el tablero: %d" % owned.size())
-	if owned.size() >= 2:
+		if bool(rack._parts[index].get("mounted", false)):
+			mounted = index
+	print("TALLER piezas tuyas en el catalogo: %d" % owned.size())
+	if mounted >= 0:
+		# Pulsar la que lleva la quita.
+		await _click(_rack_point(rack, mounted))
+		await get_tree().create_timer(0.3).timeout
+		print("TALLER brazo 1 tras pulsar la montada: '%s'" % Garage.get_slot(build, "side0"))
+		await shot("taller_brazo_vacio")
+	if not owned.is_empty():
+		var clicked := str(rack._parts[owned[0]]["id"])
 		await _move(_rack_point(rack, owned[0]))
 		await get_tree().create_timer(0.3).timeout
 		await shot("taller_comparar")
-		# Al enchufe del hueco vacio, en el propio robot.
-		await _drag_at(_rack_point(rack, owned[0]), stage.slot_screen_point("side0"))
-		await get_tree().create_timer(0.6).timeout
-		print("TALLER brazo 1 tras arrastrar: %s" % Garage.get_slot(build, "side0"))
-		await shot("taller_arrastrado")
-		# Un clic en otra la monta; un clic en la montada la quita.
-		var clicked := str(rack._parts[owned[1]]["id"])
-		await _click(_rack_point(rack, owned[1]))
+		await _click(_rack_point(rack, owned[0]))
 		await get_tree().create_timer(0.3).timeout
 		print("TALLER clic en %s -> brazo 1: %s" % [clicked, Garage.get_slot(build, "side0")])
-		await _click(_rack_point(rack, rack.index_of(clicked)))
-		await get_tree().create_timer(0.3).timeout
-		print("TALLER clic en la montada -> brazo 1: '%s'" % Garage.get_slot(build, "side0"))
-		await _click(_rack_point(rack, rack.index_of(clicked)))
-		await get_tree().create_timer(0.3).timeout
-	# Un arma a distancia: se sube con la tecla del lector y se prueba en la diana.
+		await shot("taller_montada")
+	# Una de la tienda: la primera pulsacion la arma, la segunda la compra.
+	var store := -1
+	for index in rack._parts.size():
+		var part: Dictionary = rack._parts[index]
+		if store < 0 and not bool(part["owned"]) and str(part["reason"]) == "":
+			store = index
+	if store >= 0:
+		var id := str(rack._parts[store]["id"])
+		await _click(_rack_point(rack, store))
+		await get_tree().create_timer(0.25).timeout
+		await shot("taller_tienda_armada")
+		await _click(_rack_point(rack, rack.index_of(id)))
+		await get_tree().create_timer(0.4).timeout
+		print(
+			(
+				"TALLER comprar %s con dos pulsaciones: la tienes=%s celdas=%d"
+				% [id, id in main._profile.owned, main._profile.gold]
+			)
+		)
+		await shot("taller_tienda_comprada")
+	# Un arma a distancia: se sube con la tecla del lector.
 	var gun := ""
 	for i in 4:
-		var mounted := main._catalog.get_item(Garage.get_slot(build, "side%d" % i))
-		if gun == "" and mounted != null and not mounted.has_tag(ItemDef.TAG_MELEE):
+		var def := main._catalog.get_item(Garage.get_slot(build, "side%d" % i))
+		if gun == "" and def != null and not def.has_tag(ItemDef.TAG_MELEE):
 			gun = "side%d" % i
-	workshop.pick(gun if gun != "" else "side1")
-	await get_tree().create_timer(0.5).timeout
+	if gun == "":
+		gun = "side1"
+	await _click(_box_point(stage, gun))
+	await get_tree().create_timer(0.4).timeout
 	var item := workshop._selected_item()
 	if item != null:
 		var before: Dictionary = main._profile.part(item.progress_id())
@@ -536,6 +543,23 @@ func workshop_test(workshop: WorkshopScreen) -> void:
 			)
 		)
 		await shot("taller_subir")
+	# Las demas casillas del plano.
+	for slot: String in ["module0", "charge", "drone", "assist", "chest", "torso", "legs"]:
+		await _click(_box_point(stage, slot))
+		await get_tree().create_timer(0.4).timeout
+		print(
+			"TALLER casilla %s: hueco=%s piezas=%d" % [slot, workshop._selected, rack._parts.size()]
+		)
+		await shot("taller_" + slot)
+	# La tecla de la esquina la devuelve a la pared.
+	await _click(_box_point(stage, gun))
+	await get_tree().create_timer(0.3).timeout
+	await _click(screen.global_position + screen._close_rect().get_center())
+	await get_tree().create_timer(0.6).timeout
+	print("TALLER tras la tecla de cerrar: abierto='%s'" % workshop.current_page())
+	await shot("taller_recogido")
+	# Y la diana prueba el arma de la ultima casilla tocada.
+	if item != null:
 		await _move(stage.target_rect().get_center())
 		await get_tree().create_timer(0.2).timeout
 		await shot("taller_diana")
@@ -543,27 +567,6 @@ func workshop_test(workshop: WorkshopScreen) -> void:
 		await get_tree().create_timer(0.14).timeout
 		await shot("taller_probar")
 		await get_tree().create_timer(0.8).timeout
-	# Una cuna del banco: el tablero pasa a ese hueco.
-	var cell: SlotCell = stage.rack["module0"]
-	await _move(cell.get_global_rect().get_center())
-	await get_tree().create_timer(0.25).timeout
-	await shot("taller_cuna")
-	await _click(cell.get_global_rect().get_center())
-	await get_tree().create_timer(0.5).timeout
-	print("TALLER clic en la cuna: hueco=%s piezas=%d" % [workshop._selected, rack._parts.size()])
-	await shot("taller_modulo")
-	for slot: String in ["charge", "drone", "assist", "chest", "torso"]:
-		workshop.pick(slot)
-		await get_tree().create_timer(0.4).timeout
-		await shot("taller_" + slot)
-	workshop.clear_slot("legs")
-	await get_tree().create_timer(0.4).timeout
-	await shot("taller_sin_piernas")
-	# Pulsar el hangar vacio recoge el tablero.
-	await _click(Vector2(stage.size.x * 0.33, stage.size.y * 0.4))
-	await get_tree().create_timer(0.5).timeout
-	print("TALLER tras pulsar el hangar vacio: abierto='%s'" % workshop.current_page())
-	await shot("taller_recogido")
 	get_tree().quit(0)
 
 
@@ -677,7 +680,12 @@ func _click(at: Vector2) -> void:
 	await get_tree().process_frame
 
 
-## Centro, en el juego, de una pieza del tablero.
+## Centro, en el juego, de la casilla de un hueco en la computadora del taller.
+func _box_point(stage: HangarStage, slot: String) -> Vector2:
+	return stage.loadout.global_position + stage.loadout.box_rect(slot).get_center()
+
+
+## Centro, en el juego, de una pieza del catalogo.
 func _rack_point(rack: PartsRack, index: int) -> Vector2:
 	return rack.global_position + rack.part_rect(index).get_center()
 
