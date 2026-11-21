@@ -22,7 +22,7 @@
           "difficulty": "EASY",
           "loadout": {
             "sides": 1,
-            "shift": 2
+            "shift": 1
           }
         },
         {
@@ -32,7 +32,7 @@
           "loadout": {
             "sides": 1,
             "modules": 1,
-            "shift": 2
+            "shift": 1
           }
         },
         {
@@ -73,7 +73,8 @@
             "repair_share": 0.2
           },
           "loadout": {
-            "sides": 3,
+            "sides": 2,
+            "tops": 1,
             "modules": 2
           }
         },
@@ -85,7 +86,8 @@
             "shield_uses": 1
           },
           "loadout": {
-            "sides": 3,
+            "sides": 2,
+            "tops": 1,
             "modules": 3
           }
         },
@@ -99,9 +101,10 @@
             "repair_share": 0.2
           },
           "loadout": {
-            "sides": 3,
+            "sides": 2,
             "tops": 1,
-            "modules": 3
+            "modules": 3,
+            "specials": 1
           }
         },
         {
@@ -114,9 +117,10 @@
             "repair_share": 0.15
           },
           "loadout": {
-            "sides": 4,
+            "sides": 2,
             "tops": 1,
-            "modules": 3
+            "modules": 4,
+            "specials": 1
           }
         },
         {
@@ -129,10 +133,10 @@
             "repair_share": 0.25
           },
           "loadout": {
-            "sides": 4,
+            "sides": 2,
             "tops": 1,
             "modules": 4,
-            "specials": 1
+            "specials": 2
           }
         }
       ],
@@ -140,7 +144,13 @@
         "enemy": "jefe_zona_1",
         "level": 3,
         "difficulty": "HARD",
-        "skills": 8
+        "skills": 8,
+        "loadout": {
+          "sides": 2,
+          "tops": 1,
+          "modules": 4,
+          "specials": 2
+        }
       },
       "reward_mult": 1.0,
       "stage": "desierto",

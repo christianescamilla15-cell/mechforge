@@ -24,8 +24,6 @@ extends Node2D
 ## huecos cuyas piezas llevan (para saber cuanto ocupan). Su fondo y su
 ## grosor salen de las piezas de cada robot (`_measure`).
 const LAYERS: Array[Dictionary] = [
-	{"name": "far", "kind": "arm", "side": -1.0, "dim": 0.62, "slots": ["side2", "side3"]},
-	{"name": "far_top", "kind": "top", "side": -1.0, "dim": 0.62, "slots": ["top1"]},
 	{"name": "far_leg", "kind": "leg", "side": -1.0, "dim": 0.65, "slots": ["legs"]},
 	{"name": "body", "kind": "body", "side": 0.0, "dim": 1.0, "slots": ["torso"]},
 	{"name": "chest", "kind": "chest", "side": 0.0, "dim": 1.0, "slots": ["chest"]},
@@ -508,9 +506,7 @@ func _measure(mech: MechView) -> void:
 		"chest": Vector2(0.0, chest),
 		"far_leg": Vector2(-(width - leg) * 0.5, leg),
 		"near_leg": Vector2((width - leg) * 0.5, leg),
-		"far": Vector2(-width * ARM_OUT, WEAPON_THICK),
 		"near": Vector2(width * ARM_OUT, WEAPON_THICK),
-		"far_top": Vector2(-width * TOP_OUT, WEAPON_THICK),
 		"near_top": Vector2(width * TOP_OUT, WEAPON_THICK),
 		"float": Vector2.ZERO,
 	}

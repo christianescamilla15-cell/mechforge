@@ -141,11 +141,10 @@ func test_el_ancho_del_tronco_y_el_de_las_piernas_se_adaptan_entre_si() -> void:
 	assert_eq(build.legs.id, "piernas_orugas")
 	stage.show_build(build, [] as Array[String])
 	assert_gt(table.body_width(), width, "sobre orugas el robot es mas ancho")
-	# Las armas van a los lados, a la misma distancia del eje.
+	# Las armas van del lado que se ve (OBS-033), a su distancia del eje.
 	var near := table._depths["near"]
-	var far := table._depths["far"]
 	assert_almost_eq(near.x, table.body_width() * TurntableMech.ARM_OUT, 0.01)
-	assert_almost_eq(far.x, -near.x, 0.01)
+	assert_false(table._depths.has("far"), "ya no hay armas del lado lejano")
 
 
 func test_el_cuerpo_gira_con_su_dibujo_de_frente() -> void:
@@ -179,9 +178,7 @@ func test_las_armas_se_abren_hacia_fuera_de_frente() -> void:
 	var body: Vector2 = table._materials["body"].get_shader_parameter("turn")
 	assert_almost_eq(body.x, 0.0, 0.001)
 	var near: Vector2 = table._materials["near"].get_shader_parameter("turn")
-	var far: Vector2 = table._materials["far"].get_shader_parameter("turn")
 	assert_almost_eq(absf(near.x), sin(TurntableMech.TOE_OUT), 0.001)
-	assert_almost_eq(near.x, -far.x, 0.001, "una hacia cada lado")
 	# De perfil no se abren.
 	stage.turn = 0.3
 	near = table._materials["near"].get_shader_parameter("turn")
@@ -209,7 +206,7 @@ func test_las_capas_del_giro_reparten_el_robot() -> void:
 		names.append(layer["name"])
 		assert_eq(table._mechs[layer["name"]].only_layer, layer["name"])
 	var expected: Array[String] = [
-		"far", "far_top", "far_leg", "body", "chest", "near_leg", "near_top", "near", "float"
+		"far_leg", "body", "chest", "near_leg", "near_top", "near", "float"
 	]
 	assert_eq(names, expected)
 	# El cuerpo y las dos piernas siempre ocupan algo; cada zona cabe en el lienzo.

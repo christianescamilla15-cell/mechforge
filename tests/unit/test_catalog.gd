@@ -26,8 +26,9 @@ func test_composicion_del_catalogo_real() -> void:
 	var catalog := Catalog.load_file(CATALOG_PATH)
 	assert_eq(catalog.by_type(ItemDef.Type.TORSO).size(), 6)
 	assert_eq(catalog.by_type(ItemDef.Type.LEGS).size(), 6)
-	assert_eq(catalog.by_type(ItemDef.Type.SIDE).size(), 51, "17 disenos de brazo x 3 municiones")
-	assert_eq(catalog.by_type(ItemDef.Type.TOP).size(), 27, "9 disenos de hombro x 3")
+	# Los rifles pasaron del brazo al hombro (OBS-033).
+	assert_eq(catalog.by_type(ItemDef.Type.SIDE).size(), 39, "13 disenos de brazo x 3 municiones")
+	assert_eq(catalog.by_type(ItemDef.Type.TOP).size(), 39, "13 disenos de hombro x 3")
 	assert_eq(catalog.by_type(ItemDef.Type.DRONE).size(), 18, "6 robots de soporte x 3")
 	assert_eq(catalog.by_type(ItemDef.Type.MODULE).size(), 10)
 

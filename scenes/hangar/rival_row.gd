@@ -33,9 +33,7 @@ const TEXT := Color("d8f4ff")
 const MECH_WIDTH := 190.0
 ## Piezas que cuentan para lo que ocupa un rival (el asistente, que flota
 ## arriba y detras, no).
-const BODY_SLOTS: Array[String] = [
-	"top0", "top1", "side0", "side1", "side2", "side3", "chest", "torso", "legs"
-]
+const BODY_SLOTS: Array[String] = ["top0", "side0", "side1", "chest", "torso", "legs"]
 const ENTER_SECONDS := 0.36
 const ENTER_STAGGER := 0.1
 const BEATEN_HOLD := 0.35

@@ -8,9 +8,7 @@ extends Control
 const COLOR_SELECTED := Color("ffe27a")
 const COLOR_TARGET := Color("ff7d6b")
 ## Huecos que tienen sitio en el dibujo, del mas pequeno al mas grande.
-const TOUCHABLE: Array[String] = [
-	"top0", "top1", "side0", "side1", "side2", "side3", "chest", "assist", "torso", "legs"
-]
+const TOUCHABLE: Array[String] = ["top0", "side0", "side1", "chest", "assist", "torso", "legs"]
 ## Suelo y aire de arriba, como parte del alto (con topes en pixeles).
 const FLOOR_SHARE := 0.15
 const TOP_SHARE := 0.05

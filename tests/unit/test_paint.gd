@@ -42,7 +42,7 @@ func _profile() -> PlayerProfile:
 
 
 func test_solo_se_pinta_lo_que_se_ve_en_el_robot() -> void:
-	for slot: String in ["torso", "legs", "chest", "assist", "side0", "side3", "top1"]:
+	for slot: String in ["torso", "legs", "chest", "assist", "side0", "side1", "top0"]:
 		assert_true(Garage.can_paint(slot), slot)
 	for slot: String in ["module0", "charge", "teleport", "hook", "drone", "drone_low", ""]:
 		assert_false(Garage.can_paint(slot), slot)
@@ -130,8 +130,8 @@ func test_el_catalogo_ofrece_los_tres_colores_y_marca_el_que_lleva() -> void:
 	assert_eq(_brief.rack(profile, "side0")["paints"], paints)
 	# Lo que no se ve en el robot, o un hueco sin pieza, no se pinta.
 	assert_eq(_brief.paints(profile, "module0"), [] as Array[Dictionary])
-	Garage.set_slot(profile.build, "side3", "")
-	assert_eq(_brief.paints(profile, "side3"), [] as Array[Dictionary])
+	Garage.set_slot(profile.build, "side1", "")
+	assert_eq(_brief.paints(profile, "side1"), [] as Array[Dictionary])
 	# El asistente, sin pintar, lleva el color del torso.
 	Garage.set_paint(profile.build, "torso", "ENERGY")
 	assert_eq(_brief.paint_shown(profile, "assist"), "ENERGY")

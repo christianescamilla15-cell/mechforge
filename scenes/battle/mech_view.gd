@@ -31,13 +31,10 @@ const GAIT_SPEED := 10.0
 const FAR_LEG_OFFSET := Vector2(-14.0, -2.0)
 const FAR_LEG_DIM := 0.65
 ## Donde va cada arma respecto a la que se dibujo sobre el robot, en
-## unidades de MechView: las dos primeras laterales, delante del torso; las
-## otras dos, detras y mas oscuras (el brazo del lado lejano). Igual con
-## las superiores.
-const SIDE_MOUNTS: Array[Vector2] = [
-	Vector2(0.0, 0.0), Vector2(8.0, 34.0), Vector2(-24.0, -8.0), Vector2(-18.0, 26.0)
-]
-const TOP_MOUNTS: Array[Vector2] = [Vector2(0.0, 0.0), Vector2(-48.0, 10.0)]
+## unidades de MechView. Desde el 2026-11-21 (OBS-033) son dos de brazo y una
+## de hombro, todas del lado que se ve, delante del torso.
+const SIDE_MOUNTS: Array[Vector2] = [Vector2(0.0, 0.0), Vector2(8.0, 34.0)]
+const TOP_MOUNTS: Array[Vector2] = [Vector2(0.0, 0.0)]
 ## A partir de que indice las armas van del lado lejano.
 const FAR_SIDE_FROM := 2
 ## Eje del hombro de un arma de brazo respecto a la cintura del robot (el
@@ -79,7 +76,8 @@ var facing: int = 1
 ## hueco sin que el mech se quede flotando.
 var ghost_slots: Array[String] = []
 ## Solo se dibuja esta capa del robot ("" = todas), para el giro del hangar
-## (TurntableMech): "far" y "far_top" (armas de brazo y de hombro del lado
+## (TurntableMech; desde OBS-033 ya no pide las del lado lejano): "far" y
+## "far_top" (armas de brazo y de hombro del lado
 ## lejano), "far_leg", "body" (torso y piernas de una pieza), "chest" (canon
 ## de pecho), "near_leg", "near_top" y "near" (armas del lado cercano) y
 ## "float" (asistente o dron). Una capa suelta no se apaga por estar detras:

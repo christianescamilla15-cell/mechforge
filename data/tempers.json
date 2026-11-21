@@ -9,7 +9,7 @@
     {
       "id": "defensivo",
       "weights": {"guard": 1.5, "caution": 1.2, "repair_hold": 0.3},
-      "likes": {"shield": 0.05, "cool": 0.015, "repair": 0.03}
+      "likes": {"shield": 0.05, "cool": 0.025, "repair": 0.03}
     },
     {
       "id": "desgaste",
@@ -18,8 +18,8 @@
     },
     {
       "id": "esquivo",
-      "weights": {"evasion": 2.5},
-      "likes": {"walk": 0.05, "teleport": 0.06}
+      "weights": {"evasion": 1.6},
+      "likes": {"walk": 0.03, "teleport": 0.06}
     }
   ]
 }

@@ -22,13 +22,13 @@ func _initialize() -> void:
 	var library := BuildLibrary.load_file("res://data/builds.json")
 	var loadouts: Array[Array] = MovesShowcase.LOADOUTS.duplicate()
 	# El ultimo, solo con las armas de delante, para verlas sin nada detras.
-	loadouts.append(["Solo las de delante", ["medio_laser_cin", "largo_canon_cin"], []])
+	loadouts.append(["Solo los brazos", ["medio_laser_cin", "corto_canon_cin"], []])
 	if args.has("assist"):
 		loadouts.clear()
 		for form in 6:
 			var name := "Asistente: %s" % Txt.t("assist_form_%d" % form)
 			var tops := ["bateria_laser_cin", "artilleria_canon_cin"]
-			loadouts.append([name, ["medio_laser_cin", "largo_canon_cin"], tops, form])
+			loadouts.append([name, ["medio_laser_cin", "corto_canon_cin"], tops, form])
 	# El asistente sube por encima del mech: hace falta mas alto.
 	var cell_size := Vector2(CELL.x, 720.0) if args.has("assist") else CELL
 	var rows := ceili(loadouts.size() / float(COLUMNS))

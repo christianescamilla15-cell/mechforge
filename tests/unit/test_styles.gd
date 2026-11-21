@@ -81,7 +81,7 @@ func test_cada_tipo_empieza_con_un_cuerpo_y_un_arma_distintos() -> void:
 		for key: String in ["torso", "legs"]:
 			assert_false(seen.has(spec[key]), "%s repite %s" % [id, spec[key]])
 			seen[spec[key]] = true
-		var weapon: String = spec["sides"][0]
+		var weapon: String = (spec.get("sides", []) + spec.get("tops", []))[0]
 		assert_false(seen.has(_catalog.get_item(weapon).form), "%s repite forma de arma" % id)
 		seen[_catalog.get_item(weapon).form] = true
 
@@ -94,17 +94,17 @@ func test_el_tipo_dice_que_armas_caben_en_los_brazos() -> void:
 	assert_eq(_styles.why_cant_mount("asalto", blade), "")
 	assert_eq(_styles.why_cant_mount("asalto", shotgun), "")
 	assert_ne(_styles.why_cant_mount("asalto", gun), "")
-	assert_ne(_styles.why_cant_mount("asalto", rifle), "")
 	assert_eq(_styles.why_cant_mount("guardian", gun), "")
 	assert_eq(_styles.why_cant_mount("guardian", shotgun), "")
 	assert_ne(_styles.why_cant_mount("guardian", blade), "")
-	assert_ne(_styles.why_cant_mount("guardian", rifle), "")
-	assert_eq(_styles.why_cant_mount("tirador", rifle), "")
 	assert_eq(_styles.why_cant_mount("tirador", gun), "")
 	assert_ne(_styles.why_cant_mount("tirador", shotgun), "")
 	assert_ne(_styles.why_cant_mount("tirador", blade), "")
-	# Arriba, el cuerpo y los modulos: lo que sea, en cualquier tipo.
+	# Arriba (el hombro, con el rifle desde OBS-033), el cuerpo y los modulos:
+	# lo que sea, en cualquier tipo.
+	assert_eq(rifle.type, ItemDef.Type.TOP)
 	for id in _styles.ids():
+		assert_eq(_styles.why_cant_mount(id, rifle), "")
 		assert_eq(_styles.why_cant_mount(id, _catalog.get_item("bateria_balas_cin")), "")
 		assert_eq(_styles.why_cant_mount(id, _catalog.get_item("torso_baluarte")), "")
 		assert_eq(_styles.why_cant_mount(id, _catalog.get_item("mod_blindaje")), "")
@@ -114,9 +114,9 @@ func test_el_tipo_dice_que_armas_caben_en_los_brazos() -> void:
 
 func test_el_taller_no_deja_montar_lo_que_el_tipo_no_lleva() -> void:
 	var profile := _run("asalto")
-	profile.owned.append("largo_balas_cin")
+	profile.owned.append("medio_balas_cin")
 	profile.owned.append("corto_balas_cin")
-	var why := Garage.equip(profile, _catalog, "side1", "largo_balas_cin", _styles)
+	var why := Garage.equip(profile, _catalog, "side1", "medio_balas_cin", _styles)
 	assert_string_contains(why, "asalto")
 	assert_eq(Garage.get_slot(profile.build, "side1"), "")
 	assert_eq(Garage.equip(profile, _catalog, "side1", "corto_balas_cin", _styles), "")
@@ -133,7 +133,7 @@ func test_el_tablero_solo_cuelga_lo_que_le_cabe_a_ese_robot() -> void:
 		if not (part["item"] as ItemDef).form in forms:
 			forms.append((part["item"] as ItemDef).form)
 	forms.sort()
-	assert_eq(forms, ["corto", "medio"] as Array[String], "ni hojas ni armas largas")
+	assert_eq(forms, ["corto", "medio"] as Array[String], "ni hojas ni rifles en los brazos")
 	# Arriba ve lo de todos.
 	var tops := _brief.rack(profile, "top0")
 	assert_gt((tops["parts"] as Array).size(), 0)
@@ -164,13 +164,14 @@ func test_el_tirador_dispara_a_quemarropa_y_los_demas_no() -> void:
 		var engine := BattleEngine.new(_rules, pair[0], plain, 1, 0)
 		engine.mechs[0].position = 4
 		engine.mechs[1].position = 5
-		assert_eq(engine.why_cant_use(engine.mechs[0], engine.mechs[1], "side0"), pair[1])
+		# Su rifle va en el hombro (OBS-033).
+		assert_eq(engine.why_cant_use(engine.mechs[0], engine.mechs[1], "top0"), pair[1])
 		# De lejos llega igual que siempre.
 		engine.mechs[1].position = 9
-		assert_eq(engine.why_cant_use(engine.mechs[0], engine.mechs[1], "side0"), "")
+		assert_eq(engine.why_cant_use(engine.mechs[0], engine.mechs[1], "top0"), "")
 	# El arma del catalogo no se toca: solo la que lleva ese mech en combate.
-	assert_eq(with_it.sides[0].range_min, 3)
-	assert_eq(BattleMech.new(with_it, _rules).slots["side0"].def.range_min, 1)
+	assert_eq(with_it.tops[0].range_min, 3)
+	assert_eq(BattleMech.new(with_it, _rules).slots["top0"].def.range_min, 1)
 
 
 func test_lo_del_tipo_se_suma_a_las_habilidades_aprendidas() -> void:
@@ -259,8 +260,8 @@ func test_sin_celdas_no_se_compra_el_asistente() -> void:
 
 func test_el_tablero_vende_el_asistente_y_cierra_sus_armas_hasta_tenerlo() -> void:
 	var profile := _run("asalto", 9000)
-	profile.xp = _progression.levels[2]
-	assert_eq(_brief.lock_reason(profile, "assist"), "", "en el nivel 3 se puede comprar")
+	profile.xp = _progression.levels[4]
+	assert_eq(_brief.lock_reason(profile, "assist"), "", "en el nivel 5 se puede comprar")
 	assert_eq(_brief.lock_reason(profile, "drone"), Txt.t("slot_needs_assist"))
 	var state := _brief.rack(profile, "assist")
 	assert_eq((state["parts"] as Array).size(), 4)
@@ -274,7 +275,7 @@ func test_el_tablero_vende_el_asistente_y_cierra_sus_armas_hasta_tenerlo() -> vo
 		assert_true(part["owned"], "ya son suyos: no se venden otra vez")
 
 
-func test_antes_del_nivel_3_el_asistente_se_ve_pero_no_se_compra() -> void:
+func test_antes_del_nivel_5_el_asistente_se_ve_pero_no_se_compra() -> void:
 	var profile := _run("asalto", 9000)
 	assert_ne(_brief.lock_reason(profile, "assist"), "")
 	assert_ne(_brief.lock_reason(profile, "drone"), "")
@@ -380,7 +381,7 @@ func test_el_arma_del_rival_no_es_siempre_la_misma() -> void:
 			fight["enemy"], _catalog, _rules, T.COMMON, 0, null, {}, fight["loadout"]
 		)
 		seen[rival.sides[0].form] = true
-	assert_gt(seen.size(), 2, "hojas, cortas, medias, largas...")
+	assert_gt(seen.size(), 2, "hojas, cortas, medias...")
 
 
 func test_un_jugador_armado_entero_pelea_contra_rivales_enteros() -> void:

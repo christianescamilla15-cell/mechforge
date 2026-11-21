@@ -7,7 +7,7 @@ extends RefCounted
 ## La moneda se llama `gold` en el codigo y en el guardado; en pantalla se
 ## muestra con el nombre de la tabla de textos (GDD 8).
 
-const SCHEMA_VERSION := 9
+const SCHEMA_VERSION := 10
 
 var gold: int = 0
 ## Experiencia total; de ella sale el nivel del jugador (Progression).
@@ -353,9 +353,10 @@ func to_dict() -> Dictionary:
 ## Migraciones: la version 1 no tenia campana ni mech elegido, la 2 no tenia
 ## piezas, la 3 no tenia mech armado, la 4 no tenia experiencia, hasta la 6
 ## habia un solo mech ("build"), que pasa a ser el primer robot, hasta la 7
-## no habia campana en marcha ni protecciones, y hasta la 8 no habia tipos de
-## robot (_from_before_styles); los campos nuevos empiezan vacios y lo demas
-## se conserva. Sin robots, el menu pide elegir uno.
+## no habia campana en marcha ni protecciones, hasta la 8 no habia tipos de
+## robot (_from_before_styles) y hasta la 9 habia cuatro armas de brazo y dos
+## de hombro (_to_three_weapons); los campos nuevos empiezan vacios y lo
+## demas se conserva. Sin robots, el menu pide elegir uno.
 static func from_dict(data: Dictionary) -> PlayerProfile:
 	var profile := PlayerProfile.new()
 	profile.gold = maxi(0, int(data.get("gold", 0)))
@@ -415,7 +416,53 @@ static func from_dict(data: Dictionary) -> PlayerProfile:
 			profile.shop_levels[track] = maxi(0, int(levels[track]))
 	if int(data.get("schema_version", 1)) < 9:
 		profile._from_before_styles()
+	if int(data.get("schema_version", 1)) < 10:
+		profile._to_three_weapons()
 	return profile
+
+
+## Hasta la version 9 habia cuatro armas de brazo y dos de hombro, y los
+## rifles ("largo_...") iban en el brazo (OBS-033). Cada robot se queda con
+## sus dos primeras armas de brazo y su primera de hombro; si llevaba un
+## rifle y el hombro estaba libre, el rifle pasa al hombro. Lo que no cabe
+## sigue siendo suyo: solo se desmonta.
+func _to_three_weapons() -> void:
+	for robot: Dictionary in mechs:
+		var build: Dictionary = robot["build"]
+		var before := {
+			"side0": Garage.get_slot(build, "side0"),
+			"side1": Garage.get_slot(build, "side1"),
+			"top0": Garage.get_slot(build, "top0"),
+		}
+		var sides: Array = []
+		var rifles: Array = []
+		for id: Variant in build.get("sides", []):
+			var text := str(id) if id != null else ""
+			if text.begins_with("largo_"):
+				rifles.append(text)
+			elif text != "" and sides.size() < MechBuild.SIDE_SLOTS:
+				sides.append(text)
+		var tops: Array = []
+		for id: Variant in build.get("tops", []):
+			if id != null and str(id) != "" and tops.size() < MechBuild.TOP_SLOTS:
+				tops.append(str(id))
+		if tops.is_empty() and not rifles.is_empty():
+			tops.append(rifles[0])
+		for key: String in ["sides", "tops"]:
+			var list: Array = sides if key == "sides" else tops
+			if list.is_empty():
+				build.erase(key)
+			else:
+				build[key] = list
+		# La pintura se queda donde sigue la misma arma; la de los huecos que
+		# ya no existen, o que cambiaron de arma, se va.
+		if build.get("paint") is Dictionary:
+			var paint: Dictionary = build["paint"]
+			for slot: String in ["side0", "side1", "side2", "side3", "top0", "top1"]:
+				if not before.has(slot) or Garage.get_slot(build, slot) != before[slot]:
+					paint.erase(slot)
+			if paint.is_empty():
+				build.erase("paint")
 
 
 ## Hasta la version 8 se empezaba con un robot ya armado y con el asistente

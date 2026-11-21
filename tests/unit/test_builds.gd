@@ -34,7 +34,8 @@ func test_los_mechs_de_ejemplo_son_validos_y_caben_en_1000_kg() -> void:
 		var build := _library.make(id, _catalog, _rules, T.DIVINE, 40)
 		assert_eq(_catalog.errors, [] as Array[String], "%s usa piezas que existen" % id)
 		assert_eq(build.validate(_rules), [] as Array[String], "%s es valido" % id)
-		assert_between(build.total_weight(), 900, 1000, "%s aprovecha el peso sin sobrecarga" % id)
+		# Con tres armas (OBS-033) pesan menos que con seis: queda sitio libre.
+		assert_between(build.total_weight(), 820, 1000, "%s aprovecha el peso sin sobrecarga" % id)
 
 
 func test_el_mech_de_cada_elemento_usa_armas_de_su_elemento() -> void:

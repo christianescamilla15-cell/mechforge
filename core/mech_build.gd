@@ -2,8 +2,11 @@ class_name MechBuild
 extends Resource
 ## Un mech armado: que pieza va en cada hueco (GDD 4).
 
-const SIDE_SLOTS := 4
-const TOP_SLOTS := 2
+## Tres armas (decision del usuario, 2026-11-21, OBS-033): dos de brazo, de
+## alcance corto o medio, y una de hombro, de alcance largo, las tres del
+## lado que se ve. Hasta entonces eran cuatro de brazo y dos de hombro.
+const SIDE_SLOTS := 2
+const TOP_SLOTS := 1
 const MODULE_SLOTS := 8
 ## Dos modulos que dan la misma resistencia: se nombran los dos.
 const RESISTANCE_CLASH := "dos módulos dan la misma resistencia (%s y %s): solo va uno de cada tipo"

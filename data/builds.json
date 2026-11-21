@@ -13,9 +13,7 @@
         "legs": "piernas_zancos",
         "sides": [
           "hoja_balas_cin",
-          "corto_balas_cin",
-          "medio_balas_cin",
-          "largo_balas_cin"
+          "corto_balas_cin"
         ],
         "tops": [
           "bateria_balas_cin"
@@ -44,9 +42,7 @@
         "legs": "piernas_zancos",
         "sides": [
           "hoja_blaster_cin",
-          "corto_canon_cin",
-          "medio_canon_cin",
-          "largo_canon_cin"
+          "corto_canon_cin"
         ],
         "tops": [
           "bateria_canon_cin"
@@ -75,9 +71,7 @@
         "legs": "piernas_zancos",
         "sides": [
           "hoja_blaster_cin",
-          "corto_blaster_cin",
-          "medio_blaster_cin",
-          "largo_blaster_cin"
+          "corto_blaster_cin"
         ],
         "tops": [
           "bateria_blaster_cin"
@@ -106,9 +100,7 @@
         "legs": "piernas_zancos",
         "sides": [
           "hoja_laser_cin",
-          "corto_laser_cin",
-          "medio_laser_cin",
-          "largo_laser_cin"
+          "corto_laser_cin"
         ],
         "tops": [
           "bateria_laser_cin"
@@ -137,10 +129,8 @@
         "torso": "torso_fragua",
         "legs": "piernas_pisabrasas",
         "sides": [
-          "hoja_balas_ter",
           "corto_balas_ter",
-          "medio_balas_ter",
-          "largo_balas_ter"
+          "medio_balas_ter"
         ],
         "tops": [
           "bateria_balas_ter"
@@ -169,10 +159,8 @@
         "torso": "torso_fragua",
         "legs": "piernas_pisabrasas",
         "sides": [
-          "hoja_blaster_ter",
           "corto_canon_ter",
-          "medio_canon_ter",
-          "largo_canon_ter"
+          "medio_canon_ter"
         ],
         "tops": [
           "bateria_canon_ter"
@@ -201,10 +189,8 @@
         "torso": "torso_fragua",
         "legs": "piernas_pisabrasas",
         "sides": [
-          "hoja_blaster_ter",
           "corto_blaster_ter",
-          "medio_blaster_ter",
-          "largo_blaster_ter"
+          "medio_blaster_ter"
         ],
         "tops": [
           "bateria_blaster_ter"
@@ -233,10 +219,8 @@
         "torso": "torso_fragua",
         "legs": "piernas_pisabrasas",
         "sides": [
-          "hoja_laser_ter",
           "corto_laser_ter",
-          "medio_laser_ter",
-          "largo_laser_ter"
+          "medio_laser_ter"
         ],
         "tops": [
           "bateria_laser_ter"
@@ -266,10 +250,8 @@
         "torso": "torso_dinamo",
         "legs": "piernas_zancas_arco",
         "sides": [
-          "hoja_balas_ion",
-          "corto_balas_ion",
           "medio_balas_ion",
-          "largo_balas_ion"
+          "corto_balas_ion"
         ],
         "tops": [
           "bateria_balas_ion"
@@ -299,10 +281,8 @@
         "torso": "torso_dinamo",
         "legs": "piernas_zancas_arco",
         "sides": [
-          "hoja_blaster_ion",
-          "corto_canon_ion",
           "medio_canon_ion",
-          "largo_canon_ion"
+          "corto_canon_ion"
         ],
         "tops": [
           "bateria_canon_ion"
@@ -332,10 +312,8 @@
         "torso": "torso_dinamo",
         "legs": "piernas_zancas_arco",
         "sides": [
-          "hoja_blaster_ion",
-          "corto_blaster_ion",
           "medio_blaster_ion",
-          "largo_blaster_ion"
+          "corto_blaster_ion"
         ],
         "tops": [
           "bateria_blaster_ion"
@@ -365,10 +343,8 @@
         "torso": "torso_dinamo",
         "legs": "piernas_zancas_arco",
         "sides": [
-          "hoja_laser_ion",
-          "corto_laser_ion",
           "medio_laser_ion",
-          "largo_laser_ion"
+          "corto_laser_ion"
         ],
         "tops": [
           "bateria_laser_ion"
@@ -400,13 +376,10 @@
         "legs": "piernas_zancos",
         "sides": [
           "corto_balas_cin",
-          "corto_balas_ter",
-          "medio_balas_ion",
-          "largo_balas_cin"
+          "medio_balas_ion"
         ],
         "tops": [
-          "ancla_canon_ter",
-          "ancla_canon_ion"
+          "ancla_canon_ter"
         ],
         "assist": "asistente_blindaje",
         "drone": "artillero_balas_cin",
@@ -432,13 +405,10 @@
         "legs": "piernas_zancos",
         "sides": [
           "corto_canon_cin",
-          "corto_canon_ter",
-          "medio_canon_ion",
-          "largo_canon_cin"
+          "medio_canon_ion"
         ],
         "tops": [
-          "ancla_canon_ter",
-          "ancla_canon_ion"
+          "ancla_canon_ter"
         ],
         "assist": "asistente_blindaje",
         "drone": "artillero_canon_cin",
@@ -464,13 +434,10 @@
         "legs": "piernas_zancos",
         "sides": [
           "corto_blaster_cin",
-          "corto_blaster_ter",
-          "medio_blaster_ion",
-          "largo_blaster_cin"
+          "medio_blaster_ion"
         ],
         "tops": [
-          "ancla_canon_ter",
-          "ancla_canon_ion"
+          "ancla_canon_ter"
         ],
         "assist": "asistente_blindaje",
         "drone": "artillero_blaster_cin",
@@ -496,13 +463,10 @@
         "legs": "piernas_zancos",
         "sides": [
           "corto_laser_cin",
-          "corto_laser_ter",
-          "medio_laser_ion",
-          "largo_laser_cin"
+          "medio_laser_ion"
         ],
         "tops": [
-          "ancla_laser_ter",
-          "ancla_laser_ion"
+          "ancla_laser_ter"
         ],
         "assist": "asistente_blindaje",
         "drone": "artillero_laser_cin",
@@ -528,10 +492,8 @@
         "torso": "torso_baluarte",
         "legs": "piernas_zancos",
         "sides": [
-          "hoja_balas_cin",
           "corto_balas_cin",
-          "medio_balas_cin",
-          "largo_balas_cin"
+          "medio_balas_cin"
         ],
         "tops": [
           "bateria_balas_cin"
@@ -560,10 +522,8 @@
         "torso": "torso_baluarte",
         "legs": "piernas_zancos",
         "sides": [
-          "hoja_balas_cin",
           "corto_balas_cin",
-          "medio_balas_cin",
-          "largo_balas_cin"
+          "medio_balas_cin"
         ],
         "tops": [
           "bateria_balas_cin"
@@ -592,10 +552,8 @@
         "torso": "torso_dinamo",
         "legs": "piernas_zancas_arco",
         "sides": [
-          "hoja_blaster_ion",
           "corto_canon_ion",
-          "medio_canon_ion",
-          "largo_canon_ion"
+          "medio_canon_ion"
         ],
         "tops": [
           "bateria_canon_ion"
@@ -626,10 +584,8 @@
         "torso": "torso_fragua",
         "legs": "piernas_pisabrasas",
         "sides": [
-          "hoja_blaster_ter",
           "corto_canon_ter",
-          "medio_canon_ter",
-          "largo_canon_ter"
+          "medio_canon_ter"
         ],
         "tops": [
           "bateria_canon_ter"
@@ -660,13 +616,10 @@
         "legs": "piernas_zancos",
         "sides": [
           "corto_blaster_cin",
-          "corto_blaster_ter",
-          "medio_blaster_ion",
-          "largo_blaster_cin"
+          "medio_blaster_ion"
         ],
         "tops": [
-          "ancla_canon_ter",
-          "ancla_canon_ion"
+          "ancla_canon_ter"
         ],
         "assist": "asistente_blindaje",
         "drone": "artillero_blaster_cin",
@@ -692,10 +645,8 @@
         "torso": "torso_fragua",
         "legs": "piernas_pisabrasas",
         "sides": [
-          "hoja_blaster_ter",
           "corto_blaster_ter",
-          "medio_blaster_ter",
-          "largo_blaster_ter"
+          "medio_blaster_ter"
         ],
         "tops": [
           "bateria_blaster_ter"
@@ -725,10 +676,8 @@
         "torso": "torso_dinamo",
         "legs": "piernas_zancas_arco",
         "sides": [
-          "hoja_laser_ion",
           "corto_laser_ion",
-          "medio_laser_ion",
-          "largo_laser_ion"
+          "medio_laser_ion"
         ],
         "tops": [
           "bateria_laser_ion"
@@ -759,10 +708,8 @@
         "torso": "torso_fragua",
         "legs": "piernas_pisabrasas",
         "sides": [
-          "hoja_laser_ter",
           "corto_laser_ter",
-          "medio_laser_ter",
-          "largo_laser_ter"
+          "medio_laser_ter"
         ],
         "tops": [
           "bateria_laser_ter"
@@ -792,10 +739,8 @@
         "torso": "torso_baluarte",
         "legs": "piernas_zancos",
         "sides": [
-          "hoja_laser_cin",
           "corto_laser_cin",
-          "medio_laser_cin",
-          "largo_laser_cin"
+          "medio_laser_cin"
         ],
         "tops": [
           "bateria_laser_cin"
@@ -825,13 +770,10 @@
         "legs": "piernas_zancos",
         "sides": [
           "corto_laser_cin",
-          "corto_laser_ter",
-          "medio_laser_ion",
-          "largo_laser_cin"
+          "medio_laser_ion"
         ],
         "tops": [
-          "ancla_laser_ter",
-          "ancla_laser_ion"
+          "ancla_laser_ter"
         ],
         "assist": "asistente_blindaje",
         "drone": "artillero_laser_cin",

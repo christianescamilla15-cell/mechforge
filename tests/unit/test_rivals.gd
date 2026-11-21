@@ -200,7 +200,8 @@ func test_el_primer_rival_de_la_campana_sale_como_tu_con_una_sola_arma() -> void
 		var total: int = gear["sides"] + gear["tops"] + gear["modules"]
 		assert_gte(total, before, "combate %d" % (fight + 1))
 		before = total
-	assert_gte(_gear(9)["sides"], 4, "el decimo ya va con sus cuatro armas")
+	assert_eq(_gear(9)["sides"], 2, "el decimo ya va con sus dos armas de brazo")
+	assert_eq(_gear(9)["tops"], 1, "y la de hombro")
 	# Las demas ligas no cambian: se llega a ellas con el robot armado.
 	for fight in _campaign.fights_in(1):
 		assert_false(_campaign.fight_at(1, fight).has("loadout"))

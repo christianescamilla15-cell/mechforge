@@ -6,7 +6,7 @@ extends RefCounted
 enum Type { WALK, STOMP, WEAPON, COOL, CHARGE, TELEPORT, HOOK, SHIELD, REPAIR, DARK_MATTER }
 
 var type: Type
-## Hueco del arma para WEAPON ("side0", "top1"...).
+## Hueco del arma para WEAPON ("side0", "side1", "top0"...).
 var slot: String = ""
 ## Casilla destino para WALK y TELEPORT.
 var position: int = -1

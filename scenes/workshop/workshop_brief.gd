@@ -689,6 +689,9 @@ static func slot_title(slot: String) -> String:
 	var base := slot.rstrip("0123456789")
 	var digits := slot.trim_prefix(base)
 	var number := " %d" % (int(digits) + 1) if digits != "" else ""
+	# Un solo hueco de hombro (OBS-033): sin numero.
+	if base == "top" and MechBuild.TOP_SLOTS == 1:
+		number = ""
 	return Txt.t("slot_" + base) + number
 
 

@@ -56,7 +56,7 @@ var immobilized: bool = false
 var stunned: bool = false
 ## Bonificaciones en vigor (GDD 2.8): {"kind", "amount", "turns"}.
 var buffs: Array[Dictionary] = []
-## Huecos que actuan en combate: "legs", "side0".."side3", "top0", "top1",
+## Huecos que actuan en combate: "legs", "side0", "side1", "top0",
 ## "chest", "drone", "charge", "teleport", "hook".
 var slots: Dictionary[String, Slot] = {}
 
@@ -88,9 +88,11 @@ func _init(p_build: MechBuild = null, rules: RulesConfig = null, p_position: int
 	_add_slot("teleport", build.teleport)
 	_add_slot("hook", build.hook)
 	if build.skills != null and build.skills.point_blank > 0:
-		# A quemarropa: sus armas de brazo llegan desde la casilla de al lado.
+		# A quemarropa: sus armas de brazo y su rifle de hombro llegan desde
+		# la casilla de al lado.
 		for key: String in slots:
-			if key.begins_with("side") and slots[key].def.range_min > 1:
+			var weapon := key.begins_with("side") or key.begins_with("top")
+			if weapon and slots[key].def.range_min > 1:
 				slots[key].def = slots[key].def.duplicate()
 				slots[key].def.range_min = 1
 	if build.skills != null:

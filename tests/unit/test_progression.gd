@@ -35,13 +35,14 @@ func test_la_experiencia_sube_el_nivel() -> void:
 	assert_eq(_progression.next_level_xp(_progression.levels[-1]), -1, "nivel maximo")
 
 
-func test_el_soporte_se_abre_en_el_3_y_el_pecho_en_el_10() -> void:
-	assert_eq(_progression.unlock_level("drone"), 3)
+## El asistente, en el nivel 5 (OBS-033; era el 3).
+func test_el_soporte_se_abre_en_el_5_y_el_pecho_en_el_10() -> void:
+	assert_eq(_progression.unlock_level("drone"), 5)
 	assert_eq(_progression.unlock_level("chest"), 10)
-	assert_eq(_progression.unlock_level("side0"), 1, "las seis armas desde el principio")
-	assert_eq(_progression.unlock_level("top1"), 1)
-	assert_false(_progression.is_unlocked("drone", 2))
-	assert_true(_progression.is_unlocked("drone", 3))
+	assert_eq(_progression.unlock_level("side0"), 1, "las tres armas desde el principio")
+	assert_eq(_progression.unlock_level("top0"), 1)
+	assert_false(_progression.is_unlocked("drone", 4))
+	assert_true(_progression.is_unlocked("drone", 5))
 	assert_false(_progression.is_unlocked("chest", 9))
 	assert_true(_progression.is_unlocked("chest", 10))
 
@@ -52,8 +53,8 @@ func test_un_hueco_cerrado_no_pelea() -> void:
 	var build := _catalog.make_build(items, _rules, ItemDef.Tier.RARE, 0)
 	assert_not_null(build.chest)
 	assert_not_null(build.drone)
-	_progression.apply_locks(build, 2)
-	assert_null(build.drone, "sin soporte antes del nivel 3")
+	_progression.apply_locks(build, 4)
+	assert_null(build.drone, "sin soporte antes del nivel 5")
 	assert_null(build.chest)
 	var later := _catalog.make_build(items, _rules, ItemDef.Tier.RARE, 0)
 	_progression.apply_locks(later, 10)

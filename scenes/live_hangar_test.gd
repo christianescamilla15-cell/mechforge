@@ -105,13 +105,13 @@ func observations_test() -> void:
 	await get_tree().create_timer(0.8).timeout
 	hangar.open_parts()
 	await get_tree().create_timer(0.7).timeout
-	for slot: String in ["side1", "side3", "top0"]:
+	for slot: String in ["side0", "side1", "top0"]:
 		await _click(_box_point(stage, slot))
 		await get_tree().create_timer(0.4).timeout
 		print("OBS casilla %s: hueco=%s piezas=%d" % [slot, hangar._selected, rack._parts.size()])
 	await shot("plano_casillas")
-	# Cada arma de balas con su disparo: su casilla, y la diana.
-	for slot: String in ["side2", "side1", "side3"]:
+	# Cada arma con su disparo: sus dos brazos y su hombro (OBS-033), y la diana.
+	for slot: String in ["side1", "top0"]:
 		var id := Garage.get_slot(main._profile.build, slot)
 		if id == "":
 			continue

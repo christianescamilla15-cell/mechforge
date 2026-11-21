@@ -20,25 +20,20 @@ const DIFFICULTY := {
 	"NORMAL": BattleAI.Difficulty.NORMAL,
 	"HARD": BattleAI.Difficulty.HARD,
 }
-## El robot de cada tipo ya armado entero, con lo que su tipo le deja montar
-## y los mismos modulos que los mechs de ejemplo. De aqui se recorta cada
-## momento (el arma con la que empieza va la primera).
+## El robot de cada tipo ya armado entero (dos armas de brazo y una de
+## hombro, OBS-033), con lo que su tipo le deja montar y los mismos modulos
+## que los mechs de ejemplo. De aqui se recorta cada momento.
 const FULL := {
-	"asalto":
-	{
-		"sides": ["hoja_balas_ter", "corto_balas_ter", "hoja_balas_cin", "corto_balas_cin"],
-		"tops": ["bateria_balas_ter"],
-	},
-	"guardian":
-	{
-		"sides": ["medio_balas_cin", "corto_balas_cin", "medio_balas_ter", "corto_balas_ter"],
-		"tops": ["bateria_balas_cin"],
-	},
-	"tirador":
-	{
-		"sides": ["largo_balas_ion", "medio_balas_ion", "largo_balas_cin", "medio_balas_cin"],
-		"tops": ["bateria_balas_ion"],
-	},
+	"asalto": {"sides": ["hoja_balas_ter", "corto_balas_ter"], "tops": ["bateria_balas_ter"]},
+	"guardian": {"sides": ["medio_balas_cin", "corto_balas_cin"], "tops": ["bateria_balas_cin"]},
+	"tirador": {"sides": ["medio_balas_ion", "medio_balas_cin"], "tops": ["largo_balas_ion"]},
+}
+## En que orden gana armas cada tipo: la primera es la que trae de serie (el
+## Tirador, su rifle de hombro).
+const ORDER := {
+	"asalto": ["sides", "sides", "tops"],
+	"guardian": ["sides", "sides", "tops"],
+	"tirador": ["tops", "sides", "sides"],
 }
 ## Los modulos de los mechs de ejemplo: los cuerpos de calor y de energia,
 ## que pesan menos, llevan un segundo blindaje (GDD 7.1).
@@ -50,10 +45,10 @@ const MODULES := {
 	["mod_blindaje", "mod_matriz", "mod_generador", "mod_disipador", "mod_blindaje"],
 }
 const STAGES: Array[Dictionary] = [
-	{"name": "1 arma", "gear": {"sides": 1}},
-	{"name": "2 armas", "gear": {"sides": 2}},
-	{"name": "2 armas + 2 mod", "gear": {"sides": 2, "modules": 2}},
-	{"name": "entero", "gear": {"sides": 4, "tops": 1, "modules": 5, "specials": 2}},
+	{"name": "1 arma", "gear": {"weapons": 1}},
+	{"name": "2 armas", "gear": {"weapons": 2}},
+	{"name": "2 armas + 2 mod", "gear": {"weapons": 2, "modules": 2}},
+	{"name": "entero", "gear": {"weapons": 3, "modules": 5, "specials": 2}},
 ]
 
 ## Cuerpo comun para los tres ([torso, piernas]); vacio = el de cada tipo.
@@ -158,7 +153,14 @@ static func player_with(
 	full["modules"] = MODULES[catalog.get_item(str(full["torso"])).element]
 	full["charge"] = "esp_embestida"
 	full["hook"] = "esp_garfio"
-	var items := BuildLibrary.trim(full, gear, catalog)
+	# "weapons": cuantas armas lleva, en el orden en que las gana su tipo.
+	var cut := gear.duplicate()
+	if cut.has("weapons"):
+		var order: Array = ORDER[style_id]
+		for key: String in ["sides", "tops"]:
+			cut[key] = order.slice(0, int(cut["weapons"])).count(key)
+		cut.erase("weapons")
+	var items := BuildLibrary.trim(full, cut, catalog)
 	var build := catalog.make_build(items, rules, ItemDef.Tier.COMMON, level)
 	build.skills = SkillSet.new()
 	styles.add_effects(style_id, build.skills)

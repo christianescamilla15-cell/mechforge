@@ -89,8 +89,8 @@ func test_el_pecho_y_el_soporte_se_abren_por_nivel_del_jugador() -> void:
 	assert_false(_progression.is_unlocked("chest", 1))
 	assert_false(_progression.is_unlocked("chest", 9))
 	assert_true(_progression.is_unlocked("chest", 10))
-	assert_false(_progression.is_unlocked("drone", 2))
-	assert_true(_progression.is_unlocked("drone", 3))
+	assert_false(_progression.is_unlocked("drone", 4))
+	assert_true(_progression.is_unlocked("drone", 5))
 
 
 func test_sin_nucleo_de_jefe_no_hay_piezas_unicas() -> void:

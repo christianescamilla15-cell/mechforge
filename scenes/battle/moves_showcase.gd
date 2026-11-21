@@ -9,32 +9,32 @@ signal finished
 const STAGE := "desierto"
 const BEAT := 0.5
 ## Juegos de armas que se van montando para ver el dibujo de cada forma y
-## tipo: [rotulo, laterales (las dos primeras van delante), superiores].
+## tipo: [rotulo, las dos de brazo, la de hombro].
 const LOADOUTS: Array[Array] = [
 	[
 		"Armas de balas",
-		["medio_balas_cin", "corto_balas_cin", "largo_balas_cin", "hoja_balas_cin"],
-		["bateria_balas_cin"],
+		["medio_balas_cin", "corto_balas_cin"],
+		["largo_balas_cin"],
 	],
 	[
 		"Armas de cañón",
-		["largo_canon_ter", "corto_canon_ter", "medio_canon_ter", "hoja_balas_ter"],
-		["artilleria_canon_ter", "ancla_canon_ter"],
+		["corto_canon_ter", "medio_canon_ter"],
+		["artilleria_canon_ter"],
 	],
 	[
 		"Armas bláster",
-		["hoja_blaster_ion", "saboteador_blaster_ion", "medio_blaster_ion", "largo_blaster_ion"],
-		["artilleria_blaster_ion", "bateria_blaster_ion"],
+		["hoja_blaster_ion", "saboteador_blaster_ion"],
+		["largo_blaster_ion"],
 	],
 	[
 		"Armas láser",
-		["saboteador_laser_cin", "hoja_laser_cin", "medio_laser_cin", "largo_laser_cin"],
-		["artilleria_laser_cin", "ancla_laser_cin"],
+		["hoja_laser_cin", "medio_laser_cin"],
+		["ancla_laser_cin"],
 	],
 	[
 		"Armas cortas y baterías",
-		["corto_blaster_ter", "corto_laser_ter", "medio_balas_ter", "largo_balas_ter"],
-		["bateria_canon_ter", "bateria_laser_ter"],
+		["corto_blaster_ter", "medio_balas_ter"],
+		["bateria_laser_ter"],
 	],
 ]
 
@@ -142,10 +142,9 @@ func _run() -> void:
 	for loadout in LOADOUTS:
 		_arm(loadout[1], loadout[2])
 		await _fire(loadout[0], ["side0", "side1", "top0"])
-	_arm(LOADOUTS[0][1], ["bateria_balas_cin", "artilleria_canon_cin"])
-	await _fire("Disparar: brazos de delante", ["side0", "side1"])
-	await _fire("Disparar: brazos del lado lejano", ["side2", "side3"])
-	await _fire("Disparar: armas de hombro", ["top0", "top1"])
+	_arm(LOADOUTS[0][1], ["bateria_balas_cin"])
+	await _fire("Disparar: los dos brazos", ["side0", "side1"])
+	await _fire("Disparar: arma de hombro", ["top0"])
 	await _fire("Disparar: arma de pecho", ["chest"])
 	# El robot de asistencia: sus seis formas, y un disparo de cada arma.
 	for form in 6:
@@ -286,7 +285,7 @@ func _show_impacts() -> void:
 func _show_wear() -> void:
 	var hero := _arena.mechs[0]
 	var foe := _arena.mechs[1]
-	_arm(["medio_laser_cin", "largo_canon_cin"], ["bateria_balas_cin"])
+	_arm(["medio_laser_cin", "corto_canon_cin"], ["bateria_balas_cin"])
 	hero.place(_cell(3))
 	foe.place(_cell(6))
 	_arena.update_facing()

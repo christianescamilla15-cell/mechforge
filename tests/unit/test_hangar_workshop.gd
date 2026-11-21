@@ -125,9 +125,9 @@ func test_el_catalogo_trae_tus_piezas_y_las_de_la_tienda_por_tipo() -> void:
 			assert_gt(int(part["price"]), 0)
 	assert_gt(owned, 0)
 	assert_gt(store_seen.size(), 0)
-	# De cerca a lejos: hojas, cortas, medias y largas.
+	# De cerca a lejos: hojas, cortas y medias (las largas van al hombro).
 	var order: Array[String] = []
-	for key: String in ["hoja", "corto", "medio", "largo"]:
+	for key: String in ["hoja", "corto", "medio"]:
 		order.append(Txt.t("form_" + key))
 	assert_eq(groups, order)
 	assert_eq(state["title"], "Lateral 1")
@@ -353,9 +353,9 @@ func test_las_casillas_de_las_armas_van_a_los_lados_del_robot() -> void:
 	var robot := screen._robot_rect()
 	for slot: String in ["side0", "side1"]:
 		assert_lt(screen.box_rect(slot).end.x, robot.position.x, slot + " a un lado")
-	for slot: String in ["side2", "side3"]:
+	for slot: String in ["chest", "assist"]:
 		assert_gt(screen.box_rect(slot).position.x, robot.end.x, slot + " al otro")
-	for slot: String in ["top0", "top1", "torso"]:
+	for slot: String in ["top0", "torso"]:
 		assert_lt(screen.box_rect(slot).end.y, robot.position.y + 4.0, slot + " arriba")
 	assert_gt(screen.box_rect("legs").position.y, robot.end.y - 4.0, "las piernas, abajo")
 	assert_false(screen._catalog_rect().intersects(screen.plan_rect()), "el catalogo va al lado")
@@ -365,8 +365,8 @@ func test_pulsar_una_casilla_la_elige_y_la_tecla_de_la_esquina_cierra() -> void:
 	var screen := _loadout(_profile())
 	assert_true(screen.is_open())
 	screen._gui_input(_click(screen.box_rect("module2").get_center()))
-	screen._gui_input(_click(screen.box_rect("top1").get_center()))
-	assert_eq(_picked, ["module2", "top1"] as Array[String])
+	screen._gui_input(_click(screen.box_rect("top0").get_center()))
+	assert_eq(_picked, ["module2", "top0"] as Array[String])
 	# Fuera de las casillas no se elige nada.
 	screen._gui_input(_click(screen._robot_rect().get_center()))
 	assert_eq(_picked.size(), 2)

@@ -545,5 +545,61 @@
       352,
       62
     ]
+  },
+  "shoulder_largo_balas": {
+    "hip": [
+      130,
+      275
+    ],
+    "size": [
+      358,
+      125
+    ],
+    "tip": [
+      358,
+      54
+    ]
+  },
+  "shoulder_largo_canon": {
+    "hip": [
+      130,
+      270
+    ],
+    "size": [
+      358,
+      120
+    ],
+    "tip": [
+      358,
+      52
+    ]
+  },
+  "shoulder_largo_blaster": {
+    "hip": [
+      130,
+      244
+    ],
+    "size": [
+      357,
+      94
+    ],
+    "tip": [
+      357,
+      55
+    ]
+  },
+  "shoulder_largo_laser": {
+    "hip": [
+      130,
+      243
+    ],
+    "size": [
+      360,
+      93
+    ],
+    "tip": [
+      360,
+      52
+    ]
   }
 }

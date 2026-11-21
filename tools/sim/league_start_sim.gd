@@ -111,6 +111,11 @@ func _initialize() -> void:
 				if gear.is_empty():
 					gear = StarterSim.STAGES[-1]["gear"].duplicate()
 				gear.erase("shift")
+				# Tantas armas como el rival, en el orden en que las gana su tipo.
+				if not gear.has("weapons"):
+					gear["weapons"] = int(gear.get("sides", 0)) + int(gear.get("tops", 0))
+					gear.erase("sides")
+					gear.erase("tops")
 				var same := StarterSim.player_with(styles, catalog, _rules, style_id, gear, level)
 				same.upgrades = bought
 				_give_assist(same)

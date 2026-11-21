@@ -42,8 +42,8 @@ func test_el_primer_mech_da_sus_piezas_y_queda_montado() -> void:
 
 func test_cada_hueco_acepta_solo_su_tipo_de_pieza() -> void:
 	assert_eq(Garage.slot_type("torso"), ItemDef.Type.TORSO)
-	assert_eq(Garage.slot_type("side3"), ItemDef.Type.SIDE)
-	assert_eq(Garage.slot_type("top1"), ItemDef.Type.TOP)
+	assert_eq(Garage.slot_type("side1"), ItemDef.Type.SIDE)
+	assert_eq(Garage.slot_type("top0"), ItemDef.Type.TOP)
 	assert_eq(Garage.slot_type("module7"), ItemDef.Type.MODULE)
 	assert_eq(Garage.slot_type("hook"), ItemDef.Type.HOOK)
 	var profile := _new_run()
@@ -57,10 +57,13 @@ func test_montar_y_quitar_piezas() -> void:
 	assert_eq(Garage.get_slot(profile.build, "side1"), "corto_balas_cin")
 	assert_eq(Garage.equip(profile, _catalog, "side1", "hoja_balas_cin"), "")
 	assert_eq(Garage.get_slot(profile.build, "side1"), "hoja_balas_cin")
-	assert_eq(Garage.equip(profile, _catalog, "side3", ""), "")
-	assert_eq(Garage.get_slot(profile.build, "side3"), "")
-	assert_eq(Garage.equip(profile, _catalog, "top1", "bateria_balas_cin"), "")
-	assert_eq(profile.build["tops"], ["bateria_balas_cin", "bateria_balas_cin"])
+	assert_eq(Garage.equip(profile, _catalog, "side0", ""), "")
+	assert_eq(Garage.get_slot(profile.build, "side0"), "")
+	assert_eq(Garage.equip(profile, _catalog, "top0", "bateria_balas_cin"), "")
+	assert_eq(profile.build["tops"], ["bateria_balas_cin"])
+	# Ya no hay tercer brazo ni segundo hombro (OBS-033).
+	assert_eq(Garage.equip(profile, _catalog, "side2", "corto_balas_cin"), "ese hueco no existe")
+	assert_eq(Garage.equip(profile, _catalog, "top1", "bateria_balas_cin"), "ese hueco no existe")
 
 
 func test_un_hueco_suelto_de_una_lista_se_rellena() -> void:
@@ -165,8 +168,8 @@ func test_un_hueco_vacio_en_medio_se_queda_en_su_sitio() -> void:
 
 func test_una_pieza_soltada_sobre_el_mech_va_al_hueco_elegido_o_al_primero_libre() -> void:
 	var profile := _new_run()
-	var arm := Garage.get_slot(profile.build, "side2")
-	assert_eq(Garage.drop_slot(profile.build, _catalog, arm, "side3"), "side3", "el elegido")
+	var arm := Garage.get_slot(profile.build, "side0")
+	assert_eq(Garage.drop_slot(profile.build, _catalog, arm, "side1"), "side1", "el elegido")
 	assert_eq(
 		Garage.drop_slot(profile.build, _catalog, arm, "torso"), "side0", "no cabe: el primero"
 	)
