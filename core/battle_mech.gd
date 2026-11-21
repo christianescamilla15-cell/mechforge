@@ -23,6 +23,10 @@ class Slot:
 var build: MechBuild
 var position: int = 0
 var max_health: int = 0
+## Manto de plasma (ChassisDef.shield_layer): vida de mas que se gasta antes
+## que la vida. Rota (0), no vuelve.
+var layer: int = 0
+var layer_max: int = 0
 var health: int = 0
 var energy: int = 0
 var energy_cap: int = 0
@@ -70,6 +74,9 @@ func _init(p_build: MechBuild = null, rules: RulesConfig = null, p_position: int
 	var s := build.summary(rules)
 	max_health = s["health"]
 	health = max_health
+	if build.chassis != null and build.chassis.shield_layer > 0.0:
+		layer_max = roundi(max_health * build.chassis.shield_layer)
+		layer = layer_max
 	energy_cap = s["energy_cap"]
 	energy = energy_cap
 	energy_regen = s["energy_regen"]
@@ -122,6 +129,8 @@ func clone() -> BattleMech:
 	copy.shutdown_last_turn = shutdown_last_turn
 	copy.shield_left = shield_left
 	copy.evade_left = evade_left
+	copy.layer = layer
+	copy.layer_max = layer_max
 	copy.barrier = barrier
 	copy.kits = kits.duplicate()
 	copy.chest_fired = chest_fired
@@ -183,6 +192,24 @@ func free_energy() -> bool:
 
 func regen_share() -> float:
 	return _chassis().regen_share if _chassis() != null else 0.0
+
+
+## Recibe dano: primero lo gasta el manto y lo que sobra, la vida. Devuelve
+## lo que paro el manto.
+func hurt(amount: int) -> int:
+	var absorbed := clampi(amount, 0, layer)
+	layer -= absorbed
+	health -= amount - absorbed
+	return absorbed
+
+
+## Vida que le queda contando el manto, y su maximo (para la IA).
+func toughness() -> int:
+	return health + layer
+
+
+func max_toughness() -> int:
+	return max_health + layer_max
 
 
 func shield_hits() -> int:

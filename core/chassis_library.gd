@@ -58,6 +58,11 @@ func add(raw: Variant) -> void:
 			if int(raw[key]) < 0 or int(raw[key]) > 2:
 				errors.append("%s: %s debe estar entre 0 y 2" % [id, key])
 			continue
+		if key == "shield_layer":
+			def.shield_layer = float(raw[key])
+			if def.shield_layer < 0.0 or def.shield_layer > ChassisDef.MAX_SHIELD_LAYER:
+				errors.append("%s: shield_layer fuera de rango" % id)
+			continue
 		if key == "regen_share":
 			def.regen_share = float(raw[key])
 			if def.regen_share < 0.0 or def.regen_share > ChassisDef.MAX_REGEN_SHARE:

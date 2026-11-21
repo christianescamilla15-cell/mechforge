@@ -374,8 +374,9 @@ func apply(action: BattleAction) -> String:
 			me.kits["dark_matter"] -= 1
 			var blast := _dark_matter_damage(me, foe)
 			me.energy = 0
-			foe.health -= blast
+			var soaked := foe.hurt(blast)
 			var data := {"slot": "chest", "damage": blast}
+			_note_layer(data, foe, soaked)
 			if rules.impact_enabled:
 				data.merge(_dark_matter_impact(me, foe))
 			_log("dark_matter", data)
@@ -522,7 +523,7 @@ func _use(
 	user.heat += def.heat_cost
 	user.energy -= user.energy_cost(def)
 
-	target.health -= damage
+	var soaked := target.hurt(damage)
 	# Un critico tambien calienta y drena mas: si no, solo lo aprovechaban las
 	# armas de dano directo (medido el 2026-11-18: el fisico laser gano el 67 %).
 	target.heat += roundi(def.heat_dmg * _crit_factor(crit))
@@ -541,6 +542,7 @@ func _use(
 		target.energy_regen = maxi(1, target.energy_regen - def.energy_regen_dmg)
 
 	var data := {"slot": key, "item": def.id, "damage": damage}
+	_note_layer(data, target, soaked)
 	if crit >= 1.0:
 		data.merge(_apply_crit(def, target))
 	# Un escudo que para el golpe tambien para su impacto.
@@ -832,10 +834,21 @@ func _log(event: String, data: Dictionary = {}) -> void:
 	events.append(entry)
 
 
+## Lo que paro el manto en un golpe, y si se rompio con el.
+func _note_layer(data: Dictionary, target: BattleMech, soaked: int) -> void:
+	if soaked <= 0:
+		return
+	data["layer"] = soaked
+	if target.layer == 0:
+		data["layer_broken"] = true
+
+
 func _snapshot(mech: BattleMech) -> Dictionary:
 	return {
 		"pos": mech.position,
 		"health": mech.health,
+		"layer": mech.layer,
+		"layer_max": mech.layer_max,
 		"heat": mech.heat,
 		"energy": mech.energy,
 		"heat_cap": mech.heat_cap,

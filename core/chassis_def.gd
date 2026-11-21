@@ -23,6 +23,8 @@ const ABILITY_FLAGS: Array[String] = ["free_energy", "evade", "no_overheat"]
 const ABILITY_COUNTS: Array[String] = ["shield_hits", "extra_drone_shots"]
 ## Tope de la regeneracion por turno, como fraccion de la vida maxima.
 const MAX_REGEN_SHARE := 0.25
+## Tope del manto, como parte de la vida maxima.
+const MAX_SHIELD_LAYER := 1.0
 ## Limites razonables de un multiplicador; fuera de ellos es un error de datos.
 const MIN_MULT := 0.25
 const MAX_MULT := 3.0
@@ -58,6 +60,11 @@ const MAX_MULT := 3.0
 @export var regen_share: float = 0.0
 ## Escudo: golpes que anula en cada turno del rival.
 @export var shield_hits: int = 0
+## Manto de plasma (OBS-041, del usuario: "un escudo es como una capa de
+## ozono... una vez que se vence esa resistencia ya se acabo"): una capa de
+## vida de mas al empezar el combate, como parte de su vida maxima (0.3 =
+## 30 %). Los golpes la gastan antes que la vida; rota, no vuelve.
+@export var shield_layer: float = 0.0
 ## Evasion: al recibir dano salta al extremo de la arena de su lado, una
 ## vez por turno del rival.
 @export var evade: bool = false

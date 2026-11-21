@@ -93,6 +93,9 @@ var mission := 0.0:
 var bays: Array[Dictionary] = []
 
 var _bay_layer := Node2D.new()
+## Tu robot en holograma en la pantalla TALLER de la pared (OBS-042, del
+## usuario: "por cierto, eso se ve muy chafa", del robot de palitos que habia).
+var _wall_robot := MechBlueprint.new()
 var _bay_views: Array[MechView] = []
 var _terminal_rects: Dictionary[String, Rect2] = {}
 var _bay_rects: Array[Rect2] = []
@@ -143,6 +146,8 @@ func _ready() -> void:
 	_board.pick_changed.connect(func(key: String, step: int) -> void: pick_changed.emit(key, step))
 	_board.protection_picked.connect(func(kind: String) -> void: protection_picked.emit(kind))
 	add_child(projector)
+	_wall_robot.scan = true
+	add_child(_wall_robot)
 	add_child(console)
 	add_child(loadout)
 	mouse_exited.connect(_clear_hover)
@@ -161,6 +166,20 @@ func _ready() -> void:
 
 
 ## Lo que ensena el monitor de misiones (MissionBrief), tambien sin abrir.
+## Tu robot: en el hangar y, en holograma, en la pantalla TALLER.
+func show_build(build: MechBuild, ghosts: Array[String]) -> void:
+	super.show_build(build, ghosts)
+	# En la pantalla, solo el robot: el asistente flota tan alto que lo
+	# dejaba diminuto.
+	var body := build
+	if build != null and build.assist != null:
+		body = build.duplicate() as MechBuild
+		body.assist = null
+		body.drone = null
+		body.drone_low = null
+	_wall_robot.show_build(body, ghosts)
+
+
 func set_board(state: Dictionary) -> void:
 	_board.state = state
 
@@ -382,6 +401,9 @@ func _layout() -> void:
 		"habilidades": Rect2(size.x * 0.585, size.y * 0.085, size.x * 0.12, size.y * 0.2),
 		"ajustes": Rect2(size.x * 0.944, size.y * 0.012, size.x * 0.046, size.y * 0.05),
 	}
+	var wall := HangarProps.terminal_art(_terminal_rects["taller"], "taller")
+	_wall_robot.position = wall.position
+	_wall_robot.size = wall.size
 	_board.position = Vector2(size.x * 0.72, size.y * 0.07)
 	_board.size = Vector2(size.x * 0.255, size.y * 0.27)
 	var under_board := _board.position.y + _board.size.y
@@ -445,7 +467,8 @@ func _draw() -> void:
 		if _terminal_rects.has(terminal):
 			var hover := _hover_terminal == terminal
 			var rect := _terminal_rects[terminal]
-			HangarProps.terminal_live(self, _font, terminal, rect, hover, info, _time)
+			var robot := terminal == "taller" and _wall_robot.has_robot()
+			HangarProps.terminal_live(self, _font, terminal, rect, hover, info, _time, robot)
 	var center := _platform_center()
 	HangarArt.draw_light_dust(self, Rect2(Vector2.ZERO, size), center, _floor_y, _time)
 	if str(info.get("name", "")) != "":

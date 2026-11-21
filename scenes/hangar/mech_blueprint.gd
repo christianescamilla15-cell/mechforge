@@ -20,7 +20,15 @@ const PAD := 10.0
 ## Huecos con pieza a la vista: de ellos sale lo que ocupa el robot.
 const SEEN: Array[String] = ["torso", "legs", "side0", "side1", "top0", "chest", "assist"]
 
+## Encima del robot, lineas de barrido y una franja de luz que lo recorre:
+## la pantalla TALLER de la pared (OBS-042), que no tiene velo propio.
+var scan := false:
+	set(value):
+		scan = value
+		_veil.visible = value
 var _world := Node2D.new()
+var _veil := Control.new()
+var _time := 0.0
 var _mech := MechView.new()
 var _build: MechBuild
 ## Lo que ocupa el robot, en unidades del dibujo (los pies en el 0).
@@ -35,6 +43,18 @@ func _ready() -> void:
 	_world.add_child(_mech)
 	_mech.visible = false
 	resized.connect(_frame)
+	_veil.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_veil.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_veil.visible = scan
+	_veil.draw.connect(_draw_veil)
+	add_child(_veil)
+
+
+func _process(delta: float) -> void:
+	if not scan or not visible:
+		return
+	_time += delta
+	_veil.queue_redraw()
 
 
 ## El robot que se ensena. `ghosts`: piezas que le faltan ("torso", "legs")
@@ -74,6 +94,19 @@ func point_of(slot: String) -> Vector2:
 	if rect.size == Vector2.ZERO:
 		return Vector2.INF
 	return _world.position + rect.get_center() * _world.scale.x
+
+
+## Las lineas de barrido y la franja que baja por el robot.
+func _draw_veil() -> void:
+	if not has_robot():
+		return
+	var line := 0.0
+	while line < size.y:
+		_veil.draw_line(Vector2(0, line), Vector2(size.x, line), Color(0.01, 0.05, 0.08, 0.28), 1.0)
+		line += 3.0
+	var sweep := fposmod(_time * 34.0, size.y + 20.0) - 10.0
+	_veil.draw_rect(Rect2(0, sweep - 6.0, size.x, 12.0), Color(TINT, 0.08))
+	_veil.draw_line(Vector2(0, sweep), Vector2(size.x, sweep), Color(TINT, 0.55), 1.0)
 
 
 ## Lo encaja en el sitio que tiene, con los pies abajo y centrado.

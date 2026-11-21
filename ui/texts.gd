@@ -36,6 +36,7 @@ const ES := {
 	"preview_self_overheat": "¡Te sobrecalentarás!",
 	"preview_target_overheat": "¡El rival se sobrecalentará!",
 	"shield_hit": "ESCUDO",
+	"layer_broken": "¡MANTO ROTO!",
 	"drop_armor": "armadura",
 	"drop_firepower": "potencia de disparo",
 	"drop_armor_short": "ARM",

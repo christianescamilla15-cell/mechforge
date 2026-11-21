@@ -73,6 +73,55 @@ func test_el_escudo_no_para_el_segundo_disparo_del_dron() -> void:
 	assert_eq(e.mechs[1].health, 970, "el arma choca con el escudo y el dron entra")
 
 
+## OBS-041, del usuario: "un escudo es como una capa de ozono... tu atacas,
+## pero no quitas vida realmente, sino que atacas a ese mismo escudo". El manto
+## de plasma es vida de mas que se gasta antes que la vida y, rota, no vuelve.
+func test_el_manto_se_gasta_antes_que_la_vida() -> void:
+	var boss := _boss({"shield_layer": 0.15})
+	var e := Fx.engine(Fx.build([Fx.gun(), Fx.gun()]), boss)
+	assert_eq(e.mechs[1].layer_max, 150, "el 15 % de su vida de 1000")
+	e.apply(BattleAction.weapon("side0"))
+	assert_eq(e.mechs[1].layer, 50, "el golpe de 100 se lo come el manto")
+	assert_eq(e.mechs[1].health, 1000)
+	assert_eq(e.events[-1]["layer"], 100)
+	assert_false(e.events[-1].get("layer_broken", false))
+	e.apply(BattleAction.weapon("side1"))
+	assert_eq(e.mechs[1].layer, 0)
+	assert_eq(e.mechs[1].health, 950, "lo que sobra pasa a la vida")
+	assert_eq(e.events[-1]["layer"], 50)
+	assert_true(e.events[-1]["layer_broken"], "y se rompe")
+	Fx.pass_turn(e)
+	assert_eq(e.turn, 0, "vuelve a ser tu turno")
+	e.apply(BattleAction.weapon("side0"))
+	assert_eq(e.mechs[1].layer, 0, "roto, no vuelve")
+	assert_eq(e.mechs[1].health, 850)
+
+
+func test_el_manto_cuenta_como_vida_para_la_ia_y_se_ve_en_el_estado() -> void:
+	var boss := _boss({"shield_layer": 0.3})
+	var e := Fx.engine(Fx.build([Fx.gun()]), boss)
+	assert_eq(e.mechs[1].toughness(), 1300)
+	assert_eq(e.mechs[1].max_toughness(), 1300)
+	e.apply(BattleAction.weapon("side0"))
+	var state: Dictionary = e.events[-1]["state"][1]
+	assert_eq(state["layer"], 200)
+	assert_eq(state["layer_max"], 300)
+	var plain := Fx.engine(Fx.build([Fx.gun()]), Fx.build())
+	assert_eq(plain.mechs[1].layer_max, 0, "sin manto, nada cambia")
+
+
+func test_el_campeon_de_la_liga_6_lleva_el_manto_y_ya_no_bloquea() -> void:
+	var chassis := ChassisLibrary.load_file("res://data/chassis.json")
+	var egida: ChassisDef = chassis.get_def("jefe_egida")
+	assert_gt(egida.shield_layer, 0.0)
+	assert_eq(egida.shield_hits, 0, "ya no para golpes enteros")
+	assert_eq(egida.ability, "Manto de plasma")
+	var library := ChassisLibrary.new()
+	library.add({"id": "x", "shield_layer": 1.5})
+	library.add({"id": "y", "shield_layer": -0.1})
+	assert_eq(library.errors.size(), 2)
+
+
 func test_la_evasion_salta_al_extremo_de_su_lado_una_vez_por_turno() -> void:
 	var boss := _boss({"evade": true})
 	var e := Fx.engine(Fx.build([Fx.gun(), Fx.gun()]), boss)

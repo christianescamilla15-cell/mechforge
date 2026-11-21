@@ -375,6 +375,34 @@ Unas 58 piezas con nombres propios (nunca los del original).
 - **Armería** (el equivalente de la tienda de arena del original): puntos de mejora permanentes comprados con celdas. Daño, energía y calor hasta +20 %; resistencias hasta +40 %; vida hasta +15 %; backfire hasta −20 % (§9.2).
 - **Objetivo de ritmo:** llevar un build completo a Divino debe costar unas 8–12 horas de juego. Se mide con el simulador en la fase F7.
 
+### 8.6 El especialista (propuesta, 2026-11-21, OBS-043)
+
+**Lo que pidió el usuario.** "En este juego de gladiadores había un mago, una tienda de magos, donde podías hechizar tu arma… y eso le daba mucho más criticidad de ataque… Lo podemos traer a este mundo de tecnología… con algo como el especialista: un robot capaz de crear, diseñar tecnología más allá de la que ya existe… a tu armamento, o a tu escudo cinético, se pueden adicionar efectos muy capaces que te den mucha más ventaja, pero que tengan un costo muy alto… Este taller va a ser igual inmersivo." Y: "podrás adquirir piezas o implementar piezas a tu armadura de pecho, pies y todo eso para evitar sobrecalentamiento, enfriamiento… cosas que te den un plus".
+
+**Quién es.** Un robot ingeniero que trabaja fuera del catálogo del Orden: recupera técnicas de eras más altas de la escalera (§9.4) y las adapta a tus piezas. Encaja con el mundo: si en el Orden lo más antiguo es lo más avanzado, él es quien sabe leerlo. Nombre por decidir con el usuario.
+
+**Dónde está.** Un rincón nuevo del hangar, como todo lo demás (§10, "casi como si no existiera un menú"): su banco de trabajo tras una persiana, con una lámpara colgada, chispas y sus brazos trabajando. Al pulsarlo se acerca su banco: la pieza que eliges queda bajo la lámpara (como la vitrina de la computadora, OBS-039), a un lado los prototipos que puede montarle, cada uno con lo que cambia en la ficha (barras con antes y después) y su precio. Instalarlo es una secuencia corta: la pieza se abre, entra el prototipo con chispas y un sonido propio, y la pieza queda con una marca encendida.
+
+**Qué hace: prototipos.** Cada pieza tuya tiene **un hueco de prototipo**. Montar otro sustituye al que tenía, que se pierde. El prototipo va con la pieza: si la cambias de robot, va con ella. Se ve en la pieza (una marca encendida en el maletín y en el robot) y en su ficha.
+
+| Pieza | Prototipo (nombre de trabajo) | Qué hace |
+|---|---|---|
+| Arma | Percutor de resonancia | La "criticidad" que pidió: esa arma puede dar **golpes críticos** (hoy apagados en las reglas para todas, §2.9), con su probabilidad y el efecto de su tipo: las balas atraviesan la resistencia, el cañón inmoviliza, el bláster aturde, el láser inutiliza un arma |
+| Arma | Núcleo de sobrecarga | +12 % de daño de esa arma |
+| Arma | Cámara de frío | −30 % de calor por disparo |
+| Arma | Célula de alta densidad | −30 % de energía por disparo |
+| Torso | Radiador de fase | +25 % de enfriamiento |
+| Torso | Válvula de alivio | La primera vez que se sobrecalienta en el combate, no pierde nada |
+| Torso | Reactor afinado | +25 % de regeneración de energía |
+| Piernas | Servos de competición | +1 casilla al andar |
+| Piernas | Amortiguadores | +15 % de la vida de las piernas |
+
+**Precio.** Muy alto, como pidió: unas **6 veces el precio de la pieza** en su clase (dato en `data/`, para ajustarlo). Se abre a partir de la liga 3, cuando el jugador ya tiene celdas para algo así.
+
+**Lo que no hace:** no da piezas nuevas ni sube clases (eso sigue siendo la tienda y la transformación, §8), y los rivales no llevan prototipos al principio. Más adelante pueden llevarlos los campeones, como otra palanca de balance.
+
+**Piloto propuesto.** El rincón del especialista y tres prototipos de los que pidió por nombre: el percutor (criticidad, arma), el radiador de fase (enfriamiento, torso) y la válvula de alivio (sobrecalentamiento, torso). Con su visto bueno, el resto.
+
 ## 9. Campaña
 **Visión (del usuario, 2026-11-16):** recuperar la versión antigua de Super Mechs para un jugador. Empiezas con un robot sencillo y avanzas combate a combate hasta un jefe superior al que solo se vence con táctica. Aquella versión era una demo que no pasaba de los primeros 10 combates; aquí va completa. La meta es unir la originalidad y el detalle del juego antiguo con las mecánicas de combate modernas. No hay multijugador.
 

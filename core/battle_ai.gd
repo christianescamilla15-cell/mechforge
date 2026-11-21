@@ -89,8 +89,9 @@ func evaluate(e: BattleEngine, me: int) -> float:
 
 	# El temperamento (AIConfig): cuanto pesa cada cosa para este rival.
 	var score := (
-		config.guard * _ratio(mine.health, mine.max_health)
-		- config.aggression * _ratio(foe.health, foe.max_health)
+		# Con el manto de plasma (OBS-041): la vida que le queda contandolo.
+		config.guard * _ratio(mine.toughness(), mine.max_toughness())
+		- config.aggression * _ratio(foe.toughness(), foe.max_toughness())
 	)
 
 	# Acciones que el calor ya le quito al rival en el turno que empieza.

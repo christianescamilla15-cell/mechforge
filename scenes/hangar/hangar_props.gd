@@ -223,6 +223,30 @@ static func plan_art(c: CanvasItem, art: Rect2) -> void:
 		)
 
 
+## Bajo el holograma del robot: una reticula tenue y el disco del proyector
+## en el suelo, que late.
+static func hologram_floor(c: CanvasItem, art: Rect2, time: float) -> void:
+	var step := art.size.x / 8.0
+	var x := art.position.x
+	while x <= art.end.x + 0.5:
+		c.draw_line(Vector2(x, art.position.y), Vector2(x, art.end.y), Color(SCREEN_LINE, 0.06))
+		x += step
+	var y := art.position.y
+	while y <= art.end.y + 0.5:
+		c.draw_line(Vector2(art.position.x, y), Vector2(art.end.x, y), Color(SCREEN_LINE, 0.06))
+		y += step
+	var floor_y := art.end.y - 8.0
+	var mid := art.get_center().x
+	var pulse := 0.5 + 0.2 * sin(time * 2.4)
+	var points := PackedVector2Array()
+	for i in 24:
+		var angle := TAU * i / 24.0
+		points.append(Vector2(mid + cos(angle) * art.size.x * 0.32, floor_y + sin(angle) * 5.0))
+	c.draw_colored_polygon(points, Color(SCREEN_LINE, 0.12 * pulse))
+	points.append(points[0])
+	c.draw_polyline(points, Color(SCREEN_LINE, 0.6 * pulse), 1.0)
+
+
 ## Mejoras: una barra por mejora de la armeria, a su nivel (`levels`, de 0
 ## a 1 cada una).
 static func upgrades_art(c: CanvasItem, art: Rect2, levels: Array, time: float) -> void:
@@ -294,6 +318,18 @@ static func terminal_still(c: CanvasItem, font: Font, terminal: String, rect: Re
 ## Y lo que se mueve: la franja de luz, su dibujo con lo tuyo (`info`, el
 ## de HangarStage: celdas, nivel, mejoras), el led y el brillo al pasar el
 ## raton.
+## Zona del dibujo de una pantalla de la pared (bajo su nombre y, en la del
+## TALLER y la de habilidades, sobre su pie).
+static func terminal_art(rect: Rect2, terminal: String) -> Rect2:
+	var screen := rect.grow(-9.0)
+	var art := Rect2(screen.position + Vector2(8, 22), screen.size - Vector2(16, 30))
+	if terminal in ["taller", "habilidades"]:
+		art.size.y -= 16.0
+	return art
+
+
+## `robot`: en la del TALLER ya se ve tu robot en holograma (MechBlueprint);
+## debajo solo van su suelo y su retícula.
 static func terminal_live(
 	c: CanvasItem,
 	font: Font,
@@ -301,26 +337,28 @@ static func terminal_live(
 	rect: Rect2,
 	hover: bool,
 	info: Dictionary,
-	time: float
+	time: float,
+	robot: bool = false
 ) -> void:
 	if terminal == "ajustes":
 		control_box_live(c, font, rect, hover, time)
 		return
 	var screen := HangarArt.draw_screen_live(c, rect, hover, time)
-	var art := Rect2(screen.position + Vector2(8, 22), screen.size - Vector2(16, 30))
+	var art := terminal_art(rect, terminal)
 	var foot := Vector2(screen.position.x + 8.0, screen.end.y - 8.0)
 	var wide := screen.size.x - 16.0
 	match terminal:
 		"taller":
-			# Abajo, tus celdas.
-			art.size.y -= 16.0
-			plan_art(c, art)
+			# Tu robot en holograma o, sin robot, el plano; abajo, tus celdas.
+			if robot:
+				hologram_floor(c, art, time)
+			else:
+				plan_art(c, art)
 			cells_line(c, font, foot, wide, int(info.get("cells", 0)))
 		"mejoras":
 			upgrades_art(c, art, info.get("upgrades", []), time)
 		"habilidades":
 			# Abajo, tu nivel y lo que llevas del siguiente.
-			art.size.y -= 16.0
 			skills_art(c, art)
 			var next := int(info.get("xp_next", -1))
 			level_line(c, font, foot, wide, int(info.get("level", 1)), int(info.get("xp", 0)), next)

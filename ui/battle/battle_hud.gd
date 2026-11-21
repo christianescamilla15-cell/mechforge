@@ -328,6 +328,12 @@ func _draw_vitals(index: int) -> void:
 	var health := float(state["health"])
 	var tone := HEALTH if health > 0.5 else (GOLD if health > 0.25 else BAD)
 	_bar(at, width, 7.0, health, tone, alpha)
+	# El manto de plasma (OBS-041): encima de la vida, mientras lo tenga.
+	var layer := float(state.get("layer", -1.0))
+	if layer > 0.0:
+		var band := Rect2(at - Vector2(0, 2), Vector2(width * layer, 3.0))
+		draw_rect(band, Color(PlasmaMantle.COLOR, alpha))
+		draw_rect(Rect2(at, Vector2(width * layer, 7.0)), Color(PlasmaMantle.COLOR, 0.35 * alpha))
 	var hot := HEAT
 	if bool(state.get("over", false)):
 		hot = BAD.lerp(Color.WHITE, 0.5 + 0.5 * sin(_time * 10.0))

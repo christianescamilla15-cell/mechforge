@@ -246,7 +246,7 @@ func _play_event(entry: Dictionary) -> void:
 			if damage > 0:
 				_arena.mechs[target].hit(step)
 				_arena.impact(target, _impact_tier(def, damage, target), step)
-				_arena.float_text(_state[target]["pos"], "-%d" % damage, COLOR_DAMAGE)
+				_float_damage(entry, target, damage)
 			if entry.get("crit", false):
 				# Critico (GDD 2.9): aviso y lo que le hace al rival.
 				Sfx.play("critico")
@@ -507,6 +507,37 @@ func _refresh() -> void:
 	_show_state()
 
 
+## El dano de un golpe: lo que paro el manto de plasma, en cian, y lo que
+## llego a la vida (OBS-041); si el manto se rompe, estalla.
+func _float_damage(entry: Dictionary, target: int, damage: int) -> void:
+	var cell: int = _state[target]["pos"]
+	var soaked: int = entry.get("layer", 0)
+	if soaked > 0:
+		_arena.float_text(cell, "-%d" % soaked, PlasmaMantle.COLOR)
+	if damage - soaked > 0:
+		_arena.float_text(cell, "-%d" % (damage - soaked), COLOR_DAMAGE)
+	if entry.get("layer_broken", false):
+		Sfx.play("escudo")
+		_arena.float_text(cell, Txt.t("layer_broken"), PlasmaMantle.EDGE)
+		var mantle := _mantle(target)
+		if mantle != null:
+			mantle.burst()
+
+
+## El manto de plasma de un robot (lo crea la primera vez); null si no lleva.
+func _mantle(index: int) -> PlasmaMantle:
+	if int(_state[index].get("layer_max", 0)) <= 0:
+		return null
+	var view := _arena.mechs[index]
+	var mantle := view.get_node_or_null("Manto") as PlasmaMantle
+	if mantle == null:
+		mantle = PlasmaMantle.new()
+		mantle.name = "Manto"
+		view.add_child(mantle)
+	mantle.height = view.body_height() / maxf(absf(view.scale.y), 0.01)
+	return mantle
+
+
 func _show_state() -> void:
 	var vitals: Array[Dictionary] = []
 	for i in 2:
@@ -518,7 +549,23 @@ func _show_state() -> void:
 		_arena.mechs[i].set_condition(health, energy, stuck, disabled, state.get("stunned", false))
 		var ratio := float(state["heat"]) / float(maxi(state["heat_cap"], 1))
 		_arena.mechs[i].set_heat(ratio)
-		vitals.append({"health": health, "heat": ratio, "energy": energy, "over": ratio > 1.0})
+		var layer_max: int = state.get("layer_max", 0)
+		var layer := float(state.get("layer", 0)) / float(maxi(layer_max, 1))
+		var mantle := _mantle(i)
+		if mantle != null:
+			mantle.share = layer
+		(
+			vitals
+			. append(
+				{
+					"health": health,
+					"heat": ratio,
+					"energy": energy,
+					"over": ratio > 1.0,
+					"layer": layer if layer_max > 0 else -1.0,
+				}
+			)
+		)
 	_hud.show_state(vitals, _hud_turn, _hud_actions)
 
 
