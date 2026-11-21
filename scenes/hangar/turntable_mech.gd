@@ -70,8 +70,13 @@ const FACE_SHADE := 0.6
 const LIT_FROM := 0.6
 const LIT_FULL := 0.68
 ## Luz que recibe la cara en sombra y cuanto se va al color liso del canto.
-const SHADOW_LIGHT := 0.5
-const SHADOW_FLAT := 0.6
+const SHADOW_LIGHT := 0.6
+const SHADOW_FLAT := 0.42
+## Las esquinas entre la cara de perfil y la de frente van redondeadas (del
+## usuario, 2026-11-21, OBS-032: "se ve muy cuadrado, le faltan mejores
+## acabados"): radio como parte de lo mas estrecho de la pieza, con un tope.
+const CORNER_SHARE := 0.24
+const CORNER_MAX := 16.0
 ## Pixeles de cada vista de perfil por unidad del taller (algo mas que el
 ## aumento del hangar, para que no se vea borroso) y de cada lienzo de frente.
 const RENDER_SCALE := 1.4
@@ -109,6 +114,9 @@ uniform vec2 light = vec2(1.0);
 uniform vec2 shadow = vec2(0.0);
 uniform float slope_light = 0.22;
 uniform vec4 tint = vec4(1.0);
+// Radio de las esquinas redondeadas (0 = canto vivo) y brillo de su bisel.
+uniform float corner = 0.0;
+uniform float gloss = 0.16;
 
 varying vec2 at;
 
@@ -125,6 +133,82 @@ float depth_alpha(float z, float y) {
 		return texture(front, vec2(0.5 - z / (2.0 * front_half), (y - bob - canvas.y) / canvas.w)).a;
 	}
 	return step(box.z, z) * step(z, box.w);
+}
+
+// Cuanto falta desde un punto de dentro hasta el borde de la silueta de
+// perfil a lo largo del robot, como mucho `corner`.
+float edge_side(float x, float y) {
+	for (int k = 1; k <= 4; k++) {
+		float d = corner * float(k) * 0.25;
+		bool ahead = side_art(x + d, y).a < 0.5;
+		if (ahead || side_art(x - d, y).a < 0.5) {
+			float way = ahead ? 1.0 : -1.0;
+			float lo = d - corner * 0.25;
+			float hi = d;
+			for (int j = 0; j < 3; j++) {
+				float mid = 0.5 * (lo + hi);
+				if (side_art(x + way * mid, y).a < 0.5) {
+					hi = mid;
+				} else {
+					lo = mid;
+				}
+			}
+			return 0.5 * (lo + hi);
+		}
+	}
+	return corner;
+}
+
+// Lo mismo hasta el borde de la silueta de frente, a lo ancho.
+float edge_depth(float z, float y) {
+	if (!has_front) {
+		return min(min(z - box.z, box.w - z), corner);
+	}
+	for (int k = 1; k <= 4; k++) {
+		float d = corner * float(k) * 0.25;
+		bool ahead = depth_alpha(z + d, y) < 0.5;
+		if (ahead || depth_alpha(z - d, y) < 0.5) {
+			float way = ahead ? 1.0 : -1.0;
+			float lo = d - corner * 0.25;
+			float hi = d;
+			for (int j = 0; j < 3; j++) {
+				float mid = 0.5 * (lo + hi);
+				if (depth_alpha(z + way * mid, y) < 0.5) {
+					hi = mid;
+				} else {
+					lo = mid;
+				}
+			}
+			return 0.5 * (lo + hi);
+		}
+	}
+	return corner;
+}
+
+// Lo que sobra de la esquina: (cuanto entra por cada lado, 0 si esta lejos).
+vec2 corner_cut(float x, float z, float y) {
+	if (corner <= 0.0) {
+		return vec2(0.0);
+	}
+	float ex = edge_side(x, y);
+	if (ex >= corner) {
+		return vec2(0.0);
+	}
+	float ez = edge_depth(z, y);
+	if (ez >= corner) {
+		return vec2(0.0);
+	}
+	return vec2(corner - ex, corner - ez);
+}
+
+// Dentro del cuerpo: dentro de las dos siluetas y sin la esquina que se
+// redondea.
+bool solid_at(float x, float z, float y) {
+	if (min(side_art(x, y).a, depth_alpha(z, y)) <= 0.5) {
+		return false;
+	}
+	vec2 cut = corner_cut(x, z, y);
+	return dot(cut, cut) <= corner * corner;
 }
 
 void fragment() {
@@ -170,6 +254,7 @@ void fragment() {
 	float w_in = hi;
 	bool was_side = false;
 	bool was_depth = false;
+	float gap = 100000.0;
 	for (int i = 0; i < n; i++) {
 		float w = hi - dw * (float(i) + 0.5);
 		float x = pivot.x + dx * c - w * s;
@@ -178,7 +263,14 @@ void fragment() {
 		float fa = depth_alpha(z, y);
 		float m = min(pa, fa);
 		best = max(best, m);
-		if (m > 0.5) {
+		bool inside = m > 0.5;
+		if (inside && corner > 0.0) {
+			vec2 cut = corner_cut(x, z, y);
+			inside = dot(cut, cut) <= corner * corner;
+			// Por cuanto se queda fuera de la esquina redondeada.
+			gap = min(gap, length(cut) - corner);
+		}
+		if (inside) {
 			found = true;
 			w_in = w;
 			if (i == 0) {
@@ -195,13 +287,19 @@ void fragment() {
 		w_out = w;
 	}
 	if (!found) {
-		COLOR = vec4(ink, smoothstep(0.2, 0.5, best)) * tint;
+		// El trazo de tinta del borde; junto a una esquina redondeada, solo
+		// pegado a ella (lo demas de la esquina recortada es aire).
+		float line = smoothstep(0.2, 0.5, best);
+		if (gap < 10000.0) {
+			line = 1.0 - smoothstep(0.5, 2.6, gap);
+		}
+		COLOR = vec4(ink, line) * tint;
 	} else {
 		for (int k = 0; k < 5; k++) {
 			float w = 0.5 * (w_out + w_in);
 			float x = pivot.x + dx * c - w * s;
 			float z = pivot.y + dx * s + w * c;
-			if (min(side_art(x, y).a, depth_alpha(z, y)) > 0.5) {
+			if (solid_at(x, z, y)) {
 				w_in = w;
 			} else {
 				w_out = w;
@@ -227,20 +325,37 @@ void fragment() {
 		// Una cara vista de lleno es su dibujo tal cual: sin relieve.
 		float glancing = on_wall ? abs(c) : abs(s);
 		float relief = 1.0 + slope_light * glancing * grade.y / max(length(grade), 0.2);
-		vec3 color;
-		if (!on_wall) {
-			color = mix(side_art(x, y).rgb, wall, shadow.x) * light.x;
-		} else if (has_front && (s < 0.0 || has_back)) {
-			float v = (y - bob - canvas.y) / canvas.w;
-			float u = z / (2.0 * front_half);
-			vec4 art = s < 0.0 ? texture(front, vec2(0.5 - u, v)) : texture(back, vec2(0.5 + u, v));
-			color = mix(mix(wall, art.rgb, smoothstep(0.3, 0.7, art.a)), wall, shadow.y) * light.y;
-		} else {
-			// Sin dibujo de esa cara: los colores del borde de su perfil.
-			vec4 deep = side_art(x + sign(s) * 3.0, y);
-			vec3 base = deep.a > 0.6 ? deep.rgb : side_art(x, y).rgb;
-			color = mix(base, wall, 0.35) * 0.82 * light.y;
+		// Cuanto mira la superficie hacia la cara de canto (1) o hacia la de
+		// perfil (0): en la esquina redondeada pasa de una a otra.
+		float to_wall = on_wall ? 1.0 : 0.0;
+		float bevel = 0.0;
+		vec2 cut = corner_cut(x, z, y);
+		float reach = length(cut);
+		if (reach > 0.001) {
+			bevel = smoothstep(0.5, 0.95, reach / corner);
+			to_wall = mix(to_wall, (cut.x / reach) * (cut.x / reach), bevel);
 		}
+		vec3 side_color = vec3(0.0);
+		vec3 wall_color = vec3(0.0);
+		if (to_wall < 0.999) {
+			side_color = mix(side_art(x, y).rgb, wall, shadow.x) * light.x;
+		}
+		if (to_wall > 0.001) {
+			if (has_front && (s < 0.0 || has_back)) {
+				float v = (y - bob - canvas.y) / canvas.w;
+				float u = z / (2.0 * front_half);
+				vec4 art = s < 0.0 ? texture(front, vec2(0.5 - u, v)) : texture(back, vec2(0.5 + u, v));
+				wall_color = mix(mix(wall, art.rgb, smoothstep(0.3, 0.7, art.a)), wall, shadow.y) * light.y;
+			} else {
+				// Sin dibujo de esa cara: los colores del borde de su perfil.
+				vec4 deep = side_art(x + sign(s) * 3.0, y);
+				vec3 base = deep.a > 0.6 ? deep.rgb : side_art(x, y).rgb;
+				wall_color = mix(base, wall, 0.35) * 0.82 * light.y;
+			}
+		}
+		vec3 color = mix(side_color, wall_color, to_wall);
+		// El bisel coge luz donde la superficie esta a medio camino.
+		color *= 1.0 + gloss * bevel * (1.0 - abs(2.0 * to_wall - 1.0));
 		COLOR = vec4(color * relief, 1.0) * tint;
 	}
 }
@@ -613,6 +728,9 @@ func _redraw() -> void:
 			"box", Vector4(region.position.x, region.end.x, far, near)
 		)
 		solid_material.set_shader_parameter("bob", sway.x if layer["kind"] == "leg" else sway.y)
+		solid_material.set_shader_parameter(
+			"corner", minf(minf(depth.y, region.size.x) * CORNER_SHARE, CORNER_MAX)
+		)
 		var behind := clampf(-float(layer["side"]) * c, 0.0, 1.0)
 		var dim := lerpf(1.0, layer["dim"], behind)
 		var face := dim * lerpf(FACE_SHADE, 1.0, absf(local.x))
