@@ -745,7 +745,8 @@ func test_una_hoja_se_prueba_con_su_tajo_y_no_con_un_disparo() -> void:
 	var gun := ""
 	for i in 4:
 		var slot := "side%d" % i
-		if stage._item_in(slot) == null:
+		var sides := stage._mech.build.sides
+		if i >= sides.size() or sides[i] == null:
 			continue
 		if stage._mech.is_melee(slot):
 			blade = slot
@@ -784,18 +785,15 @@ func _screen_point(stage: HangarStage, world: Vector2) -> Vector2:
 
 func test_obs030_las_piezas_ya_no_se_eligen_tocando_el_robot() -> void:
 	var stage := _stage()
-	var picked: Array[String] = []
-	stage.picked.connect(func(slot: String) -> void: picked.append(slot))
 	var pressed := [0]
 	stage.robot_pressed.connect(func() -> void: pressed[0] += 1)
 	var arm := _screen_point(stage, stage._world_rect("side0").get_center())
 	stage._gui_input(_click(arm))
 	stage._gui_input(_release(arm))
-	assert_eq(picked.size(), 0, "tocar un arma del robot ya no elige su hueco")
 	assert_eq(pressed[0], 1, "pulsar el robot acerca la computadora del taller")
-	assert_null(stage._get_drag_data(arm), "ni se arrastran sus piezas")
-	var data := {"id": "hoja_balas_ter", "type": ItemDef.Type.SIDE}
-	assert_false(stage._can_drop_data(arm, data), "ni se le sueltan encima")
+	assert_false(stage.has_signal("picked"), "tocar un arma del robot ya no elige su hueco")
+	assert_false(stage.has_signal("dropped"), "ni se le sueltan piezas encima")
+	assert_false(stage.has_method("slot_at"), "el robot ya no sabe que pieza se toca")
 
 
 func test_obs030_arrastrar_el_robot_lo_gira_y_no_abre_nada() -> void:

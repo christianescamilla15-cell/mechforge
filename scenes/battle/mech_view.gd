@@ -608,34 +608,6 @@ func slot_rect(slot: String) -> Rect2:
 	return _sprites.piece_rect(MechSprites.WEAPON_SET, kind, at)
 
 
-## Las cuatro esquinas de la pieza de un hueco, en orden, respecto a los
-## pies; vacio si no se dibuja.
-func slot_quad(slot: String) -> PackedVector2Array:
-	var rect := slot_rect(slot)
-	if rect.size == Vector2.ZERO:
-		return PackedVector2Array()
-	return PackedVector2Array(
-		[
-			rect.position,
-			Vector2(rect.end.x, rect.position.y),
-			rect.end,
-			Vector2(rect.position.x, rect.end.y)
-		]
-	)
-
-
-## True si ese punto (respecto a los pies) cae sobre la pieza del hueco.
-func slot_has_point(slot: String, point: Vector2) -> bool:
-	return slot_rect(slot).has_point(point)
-
-
-## Donde va el enchufe de un hueco de arma vacio, respecto a los pies.
-func slot_socket(slot: String) -> Vector2:
-	var rect := slot_rect(slot)
-	return Vector2(rect.position.x + rect.size.x * 0.22, rect.get_center().y)
-
-
-## Pieza con la que se dibuja el dron; "" si no tiene arte (va el provisional).
 ## Humo, fuego, arcos y chispas del estado del mech, sobre su cuerpo.
 func _draw_condition(torso: Rect2) -> void:
 	if _dead:

@@ -255,8 +255,6 @@ func _tween_mission(to: float, seconds: float) -> void:
 func launch_out(speed: float = 1.0) -> void:
 	_launch_center = _platform_center()
 	_launching = true
-	hover_slot = ""
-	selected_slot = ""
 	_row.hover = false
 	if is_turned():
 		await turn_to(0.0, 0.2)
@@ -379,8 +377,6 @@ func _apply_turn() -> void:
 	_mech.visible = not turned
 	_turntable.angle = turn
 	_turntable.set_active(turned)
-	if turned and not is_flipped() and hover_slot != "":
-		hover_slot = ""
 	_overlay.queue_redraw()
 	queue_redraw()
 
@@ -404,11 +400,6 @@ func _can_touch() -> bool:
 func _pivot() -> float:
 	var legs := _world_rect("legs")
 	return legs.get_center().x if legs.size != Vector2.ZERO else 0.0
-
-
-## De media vuelta el robot se ve reflejado sobre su eje.
-func _robot_point(world: Vector2) -> Vector2:
-	return Vector2(2.0 * _pivot() - world.x, world.y) if is_flipped() else world
 
 
 ## Gira el robot hasta ese angulo con un movimiento suave, por el camino corto.
@@ -715,8 +706,6 @@ func _clear_hover() -> void:
 	_hover_target = false
 	_hover_platform = false
 	_row.hover = false
-	if hover_slot != "":
-		hover_slot = ""
 	_overlay.queue_redraw()
 
 
@@ -894,14 +883,4 @@ func _turn_input(button: InputEventMouseButton) -> bool:
 				_turn_moved = false
 				queue_redraw()
 			return true
-	return false
-
-
-## Las piezas ya no se arrastran al robot ni desde el: se montan en la
-## computadora del taller.
-func _get_drag_data(_at: Vector2) -> Variant:
-	return null
-
-
-func _can_drop_data(_at: Vector2, _data: Variant) -> bool:
 	return false

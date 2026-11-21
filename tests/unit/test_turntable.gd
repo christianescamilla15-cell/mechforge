@@ -79,14 +79,11 @@ func test_arrastrar_la_plataforma_gira_el_robot() -> void:
 func test_el_robot_se_agarra_por_cualquier_parte_para_girarlo() -> void:
 	# Sus piezas ya no se eligen tocandolo (OBS-030): todo el robot gira.
 	var stage := _stage()
-	var picked: Array[String] = []
-	stage.picked.connect(func(slot: String) -> void: picked.append(slot))
 	var torso := stage._world_rect("torso").get_center()
 	var at := stage._world.position + torso * stage._world.scale.x
 	assert_true(stage._grabs_platform(at), "de perfil, tambien por el torso")
 	stage.turn = PI / 3.0
 	assert_true(stage._grabs_platform(at), "y girado")
-	assert_eq(picked.size(), 0)
 
 
 func test_casi_de_perfil_vuelve_solo_al_perfil() -> void:

@@ -1,21 +1,13 @@
 class_name MechStage
 extends Control
-## El mech en el taller (WorkshopScreen), grande y armado con lo que lleva. La
-## pieza del hueco elegido se marca con esquinas; pasar el raton por una
-## pieza la marca y un clic elige su hueco; una pieza se arrastra desde el
-## mech (para cambiarla de hueco o quitarla) y se le sueltan piezas encima. Al
+## El mech en el taller (WorkshopScreen), grande y armado con lo que lleva. Al
 ## subir o transformar una pieza destella, y "Probar" la dispara contra una
-## diana con su efecto de combate.
-
-signal picked(slot: String)
-signal dropped(data: Dictionary)
-signal hovered(slot: String)
+## diana con su efecto de combate. Sus piezas no se eligen ni se arrastran
+## aqui: eso va en la computadora del taller (LoadoutScreen, OBS-030).
 
 const COLOR_SELECTED := Color("ffe27a")
-const COLOR_HOVER := Color(1, 1, 1, 0.55)
 const COLOR_TARGET := Color("ff7d6b")
-## Huecos que se pueden tocar en el dibujo, del mas pequeno al mas grande:
-## si se solapan, gana el arma sobre el torso.
+## Huecos que tienen sitio en el dibujo, del mas pequeno al mas grande.
 const TOUCHABLE: Array[String] = [
 	"top0", "top1", "side0", "side1", "side2", "side3", "chest", "assist", "torso", "legs"
 ]
@@ -32,8 +24,6 @@ const STRIKE_PAST := 18.0
 const STRIKE_JUMP := 0.5
 const STRIKE_SWING := 0.5
 
-var selected_slot: String = ""
-var hover_slot: String = ""
 ## Solo para ver (el hangar de la base): sin raton y sin diana.
 var preview: bool = false
 
@@ -191,9 +181,6 @@ func _process(delta: float) -> void:
 	# El polvo flota en la luz.
 	_time += delta
 	queue_redraw()
-	# Las esquinas siguen a la pieza mientras el mech respira.
-	if selected_slot != "" or hover_slot != "":
-		_overlay.queue_redraw()
 
 
 ## El hangar detras del mech: pared de placas, viga con cadenas, lamparas,
@@ -232,30 +219,10 @@ func _draw_overlay() -> void:
 		_overlay.draw_circle(
 			target, 40.0 * (1.5 - _target_hit), Color(1, 0.9, 0.7, _target_hit * 0.4)
 		)
-	if hover_slot != "" and hover_slot != selected_slot:
-		_brackets(hover_slot, COLOR_HOVER, 2.0)
-	if selected_slot != "":
-		_brackets(selected_slot, COLOR_SELECTED, 3.0)
 	if _flash > 0.0 and _flash_slot != "":
 		var rect := _world_rect(_flash_slot).grow(10.0 * (1.0 - _flash))
 		_overlay.draw_rect(rect, Color(_flash_color, _flash * 0.45))
 		_overlay.draw_rect(rect, Color(_flash_color, _flash), false, 3.0)
-
-
-## Esquinas alrededor de la pieza de un hueco.
-func _brackets(slot: String, color: Color, width: float) -> void:
-	var quad := _mech.slot_quad(slot)
-	if quad.size() != 4:
-		return
-	for i in 4:
-		# Cada esquina, con sus dos lados.
-		var p := _robot_point(_mech.transform * quad[i])
-		var next := _robot_point(_mech.transform * quad[(i + 1) % 4]) - p
-		var before := _robot_point(_mech.transform * quad[(i + 3) % 4]) - p
-		var arm := minf(18.0, minf(next.length(), before.length()) * 0.35)
-		var corner := p - (next.normalized() + before.normalized()) * 6.0
-		_overlay.draw_line(corner, corner + next.normalized() * arm, color, width)
-		_overlay.draw_line(corner, corner + before.normalized() * arm, color, width)
 
 
 ## Rectangulo de la pieza de un hueco en las coordenadas del mundo del taller.
@@ -266,100 +233,3 @@ func _world_rect(slot: String) -> Rect2:
 	var a := _mech.transform * rect.position
 	var b := _mech.transform * rect.end
 	return Rect2(Vector2(minf(a.x, b.x), minf(a.y, b.y)), (b - a).abs())
-
-
-## Hueco cuya pieza esta bajo un punto de la pantalla del taller; "" si nada.
-func slot_at(at: Vector2) -> String:
-	var under := slots_at(at)
-	return under[0] if not under.is_empty() else ""
-
-
-## Todos los huecos cuya pieza esta bajo ese punto, del de encima al de mas
-## abajo. Un torso o unas piernas que faltan (su fantasma) tambien cuentan:
-## asi se elige su hueco en un robot recien adquirido.
-func slots_at(at: Vector2) -> Array[String]:
-	var out: Array[String] = []
-	if _mech.build == null:
-		return out
-	var world := _robot_point((at - _world.position) / _world.scale.x)
-	var local := _mech.transform.affine_inverse() * world
-	for slot in _touch_order():
-		if not _mech.slot_has_point(slot, local):
-			continue
-		if _item_in(slot) != null or slot in _mech.ghost_slots:
-			out.append(slot)
-	return out
-
-
-## El hueco que elige un clic en ese punto: el de encima o, si ese ya esta
-## elegido, el siguiente de los que tiene debajo. Asi se llega a un arma
-## tapada por otra pulsando otra vez.
-func slot_to_pick(at: Vector2) -> String:
-	var under := slots_at(at)
-	if under.is_empty():
-		return ""
-	var index := under.find(selected_slot)
-	return under[(index + 1) % under.size()] if index >= 0 else under[0]
-
-
-## Orden en que se miran los huecos (el primero gana).
-func _touch_order() -> Array[String]:
-	return TOUCHABLE
-
-
-## Un punto del mundo del taller, tal como cae sobre el robot (el hangar lo
-## refleja cuando el robot esta de media vuelta).
-func _robot_point(world: Vector2) -> Vector2:
-	return world
-
-
-func _gui_input(event: InputEvent) -> void:
-	var motion := event as InputEventMouseMotion
-	if motion != null:
-		var slot := slot_at(motion.position)
-		if slot != hover_slot:
-			hover_slot = slot
-			hovered.emit(slot)
-			_overlay.queue_redraw()
-		return
-	var click := event as InputEventMouseButton
-	if click != null and click.pressed and click.button_index == MOUSE_BUTTON_LEFT:
-		var slot := slot_to_pick(click.position)
-		if slot != "":
-			picked.emit(slot)
-
-
-## Arrastrar una pieza desde el mech: a otro hueco de su tipo o fuera.
-func _get_drag_data(at: Vector2) -> Variant:
-	var slot := slot_at(at)
-	var item := _item_in(slot)
-	if item == null:
-		return null
-	set_drag_preview(PartIcon.drag_preview(item))
-	return {"id": item.id, "type": item.type, "from_slot": slot}
-
-
-func _item_in(slot: String) -> ItemDef:
-	var build := _mech.build
-	if build == null or slot == "" or slot in _mech.ghost_slots:
-		return null
-	match slot:
-		"torso":
-			return build.torso
-		"legs":
-			return build.legs
-		"chest":
-			return build.chest
-		"assist":
-			return build.assist
-	var index := int(slot.right(1))
-	var list: Array[ItemDef] = build.sides if slot.begins_with("side") else build.tops
-	return list[index] if index < list.size() else null
-
-
-func _can_drop_data(_at: Vector2, data: Variant) -> bool:
-	return data is Dictionary and data.has("id") and not data.has("from_slot")
-
-
-func _drop_data(_at: Vector2, data: Variant) -> void:
-	dropped.emit(data)
