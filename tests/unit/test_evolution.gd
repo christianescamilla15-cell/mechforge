@@ -128,3 +128,18 @@ func test_las_armas_del_asistente_evolucionan_cuando_el_pasa_de_su_tipo() -> voi
 	var now := str(profile.build["drone"])
 	assert_eq(_catalog.get_item(now).weapon_type, "laser")
 	assert_eq(_brief.resolved(profile, now).tier, T.MYTHIC, "y ya sube con el asistente")
+
+
+func test_el_dibujo_de_una_pieza_sigue_su_clase_si_existe() -> void:
+	var torso := ItemScaling.resolve(_catalog.get_item("torso_baluarte"), _rules, T.COMMON, 0)
+	assert_eq(
+		MechSprites.class_set("ligero_18", torso, "torso"), "ligero_18", "en Basica, el de siempre"
+	)
+	var mythic := ItemScaling.resolve(_catalog.get_item("torso_baluarte"), _rules, T.MYTHIC, 0)
+	var shown := MechSprites.class_set("ligero_18", mythic, "torso")
+	assert_true(shown.begins_with("ligero_18"))
+	if shown != "ligero_18":
+		assert_true(MechSprites.has_piece(shown, "torso"), "solo uno que exista")
+	assert_eq(
+		MechSprites.class_set("no_existe", mythic, "torso"), "no_existe", "sin dibujo de clase"
+	)

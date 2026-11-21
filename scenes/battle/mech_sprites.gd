@@ -90,8 +90,10 @@ static func for_build(build: MechBuild) -> MechSprites:
 		out.torso_set = build.body
 		out.legs_set = build.body
 		return out
-	out.torso_set = torsos[absi(build.torso.id.hash()) % torsos.size()]
-	out.legs_set = legs[absi(build.legs.id.hash()) % legs.size()]
+	out.torso_set = class_set(
+		torsos[absi(build.torso.id.hash()) % torsos.size()], build.torso, "torso"
+	)
+	out.legs_set = class_set(legs[absi(build.legs.id.hash()) % legs.size()], build.legs, "legs")
 	for tag: String in SPECIAL_LEGS:
 		if build.legs.has_tag(tag) and has_piece(SPECIAL_LEGS[tag], "legs"):
 			out.legs_set = SPECIAL_LEGS[tag]
@@ -104,6 +106,20 @@ static func for_build(build: MechBuild) -> MechSprites:
 static func chest_set(item: ItemDef) -> String:
 	var own := str(item.art.get("set", "")) if item != null else ""
 	return own if own != "" and has_piece(own, "chest") else MechView.CHEST_SET
+
+
+## El dibujo de una pieza en su clase (OBS-045, del usuario: "no veo el mismo
+## efecto de transformacion en el torso o en las piernas"): el juego
+## "<juego>_c<clase>" si existe (c1 Intermedia ... c4 Mitica; la Unica usa el
+## de Mitica) y, si no, el de siempre.
+static func class_set(base: String, item: ItemDef, kind: String) -> String:
+	if item == null or item.tier <= ItemDef.Tier.COMMON:
+		return base
+	for tier in range(mini(item.tier, ItemDef.Tier.MYTHIC), 0, -1):
+		var named := "%s_c%d" % [base, tier]
+		if has_piece(named, kind):
+			return named
+	return base
 
 
 static func has_piece(set_name: String, kind: String) -> bool:
@@ -237,7 +253,8 @@ static func icon_for(item: ItemDef, paint: int = -1) -> Texture2D:
 			var torsos := _available(TORSO_SETS, "torso")
 			if torsos.is_empty():
 				return null
-			return _texture(torsos[absi(item.id.hash()) % torsos.size()], "torso", element)
+			var torso_set := class_set(torsos[absi(item.id.hash()) % torsos.size()], item, "torso")
+			return _texture(torso_set, "torso", element)
 		ItemDef.Type.LEGS:
 			for tag: String in SPECIAL_LEGS:
 				if item.has_tag(tag) and has_piece(SPECIAL_LEGS[tag], "legs"):
@@ -245,7 +262,8 @@ static func icon_for(item: ItemDef, paint: int = -1) -> Texture2D:
 			var legs := _available(LEGS_SETS, "legs")
 			if legs.is_empty():
 				return null
-			return _texture(legs[absi(item.id.hash()) % legs.size()], "legs", element)
+			var legs_set := class_set(legs[absi(item.id.hash()) % legs.size()], item, "legs")
+			return _texture(legs_set, "legs", element)
 		ItemDef.Type.CHEST:
 			return _texture(chest_set(item), "chest", element)
 		ItemDef.Type.ASSIST:
