@@ -409,9 +409,14 @@ def placement(name):
     """Cuanto se amplia el bloque para llenar su lienzo y donde cae su union
     con el robot: (zoom, (x, y))."""
     design = DESIGNS[name]
-    points = [point for _, polygon in design["build"]() for point in polygon]
+    return placement_of(design["build"](), design["canvas"])
+
+
+def placement_of(parts, canvas):
+    """Lo mismo para unas piezas sueltas (tools/art/evolve_weapons.py)."""
+    points = [point for _, polygon in parts for point in polygon]
     xs, ys = [p[0] for p in points], [p[1] for p in points]
-    width, height = design["canvas"]
+    width, height = canvas
     zoom = min(
         (width - 2 * MARGIN) / (max(xs) - min(xs)),
         (height - 2 * MARGIN) / (max(ys) - min(ys)),
@@ -482,13 +487,21 @@ def details(role, polygon):
 def render(name):
     """Devuelve (bloque, control) del diseno: color plano y sus lineas."""
     design = DESIGNS[name]
-    zoom, (ox, oy) = placement(name)
+    zoom, origin = placement(name)
+    return render_parts(design["build"](), design["canvas"], zoom, origin)
+
+
+def render_parts(parts, canvas, zoom, origin, init=None, control=None):
+    """Pinta unas piezas con una ampliacion y un origen dados. Sobre `init` y
+    `control` si se dan (para anadir piezas a un dibujo que ya existe)."""
+    ox, oy = origin
     palette = blockout.PALETTES["physical"]
-    init = Image.new("RGB", design["canvas"], blockout.BACKGROUND)
-    control = Image.new("RGB", design["canvas"], (0, 0, 0))
+    init = init if init is not None else Image.new("RGB", canvas, blockout.BACKGROUND)
+    control = control if control is not None else Image.new("RGB", canvas, (0, 0, 0))
+    design = {"canvas": canvas}
     draw_init, draw_control = ImageDraw.Draw(init), ImageDraw.Draw(control)
     width = blockout.LINE_WIDTH
-    for role, polygon in design["build"]():
+    for role, polygon in parts:
         points = [(ox + zoom * x, oy + zoom * y) for x, y in polygon]
         closed = points + [points[0]]
         draw_init.polygon(points, fill=palette[role])

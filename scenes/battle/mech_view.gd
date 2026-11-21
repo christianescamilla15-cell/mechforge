@@ -743,7 +743,8 @@ func _mount_of(slot: String) -> Dictionary:
 		far = index >= FAR_TOP_FROM
 	if item == null:
 		return {}
-	var kind := MechSprites.weapon_kind(item)
+	# El dibujo de su clase y su nivel (o el de siempre si no lo tiene).
+	var kind := MechSprites.weapon_look(item)
 	if kind == "":
 		return {}
 	return {"item": item, "kind": kind, "at": at, "far": far}

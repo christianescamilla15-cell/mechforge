@@ -50,3 +50,69 @@ func test_lo_que_no_va_montado_no_tiene_dibujo_de_arma() -> void:
 		for item in _catalog.by_type(type):
 			assert_eq(MechSprites.weapon_kind(item), "", "%s no es un arma montada" % item.id)
 	assert_eq(MechSprites.weapon_kind(null), "")
+
+
+# --- Evolucion del dibujo (GDD 8; tools/art/evolve_weapons.py) -------------------
+
+
+func _resolved(id: String, tier: int, level: int) -> ItemDef:
+	return ItemScaling.resolve(_catalog.get_item(id), RulesConfig.new(), tier, level)
+
+
+func test_en_la_primera_clase_cada_nivel_es_un_paso_de_aspecto() -> void:
+	for level in 7:
+		var item := _resolved("hoja_balas_ter", ItemDef.Tier.COMMON, level)
+		assert_eq(MechSprites.look_step(item), level, "nivel %d" % level)
+	# En las siguientes los seis pasos se reparten entre mas niveles.
+	var top := RulesConfig.new().tier_max_level[ItemDef.Tier.RARE]
+	assert_eq(MechSprites.look_step(_resolved("hoja_balas_ter", ItemDef.Tier.RARE, 0)), 0)
+	assert_eq(MechSprites.look_step(_resolved("hoja_balas_ter", ItemDef.Tier.RARE, 2)), 1)
+	assert_eq(
+		MechSprites.look_step(_resolved("hoja_balas_ter", ItemDef.Tier.RARE, top)),
+		MechSprites.LOOK_STEPS
+	)
+
+
+func test_un_arma_sin_dibujos_de_evolucion_se_ve_como_siempre() -> void:
+	var anchors := MechSprites._load_anchors(MechSprites.WEAPON_SET)
+	for item in _mounted():
+		var base := MechSprites.weapon_kind(item)
+		if anchors.has(base + "_c0_1"):
+			continue
+		var grown := _resolved(item.id, item.tier_min, 6)
+		assert_eq(MechSprites.weapon_look(grown), base, "%s sigue con su dibujo" % item.id)
+
+
+func test_el_arma_piloto_suma_un_periferico_por_nivel_y_cambia_de_modelo_al_transformarla() -> void:
+	var base := "arm_hoja_balas"
+	var seen := {}
+	for level in 7:
+		var look := MechSprites.weapon_look(_resolved("hoja_balas_ter", ItemDef.Tier.COMMON, level))
+		var wanted := base if level == 0 else "%s_c0_%d" % [base, level]
+		assert_eq(look, wanted, "Basica nivel %d" % level)
+		seen[look] = true
+	assert_eq(seen.size(), 7, "cada nivel de la Basica se ve distinto")
+	# Transformada a la clase siguiente, otro modelo, que empieza sin perifericos.
+	var rare := _resolved("hoja_balas_ter", ItemDef.Tier.RARE, 0)
+	assert_eq(MechSprites.weapon_look(rare), base + "_c1_0")
+	var top := RulesConfig.new().tier_max_level[ItemDef.Tier.RARE]
+	var rare_top := _resolved("hoja_balas_ter", ItemDef.Tier.RARE, top)
+	assert_eq(MechSprites.weapon_look(rare_top), base + "_c1_6")
+	# Cada dibujo esta en los tres elementos y con sus anclas, como cualquier arma.
+	var anchors := MechSprites._load_anchors(MechSprites.WEAPON_SET)
+	for tier in 2:
+		for step in MechSprites.LOOK_STEPS + 1:
+			if tier == 0 and step == 0:
+				continue
+			var look := "%s_c%d_%d" % [base, tier, step]
+			assert_true(anchors.get(look) is Dictionary, "anclas de " + look)
+			for key: String in ["hip", "size", "tip"]:
+				assert_true((anchors[look] as Dictionary).has(key), "%s de %s" % [key, look])
+			for element in 3:
+				assert_not_null(
+					MechSprites.texture(MechSprites.WEAPON_SET, look, element), "dibujo de " + look
+				)
+	# La miniatura del taller es ese mismo dibujo.
+	var plain := MechSprites.icon_for(_resolved("hoja_balas_ter", ItemDef.Tier.COMMON, 0))
+	var loaded := MechSprites.icon_for(_resolved("hoja_balas_ter", ItemDef.Tier.COMMON, 6))
+	assert_ne(plain, loaded)

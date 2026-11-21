@@ -26,6 +26,11 @@ const WEAPON_PREFIX: Dictionary[int, String] = {
 ## Tipos de arma, en el orden en que se busca otro dibujo de la misma
 ## forma cuando falta el del tipo pedido.
 const WEAPON_TYPES: Array[String] = ["balas", "canon", "blaster", "laser"]
+## Pasos de aspecto de un arma dentro de una clase (GDD 8): el modelo de la
+## clase y seis perifericos que se le van sumando al subir de nivel
+## (tools/art/evolve_weapons.py). El dibujo se llama "<arma>_c<clase>_<paso>";
+## el modelo de su primera clase, sin perifericos, es el de siempre.
+const LOOK_STEPS := 6
 ## Formas del robot de asistencia, una por clase (tools/art/export_assist.py):
 ## "assist_0" (Sonda) .. "assist_5" (Arconte), con el centro del casco y las
 ## bocas de sus dos armas.
@@ -41,6 +46,8 @@ const SPECIAL_LEGS: Dictionary[String, String] = {
 }
 
 static var _anchors: Dictionary[String, Dictionary] = {}
+## Nivel maximo de cada clase (RulesConfig), para saber por que paso va.
+static var _tier_levels: Array[int] = []
 static var _textures: Dictionary[String, Texture2D] = {}
 
 var torso_set: String = ""
@@ -161,6 +168,35 @@ static func weapon_kind(item: ItemDef) -> String:
 	return ""
 
 
+## Paso de aspecto de una pieza dentro de su clase, de 0 (recien llegada a
+## la clase) a LOOK_STEPS (a su nivel maximo). En la primera clase, de seis
+## niveles, cada nivel es un paso.
+static func look_step(item: ItemDef) -> int:
+	if _tier_levels.is_empty():
+		_tier_levels = RulesConfig.new().tier_max_level
+	var top := _tier_levels[clampi(item.tier, 0, _tier_levels.size() - 1)]
+	return clampi(item.level * LOOK_STEPS / maxi(top, 1), 0, LOOK_STEPS)
+
+
+## Dibujo con el que se ve un arma segun su clase y su nivel: el modelo de
+## su clase con los perifericos de su paso. Si falta ese dibujo, el paso
+## anterior que lo tenga; si su clase no tiene modelo, el mas avanzado de la
+## clase anterior. Sin arte de evolucion, el de siempre (weapon_kind).
+static func weapon_look(item: ItemDef) -> String:
+	var base := weapon_kind(item)
+	if base == "":
+		return ""
+	var anchors := _load_anchors(WEAPON_SET)
+	var own := maxi(item.tier - item.tier_min, 0)
+	for tier in range(own, -1, -1):
+		var from := look_step(item) if tier == own else LOOK_STEPS
+		for step in range(from, -1, -1):
+			var look := base if tier == 0 and step == 0 else "%s_c%d_%d" % [base, tier, step]
+			if anchors.get(look) is Dictionary:
+				return look
+	return base
+
+
 ## Dibujo de una pieza para su miniatura en el taller (el mismo que lleva el
 ## mech); null si esa pieza no tiene arte.
 static func icon_for(item: ItemDef) -> Texture2D:
@@ -168,7 +204,7 @@ static func icon_for(item: ItemDef) -> Texture2D:
 		return null
 	match item.type:
 		ItemDef.Type.SIDE, ItemDef.Type.TOP:
-			var kind := weapon_kind(item)
+			var kind := weapon_look(item)
 			return _texture(WEAPON_SET, kind, item.element) if kind != "" else null
 		ItemDef.Type.TORSO:
 			var torsos := _available(TORSO_SETS, "torso")

@@ -75,10 +75,16 @@ CHOSEN = {
 }
 
 
-def export(name, source, sheet_row=None):
+def export(name, source, sheet_row=None, placement=None, keep=None):
+    """`placement`: la ampliacion y el origen con los que se dibujo, si no
+    son los del diseno `name` (las etapas de tools/art/evolve_weapons.py).
+    `keep`: zonas del lienzo donde lo dibujado se conserva aunque quede
+    suelto (los perifericos pequenos, que el recorte tomaria por motas)."""
     image = Image.open(source).convert("RGB")
     mask = np.logical_and(cutout.clean_figure(image), ~export_assist.enclosed_background(image))
-    zoom, origin = weapons_test.placement(name)
+    if keep is not None:
+        mask = np.logical_or(mask, np.logical_and(cutout.foreground_mask(image), keep))
+    zoom, origin = placement or weapons_test.placement(name)
     arm = name.startswith("arm_")
     if not arm:
         mask[round(origin[1] + TOP_BELOW * zoom) :] = False

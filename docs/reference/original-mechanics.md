@@ -108,6 +108,34 @@ Regla de trabajo que pidió el usuario: no se hace nada desde cero. Cada mecáni
 **No está en el análisis**
 - La nave que deja bonificaciones: sale del recuerdo del usuario, no de las fuentes. Sus números (turno 3, cada 5, del 10 al 50 %, 3 turnos) son propuesta nuestra.
 
+## Cómo evolucionaba el aspecto de las piezas (2026-11-20)
+El usuario notó que al mejorar una pieza su dibujo no cambia y pidió mirar cómo lo hacía el original: "se mantiene la estructura y la mejora cambia gradualmente los periféricos"; la estructura evoluciona "después de pasar un jefe".
+
+### Fuentes
+| Fuente | Qué aporta | Confianza |
+|---|---|---|
+| [SuperMechs Workshop Legacy Items Pack](https://gist.github.com/ctrlraul/f39e6637b5fbda1f7d4e58fb50c0399e) (gist público de ctrlraul) | Los objetos de la versión antigua (2012–2014) con el nombre del archivo de su dibujo: unos 930 | Alta para nombres, tipos y archivos; es una recopilación de la comunidad |
+| [Workshop Unlimited Items Pack V2](https://gist.github.com/ctrlraul/22b71089a0dd7fef81e759dfb3dda67b) y [Enegg/Item-packs](https://github.com/Enegg/Item-packs) | Los objetos de la versión moderna: un solo dibujo por objeto y su rango de transformación | Alta |
+| Wiki de Fandom ([Upgrade](https://super-mechs.fandom.com/wiki/Upgrade), [Tactics and General Info](https://super-mechs.fandom.com/wiki/Tactics_and_General_Info)) y foro, solo fragmentos del buscador | Transformar pide el nivel máximo; colores de cada rareza | Media |
+
+No se leyó la wiki ni el foro directamente (rechazan la lectura automática y no se rodeó). No se bajó ningún dibujo: de los paquetes solo se leyeron nombres y nombres de archivo.
+
+### Versión antigua (2012–2014): familias con un dibujo por versión
+- **No había niveles sobre la misma pieza.** Cada arma era una **familia de versiones sucesivas**, y cada versión era un objeto distinto que se compraba: Mark I, II y III (también v1.0 a v3.0, "doble" y "triple", "mega" y "ultra"). Vistas en el paquete: cañones, lanzacohetes y lanzamisiles en tres marcas; un cañón láser, su versión gemela y su v3.0; una ametralladora sencilla, doble y triple.
+- **Cada versión tiene su propio dibujo sobre el mismo modelo.** Los archivos lo dicen: el mismo número de modelo con letra A, B y C para las marcas I, II y III (`cannon1A`, `cannon1B`, `cannon1C`; `rocketLauncher17A/B/C`). Es decir: misma estructura, tres dibujos que van a más.
+- **Cambiar de modelo es cambiar de estructura.** La familia siguiente lleva otro número de modelo (`cannon6`, `cannon8`, `cannon10`…) y es otro dibujo.
+- **El elemento es el mismo dibujo en otro color:** un dígito tras la letra (`blaster21A`, `A2`, `A3` son el mismo cañón en sus tres elementos).
+- **Los módulos van numerados** (del 1 al 10 o al 12), con un dibujo por número.
+- Algunas versiones comparten dibujo (un mismo arpón para sus tres marcas): no era una regla estricta.
+
+### Versión moderna (2016 en adelante): un dibujo por objeto
+- Cada objeto tiene **un solo dibujo** para todas sus rarezas. Transformarlo (al llegar a su nivel máximo) no cambia el dibujo: cambia el **color de su rareza** (gris, azul, morado, dorado, naranja).
+- No se encontró ninguna fuente que diga que el dibujo cambie al transformar; los paquetes de datos traen un único archivo por objeto.
+
+### Qué significa para MechForge
+- Lo que recuerda el usuario es la versión antigua: dentro de un modelo, versiones que se ven cada vez más cargadas; al cambiar de modelo, otra estructura.
+- En MechForge una pieza sí sube de nivel y de clase sin dejar de ser la misma, así que la traducción es: **las etapas dentro de una clase equivalen a las marcas I, II y III** (misma estructura, más periféricos) y **pasar de clase equivale a pasar de modelo** (otra estructura). El GDD §8 ya pedía algo así desde el 2026-11-16 ("cada nivel se nota también en su aspecto") y no estaba hecho.
+
 ## Referencia de estructura: Swords and Sandals (2026-11-17)
 El usuario nombró este juego como modelo de lo que pasa **fuera del combate** y lo confirmó con una captura de la búsqueda. Es una serie Flash de gladiadores (el segundo, *Emperor's Reign*, es de 2007). Sirve de referencia para el ciclo de la partida, no para el combate, que sigue siendo el de este documento.
 
