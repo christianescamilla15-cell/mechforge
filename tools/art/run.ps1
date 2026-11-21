@@ -10,16 +10,17 @@
 #   3. ejecuta el script,
 #   4. vuelve a arrancar la tarea, pase lo que pase.
 # Con -KeepWatcher no toca la tarea.
-# Con -Python <ruta> usa otro Python (el del generador de musica, que tiene
-# su propio entorno): tools/art/run.ps1 -Python <python.exe> tools/audio/music.py
+# Con la variable MECHFORGE_PYTHON usa otro Python (el del generador de musica,
+# que tiene su propio entorno):
+#   $env:MECHFORGE_PYTHON = <python.exe>; tools\art\run.ps1 tools/audio/music.py
+# (No es un parametro: uno de texto se quedaria con la ruta del script.)
 param(
     [switch]$KeepWatcher,
-    [string]$Python = '',
     [Parameter(ValueFromRemainingArguments = $true)]
     [string[]]$Rest
 )
 $py = 'C:\Users\DANNY\dev\tools\mechforge-art\env\Scripts\python.exe'
-if ($Python) { $py = $Python }
+if ($env:MECHFORGE_PYTHON) { $py = $env:MECHFORGE_PYTHON }
 if (-not (Test-Path $py)) {
     Write-Output 'No existe el entorno de arte. Ejecuta primero tools\art\setup.ps1'
     exit 1

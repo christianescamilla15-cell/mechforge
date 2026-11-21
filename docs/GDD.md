@@ -602,6 +602,48 @@ Victorias contra el jefe tras gastar N victorias en la zona, empezando con lo qu
 - **Jefes 5, 8 y 10 endurecidos (2026-11-18, pedido del usuario).** Su nivel ya es el tope que la zona permite (es el del jugador en ella), así que la palanca es su entreno: de 18, 22 y 25 puntos a 19, 24 y 30 (data/campaign.json; la tabla de arriba enseña el cambio, pero sus porcentajes son los de antes de los críticos). El entreno no baja de una zona a la siguiente (tests/unit/test_campaign.gd), por eso la zona 5 queda en 19, como la 6 (con 22 bajaba al 63 %, pero por encima de la 6), y la 8 en 24, como la 9 (con 27 bajaba al 41 %). Con 30 el Coloso vuelve a su 32 %; con 36 llega a la materia oscura y no pierde nunca. Con 50 victorias la campaña queda en 58, 82, 91, 84, 70, 24, 99, 51, 69 y 32 %; con 25 y 100 victorias: zona 5, 37 y 96 %; zona 8, 53 y 71 %; zona 10, 32 y 38 %. Todas las zonas quedan a menos de 10 puntos de la campaña con solo críticos que el usuario aceptó (58, 81, 87, 91, 70, 24, 98, 54, 63 y 41).
 - **El robot de asistencia no movió el ritmo.** La misma medición sin él (2026-11-17) daba, con 50 victorias: 46, 83, 89, 70, 66, 24, 99, 52, 56 y 21 %. Con él: 46, 88, 88, 79, 66, 26, 96, 57, 63 y 32 %. Todas las diferencias caben en el margen de ±10 puntos salvo la del Coloso (+11), que con 100 victorias queda igual (37 % → 34 %). El jugador sube y transforma su asistente con las celdas de la zona y compra la batería; el Orden lleva el suyo a la clase de la zona.
 
+### 9.4 La escalera tecnológica de las ligas (propuesta, 2026-11-21)
+
+**Lo que pidió el usuario (OBS-011).** Primero: "cada enemigo de cada liga debe ser diferente al anterior" y "los rivales se vuelven con armas más estilizadas, más potentes; o sea, el nivel 10 es básicamente un dios robot". Y al ver el primer rival de prueba: "se ve bien. Nada más que la dirección debe de tener un sentido, no solamente añadir otro color o un arma nueva. Debe de ser una evolución tecnológica, como en ligas… son robots, al final de cuentas van evolucionando hasta llegar a un nivel 10. Puedes tomar como base algún libro, Warhammer, o algún detalle así… que tenga algún sentido".
+
+**La idea que le da sentido.** En el orden de máquinas, **lo más antiguo es lo más avanzado**. La frontera se defiende con lo barato y recién fabricado; cuanto más cerca del Trono, más vieja, más escasa y más venerada es la tecnología, hasta la máquina que fundó el Orden, que sus robots tratan como a un dios. Subir de liga es **remontar la historia de las máquinas**. Y lo que separa una era de la siguiente es una sola cosa: **de dónde sacan la energía**. Con más energía cambian, por este orden, sus armas, su blindaje y por último su forma. Por eso un rival de una liga alta no es el de la liga 1 con otro color: está hecho de otra manera.
+
+**De dónde sale** (ideas, no nombres ni diseños; el límite de no copiar marcas sigue en pie):
+- *Warhammer 40.000*: la tecnología como reliquia de una edad dorada perdida, que se venera en vez de entenderse, y las máquinas de guerra más viejas tratadas como dioses.
+- *La escala de Kardashov* (1964): medir una civilización por la energía que domina. Aquí, cada liga domina una fuente mayor.
+- *Las generaciones de mechas del anime*: primero el armazón y el blindaje, luego las armas de energía, luego la movilidad, luego las unidades remotas.
+- *La tercera ley de Clarke*: una tecnología lo bastante avanzada no se distingue de la magia. En las últimas ligas las máquinas dejan de parecer máquinas.
+
+**Los diez escalones.** Encajan con lo que ya existe: los nombres de las zonas, las cuatro familias de armas (balas, cañón, bláster y láser, §6) y la habilidad de cada campeón (§9.1), que pasa a ser **el avance de su era**: el campeón lo tiene entero y sus rivales, la versión de serie.
+
+| Liga | Zona | Era | De dónde saca la energía | Cómo se nota en el robot | Armas | El campeón encarna |
+|---|---|---|---|---|---|---|
+| 1 | Frontera de Chatarra | **Serie ligera** | Celdas químicas | Armazón fino, juntas y pistones a la vista, placas atornilladas | Balas | Superblindaje: la primera respuesta, poner más chapa |
+| 2 | Dunas de Óxido | **Acero pesado** | Motores mayores, la misma química | Blindaje por capas, cúpulas, crestas y hombreras: cuerpo de asedio | Balas de más calibre | Poder de daño: el arma grande |
+| 3 | Refinerías de Ceniza | **El horno** | Reactor de fusión | Núcleo que se ve, chimeneas y rejillas al rojo; el cuerpo se construye alrededor del reactor | Cañón | Energía infinita: el primer reactor que no se agota |
+| 4 | Anillo Orbital | **El vacío** | Reactor sellado y propulsores | Casco estanco sin juntas abiertas, toberas, antenas; piezas que se reparan solas | Cañón guiado | Regeneración: la máquina que se rehace |
+| 5 | Metrópolis Silente | **El sintético** | Fibra motriz en lugar de pistones | Sin tornillos ni placas: cuerpo liso, de una pieza, con músculo artificial | Bláster | Velocidad: tres acciones donde otros hacen dos |
+| 6 | Fosas de Plasma | **El campo** | Plasma contenido | Ya no se defiende con chapa sino con campos: emisores, conductos que brillan a través del blindaje | Bláster de plasma | Escudo: el golpe que no llega |
+| 7 | Nebulosa Espectral | **La luz** | Luz condensada | Piezas que flotan sin unión, paneles traslúcidos, cuerpo a medio hacer de luz | Láser | Evasión: estar y no estar |
+| 8 | Forjas del Núcleo | **La estrella** | Un núcleo estelar | Metal vivo que fluye, grietas encendidas, un sol en el pecho | Láser de núcleo | Núcleo térmico: no se sobrecalienta nunca |
+| 9 | Bastión de Hierro | **El enjambre** | Energía repartida entre muchos cuerpos | No es un robot sino muchos: módulos y drones que orbitan y se reensamblan, muchos ojos | Láser en red | Enjambre: su dron dispara dos veces |
+| 10 | Trono del Orden | **La máquina primera** | Materia oscura | Todas las eras en un solo cuerpo: halo, anillos y alas que flotan, oro y blanco; ya no parece fabricado | Lo que quiera | El Coloso: velocidad y superblindaje a la vez, lo primero y lo mejor |
+
+**Cómo se lee la escalera en tres tramos** (para que el salto se vea aunque no se lea esta tabla):
+1. **Ligas 1 a 4, la máquina:** se ve cómo está hecha. Tornillos, pistones, chimeneas, toberas. Gana quien lleva más acero y más motor.
+2. **Ligas 5 a 7, la energía:** deja de verse cómo está hecha. Superficies lisas, campos, luz. Gana quien controla la energía.
+3. **Ligas 8 a 10, lo sagrado:** deja de parecer una máquina. Metal vivo, muchos cuerpos, y al final un dios.
+
+**Lo que esto ordena de lo que ya hay:**
+- El rival de prueba de la liga 2 (cúpula, cresta, hombreras, más chapa) cae en su escalón: acero pesado.
+- Las armas ya suben así: balas en las ligas 1 y 2, cañón en la 3 y la 4, bláster en la 5 y la 6, láser de la 7 a la 10. Falta que su dibujo cambie también dentro de cada familia de liga en liga (OBS-007, la evolución del dibujo, pendiente del veredicto de la espada).
+- La materia oscura, que hoy es la habilidad final del árbol del jugador, es la energía del Trono: el jugador acaba usando contra el Orden su propia fuente.
+- Responde a OBS-019 ("cada arma es una evolución de la anterior"): cada liga es un escalón entero, no solo una clase de pieza.
+
+**Bocetos de un torso por era** (2026-11-21, `docs/reference/art/escalera_ligas.png`). Cada uno se dibujó sobre el maniquí del chasis ligero, como el rival de prueba de la liga 2, para que todos casen con las mismas piernas y armas; solo cambian las etiquetas de diseño de su era (`tools/art/halves_test.py --extra`, una tanda por era). Se ven claros el horno (3: celdas del reactor al rojo), el campo (6: aletas de energía), la luz (7: cristal azul) y la máquina primera (10: halo, oro y alas). El vacío (4), el sintético (5) y el enjambre (9) salieron al principio casi iguales a la liga 1 y se repitieron con etiquetas más visuales y tres semillas: quedan el traje con tanques a la espalda (4), la carcasa blanca con fibra muscular a la vista (5) y el racimo de ojos y cápsulas (9). La estrella (8) se lee, pero sucia. Son bocetos del torso: ni piernas ni armas de su era, ni recortados para el juego.
+
+**Sin decidir** (del usuario): si esta es la base que quiere; los nombres de las eras; y si el robot del jugador recorre la misma escalera al comprar piezas de cada liga o conserva su línea.
+
 ## 10. Pantallas
 Menú · Taller (armado con resumen de stats, barra de peso y avisos) · Inventario y fusión · Taller de mejoras · Mapa de campaña · Combate (la arena a pantalla entera; ver más abajo) · Resultados y botín · Ajustes.
 

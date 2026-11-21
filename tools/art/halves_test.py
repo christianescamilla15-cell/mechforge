@@ -110,7 +110,12 @@ def main():
         default=0.9,
         help="cuanto se aparta del maniqui en la zona repintada; por debajo de 1 hereda sus formas",
     )
-    parser.add_argument("--extra", default="", help="etiquetas de diseno que se suman al torso y a las piernas")
+    parser.add_argument(
+        "--extra",
+        nargs="+",
+        default=[""],
+        help="etiquetas de diseno que se suman al torso y a las piernas; con varias, una tanda por cada una",
+    )
     args = parser.parse_args()
 
     out = OUT / args.batch
@@ -131,38 +136,41 @@ def main():
             control, scale, end = chest_control(row, x), 0.65, 0.5
         else:
             control, scale, end = block_control, args.control_scale, args.control_end
-        subject = ZONE_SUBJECT.get(zone, style.subject_for("chassis"))
-        if args.extra and zone in ("torso", "legs"):
-            subject += ", " + args.extra
-        # Lo que pasa de 77 tokens se pierde sin avisar (y es el final: el estilo).
-        prompt = style.prompt(subject, colors)
-        tokens = len(pipe.tokenizer(prompt).input_ids)
-        if tokens > 77:
-            raise SystemExit("prompt de %d tokens (maximo 77): %s" % (tokens, prompt))
-        print("zona %s: %d tokens" % (zone, tokens), flush=True)
-        for seed in args.seeds:
-            started = time.time()
-            image = pipe(
-                prompt=prompt,
-                negative_prompt=style.negative_for("chassis") + ZONE_NEGATIVE.get(zone, ""),
-                image=mannequin,
-                mask_image=mask,
-                strength=1.0 if zone == "ring" else args.strength,
-                control_image=[control],
-                control_mode=[sd.MODE_SCRIBBLE],
-                controlnet_conditioning_scale=scale,
-                control_guidance_end=end,
-                num_inference_steps=style.STEPS,
-                guidance_scale=style.CFG,
-                width=SIZE,
-                height=SIZE,
-                generator=torch.Generator("cpu").manual_seed(seed),
-            ).images[0]
-            # Fuera de la zona repintada se conservan los pixeles del maniqui.
-            image = Image.composite(image, mannequin, soft)
-            name = "%s_%d.png" % (zone, seed)
-            image.save(out / name)
-            print("ok  %s  %.0f s  pico VRAM %.1f GB" % (name, time.time() - started, sd.peak_vram_gb()), flush=True)
+        for variant, extra in enumerate(args.extra if zone in ("torso", "legs") else [""]):
+            subject = ZONE_SUBJECT.get(zone, style.subject_for("chassis"))
+            if extra:
+                subject += ", " + extra
+            # Lo que pasa de 77 tokens se pierde sin avisar (y es el final: el estilo).
+            prompt = style.prompt(subject, colors)
+            tokens = len(pipe.tokenizer(prompt).input_ids)
+            if tokens > 77:
+                raise SystemExit("prompt de %d tokens (maximo 77): %s" % (tokens, prompt))
+            print("zona %s: %d tokens" % (zone, tokens), flush=True)
+            for seed in args.seeds:
+                started = time.time()
+                image = pipe(
+                    prompt=prompt,
+                    negative_prompt=style.negative_for("chassis") + ZONE_NEGATIVE.get(zone, ""),
+                    image=mannequin,
+                    mask_image=mask,
+                    strength=1.0 if zone == "ring" else args.strength,
+                    control_image=[control],
+                    control_mode=[sd.MODE_SCRIBBLE],
+                    controlnet_conditioning_scale=scale,
+                    control_guidance_end=end,
+                    num_inference_steps=style.STEPS,
+                    guidance_scale=style.CFG,
+                    width=SIZE,
+                    height=SIZE,
+                    generator=torch.Generator("cpu").manual_seed(seed),
+                ).images[0]
+                # Fuera de la zona repintada se conservan los pixeles del maniqui.
+                image = Image.composite(image, mannequin, soft)
+                name = "%s_%d.png" % (zone, seed)
+                if len(args.extra) > 1:
+                    name = "%s_v%d_%d.png" % (zone, variant + 1, seed)
+                image.save(out / name)
+                print("ok  %s  %.0f s  pico VRAM %.1f GB" % (name, time.time() - started, sd.peak_vram_gb()), flush=True)
     print("LISTO en", out)
 
 
