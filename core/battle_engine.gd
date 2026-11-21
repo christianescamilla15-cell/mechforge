@@ -29,6 +29,9 @@ var fixed_crit: float = -1.0
 ## Las copias de busqueda de la IA no tiran criticos: suman su dano esperado
 ## y no aplican sus efectos.
 var expected_crits: bool = false
+## Si >= 0, la tirada del escudo de jefe usa este valor (para tests): lo
+## para si es menor que su probabilidad. Las copias de busqueda usan 0.5.
+var fixed_block: float = -1.0
 var _rng := RandomNumberGenerator.new()
 var _first_turn := true
 ## Las copias que usa la IA para probar jugadas no hacen caer bonificaciones.
@@ -83,6 +86,7 @@ func clone(for_search: bool = true) -> BattleEngine:
 	copy.drop = drop.duplicate()
 	copy._spawns_drops = _spawns_drops and not for_search
 	copy.fixed_crit = fixed_crit
+	copy.fixed_block = fixed_block
 	if for_search:
 		copy.logging = false
 		copy.fixed_roll = 0.5
@@ -297,8 +301,14 @@ func preview(action: BattleAction) -> Dictionary:
 		if action.type == BattleAction.Type.TELEPORT:
 			hits = absi(action.position - foe.position) == 1
 		if hits:
-			out["dmg_min"] = _damage(def, me, foe, 0.0, 0.0, key)
-			out["dmg_max"] = _damage(def, me, foe, 1.0, 0.0, key)
+			# Un escudo de jefe que no para siempre: el dano entero y la
+			# probabilidad de que lo pare (OBS-041).
+			var chance := foe.shield_chance(key)
+			var maybe := foe.barrier == 0 and foe.shield_left > 0 and chance < 1.0
+			out["dmg_min"] = _damage(def, me, foe, 0.0, 0.0, key, not maybe)
+			out["dmg_max"] = _damage(def, me, foe, 1.0, 0.0, key, not maybe)
+			if maybe and def.deals_damage():
+				out["block_chance"] = chance
 			out["crit_chance"] = crit_chance(def, foe)
 			out["crit_effect"] = def.crit_effect
 			out["target_heat"] = foe.heat + def.heat_dmg
@@ -500,21 +510,24 @@ func _use(
 	var roll := 0.0
 	if def.deals_damage():
 		roll = fixed_roll if fixed_roll >= 0.0 else _rng.randf()
-	var shielded := def.deals_damage() and (target.shield_left > 0 or target.barrier > 0)
+	# El escudo de jefe lo intenta con el primer golpe de cada turno, pare o
+	# no, segun el arma (OBS-041); la barrera del kit para siempre.
+	var shielded := false
+	if def.deals_damage() and target.shield_left > 0:
+		target.shield_left -= 1
+		shielded = _shield_stops(target, key)
+	if def.deals_damage() and not shielded and target.barrier > 0:
+		target.barrier -= 1
+		shielded = true
 	var crit := 0.0
-	var chance := crit_chance(def, target)
+	var chance := 0.0 if shielded else crit_chance(def, target)
 	if chance > 0.0:
 		if expected_crits:
 			crit = chance
 		else:
 			var draw := fixed_crit if fixed_crit >= 0.0 else _rng.randf()
 			crit = 1.0 if draw < chance else 0.0
-	var damage := _damage(def, user, target, roll, crit, key)
-	if shielded:
-		if target.shield_left > 0:
-			target.shield_left -= 1
-		else:
-			target.barrier -= 1
+	var damage := 0 if shielded else _damage(def, user, target, roll, crit, key, false)
 	if key == "chest":
 		user.chest_fired = true
 
@@ -622,9 +635,10 @@ func _damage(
 	target: BattleMech,
 	roll: float,
 	crit: float = 0.0,
-	key: String = ""
+	key: String = "",
+	guard: bool = true
 ) -> int:
-	if def.deals_damage() and (target.shield_left > 0 or target.barrier > 0):
+	if guard and def.deals_damage() and (target.shield_left > 0 or target.barrier > 0):
 		return 0
 	var damage := 0
 	if def.deals_damage():
@@ -684,6 +698,19 @@ func _dark_matter_damage(me: BattleMech, foe: BattleMech) -> int:
 
 ## Evasion (GDD 9.1): si el golpe le hizo dano, salta al extremo de la
 ## arena de su lado, lejos de quien le pego.
+## Si el escudo de jefe para este golpe: tira contra su probabilidad para el
+## arma de ese hueco. Las copias de busqueda de la IA no tiran: lo dan por
+## parado si es mas probable que no.
+func _shield_stops(target: BattleMech, key: String) -> bool:
+	var chance := target.shield_chance(key)
+	if chance >= 1.0:
+		return true
+	var draw := fixed_block
+	if draw < 0.0:
+		draw = 0.5 if expected_crits else _rng.randf()
+	return draw < chance
+
+
 func _evade_if_hit(target: BattleMech, user: BattleMech, health_before: int) -> void:
 	if target.evade_left <= 0 or target.health <= 0 or target.health >= health_before:
 		return

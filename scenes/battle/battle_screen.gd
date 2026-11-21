@@ -632,6 +632,10 @@ func _card_for(action: BattleAction) -> Dictionary:
 		var p := engine.preview(action)
 		if p["dmg_max"] > 0:
 			lines.append([Txt.t("card_damage", [p["dmg_min"], p["dmg_max"]]), BattleHud.TEXT])
+		# El escudo de un jefe que puede parar este golpe (OBS-041).
+		var block: float = p.get("block_chance", 0.0)
+		if block > 0.0:
+			lines.append([Txt.t("card_block", [roundi(block * 100.0)]), COLOR_WARNING])
 		var chance: float = p.get("crit_chance", 0.0)
 		if chance > 0.0:
 			var effect := Txt.t("crit_effect_" + str(p["crit_effect"]))

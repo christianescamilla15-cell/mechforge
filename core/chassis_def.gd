@@ -21,6 +21,8 @@ const MULTIPLIERS: Array[String] = [
 const ABILITY_FLAGS: Array[String] = ["free_energy", "evade", "no_overheat"]
 ## Habilidades de jefe que se cuentan (0 a 2).
 const ABILITY_COUNTS: Array[String] = ["shield_hits", "extra_drone_shots"]
+## Los grupos de armas de shield_chance.
+const SHIELD_GROUPS: Array[String] = ["arms", "shoulder", "chest", "other"]
 ## Tope de la regeneracion por turno, como fraccion de la vida maxima.
 const MAX_REGEN_SHARE := 0.25
 ## Limites razonables de un multiplicador; fuera de ellos es un error de datos.
@@ -58,6 +60,12 @@ const MAX_MULT := 3.0
 @export var regen_share: float = 0.0
 ## Escudo: golpes que anula en cada turno del rival.
 @export var shield_hits: int = 0
+## Probabilidad de que ese escudo pare el golpe, segun el arma (OBS-041,
+## del usuario: "con armas de alto nivel... deberia de ser casi imposible
+## que lo bloquee debido a la potencia"): {"arms", "shoulder", "chest",
+## "other"} de 0 a 1. Vacio: lo para siempre. Lo intenta una vez por turno,
+## con el primer golpe, pare o no.
+@export var shield_chance: Dictionary = {}
 ## Evasion: al recibir dano salta al extremo de la arena de su lado, una
 ## vez por turno del rival.
 @export var evade: bool = false

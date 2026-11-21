@@ -221,6 +221,7 @@ const ES := {
 	"rack_line_browse":
 	"Pasa el ratón por el maletín para examinar una pieza; pulsa para montarla.",
 	"rack_for_sale": "EN VENTA",
+	"card_block": "Su escudo puede pararlo: %d %%",
 	"rack_empty": "CASILLA VACÍA",
 	"rack_count": "En el maletín: %d tuyas y %d en venta.",
 	"rack_kind_side": "Armas de corto y medio alcance",

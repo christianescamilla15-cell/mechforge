@@ -189,6 +189,23 @@ func shield_hits() -> int:
 	return _chassis().shield_hits if _chassis() != null else 0
 
 
+## Probabilidad de que su escudo de jefe pare un golpe del arma de ese hueco
+## (OBS-041): la de su grupo ("side" = brazo, "top" = hombro, "chest" =
+## pecho; lo demas, "other"). 1 si su chasis no dice nada: lo para siempre.
+func shield_chance(slot: String) -> float:
+	var chances: Dictionary = _chassis().shield_chance if _chassis() != null else {}
+	if chances.is_empty():
+		return 1.0
+	var group := "other"
+	if slot.begins_with("side"):
+		group = "arms"
+	elif slot.begins_with("top"):
+		group = "shoulder"
+	elif slot == "chest":
+		group = "chest"
+	return float(chances.get(group, chances.get("other", 1.0)))
+
+
 ## Nivel de escudo para los criticos (GDD 2.9): los escudos de energia del
 ## arbol de habilidades y el escudo de jefe.
 func shield_level() -> int:
