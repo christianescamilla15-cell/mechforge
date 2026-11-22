@@ -962,3 +962,29 @@ func test_obs048_la_etiqueta_de_un_sistema_y_la_del_nucleo() -> void:
 	var core := _brief.core_tag(profile)
 	assert_eq(core["kind"], "skills")
 	assert_eq((core["branches"] as Array).size(), 3, "las tres ramas")
+
+
+## "Las misiones un boton tan nativamente oculto... para pasar al area de
+## combate... ahora si ves a tus combatientes en tamano real".
+func test_obs048_la_compuerta_lleva_a_la_zona_de_combate_y_el_rotulo_devuelve() -> void:
+	var stage := _stage()
+	var said: Array[String] = []
+	stage.missions_pressed.connect(func() -> void: said.append("zona"))
+	stage.background_pressed.connect(func() -> void: said.append("vuelta"))
+	var door: Rect2 = stage._terminal_rects["salida"]
+	assert_true(Rect2(Vector2.ZERO, stage.size).encloses(door))
+	stage._gui_input(_click(door.get_center()))
+	assert_eq(said, ["zona"] as Array[String], "la compuerta abre la zona")
+	stage.show_mission({"rivals": [], "can_fight": true}, "none")
+	assert_true(stage.is_mission_on())
+	assert_false(stage.teardown.visible, "el robot desarmado se va")
+	assert_true(stage._mech.visible, "tu robot, armado y a tamano real")
+	assert_true(stage._arena.visible, "la arena tapa el hangar")
+	assert_eq(stage._terminal_at(door.get_center()), "", "en la zona no hay compuerta")
+	var back: Rect2 = stage._terminal_rects["volver"]
+	stage._gui_input(_click(back.get_center()))
+	assert_eq(said, ["zona", "vuelta"] as Array[String], "el rotulo devuelve al hangar")
+	stage.hide_mission()
+	stage.mission = 0.0
+	assert_true(stage.teardown.visible, "de vuelta, el robot desarmado")
+	assert_false(stage._arena.visible)

@@ -248,6 +248,8 @@ const ES := {
 	# El robot desarmado del hangar (OBS-048).
 	"teardown_core": "Núcleo de control",
 	"tag_change": "Cambiar pieza",
+	"zone_back": "HANGAR",
+	"zone_door": "ZONA DE COMBATE",
 	"tag_mount": "Montar pieza",
 	"tag_empty": "Hueco vacío",
 	"tag_points": "%d por aprender · nivel %d",

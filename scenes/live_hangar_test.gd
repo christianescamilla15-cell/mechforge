@@ -150,6 +150,34 @@ func teardown_test() -> void:
 	get_tree().quit(0)
 
 
+## Prueba en vivo de la zona de combate (`--menu-shot=zona`, con
+## `--real-profile` y sin guardar ni pelear; OBS-048): pasar por la
+## compuerta del hangar, entrar, pasar por el rival y volver por el rotulo.
+func zone_test() -> void:
+	var hangar := main._menu as WorkshopScreen
+	var stage := hangar._stage
+	await get_tree().create_timer(0.8).timeout
+	var door: Rect2 = stage._terminal_rects.get("salida", Rect2())
+	await _move(door.get_center())
+	await get_tree().create_timer(0.3).timeout
+	await shot("compuerta")
+	await _click(door.get_center())
+	await get_tree().create_timer(1.2).timeout
+	print("ZONA abierta=%s canal=%s" % [stage.is_mission_on(), hangar.missions_channel()])
+	await shot("zona")
+	await _click(Vector2(stage.size.x * 0.5, stage.size.y * 0.55))
+	await get_tree().create_timer(0.3).timeout
+	print("ZONA tras pulsar el fondo sigue=%s" % stage.is_mission_on())
+	var back: Rect2 = stage._terminal_rects.get("volver", Rect2())
+	await _move(back.get_center())
+	await shot("zona_volver")
+	await _click(back.get_center())
+	await get_tree().create_timer(0.8).timeout
+	print("ZONA vuelta al hangar=%s" % (not stage.is_mission_on()))
+	await shot("hangar")
+	get_tree().quit(0)
+
+
 ## Prueba en vivo de las observaciones (`--menu-shot=observaciones`,
 ## docs/OBSERVACIONES.md), con el raton y sin guardar nada: las casillas del
 ## plano en la computadora del taller (OBS-030), el disparo de la

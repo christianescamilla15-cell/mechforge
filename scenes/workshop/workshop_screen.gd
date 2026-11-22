@@ -458,6 +458,9 @@ func open_missions(
 	if not channel in MissionBrief.CHANNELS:
 		channel = "campaign"
 	close_panels()
+	# A la zona de combate: lo elegido del robot desarmado se suelta.
+	_stage.teardown.selected = ""
+	_show_tag()
 	_channel = channel
 	_stage.show_mission(main.mission_state(channel), how, beaten)
 
@@ -478,7 +481,12 @@ func missions_channel() -> String:
 
 func _on_background_pressed() -> void:
 	close_panels()
-	close_missions()
+	# En la zona de combate (OBS-048) se vuelve por su rotulo o con Esc, no
+	# al pulsar cualquier sitio de la arena.
+	if not _stage.teardown_on or _stage.is_mission_on() == false:
+		close_missions()
+	elif _stage._hover_terminal == "volver":
+		close_missions()
 	# El robot desarmado: se suelta lo elegido y se recoge su etiqueta.
 	_stage.teardown.selected = ""
 	_stage.teardown.queue_redraw()

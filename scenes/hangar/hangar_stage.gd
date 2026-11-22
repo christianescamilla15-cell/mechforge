@@ -56,6 +56,10 @@ const TERMINALS: Array[String] = ["taller", "mejoras", "habilidades", "ajustes",
 ## Centro de cada bahia, como parte del ancho. Las dos de la izquierda van
 ## separadas para que el arma de un robot no tape al de al lado.
 const BAY_X: Array[float] = [0.085, 0.225, 0.815]
+## En la zona de combate (OBS-048) tus otros robots esperan de pie a la
+## izquierda del tuyo, grandes: "tus combatientes en tamano real".
+const ZONE_BAY_X: Array[float] = [0.07, 0.165, 0.26]
+const ZONE_BAY_HEIGHT := 0.4
 const COLOR_SCREEN := Color("0b2a33")
 const COLOR_SCREEN_LINE := Color("3fd0e6")
 const COLOR_TEXT := Color("bfefff")
@@ -98,8 +102,9 @@ var can_test := false:
 var mission := 0.0:
 	set(value):
 		mission = value
-		_target_alpha = 1.0 - value
+		_target_alpha = 0.0 if teardown_on else 1.0 - value
 		_board.open = value
+		_apply_zone()
 		_dim.queue_redraw()
 		_overlay.queue_redraw()
 ## Robots de las bahias: [{"index", "build", "name"}]; uno con "index" -1 es
@@ -107,6 +112,9 @@ var mission := 0.0:
 var bays: Array[Dictionary] = []
 
 var _bay_layer := Node2D.new()
+## La arena de la zona de combate, que tapa el hangar en el modo mision.
+var _arena := Node2D.new()
+var _arena_tick := 0.0
 ## Tu robot en holograma en la pantalla TALLER de la pared (OBS-042, del
 ## usuario: "por cierto, eso se ve muy chafa", del robot de palitos que habia).
 var _wall_robot := MechBlueprint.new()
@@ -147,6 +155,9 @@ func _ready() -> void:
 	super._ready()
 	add_child(_bay_layer)
 	move_child(_bay_layer, 0)
+	add_child(_arena)
+	move_child(_arena, 0)
+	_arena.draw.connect(_draw_arena)
 	# Sobre el fondo y las bahias, la penumbra del modo mision y la fila de
 	# rivales; tu robot queda por delante de todo.
 	add_child(_dim)
@@ -274,6 +285,11 @@ func launch_out(speed: float = 1.0) -> void:
 
 func _process(delta: float) -> void:
 	super._process(delta)
+	if teardown_on and mission > 0.0:
+		_arena_tick += delta
+		if _arena_tick >= 1.0 / 30.0:
+			_arena_tick = 0.0
+			_arena.queue_redraw()
 	if _still_wait > 0:
 		_still_wait -= 1
 		_still_ready = _still_wait == 0
@@ -290,7 +306,7 @@ func _on_footstep(_at: Vector2) -> void:
 ## La penumbra del hangar: el modo mision, una pantalla de cerca y la
 ## alarma de salir a combatir.
 func _draw_dim() -> void:
-	var levels := Vector3(mission, _alarm, console.shown())
+	var levels := Vector3(0.0 if teardown_on else mission, _alarm, console.shown())
 	HangarProps.dim(_dim, size, _platform_center(), _floor_y, levels, _time)
 
 
@@ -404,11 +420,8 @@ func test_fire(slot: String, fx: String, color: Color) -> void:
 func _fit() -> void:
 	if _mech.build == null or size.y <= 0.0:
 		return
-	_mech.visible = not teardown_on
-	teardown.visible = teardown_on
 	_wall_robot.visible = not teardown_on
-	_bay_layer.visible = not teardown_on
-	_board.visible = not teardown_on
+	_apply_zone()
 	# Desarmado no hay diana: el robot no esta entero para probar.
 	if teardown_on:
 		_target_alpha = 0.0
@@ -461,17 +474,25 @@ func _layout() -> void:
 	if teardown_on:
 		for terminal: String in ["taller", "mejoras", "habilidades"]:
 			_terminal_rects.erase(terminal)
-		return
+		# La compuerta a la zona de combate y, alli, el rotulo de vuelta.
+		var door_top := size.y * 0.3
+		_terminal_rects["salida"] = Rect2(
+			size.x * 0.93, door_top, size.x * 0.055, _floor_y - door_top
+		)
+		_terminal_rects["volver"] = Rect2(
+			size.x * 0.015, size.y * 0.9, size.x * 0.12, size.y * 0.045
+		)
 	for i in BAY_X.size():
-		var feet := Vector2(size.x * BAY_X[i], _bay_floor())
-		var height := size.y * 0.3
+		var feet := _bay_feet(i)
+		var height := _bay_height()
+		var wide := 0.36 if teardown_on else 0.84
 		_bay_rects.append(
-			Rect2(feet.x - height * 0.42, feet.y - height, height * 0.84, height + 8.0)
+			Rect2(feet.x - height * wide * 0.5, feet.y - height, height * wide, height + 8.0)
 		)
 	for i in _bay_views.size():
 		var view := _bay_views[i]
-		var feet := Vector2(size.x * BAY_X[i], _bay_floor())
-		var factor := (size.y * 0.25) / maxf(view.standing_height(), 200.0)
+		var feet := _bay_feet(i)
+		var factor := (_bay_height() * 0.84) / maxf(view.standing_height(), 200.0)
 		view.place(feet)
 		view.set_facing(1)
 		view.scale *= factor
@@ -479,6 +500,81 @@ func _layout() -> void:
 
 func _bay_floor() -> float:
 	return size.y * 0.715
+
+
+## Los pies del robot de una bahia: al fondo del hangar o, en la zona de
+## combate, de pie junto al tuyo.
+func _bay_feet(i: int) -> Vector2:
+	if teardown_on:
+		return Vector2(size.x * ZONE_BAY_X[i], _floor_y)
+	return Vector2(size.x * BAY_X[i], _bay_floor())
+
+
+func _bay_height() -> float:
+	return size.y * (ZONE_BAY_HEIGHT if teardown_on else 0.3)
+
+
+## El robot desarmado (hangar) o la zona de combate (modo mision), con la
+## opacidad de `mission`.
+func _apply_zone() -> void:
+	if not teardown_on:
+		_world.modulate.a = 1.0
+		_mech.visible = true
+		_bay_layer.visible = true
+		_bay_layer.modulate.a = 1.0
+		_board.visible = true
+		_board.modulate.a = 1.0
+		_arena.visible = false
+		teardown.visible = false
+		return
+	teardown.visible = mission < 1.0
+	teardown.modulate.a = 1.0 - mission
+	tag.modulate.a = 1.0 - mission
+	_mech.visible = mission > 0.0
+	_world.modulate.a = mission
+	_bay_layer.visible = mission > 0.0
+	_bay_layer.modulate.a = mission
+	_board.visible = mission > 0.0
+	_board.modulate.a = mission
+	_arena.visible = mission > 0.0
+	_arena.queue_redraw()
+
+
+## La arena: su fondo, la luz bajo tu robot, lo vivo de las bahias y el
+## rotulo de vuelta.
+func _draw_arena() -> void:
+	ZoneArt.draw(_arena, size, _floor_y, _time, mission)
+	var feet := Vector2(_robot_center(), _floor_y)
+	var pool := Color(0.75, 0.9, 1.0, 0.1 * mission)
+	for i in 3:
+		var radius := Vector2(size.x * (0.09 + 0.03 * i), size.y * (0.025 + 0.008 * i))
+		var points := PackedVector2Array()
+		for k in 24:
+			points.append(feet + Vector2.from_angle(TAU * k / 24.0) * radius)
+		_arena.draw_colored_polygon(points, pool)
+	_draw_bays_live(_arena)
+	ZoneArt.fighter_name(_arena, _font, feet, str(info.get("name", "")), mission)
+	if _terminal_rects.has("volver"):
+		var back := _terminal_rects["volver"]
+		ZoneArt.back_sign(_arena, _font, back, _hover_terminal == "volver", mission)
+
+
+## Centro de tu robot armado en la pantalla: bajo sus piernas.
+func _robot_center() -> float:
+	var legs := _world_rect("legs")
+	if legs.size == Vector2.ZERO:
+		return _world.position.x
+	return _world.position.x + legs.get_center().x * _world.scale.x
+
+
+## Lo que se puede pulsar de la pared: en la zona, solo volver y los
+## ajustes; en el hangar desarmado, todo menos volver.
+func _terminal_active(terminal: String) -> bool:
+	if not teardown_on:
+		return not terminal in ["salida", "volver"]
+	if _mission_on:
+		return terminal in ["volver", "ajustes"]
+	return terminal != "volver"
 
 
 ## Pone los robots de las bahias.
@@ -514,7 +610,10 @@ func _draw() -> void:
 		# Hasta que la textura esta pintada, lo quieto va directo.
 		_draw_still(self)
 	if not teardown_on:
-		_draw_bays_live()
+		_draw_bays_live(self)
+	elif _terminal_rects.has("salida") and not _mission_on:
+		var door := _terminal_rects["salida"]
+		ZoneArt.hangar_door(self, _font, door, _hover_terminal == "salida", _time)
 	for terminal in TERMINALS:
 		if _terminal_rects.has(terminal):
 			var hover := _hover_terminal == terminal
@@ -624,7 +723,7 @@ func _scale_rect() -> Rect2:
 func _platform_center() -> float:
 	if _launching or _striking:
 		return _launch_center
-	if teardown_on:
+	if teardown_on and not _mission_on:
 		return size.x * 0.5
 	var legs := _world_rect("legs")
 	if legs.size == Vector2.ZERO:
@@ -634,29 +733,30 @@ func _platform_center() -> float:
 
 ## Lo que se mueve en las bahias: su lamparita (verde con robot, ambar
 ## vacia), el marco al pasar el raton y el holograma de las vacias.
-func _draw_bays_live() -> void:
-	var y := _bay_floor()
+func _draw_bays_live(c: CanvasItem) -> void:
 	for i in BAY_X.size():
-		var x := size.x * BAY_X[i]
-		var w := size.y * 0.2
-		var top := y - size.y * 0.36
+		var feet := _bay_feet(i)
+		var x := feet.x
+		var y := feet.y
+		var w := _bay_height() * (0.3 if teardown_on else 0.66)
+		var top := y - _bay_height() * 1.2
 		var hover := _hover_bay == i
 		var mine := i < bays.size() and int(bays[i]["index"]) >= 0
 		var full := mine and bays[i]["build"] != null
 		var led := Color("55ff9a") if full else Color("ffb347")
-		draw_circle(
+		c.draw_circle(
 			Vector2(x + w - 12.0, top + 6.0), 3.0, Color(led, 0.35 + 0.25 * sin(_time * 3.0 + i))
 		)
-		draw_circle(Vector2(x + w - 12.0, top + 6.0), 1.6, led)
+		c.draw_circle(Vector2(x + w - 12.0, top + 6.0), 1.6, led)
 		if hover:
-			draw_rect(Rect2(x - w, top, w * 2.0, y - top), Color(COLOR_SOCKET, 0.06))
-			draw_rect(Rect2(x - w, top, w * 2.0, y - top), Color(COLOR_SOCKET, 0.5), false, 1.5)
+			c.draw_rect(Rect2(x - w, top, w * 2.0, y - top), Color(COLOR_SOCKET, 0.06))
+			c.draw_rect(Rect2(x - w, top, w * 2.0, y - top), Color(COLOR_SOCKET, 0.5), false, 1.5)
 		if not full and not (projector.visible and i == _pressed_bay):
 			# Vacia: para adquirir; con un armazon vacio: su nombre.
 			var label := (
 				str(bays[i]["name"]) if mine and i < bays.size() else Txt.t("robots_acquire")
 			)
-			HangarProps.hologram(self, Vector2(x, y), size.y * 0.24, hover, label, _time, _font)
+			HangarProps.hologram(c, Vector2(x, y), size.y * 0.24, hover, label, _time, _font)
 
 
 func _draw_overlay() -> void:
@@ -721,7 +821,7 @@ func _on_sign(at: Vector2) -> bool:
 
 func _terminal_at(at: Vector2) -> String:
 	for terminal: String in _terminal_rects:
-		if _terminal_rects[terminal].has_point(at):
+		if _terminal_active(terminal) and _terminal_rects[terminal].has_point(at):
 			return terminal
 	return ""
 
@@ -777,7 +877,8 @@ func _gui_input(event: InputEvent) -> void:
 			if tag_key != "":
 				Sfx.play("ui_tic")
 		free = free and not tag.has_point(motion.position)
-		var piece := teardown.item_at(motion.position) if free and teardown_on else ""
+		var desk := free and teardown_on and not _mission_on
+		var piece := teardown.item_at(motion.position) if desk else ""
 		if piece != teardown.hover:
 			teardown.hover = piece
 			teardown.queue_redraw()
@@ -801,6 +902,12 @@ func _gui_input(event: InputEvent) -> void:
 			target_pressed.emit()
 			return
 		var terminal := _terminal_at(click.position)
+		if terminal == "salida":
+			missions_pressed.emit()
+			return
+		if terminal == "volver":
+			background_pressed.emit()
+			return
 		if terminal != "":
 			terminal_pressed.emit(terminal)
 			return
@@ -815,7 +922,8 @@ func _gui_input(event: InputEvent) -> void:
 			return
 		if tag.has_point(click.position):
 			return
-		var piece := teardown.item_at(click.position) if teardown_on else ""
+		var desk := teardown_on and not _mission_on
+		var piece := teardown.item_at(click.position) if desk else ""
 		if piece != "":
 			teardown_picked.emit(piece)
 			return
