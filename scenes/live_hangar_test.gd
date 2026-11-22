@@ -93,6 +93,28 @@ func evolution_test() -> void:
 	get_tree().quit(0)
 
 
+## Prueba en vivo de las fases del dibujo del torso (`--menu-shot=fases`, con
+## `--real-profile` y sin guardar nada; OBS-047): su torso pasa, solo en
+## memoria, por las fases 0 a 10 y se guarda una captura de cada una.
+func phases_test() -> void:
+	var hangar := main._menu as WorkshopScreen
+	var id := Garage.get_slot(main._profile.build, "torso")
+	await get_tree().create_timer(0.8).timeout
+	for phase in 11:
+		var tier := mini(phase / 2, ItemDef.Tier.DIVINE)
+		var level: int = 0 if phase % 2 == 0 else main._rules.tier_max_level[tier]
+		main._profile.parts[id] = {"tier": tier, "level": level}
+		hangar.refresh()
+		await get_tree().create_timer(0.35).timeout
+		var item := main._bench.resolved(main._profile, id)
+		var torsos := MechSprites.TORSO_SETS
+		var base: String = torsos[absi(item.id.hash()) % torsos.size()]
+		var look := MechSprites.class_set(base, item, "torso")
+		print("FASES %s fase=%d clase=%d nivel=%d dibujo=%s" % [id, phase, tier, level, look])
+		await shot("fase%02d" % phase)
+	get_tree().quit(0)
+
+
 ## Prueba en vivo de las observaciones (`--menu-shot=observaciones`,
 ## docs/OBSERVACIONES.md), con el raton y sin guardar nada: las casillas del
 ## plano en la computadora del taller (OBS-030), el disparo de la

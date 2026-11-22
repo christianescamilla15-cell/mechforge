@@ -192,6 +192,9 @@ func _ready() -> void:
 		elif _args["menu-shot"] == "evolucion":
 			_live_test().evolution_test()
 			return
+		elif _args["menu-shot"] == "fases":
+			_live_test().phases_test()
+			return
 		elif _args["menu-shot"] == "observaciones":
 			_live_test().observations_test()
 			return
