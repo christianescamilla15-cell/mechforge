@@ -89,9 +89,11 @@ func test_la_arena_paga_sin_avanzar_la_campana() -> void:
 	var campaign := _campaign()
 	var profile := PlayerProfile.new()
 	profile.fight = 2
+	# Ganar pone el premio en el bote de la racha (OBS-049); se cobra al volver.
 	assert_eq(
-		campaign.finish_fight(profile, _shop, "arena", true)["gold"], _shop.reward("arena_win")
+		campaign.finish_fight(profile, _shop, "arena", true)["prize"], _shop.reward("arena_win")
 	)
+	assert_eq(campaign.cash_arena(profile), _shop.reward("arena_win"))
 	assert_eq(
 		campaign.finish_fight(profile, _shop, "arena", false)["gold"], _shop.reward("arena_loss")
 	)
@@ -174,6 +176,7 @@ func test_con_solo_el_campeon_por_delante_la_arena_se_abre_para_entrenar() -> vo
 	var xp := profile.xp
 	var gold := profile.gold
 	campaign.finish_fight(profile, _shop, "arena", true, progression)
+	campaign.cash_arena(profile)
 	assert_gt(profile.xp, xp)
 	assert_gt(profile.gold, gold)
 	campaign.finish_fight(profile, _shop, "arena", false, progression)
@@ -331,7 +334,7 @@ func test_las_zonas_de_clase_alta_pagan_mas() -> void:
 		assert_gte(campaign.reward_mult(zone), campaign.reward_mult(zone - 1))
 	var profile := PlayerProfile.new()
 	var result := campaign.finish_fight(profile, _shop, "arena", true)
-	assert_eq(result["gold"], roundi(_shop.reward("arena_win") * campaign.reward_mult(0)))
+	assert_eq(result["prize"], roundi(_shop.reward("arena_win") * campaign.reward_mult(0)))
 
 
 func test_una_zona_con_un_mech_que_no_existe_da_error() -> void:

@@ -178,6 +178,31 @@ func zone_test() -> void:
 	get_tree().quit(0)
 
 
+## Prueba en vivo de la racha de la arena (`--menu-shot=racha`, con
+## `--real-profile` y sin guardar nada; OBS-049): empieza un combate de
+## arena, da por ganado el primero (resultado con "otro combate" y
+## "cobrar"), pide otro y da por perdido el segundo (el bote se pierde).
+func streak_test() -> void:
+	await get_tree().create_timer(0.6).timeout
+	main._on_arena_pressed()
+	await get_tree().create_timer(1.2).timeout
+	main._on_battle_finished(true)
+	main._battle._result.show()
+	await get_tree().create_timer(0.3).timeout
+	var profile := main._profile
+	print("RACHA gano el 1: bote=%d racha=%d" % [profile.arena_pot, profile.arena_streak])
+	await shot("gano_1")
+	main._on_rematch()
+	await get_tree().create_timer(1.2).timeout
+	print("RACHA rival del 2: %s, plus %.2f" % [main._spec["enemy"], main._spec["enemy_edge"]])
+	main._on_battle_finished(false)
+	main._battle._result.show()
+	await get_tree().create_timer(0.3).timeout
+	print("RACHA perdio el 2: bote=%d racha=%d" % [profile.arena_pot, profile.arena_streak])
+	await shot("perdio_2")
+	get_tree().quit(0)
+
+
 ## Prueba en vivo de las observaciones (`--menu-shot=observaciones`,
 ## docs/OBSERVACIONES.md), con el raton y sin guardar nada: las casillas del
 ## plano en la computadora del taller (OBS-030), el disparo de la

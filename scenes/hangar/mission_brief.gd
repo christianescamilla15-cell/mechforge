@@ -137,6 +137,8 @@ func arena_state(
 	var mult := campaign.reward_mult(profile.zone)
 	var lines: Array[String] = [
 		Txt.t("mission_arena_info"),
+		Txt.t("mission_arena_streak"),
+		Txt.t("mission_arena_streak_risk"),
 		Txt.t(
 			"mission_reward_arena",
 			[roundi(shop.reward("arena_win") * mult), roundi(shop.reward("arena_loss") * mult)]

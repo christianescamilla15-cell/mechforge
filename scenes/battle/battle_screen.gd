@@ -78,6 +78,8 @@ var _hud_actions: int = 0
 var _result: PanelContainer
 var _result_label: Label
 var _result_note: Label
+var _rematch_button: Button
+var _menu_button: Button
 
 var _shown: int = 0
 var _busy: bool = true
@@ -590,6 +592,16 @@ func _show_outcome(won: bool) -> void:
 
 
 ## Linea bajo el resultado: lo que el jugador cobra o pierde con el combate.
+## Las teclas del resultado: la de otro combate (su texto y si se ve) y la de
+## volver (en la racha de la arena, "Cobrar"; OBS-049).
+func set_result_choices(again: String, show_again: bool, back: String) -> void:
+	if _rematch_button != null:
+		_rematch_button.text = again
+		_rematch_button.visible = show_again and allow_rematch
+	if _menu_button != null:
+		_menu_button.text = back
+
+
 func set_result_note(text: String) -> void:
 	if _surrendered:
 		text = Txt.t("surrendered") + (String.chr(10) + text if text != "" else "")
@@ -756,12 +768,14 @@ func _build_ui() -> void:
 	buttons.add_theme_constant_override("separation", 12)
 	result_box.add_child(buttons)
 	var rematch := Button.new()
+	_rematch_button = rematch
 	rematch.text = rematch_text if rematch_text != "" else Txt.t("rematch")
 	rematch.visible = allow_rematch
 	rematch.custom_minimum_size = Vector2(130, 42)
 	rematch.pressed.connect(func() -> void: rematch_requested.emit())
 	buttons.add_child(rematch)
 	var menu := Button.new()
+	_menu_button = menu
 	menu.text = Txt.t("menu")
 	menu.custom_minimum_size = Vector2(130, 42)
 	menu.pressed.connect(func() -> void: menu_requested.emit())

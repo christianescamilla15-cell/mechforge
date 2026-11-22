@@ -192,6 +192,9 @@ func _ready() -> void:
 		elif _args["menu-shot"] == "evolucion":
 			_live_test().evolution_test()
 			return
+		elif _args["menu-shot"] == "racha":
+			_live_test().streak_test()
+			return
 		elif _args["menu-shot"] == "zona":
 			_live_test().zone_test()
 			return
@@ -233,6 +236,7 @@ func _ready() -> void:
 		_profile = PlayerProfile.load_or_new(SAVE_PATH)
 		Garage.ensure_assist(_profile, _catalog)
 		_persist = true
+		_resume_arena()
 		_settings = GameSettings.load_from()
 		_settings.apply()
 		_show_menu()
@@ -556,8 +560,15 @@ func _on_arena_pressed() -> void:
 	var zone := mini(_profile.zone, _campaign.zone_count() - 1)
 	var power := Campaign.mean_power(_rules, _profile, _player_items())
 	var gear := Campaign.loadout_of(_player_build())
-	var fight := _campaign.arena_fight(zone, _library, _arena_seed, _rules, power, gear)
+	# En racha (OBS-049), el rival de su paso: mas fuerte que el anterior.
+	var step := _profile.arena_streak
+	var fight := _campaign.arena_streak_fight(
+		zone, _library, _arena_seed, _rules, power, gear, step
+	)
 	_arena_seed = randi()
+	_campaign.begin_arena(_profile)
+	if _profile.arena_live:
+		_save()
 	_start_battle(_spec_for("arena", zone, fight))
 
 
@@ -596,6 +607,7 @@ func _spec_for(mode: String, zone: int, fight: Dictionary) -> Dictionary:
 		"enemy_kits": Campaign.kits_of(fight),
 		"enemy_body": Campaign.body_of(fight),
 		"enemy_loadout": fight.get("loadout", {}),
+		"enemy_edge": float(fight.get("edge", 0.0)),
 		"difficulty": DIFFICULTY_IDS.find(fight["difficulty"]),
 		"seed": randi(),
 	}
@@ -632,7 +644,7 @@ func _start_battle(spec: Dictionary) -> void:
 	if spec["mode"] == "arena":
 		_battle.rematch_text = Txt.t("arena_again")
 	_battle.rematch_requested.connect(_on_rematch)
-	_battle.menu_requested.connect(_show_menu)
+	_battle.menu_requested.connect(_on_battle_menu)
 	_battle.speed = _settings.speed()
 	_battle.settings = _settings
 	_battle.settings_path = GameSettings.PATH if _persist else ""
@@ -682,7 +694,8 @@ func _start_battle(spec: Dictionary) -> void:
 	)
 	# En la campana y la arena los rivales llevan la armeria del Orden.
 	if spec.has("zone"):
-		enemy_build.upgrades = _campaign.enemy_upgrades(spec["zone"], _shop)
+		var edge := float(spec.get("enemy_edge", 0.0))
+		enemy_build.upgrades = _campaign.fight_upgrades(spec["zone"], _shop, edge)
 	# Los jefes del Orden llevan su entrenamiento (GDD 9.3).
 	var trained := _skills.spread(int(spec.get("enemy_skills", 0)))
 	enemy_build.skills = _skills.effects_for(trained)
@@ -742,7 +755,64 @@ func _on_battle_finished(player_won: bool) -> void:
 		_last_result = Txt.t("result_reward", [result["gold"]])
 	if result["level_up"]:
 		_last_result += "\n" + Txt.t("result_level_up", [_player_level()])
+	if _spec["mode"] == "arena":
+		_arena_result(result)
 	_battle.set_result_note(_last_result)
+
+
+## La racha de la arena tras un combate (OBS-049): lo que paso con el bote
+## y las dos teclas, otro combate (con lo que pagaria) o cobrar.
+func _arena_result(result: Dictionary) -> void:
+	var more := bool(result.get("more", false))
+	var prize := int(result.get("prize", 0))
+	var lost := int(result.get("lost", 0))
+	var again := Txt.t("arena_again")
+	var back := Txt.t("menu")
+	if more:
+		var pot := int(result["pot"])
+		var mult := _campaign.reward_mult(_profile.zone)
+		var factor := _campaign.streak_prize(int(result["streak"]))
+		var next := roundi(_shop.reward("arena_win") * mult * factor)
+		_last_result = Txt.t(
+			"arena_pot_note", [HangarProps.thousands(prize), HangarProps.thousands(pot)]
+		)
+		_last_result += String.chr(10) + Txt.t("arena_risk")
+		again = Txt.t("arena_more", [HangarProps.thousands(next)])
+		back = Txt.t("arena_cash", [HangarProps.thousands(pot)])
+	elif prize > 0:
+		_last_result = Txt.t("arena_streak_done", [HangarProps.thousands(result["gold"])])
+	elif lost > 0:
+		_last_result = Txt.t("arena_pot_lost", [HangarProps.thousands(lost)])
+		_last_result += String.chr(10) + Txt.t("result_reward", [result["gold"]])
+	if bool(result.get("level_up", false)):
+		_last_result += String.chr(10) + Txt.t("result_level_up", [_player_level()])
+	_battle.set_result_choices(again, true, back)
+
+
+## Volver del combate. En la arena, el bote se cobra al volver; si el
+## combate de la racha no termino, se abandono y el bote se pierde.
+func _on_battle_menu() -> void:
+	if _spec.get("mode", "") == "arena":
+		if _profile.arena_live:
+			_campaign.resume_arena(_profile)
+			_save()
+		elif _profile.arena_pot > 0:
+			var cashed := _campaign.cash_arena(_profile)
+			_save()
+			_last_result = Txt.t("arena_cashed", [HangarProps.thousands(cashed)])
+	_show_menu()
+
+
+## Al abrir el juego: el bote de la arena que se quedo sin cobrar se cobra;
+## el de un combate a medias, se pierde (OBS-049).
+func _resume_arena() -> void:
+	var resumed := _campaign.resume_arena(_profile)
+	if int(resumed["cashed"]) > 0:
+		_last_result = Txt.t("arena_cashed", [HangarProps.thousands(resumed["cashed"])])
+		_save()
+	elif int(resumed["lost"]) > 0:
+		_last_result = Txt.t("arena_pot_lost", [HangarProps.thousands(resumed["lost"])])
+		_save()
 
 
 ## Herramienta de prueba en vivo (LiveTest), solo con --autoplay o --menu-shot.

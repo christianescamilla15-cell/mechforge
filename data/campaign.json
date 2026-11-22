@@ -6,6 +6,17 @@
     "league": 3000,
     "rematch": 7500
   },
+  "arena_streak": {
+    "fights": 5,
+    "prize": [1, 2, 4, 8, 16],
+    "steps": [
+      {"power": 1.0, "tier_bonus": 0, "skills": 0, "difficulty": "", "edge": 0.0},
+      {"power": 1.25, "tier_bonus": 1, "skills": 6, "difficulty": "", "edge": 0.3},
+      {"power": 1.25, "tier_bonus": 1, "skills": 10, "difficulty": "", "edge": 0.35},
+      {"power": 1.25, "tier_bonus": 1, "skills": 14, "difficulty": "", "edge": 0.4},
+      {"power": 1.25, "tier_bonus": 1, "skills": 14, "difficulty": "", "edge": 0.43}
+    ]
+  },
   "zones": [
     {
       "id": "zona_1",

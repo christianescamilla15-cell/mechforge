@@ -44,6 +44,11 @@ var unique_cores: int = 0
 ## usuario el 2026-11-21: "me puedes dar 20 puntos de habilidad";
 ## tools/puntos.ps1). SkillTree.points_left los suma.
 var skill_bonus: int = 0
+## La racha de la arena (OBS-049): el bote sin cobrar, los combates ganados
+## en ella y si hay uno en marcha con bote en juego (Campaign.begin_arena).
+var arena_pot: int = 0
+var arena_streak: int = 0
+var arena_live: bool = false
 ## Piezas que tiene (ids del catalogo). Una pieza que se tiene se puede
 ## montar en tantos huecos como quiera; las copias suben juntas.
 var owned: Array[String] = []
@@ -212,6 +217,9 @@ func end_run() -> void:
 	parts.clear()
 	unique_cores = 0
 	skill_bonus = 0
+	arena_pot = 0
+	arena_streak = 0
+	arena_live = false
 	owned.clear()
 	mechs.clear()
 	active = 0
@@ -464,6 +472,9 @@ func to_dict() -> Dictionary:
 		"prototypes": prototypes.duplicate(true),
 		"unique_cores": unique_cores,
 		"skill_bonus": skill_bonus,
+		"arena_pot": arena_pot,
+		"arena_streak": arena_streak,
+		"arena_live": arena_live,
 		"owned": owned.duplicate(),
 		"mechs": mechs.duplicate(true),
 		"active": active,
@@ -496,6 +507,9 @@ static func from_dict(data: Dictionary) -> PlayerProfile:
 	profile.mech = str(data.get("mech", ""))
 	profile.unique_cores = maxi(0, int(data.get("unique_cores", 0)))
 	profile.skill_bonus = maxi(0, int(data.get("skill_bonus", 0)))
+	profile.arena_pot = maxi(0, int(data.get("arena_pot", 0)))
+	profile.arena_streak = maxi(0, int(data.get("arena_streak", 0)))
+	profile.arena_live = bool(data.get("arena_live", false))
 	for id: Variant in data.get("owned", []):
 		if not str(id) in profile.owned:
 			profile.owned.append(str(id))

@@ -17,7 +17,8 @@ extends RefCounted
 ##
 ## Datos en data/campaign.json:
 ## {"schema_version", "world_bosses", "on_loss", "protections": {"league":
-##   precio, "rematch": precio}, "zones": [{"id", "name",
+##   precio, "rematch": precio}, "arena_streak": {"fights", "prize",
+##   "steps"}, "zones": [{"id", "name",
 ##   "tier", "level_cap", "reward_mult", "stage", "drops_unique",
 ##   "arena": {"difficulty"},
 ##   "fights": [{"enemy", "level", "difficulty"}], "boss": {...}}]}
@@ -54,6 +55,16 @@ var world_bosses: int = 0
 var on_loss: String = "new_game"
 ## Precio de cada proteccion en la primera liga (sube con la liga).
 var protection_prices: Dictionary[String, int] = {}
+## Otro combate en la arena, doble o nada (OBS-049, del usuario: "si das
+## otro combate se te duplica la cantidad... el enemigo que viene es
+## considerablemente mas fuerte... puedes tener un buen bonus o perder toda
+## tu recompensa acumulada"): {"fights" (los de una racha), "prize" (lo
+## que multiplica la paga de ganar en cada combate) y "steps" (como sale
+## de mas fuerte el rival de cada uno: {"power", "tier_bonus", "skills",
+## "difficulty", "edge"})}. "edge" es lo que el rival suma de vida y de dano
+## (en parte) por encima de su armeria: cuando el jugador ya esta en lo mas
+## alto, mas clase no lo hace mas fuerte.
+var arena_streak: Dictionary = {"fights": 1, "prize": [1.0], "steps": [{}]}
 var errors: Array[String] = []
 
 
@@ -78,10 +89,34 @@ static func load_file(path: String, library: BuildLibrary) -> Campaign:
 			campaign.protection_prices[kind] = int(prices[kind])
 		else:
 			campaign.errors.append("falta el precio de la proteccion '%s'" % kind)
+	campaign._load_streak(parsed.get("arena_streak"))
 	for raw: Variant in parsed["zones"]:
 		campaign._add_zone(raw, library)
 	campaign.world_bosses = maxi(int(parsed.get("world_bosses", 0)), campaign.zones.size())
 	return campaign
+
+
+func _load_streak(raw: Variant) -> void:
+	if raw == null:
+		return
+	if not raw is Dictionary:
+		errors.append("'arena_streak' debe ser un objeto")
+		return
+	var fights := int(raw.get("fights", 0))
+	var prize: Variant = raw.get("prize")
+	var steps: Variant = raw.get("steps")
+	if fights < 1 or not prize is Array or not steps is Array:
+		errors.append("'arena_streak' necesita 'fights', 'prize' y 'steps'")
+		return
+	if (prize as Array).size() != fights or (steps as Array).size() != fights:
+		errors.append("'arena_streak': un premio y un paso por combate")
+		return
+	for step: Variant in steps:
+		var hard := str((step as Dictionary).get("difficulty", "")) if step is Dictionary else "?"
+		if hard != "" and not hard in DIFFICULTIES:
+			errors.append("'arena_streak': dificultad '%s' desconocida" % hard)
+			return
+	arena_streak = {"fights": fights, "prize": prize, "steps": steps}
 
 
 func zone_count() -> int:
@@ -207,6 +242,15 @@ func enemy_upgrades(zone: int, shop: ArenaShop) -> ArenaUpgrades:
 	return shop.upgrades_for(levels)
 
 
+## La armeria de un rival de esa zona con su plus de la racha de la arena
+## ("edge" de arena_streak: mas vida y mas dano).
+func fight_upgrades(zone: int, shop: ArenaShop, edge: float = 0.0) -> ArenaUpgrades:
+	var out := enemy_upgrades(zone, shop)
+	out.health += edge
+	out.damage += edge
+	return out
+
+
 ## Multiplicador de las recompensas en esa zona: las zonas de clase alta
 ## pagan mas porque sus mejoras cuestan mas.
 func reward_mult(zone: int) -> float:
@@ -225,14 +269,16 @@ func arena_fight(
 	seed_value: int,
 	rules: RulesConfig,
 	power: float,
-	loadout: Dictionary = {}
+	loadout: Dictionary = {},
+	tier_bonus: int = 0
 ) -> Dictionary:
 	var ids := library.band_ids(band_of(zone))
 	if ids.is_empty():
 		ids = library.ids()
 	var best := {"tier": 0, "level": 0}
 	var best_gap := INF
-	for tier in tier_of(zone) + 1:
+	var top := mini(tier_of(zone) + tier_bonus, rules.tier_max_level.size() - 1)
+	for tier in top + 1:
 		for level in rules.tier_max_level[tier] + 1:
 			var gap := absf(ItemScaling.power(rules, tier, level) - power)
 			if gap < best_gap:
@@ -249,6 +295,71 @@ func arena_fight(
 		"difficulty": str(zones[zone]["arena"]["difficulty"]),
 		"loadout": gear,
 	}
+
+
+## Los combates de una racha de arena (OBS-049).
+func streak_fights() -> int:
+	return int(arena_streak["fights"])
+
+
+## Lo que multiplica la paga de ganar el combate `step` (0 es el primero).
+func streak_prize(step: int) -> float:
+	var prize: Array = arena_streak["prize"]
+	return float(prize[clampi(step, 0, prize.size() - 1)])
+
+
+## El rival del combate `step` de una racha: el de arena_fight con mas poder
+## (y, si hace falta, una clase mas), entrenado y con otra dificultad. El
+## primero es el de siempre.
+func arena_streak_fight(
+	zone: int,
+	library: BuildLibrary,
+	seed_value: int,
+	rules: RulesConfig,
+	power: float,
+	loadout: Dictionary,
+	step: int
+) -> Dictionary:
+	var steps: Array = arena_streak["steps"]
+	var boost: Dictionary = steps[clampi(step, 0, steps.size() - 1)]
+	var stronger := power * float(boost.get("power", 1.0))
+	var bonus := int(boost.get("tier_bonus", 0))
+	var fight := arena_fight(zone, library, seed_value, rules, stronger, loadout, bonus)
+	fight["skills"] = int(boost.get("skills", 0))
+	var hard := str(boost.get("difficulty", ""))
+	if hard != "":
+		fight["difficulty"] = hard
+	fight["streak"] = step
+	fight["edge"] = float(boost.get("edge", 0.0))
+	return fight
+
+
+## Empieza un combate de arena: con bote en juego, queda marcado (cerrar el
+## juego en mitad es abandonarlo y se pierde el bote).
+func begin_arena(profile: PlayerProfile) -> void:
+	profile.arena_live = profile.arena_pot > 0
+
+
+## Cobra el bote de la arena. Devuelve lo cobrado.
+func cash_arena(profile: PlayerProfile) -> int:
+	var amount := profile.arena_pot
+	profile.gold += amount
+	profile.arena_pot = 0
+	profile.arena_streak = 0
+	profile.arena_live = false
+	return amount
+
+
+## Al abrir el juego: un bote que se quedo sin cobrar se cobra; uno que se
+## quedo en mitad de un combate de la racha se pierde. {"cashed", "lost"}.
+func resume_arena(profile: PlayerProfile) -> Dictionary:
+	if profile.arena_live:
+		var lost := profile.arena_pot
+		profile.arena_pot = 0
+		profile.arena_streak = 0
+		profile.arena_live = false
+		return {"cashed": 0, "lost": lost}
+	return {"cashed": cash_arena(profile) if profile.arena_pot > 0 else 0, "lost": 0}
 
 
 ## El equipo con el que sale a pelear un mech, para medirle el rival de la
@@ -390,6 +501,37 @@ func finish_fight(
 	return out
 
 
+## Un combate de arena (OBS-049): ganar pone su premio en el bote (el doble
+## que el del anterior de la racha) y deja pedir otro; perder pierde el
+## bote y cobra lo de perder. Al ganar el ultimo de la racha, se cobra.
+## Anade a `out`: "prize", "pot", "lost", "streak" y "more" (se puede
+## pedir otro).
+func _settle_arena(
+	profile: PlayerProfile, shop: ArenaShop, won: bool, mult: float, out: Dictionary
+) -> Dictionary:
+	var step := clampi(profile.arena_streak, 0, streak_fights() - 1)
+	profile.arena_live = false
+	out["prize"] = 0
+	out["lost"] = 0
+	if won:
+		profile.wins += 1
+		var prize := roundi(shop.reward("arena_win") * mult * streak_prize(step))
+		profile.arena_pot += prize
+		profile.arena_streak = step + 1
+		out["prize"] = prize
+	else:
+		out["lost"] = profile.arena_pot
+		profile.arena_pot = 0
+		profile.arena_streak = 0
+		out["gold"] = profile.earn(shop, "arena_loss", mult)
+	out["pot"] = profile.arena_pot
+	out["streak"] = profile.arena_streak
+	out["more"] = won and profile.arena_streak < streak_fights()
+	if won and not out["more"]:
+		out["gold"] = cash_arena(profile)
+	return out
+
+
 func _settle(profile: PlayerProfile, shop: ArenaShop, mode: String, won: bool) -> Dictionary:
 	var out := {
 		"gold": 0,
@@ -400,6 +542,8 @@ func _settle(profile: PlayerProfile, shop: ArenaShop, mode: String, won: bool) -
 		"protected": "",
 	}
 	var mult := reward_mult(profile.zone)
+	if mode == "arena":
+		return _settle_arena(profile, shop, won, mult, out)
 	if mode != "campaign" or profile.zone >= zone_count():
 		out["gold"] = profile.earn(shop, "arena_win" if won else "arena_loss", mult)
 		return out
