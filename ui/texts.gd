@@ -402,6 +402,21 @@ const TIER_NAMES: Array[String] = [
 	"Básica", "Intermedia", "Avanzada", "Legendaria", "Mítica", "Única"
 ]
 const ELEMENT_NAMES: Array[String] = ["Físico", "Calor", "Energía", "Combinado"]
+## Las fases de una pieza, una por campeón (OBS-047, aprobados por el usuario
+## el 2026-11-21): ItemScaling.phase da su número.
+const PHASE_NAMES: Array[String] = [
+	"Prototipo",
+	"Serie",
+	"Reforzado",
+	"Táctico",
+	"Élite",
+	"Vanguardia",
+	"Campeón",
+	"Legendario",
+	"Estelar",
+	"Soberano",
+	"Divino",
+]
 
 
 ## Devuelve el texto de la clave, con los argumentos ya sustituidos.

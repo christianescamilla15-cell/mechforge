@@ -414,7 +414,7 @@ Unas 58 piezas con nombres propios (nunca los del original).
 
 **Cada fase, su dibujo.** El salto que antes iba de Básica a Mítica es ahora el de una sola fase: cada fase parte del dibujo de la anterior y le suma lo suyo (`tools/art/phase_chain.py`), primero la máquina (placas, reactor, blindaje), luego la energía (aletas, alas, placas que flotan) y al final lo divino (halos, núcleo de estrella, luz). El juego busca "<juego>_f<fase>" y, si falta, el de la fase más alta por debajo (`MechSprites.class_set`). Piloto: el torso del chasis ligero en tres cadenas de 10 fases, para elegir una.
 
-**Cada fase, su nombre** (propuesta, `data/phases.json`): 0 Prototipo, 1 Serie, 2 Reforzado, 3 Táctico, 4 Élite, 5 Vanguardia, 6 Campeón, 7 Legendario, 8 Estelar, 9 Soberano, 10 Divino.
+**Cada fase, su nombre** (aprobados por el usuario el 2026-11-21: "sí, me parece bien los nombres"; `Txt.PHASE_NAMES`): 0 Prototipo, 1 Serie, 2 Reforzado, 3 Táctico, 4 Élite, 5 Vanguardia, 6 Campeón, 7 Legendario, 8 Estelar, 9 Soberano, 10 Divino. La ficha de cada pieza enseña el de su fase ("Táctico 12/12") en vez del de su clase; el color sigue siendo el de la clase.
 
 **Las armas, hasta la última.** Con la evolución (§8, "Evolucionar un arma") un arma pasa de tipo al tope del suyo (balas → cañón → bláster → láser) y llega a la fase 9; con un núcleo, a la Única. Su dibujo cambia por tipo; dentro de cada tipo, por fase, cuando haya dibujos.
 

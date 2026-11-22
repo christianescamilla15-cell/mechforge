@@ -10,7 +10,7 @@ Una cadena por semilla. Las imagenes van a art_raw/parts/<tanda>/
 fase<NN>_<semilla>.png (la fase 00 es la base).
 Uso:
   tools/art/run.ps1 tools/art/phase_chain.py docs/reference/art/elegidos/ligero/robot_18.png \
-      --batch fases_torso --zone torso --seeds 101 102 103 --strength 0.6
+      --batch fases_torso --zone torso --seeds 101 102 103 --strength 0.7 --strength-end 0.92
 """
 
 import argparse
@@ -50,6 +50,9 @@ def main():
     parser.add_argument("--zone", default="torso", choices=["torso", "legs"])
     parser.add_argument("--seeds", type=int, nargs="+", default=[101, 102, 103])
     parser.add_argument("--strength", type=float, default=0.6)
+    # La fuerza sube de fase en fase hasta esta: las ultimas fases se apartan
+    # mas (con 0.6 fija, la fase 10 seguia siendo casi el mismo casco).
+    parser.add_argument("--strength-end", type=float, default=None)
     parser.add_argument("--ring", type=int, nargs=2, default=[530, 493], metavar=("FILA", "COLUMNA"))
     parser.add_argument("--phases", type=int, default=len(PHASES))
     args = parser.parse_args()
@@ -75,12 +78,15 @@ def main():
         current.save(out / ("fase00_%d.png" % seed))
         for phase, prompt in enumerate(prompts, start=1):
             started = time.time()
+            end = args.strength if args.strength_end is None else args.strength_end
+            share = (phase - 1) / max(1, len(prompts) - 1)
+            strength = args.strength + (end - args.strength) * share
             image = pipe(
                 prompt=prompt,
                 negative_prompt=style.negative_for("chassis") + halves_test.ZONE_NEGATIVE.get(args.zone, ""),
                 image=current,
                 mask_image=mask,
-                strength=args.strength,
+                strength=strength,
                 control_image=[block_control],
                 control_mode=[sd.MODE_SCRIBBLE],
                 controlnet_conditioning_scale=0.0,
@@ -94,7 +100,7 @@ def main():
             current = Image.composite(image, current, soft)
             name = "fase%02d_%d.png" % (phase, seed)
             current.save(out / name)
-            print("ok  %s  %.0f s" % (name, time.time() - started), flush=True)
+            print("ok  %s  fuerza %.2f  %.0f s" % (name, strength, time.time() - started), flush=True)
     print("LISTO en", out)
 
 

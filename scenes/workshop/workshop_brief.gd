@@ -135,7 +135,13 @@ func progress_text(profile: PlayerProfile, item: ItemDef) -> String:
 		return Txt.t("part_follows_assist")
 	var p := profile.part(item.progress_id())
 	var top: int = rules.tier_max_level[p["tier"]]
-	return Txt.t("part_level", [Txt.TIER_NAMES[p["tier"]], p["level"], top])
+	# El nombre de su fase (OBS-047), no el de su clase.
+	return Txt.t("part_level", [phase_name(p["tier"], p["level"]), p["level"], top])
+
+
+## El nombre de la fase de una pieza de esa clase y nivel ("Tactico").
+func phase_name(tier: int, piece_level: int) -> String:
+	return Txt.PHASE_NAMES[ItemScaling.phase(rules, tier, piece_level)]
 
 
 ## Por que un hueco esta cerrado ("" si esta abierto).
@@ -238,7 +244,7 @@ func rack(profile: PlayerProfile, slot: String) -> Dictionary:
 					"owned": false,
 					"mounted": false,
 					"detail":
-					Txt.t("part_level", [Txt.TIER_NAMES[tier], 0, rules.tier_max_level[tier]]),
+					Txt.t("part_level", [phase_name(tier, 0), 0, rules.tier_max_level[tier]]),
 					"stats": item_stats(item, false),
 					"price": garage.price(catalog, rules, workshop, id, tier),
 					"reason": reason,
