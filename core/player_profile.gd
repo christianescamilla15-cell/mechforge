@@ -40,6 +40,10 @@ var prototypes: Dictionary = {}
 ## Nucleos unicos: los sueltan los 3 ultimos jefes y cada uno transforma una
 ## pieza Mitica al maximo en Unica (GDD 8).
 var unique_cores: int = 0
+## Puntos de habilidad regalados, aparte de los del nivel (pedido del
+## usuario el 2026-11-21: "me puedes dar 20 puntos de habilidad";
+## tools/puntos.ps1). SkillTree.points_left los suma.
+var skill_bonus: int = 0
 ## Piezas que tiene (ids del catalogo). Una pieza que se tiene se puede
 ## montar en tantos huecos como quiera; las copias suben juntas.
 var owned: Array[String] = []
@@ -207,6 +211,7 @@ func end_run() -> void:
 	shop_levels.clear()
 	parts.clear()
 	unique_cores = 0
+	skill_bonus = 0
 	owned.clear()
 	mechs.clear()
 	active = 0
@@ -458,6 +463,7 @@ func to_dict() -> Dictionary:
 		"parts": parts.duplicate(true),
 		"prototypes": prototypes.duplicate(true),
 		"unique_cores": unique_cores,
+		"skill_bonus": skill_bonus,
 		"owned": owned.duplicate(),
 		"mechs": mechs.duplicate(true),
 		"active": active,
@@ -489,6 +495,7 @@ static func from_dict(data: Dictionary) -> PlayerProfile:
 		profile.skills.append(str(id))
 	profile.mech = str(data.get("mech", ""))
 	profile.unique_cores = maxi(0, int(data.get("unique_cores", 0)))
+	profile.skill_bonus = maxi(0, int(data.get("skill_bonus", 0)))
 	for id: Variant in data.get("owned", []):
 		if not str(id) in profile.owned:
 			profile.owned.append(str(id))

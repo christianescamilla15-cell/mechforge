@@ -68,7 +68,8 @@ func get_node_data(id: String) -> Dictionary:
 
 ## Puntos que tiene el jugador a ese nivel y que aun no ha gastado.
 func points_left(profile: PlayerProfile, level: int) -> int:
-	return maxi(0, (level - 1) * points_per_level - profile.skills.size())
+	var earned := (level - 1) * points_per_level + profile.skill_bonus
+	return maxi(0, earned - profile.skills.size())
 
 
 ## Habilidades aprendidas de una rama.

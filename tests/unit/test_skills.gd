@@ -201,3 +201,16 @@ func test_las_habilidades_se_guardan_y_se_pierden_con_la_partida() -> void:
 	var old := PlayerProfile.from_dict({"schema_version": 5, "xp": 300})
 	assert_true(old.skills.is_empty())
 	assert_eq(old.to_dict()["schema_version"], PlayerProfile.SCHEMA_VERSION)
+
+
+## Del usuario (2026-11-21): "me puedes dar 20 puntos de habilidad". Los
+## regalados se suman a los del nivel y se guardan con la partida.
+func test_los_puntos_regalados_se_suman_y_se_guardan() -> void:
+	var tree := SkillTree.load_file("res://data/skills.json")
+	var profile := PlayerProfile.new()
+	var base := tree.points_left(profile, 5)
+	profile.skill_bonus = 20
+	assert_eq(tree.points_left(profile, 5), base + 20)
+	var copy := PlayerProfile.from_dict(profile.to_dict())
+	assert_eq(copy.skill_bonus, 20, "se guardan")
+	assert_eq(PlayerProfile.from_dict({}).skill_bonus, 0, "una partida vieja no tiene")
