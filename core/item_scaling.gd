@@ -23,6 +23,18 @@ static func factor(rules: RulesConfig, tier: ItemDef.Tier, level: int) -> float:
 	return power(rules, tier, level) / top_power(rules)
 
 
+## La fase del dibujo de una pieza (OBS-047): 0 a 10, una por campeon. Cada
+## liga abre media clase (la 1, Basica hasta el nivel 3; la 2, el resto;
+## la 3, Intermedia hasta la mitad...), asi que la fase sale de la clase y el
+## nivel: dos por clase, de la 0 (Basica, primera mitad) a la 9 (Mitica,
+## segunda mitad); la Unica es la 10.
+static func phase(rules: RulesConfig, tier: int, level: int) -> int:
+	if tier >= ItemDef.Tier.DIVINE:
+		return 10
+	var half: int = rules.tier_max_level[tier] / 2
+	return tier * 2 + (0 if level <= half else 1)
+
+
 static func is_reachable(def: ItemDef, tier: ItemDef.Tier) -> bool:
 	return tier >= def.tier_min and tier <= def.tier_max
 

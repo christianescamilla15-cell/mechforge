@@ -143,3 +143,21 @@ func test_el_dibujo_de_una_pieza_sigue_su_clase_si_existe() -> void:
 	assert_eq(
 		MechSprites.class_set("no_existe", mythic, "torso"), "no_existe", "sin dibujo de clase"
 	)
+
+
+## OBS-047: diez fases, una por campeon, sacadas de la clase y el nivel.
+func test_la_fase_de_una_pieza_va_con_las_ligas() -> void:
+	assert_eq(ItemScaling.phase(_rules, T.COMMON, 0), 0)
+	assert_eq(ItemScaling.phase(_rules, T.COMMON, 3), 0, "la liga 1 llega a Basica 3")
+	assert_eq(ItemScaling.phase(_rules, T.COMMON, 4), 1)
+	assert_eq(ItemScaling.phase(_rules, T.RARE, 6), 2)
+	assert_eq(ItemScaling.phase(_rules, T.RARE, 12), 3)
+	assert_eq(ItemScaling.phase(_rules, T.EPIC, 18), 5)
+	assert_eq(ItemScaling.phase(_rules, T.LEGENDARY, 13), 7)
+	assert_eq(ItemScaling.phase(_rules, T.MYTHIC, 30), 9)
+	assert_eq(ItemScaling.phase(_rules, T.DIVINE, 0), 10, "la Unica")
+	var campaign := Campaign.load_file("res://data/campaign.json", _library)
+	for zone in campaign.zone_count():
+		var tier := campaign.tier_of(zone)
+		var cap := campaign.level_cap(zone)
+		assert_eq(ItemScaling.phase(_rules, tier, cap), zone, "la liga %d, su fase" % (zone + 1))

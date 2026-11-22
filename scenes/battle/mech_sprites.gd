@@ -45,6 +45,7 @@ const SPECIAL_LEGS: Dictionary[String, String] = {
 	ItemDef.TAG_HOVER: "levita_ligero",
 }
 
+static var _rules_cache: RulesConfig
 static var _anchors: Dictionary[String, Dictionary] = {}
 ## Nivel maximo de cada clase (RulesConfig), para saber por que paso va.
 static var _tier_levels: Array[int] = []
@@ -108,18 +109,26 @@ static func chest_set(item: ItemDef) -> String:
 	return own if own != "" and has_piece(own, "chest") else MechView.CHEST_SET
 
 
-## El dibujo de una pieza en su clase (OBS-045, del usuario: "no veo el mismo
-## efecto de transformacion en el torso o en las piernas"): el juego
-## "<juego>_c<clase>" si existe (c1 Intermedia ... c4 Mitica; la Unica usa el
-## de Mitica) y, si no, el de siempre.
+## El dibujo de una pieza en su fase (OBS-045 y OBS-047, del usuario: "son 10
+## fases... va junto con los 10 campeones"): el juego "<juego>_f<fase>" de su
+## fase o, si falta, el de la fase mas alta que haya por debajo; sin
+## ninguno, el de siempre (la fase 0).
 static func class_set(base: String, item: ItemDef, kind: String) -> String:
-	if item == null or item.tier <= ItemDef.Tier.COMMON:
+	if item == null:
 		return base
-	for tier in range(mini(item.tier, ItemDef.Tier.MYTHIC), 0, -1):
-		var named := "%s_c%d" % [base, tier]
+	var phase := ItemScaling.phase(_rules(), item.tier, item.level)
+	for step in range(phase, 0, -1):
+		var named := "%s_f%d" % [base, step]
 		if has_piece(named, kind):
 			return named
 	return base
+
+
+## Las reglas por defecto (los niveles de cada clase), para la fase.
+static func _rules() -> RulesConfig:
+	if _rules_cache == null:
+		_rules_cache = RulesConfig.new()
+	return _rules_cache
 
 
 static func has_piece(set_name: String, kind: String) -> bool:

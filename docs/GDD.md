@@ -406,6 +406,20 @@ Unas 58 piezas con nombres propios (nunca los del original).
 
 **Hecho (2026-11-21), falta el veredicto del usuario.** Su banco está en el suelo del hangar, abajo a la izquierda (`scenes/hangar/specialist_bench.gd`; con persiana y "NIVEL 10" antes de tiempo); al pulsarlo se acerca su pantalla (`scenes/hangar/specialist_screen.gd`): tus seis piezas con su prototipo y su rango, la elegida bajo la lámpara (chispas al instalar) y los prototipos que le caben con sus cinco rangos, lo que hace el siguiente y su precio; comprar pide dos pulsaciones y el especialista habla en la línea de abajo. La lógica es `core/prototype_library.gd` (PrototypeLibrary: precios, rangos, compra y `apply`), el estado de la pantalla `scenes/workshop/specialist_brief.gd`, y el motor aplica cada efecto (`BattleEngine._proto_on_hit`, `crit_chance`, la válvula al empezar el turno, `MechBuild.summary`). Se guarda en `PlayerProfile.prototypes`, por pieza. Pendiente: el dibujo del especialista mismo (un robot con nombre) y el sonido propio de instalar.
 
+### 8.7 Las diez fases del dibujo (2026-11-21, OBS-047)
+
+**Lo que pidió el usuario.** "Sí se ve bien, pero ampliamos un poco más las progresiones. Bueno, bastante más. Lo que me muestras de básica en mítica, eso perfectamente podría ir entre una fase, entre base e intermedio. Y ya de este modo, esto marca para pasar a cada fase. Por ejemplo, son 10 fases: de la fase 0 a la fase 1 pasa de básica a intermedia, pero con otro nombre. Fase 1, fase 2, 3 va junto con los 10 campeones que se van a enfrentar. Hay que ampliar esto. Y hay armas que se pueden transformar hasta la última, y ya son más potentes. Profundicemos más en eso."
+
+**Una fase por campeón.** Cada liga abre media clase (la liga 1, Básica hasta el nivel 3; la 2, el resto de Básica; la 3, Intermedia hasta la mitad… la 10, el resto de Mítica), así que la fase de una pieza sale de su clase y su nivel (`ItemScaling.phase`): fase 0 (Básica, primera mitad) a fase 9 (Mítica, segunda mitad), y la 10 es la Única (con los núcleos de los últimos jefes). Cada campeón vencido abre la fase siguiente. Los números del juego no cambian: lo nuevo es el dibujo y el nombre.
+
+**Cada fase, su dibujo.** El salto que antes iba de Básica a Mítica es ahora el de una sola fase: cada fase parte del dibujo de la anterior y le suma lo suyo (`tools/art/phase_chain.py`), primero la máquina (placas, reactor, blindaje), luego la energía (aletas, alas, placas que flotan) y al final lo divino (halos, núcleo de estrella, luz). El juego busca "<juego>_f<fase>" y, si falta, el de la fase más alta por debajo (`MechSprites.class_set`). Piloto: el torso del chasis ligero en tres cadenas de 10 fases, para elegir una.
+
+**Cada fase, su nombre** (propuesta, `data/phases.json`): 0 Prototipo, 1 Serie, 2 Reforzado, 3 Táctico, 4 Élite, 5 Vanguardia, 6 Campeón, 7 Legendario, 8 Estelar, 9 Soberano, 10 Divino.
+
+**Las armas, hasta la última.** Con la evolución (§8, "Evolucionar un arma") un arma pasa de tipo al tope del suyo (balas → cañón → bláster → láser) y llega a la fase 9; con un núcleo, a la Única. Su dibujo cambia por tipo; dentro de cada tipo, por fase, cuando haya dibujos.
+
+**Orden:** elegir la cadena del torso piloto → exportarla → nombres en el juego → el resto de torsos, piernas, especiales y armas, por lotes.
+
 ## 9. Campaña
 **Visión (del usuario, 2026-11-16):** recuperar la versión antigua de Super Mechs para un jugador. Empiezas con un robot sencillo y avanzas combate a combate hasta un jefe superior al que solo se vence con táctica. Aquella versión era una demo que no pasaba de los primeros 10 combates; aquí va completa. La meta es unir la originalidad y el detalle del juego antiguo con las mecánicas de combate modernas. No hay multijugador.
 
