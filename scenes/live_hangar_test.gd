@@ -127,6 +127,29 @@ func phases_test() -> void:
 	get_tree().quit(0)
 
 
+## Prueba en vivo del robot desarmado (`--menu-shot=desarmado`, con
+## `--real-profile` y sin guardar nada; OBS-048): con el raton, pasar por
+## una pieza, elegir un arma, un sistema, el nucleo y el torso, y soltar
+## pulsando el fondo; una captura de cada paso.
+func teardown_test() -> void:
+	var hangar := main._menu as WorkshopScreen
+	var view := hangar._stage.teardown
+	await get_tree().create_timer(0.8).timeout
+	await shot("base")
+	var side := view.rect_of("slot:side0")
+	await _move(side.get_center())
+	await shot("encima_arma")
+	for key: String in ["slot:side0", "system:health", "core", "slot:torso", "slot:hook"]:
+		await _click(view.rect_of(key).get_center())
+		await get_tree().create_timer(0.4).timeout
+		print("DESARMADO elegido=%s etiqueta=%s" % [view.selected, hangar._stage.tag.is_open()])
+		await shot(key.replace(":", "_"))
+	await _click(Vector2(hangar.size.x * 0.62, hangar.size.y * 0.06))
+	await get_tree().create_timer(0.3).timeout
+	print("DESARMADO suelto=%s etiqueta=%s" % [view.selected == "", hangar._stage.tag.is_open()])
+	get_tree().quit(0)
+
+
 ## Prueba en vivo de las observaciones (`--menu-shot=observaciones`,
 ## docs/OBSERVACIONES.md), con el raton y sin guardar nada: las casillas del
 ## plano en la computadora del taller (OBS-030), el disparo de la

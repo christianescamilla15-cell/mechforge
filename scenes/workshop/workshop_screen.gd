@@ -61,6 +61,8 @@ func _ready() -> void:
 	_stage.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(_stage)
 	_stage.robot_pressed.connect(_on_robot_pressed)
+	_stage.teardown_picked.connect(_on_teardown_picked)
+	_stage.tag_pressed.connect(_on_tag_pressed)
 	_stage.terminal_pressed.connect(show_page)
 	_stage.bay_pressed.connect(_on_bay_pressed)
 	_stage.background_pressed.connect(_on_background_pressed)
@@ -144,6 +146,8 @@ func refresh() -> void:
 		if shown.legs == null:
 			shown.legs = _placeholder(ItemDef.Type.LEGS)
 			ghosts.append("legs")
+	_stage.teardown.show_state(brief.teardown(profile, shown))
+	_show_tag()
 	_stage.show_build(shown, ghosts)
 	# El monitor de misiones siempre ensena la campana; en el modo mision, su
 	# canal, con la fila de rivales delante.
@@ -184,6 +188,48 @@ func refresh() -> void:
 		)
 	else:
 		_stage.hide_specialist()
+
+
+## Algo del robot desarmado (OBS-048): se elige (o se suelta si ya lo estaba).
+func _on_teardown_picked(key: String) -> void:
+	var view := _stage.teardown
+	view.selected = "" if view.selected == key else key
+	if view.selected.begins_with("slot:"):
+		_selected = view.selected.trim_prefix("slot:")
+	Sfx.play("ui_tic")
+	view.queue_redraw()
+	_show_tag()
+
+
+## La etiqueta de lo elegido en el robot desarmado, junto a ello.
+func _show_tag() -> void:
+	var key := _stage.teardown.selected
+	var brief := main._bench
+	var profile := main._profile
+	var state := {}
+	if key.begins_with("slot:"):
+		state = brief.piece_tag(profile, key.trim_prefix("slot:"))
+	elif key.begins_with("system:"):
+		state = brief.system_tag(profile, key.trim_prefix("system:"))
+	elif key == "core":
+		state = brief.core_tag(profile)
+	if state.is_empty():
+		_stage.tag.hide_tag()
+	else:
+		_stage.tag.show_tag(state, _stage.teardown.rect_of(key))
+
+
+## Una tecla de la etiqueta: subir la pieza, cambiarla, subir un sistema
+## o aprender una habilidad.
+func _on_tag_pressed(key: String) -> void:
+	if key == "upgrade":
+		upgrade_selected()
+	elif key == "change":
+		open_parts()
+	elif key == "buy":
+		buy_upgrade(_stage.teardown.selected.trim_prefix("system:"))
+	elif key.begins_with("learn:"):
+		learn(key.trim_prefix("learn:"))
 
 
 ## Lo que ensenan los rotulos de la escena (tu robot, tus celdas, tu nivel
@@ -433,6 +479,10 @@ func missions_channel() -> String:
 func _on_background_pressed() -> void:
 	close_panels()
 	close_missions()
+	# El robot desarmado: se suelta lo elegido y se recoge su etiqueta.
+	_stage.teardown.selected = ""
+	_stage.teardown.queue_redraw()
+	_show_tag()
 
 
 ## Una flecha del combate libre en el monitor.

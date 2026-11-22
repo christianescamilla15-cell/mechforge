@@ -245,6 +245,12 @@ const ES := {
 	"loadout_drone": "DRON %d",
 	"terminal_mejoras": "MEJORAS",
 	"terminal_habilidades": "HABILIDADES",
+	# El robot desarmado del hangar (OBS-048).
+	"teardown_core": "Núcleo de control",
+	"tag_change": "Cambiar pieza",
+	"tag_mount": "Montar pieza",
+	"tag_empty": "Hueco vacío",
+	"tag_points": "%d por aprender · nivel %d",
 	"terminal_misiones": "MISIONES",
 	"rack_click_mount": "pulsa para montarla",
 	"rack_click_remove": "montada: pulsa para quitarla",

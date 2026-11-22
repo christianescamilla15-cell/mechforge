@@ -414,6 +414,94 @@ func slots(profile: PlayerProfile, selected: String) -> Array[Dictionary]:
 	return out
 
 
+## El robot desarmado del hangar (TeardownView, OBS-048): sus piezas a su
+## nivel, sus huecos, sus sistemas (las mejoras permanentes) y las
+## habilidades que puede aprender.
+func teardown(profile: PlayerProfile, build: MechBuild) -> Dictionary:
+	var systems := upgrades(profile)
+	return {
+		"build": build,
+		"slots": slots(profile, ""),
+		"systems": systems["rows"],
+		"system_max": systems["max"],
+		"points": skills.points_left(profile, level(profile)),
+	}
+
+
+## La etiqueta de una pieza del robot desarmado (TeardownTag): su fase,
+## las ranuras que le quedan hasta la siguiente (sus niveles) y la tecla
+## para subirla, transformarla o evolucionarla (OBS-048).
+func piece_tag(profile: PlayerProfile, slot: String) -> Dictionary:
+	var locked := lock_reason(profile, slot)
+	var out := {
+		"kind": "piece",
+		"title": slot_title(slot),
+		"phase": "",
+		"slots": 0,
+		"filled": 0,
+		"next": "",
+		"upgrade": "",
+		"can": false,
+		"reason": locked,
+		"gain": "",
+		"change": Txt.t("tag_change"),
+	}
+	if locked != "":
+		out["change"] = ""
+		return out
+	var item := resolved(profile, Garage.get_slot(profile.build, slot))
+	if item == null:
+		out["phase"] = Txt.t("tag_empty")
+		out["change"] = Txt.t("tag_mount")
+		return out
+	out["title"] = item.display_name
+	out["phase"] = progress_text(profile, item)
+	var p := profile.part(item.progress_id())
+	var tier: int = p["tier"]
+	var piece_level: int = p["level"]
+	if tier < ItemDef.Tier.DIVINE:
+		var top: int = rules.tier_max_level[tier]
+		var half := top / 2
+		var start := 0 if piece_level <= half else half
+		var end := half if piece_level <= half else top
+		out["slots"] = end - start
+		out["filled"] = piece_level - start
+		var phase := ItemScaling.phase(rules, tier, piece_level)
+		out["next"] = Txt.PHASE_NAMES[mini(phase + 1, Txt.PHASE_NAMES.size() - 1)]
+	var key := upgrade_key(profile, item)
+	if not key.is_empty():
+		out["upgrade"] = str(key["label"])
+		out["can"] = bool(key["enabled"])
+		out["gain"] = str(key.get("gain", ""))
+		if not bool(key["enabled"]):
+			out["reason"] = str(key.get("reason", ""))
+	return out
+
+
+## La etiqueta de un sistema del esqueleto: una mejora permanente.
+func system_tag(profile: PlayerProfile, track: String) -> Dictionary:
+	var all := upgrades(profile)
+	for row: Dictionary in all["rows"]:
+		if row["id"] == track:
+			var out := row.duplicate()
+			out["kind"] = "system"
+			out["title"] = row["name"]
+			out["max"] = all["max"]
+			return out
+	return {}
+
+
+## La etiqueta del nucleo de control: las ramas de habilidades.
+func core_tag(profile: PlayerProfile) -> Dictionary:
+	var tree := skill_tree(profile)
+	return {
+		"kind": "skills",
+		"title": Txt.t("teardown_core"),
+		"info": Txt.t("tag_points", [tree["points"], tree["level"]]),
+		"branches": tree["branches"],
+	}
+
+
 ## Lo que ensena la computadora del taller (LoadoutScreen): el plano con sus
 ## casillas y, al lado, el catalogo de la casilla elegida.
 func loadout(profile: PlayerProfile, robot_name: String, selected: String) -> Dictionary:

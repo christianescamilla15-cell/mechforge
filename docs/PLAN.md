@@ -220,6 +220,19 @@ Causa: la armería llega al máximo hacia la zona 4 y los rivales no tienen nada
 - **Pruebas:** `tests/unit/test_turntable.gd` (12). En la captura del menú, `--torso=<id>` cambia el torso y `--fps` escribe los cuadros por segundo.
 - **Límites conocidos:** en los ángulos intermedios el dibujo de frente se deforma siguiendo el relieve del perfil; se nota sobre todo en las piernas que andan, a unos 30° del frente. Las piernas 14 y 17 tienen dibujo pero ninguna pieza del catálogo las usa hoy (todas las que andan caen en las 18). Las armas no tienen dibujo de frente: se ven de lado, en escorzo.
 
+### Rediseño OBS-048: el robot desarmado y la zona de combate (2026-11-21)
+
+Del usuario: "nos estamos alejando un poco del objetivo... de que sea completamente inmersivo"; en el hangar, "únicamente el esqueleto de robot... por piezas separadas... como si estuviera en el taller revisándose"; "las ranuras de mejora son lo que van entre cada fase" y "la evolución es lo que pasa después de que ya terminas alguna fase"; "el taller no existe en una pantalla... las mejoras tampoco, y las habilidades tampoco"; las misiones, "un botón tan nativamente oculto... que casi pasa desapercibido para pasar al área de combate", que sí es otra pantalla, con "tus combatientes en tamaño real" y la elección de "entrar a campaña", "como un combate previo a la WWE". El especialista se queda igual. Elegido por él (preguntado): las 8 mejoras permanentes son sistemas internos del esqueleto y las habilidades van en su núcleo de control, sin cambiar la mecánica; los otros robots pasan de las bahías del hangar a la zona de combate.
+
+Bloques, cada uno con capturas revisadas antes de seguir:
+1. **Robot desarmado** en el centro del hangar, en lugar del robot armado: cada pieza en su sitio de revisión (torso colgado de la grúa, piernas en su soporte, armas de brazo y de hombro en sus cunas, arma de pecho y asistente aparte), unidas por el esqueleto: el armazón interno con las 8 mejoras como sistemas y el núcleo de control en el centro.
+2. **Cada pieza se usa donde está:** al tocarla, su etiqueta flotante enseña su fase, las ranuras de mejora hasta la fase siguiente (sus niveles) y la evolución cuando la fase se cierra; cambiarla abre el estuche de piezas junto a ella (el de la OBS-039), sin pantalla.
+3. **Mejoras y habilidades en el esqueleto:** tocar un sistema enseña sus diez niveles y se sube con dos pulsaciones; tocar el núcleo despliega las tres ramas del árbol en el aire.
+4. **Fuera las pantallas de la pared** TALLER, MEJORAS, HABILIDADES y el monitor de misiones, y las bahías. Se quedan el especialista y el cuadro de los ajustes. Salir a combatir: un control casi oculto de la escena.
+5. **Zona de combate** (pantalla aparte): tus robots armados a tamaño real bajo los focos; eliges con cuál pelear (y ahí se adquieren o desmontan robots) y entras a campaña: el rival sale por el otro lado con su nombre, como la previa de una lucha. Vuelta al hangar por un control igual de discreto.
+
+Estado: en curso.
+
 ### F7 — Progresión y guardado
 - Inventario, niveles por poder, fusión, transformación de tier, oro y núcleos, botín, cajas y taller de mejoras (GDD §8).
 - Guardado en `user://save.json` con `schema_version`.

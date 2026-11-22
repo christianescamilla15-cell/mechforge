@@ -600,7 +600,7 @@ func test_lo_que_no_se_puede_adquirir_no_se_arma() -> void:
 
 
 func test_el_proyector_se_enciende_en_la_bahia_vacia_que_se_pulso() -> void:
-	var stage := _stage()
+	var stage := _stage(true)
 	var none: MechBuild = null
 	var bays: Array[Dictionary] = [
 		{"index": 1, "build": stage._mech.build, "name": "Otro"},
@@ -714,8 +714,9 @@ func test_el_cuadro_de_control_esta_en_la_pared_y_se_pulsa() -> void:
 	stage.terminal_pressed.connect(func(terminal: String) -> void: _pressed.append(terminal))
 	var box: Rect2 = stage._terminal_rects["ajustes"]
 	assert_true(Rect2(Vector2.ZERO, stage.size).encloses(box))
-	for other: String in ["taller", "mejoras", "habilidades"]:
-		assert_false(box.intersects(stage._terminal_rects[other]), "no pisa " + other)
+	for other: String in stage._terminal_rects:
+		if other != "ajustes":
+			assert_false(box.intersects(stage._terminal_rects[other]), "no pisa " + other)
 	stage._gui_input(_click(box.get_center()))
 	assert_eq(_pressed, ["ajustes"] as Array[String])
 	stage.show_console(WallConsole.settings_state(GameSettings.new(), true), true)
@@ -726,8 +727,12 @@ func test_el_cuadro_de_control_esta_en_la_pared_y_se_pulsa() -> void:
 # --- En el hangar (HangarStage) ---------------------------------------------------------
 
 
-func _stage() -> HangarStage:
+## El hangar. `legacy`: el de antes de la OBS-048 (robot armado, bahias y
+## pantallas de taller, mejoras y habilidades), que sigue en el codigo
+## mientras sus piezas pasan a la zona de combate.
+func _stage(legacy := false) -> HangarStage:
 	var stage := HangarStage.new()
+	stage.teardown_on = not legacy
 	stage.size = Vector2(1280, 720)
 	add_child_autofree(stage)
 	var build := _library.make("fisico_vanguardia", _catalog, _brief.rules, ItemDef.Tier.COMMON, 6)
@@ -737,7 +742,7 @@ func _stage() -> HangarStage:
 
 
 func test_la_diana_solo_prueba_si_hay_un_arma_elegida() -> void:
-	var stage := _stage()
+	var stage := _stage(true)
 	var at := stage.target_rect().get_center()
 	stage._gui_input(_click(at))
 	assert_eq(_counts["target"], 0)
@@ -747,7 +752,7 @@ func test_la_diana_solo_prueba_si_hay_un_arma_elegida() -> void:
 
 
 func test_una_hoja_se_prueba_con_su_tajo_y_no_con_un_disparo() -> void:
-	var stage := _stage()
+	var stage := _stage(true)
 	var blade := ""
 	var gun := ""
 	for i in 4:
@@ -791,7 +796,7 @@ func _screen_point(stage: HangarStage, world: Vector2) -> Vector2:
 
 
 func test_obs030_las_piezas_ya_no_se_eligen_tocando_el_robot() -> void:
-	var stage := _stage()
+	var stage := _stage(true)
 	var pressed := [0]
 	stage.robot_pressed.connect(func() -> void: pressed[0] += 1)
 	var arm := _screen_point(stage, stage._world_rect("side0").get_center())
@@ -806,7 +811,7 @@ func test_obs030_las_piezas_ya_no_se_eligen_tocando_el_robot() -> void:
 func test_obs036_el_robot_del_hangar_ya_no_gira() -> void:
 	# Del usuario: "quitemos la parte de la rotacion en 3D, eso ya queda
 	# cancelado. Aqui no funciona".
-	var stage := _stage()
+	var stage := _stage(true)
 	assert_false(stage.has_method("turn_to"), "sin giro de 360 grados")
 	assert_false("turn" in stage)
 	var pressed := [0]
@@ -826,7 +831,7 @@ func test_obs036_el_robot_del_hangar_ya_no_gira() -> void:
 
 
 func test_obs030_la_computadora_del_taller_crece_desde_su_pantalla() -> void:
-	var stage := _stage()
+	var stage := _stage(true)
 	var rects := stage.loadout_rects()
 	assert_eq(rects[0], stage._terminal_rects["taller"])
 	assert_true(Rect2(Vector2.ZERO, stage.size).encloses(rects[1]), "cabe en el hangar")
@@ -874,7 +879,7 @@ func test_obs009_cada_arma_de_balas_dispara_a_su_manera() -> void:
 
 
 func test_cada_pantalla_crece_desde_su_sitio() -> void:
-	var stage := _stage()
+	var stage := _stage(true)
 	for kind: String in ["mejoras", "habilidades", "robot", "ajustes"]:
 		var rects := stage.console_rects(kind)
 		assert_gt(rects[1].get_area(), rects[0].get_area() * 2.0, kind + " crece")
@@ -886,3 +891,74 @@ func test_cada_pantalla_crece_desde_su_sitio() -> void:
 	assert_eq(stage.console.shown(), 1.0)
 	stage.hide_console()
 	assert_eq(stage.console.kind(), "")
+
+
+# --- El robot desarmado (OBS-048) ---------------------------------------------------------
+
+
+## Del usuario: "lo que se deberia mostrar es unicamente el esqueleto de robot...
+## por piezas separadas"; "el taller no existe en una pantalla... las mejoras
+## tampoco, y las habilidades tampoco".
+func test_obs048_el_hangar_ensena_el_robot_desarmado_sin_pantallas() -> void:
+	var stage := _stage()
+	var profile := _profile()
+	stage.teardown.show_state(_brief.teardown(profile, stage._mech.build))
+	assert_false(stage._mech.visible, "el robot armado no esta")
+	assert_true(stage.teardown.visible)
+	for gone: String in ["taller", "mejoras", "habilidades"]:
+		assert_false(stage._terminal_rects.has(gone), "sin la pantalla de " + gone)
+	assert_true(stage._terminal_rects.has("especialista"), "el especialista se queda")
+	assert_true(stage._terminal_rects.has("ajustes"))
+	assert_false(stage._board.visible, "sin el monitor de misiones")
+	var view := stage.teardown
+	for slot: String in ["torso", "legs", "side0", "top0"]:
+		var rect := view.rect_of("slot:" + slot)
+		assert_ne(rect.size, Vector2.ZERO, slot + " en su sitio")
+		assert_true(Rect2(Vector2.ZERO, stage.size).encloses(rect), slot + " cabe")
+	var systems := 0
+	for track: String in _brief.shop.track_ids():
+		if view.rect_of("system:" + track).size != Vector2.ZERO:
+			systems += 1
+	assert_eq(systems, _brief.shop.track_ids().size(), "un sistema por mejora")
+	assert_ne(view.rect_of("core").size, Vector2.ZERO, "el nucleo de las habilidades")
+
+
+func test_obs048_tocar_una_pieza_la_elige() -> void:
+	var stage := _stage()
+	stage.teardown.show_state(_brief.teardown(_profile(), stage._mech.build))
+	var picked: Array[String] = []
+	stage.teardown_picked.connect(func(key: String) -> void: picked.append(key))
+	for key: String in ["slot:side0", "system:health", "core"]:
+		stage._gui_input(_click(stage.teardown.rect_of(key).get_center()))
+	assert_eq(picked, ["slot:side0", "system:health", "core"] as Array[String])
+
+
+## "Las ranuras de mejora son lo que van entre cada fase": la etiqueta de una
+## pieza cuenta los niveles que le quedan hasta la fase siguiente.
+func test_obs048_las_ranuras_van_hasta_la_fase_siguiente() -> void:
+	var profile := _profile()
+	var id := Garage.get_slot(profile.build, "side0")
+	var progress := _catalog.get_item(id).progress_id()
+	var top: int = _brief.rules.tier_max_level[ItemDef.Tier.COMMON]
+	profile.parts[progress] = {"tier": ItemDef.Tier.COMMON, "level": 1}
+	var tag := _brief.piece_tag(profile, "side0")
+	assert_eq(tag["slots"], top / 2, "la primera mitad de la clase")
+	assert_eq(tag["filled"], 1)
+	assert_eq(tag["next"], Txt.PHASE_NAMES[1])
+	profile.parts[progress] = {"tier": ItemDef.Tier.COMMON, "level": top}
+	tag = _brief.piece_tag(profile, "side0")
+	assert_eq(tag["slots"], top - top / 2, "la segunda mitad")
+	assert_eq(tag["filled"], top - top / 2, "llenas: toca pasar de fase")
+	assert_eq(tag["next"], Txt.PHASE_NAMES[2])
+	assert_ne(str(tag["upgrade"]), "", "con su tecla")
+
+
+func test_obs048_la_etiqueta_de_un_sistema_y_la_del_nucleo() -> void:
+	var profile := _profile(100000)
+	var system := _brief.system_tag(profile, "health")
+	assert_eq(system["kind"], "system")
+	assert_eq(system["level"], 0)
+	assert_eq(system["state"], "ok", "se puede subir")
+	var core := _brief.core_tag(profile)
+	assert_eq(core["kind"], "skills")
+	assert_eq((core["branches"] as Array).size(), 3, "las tres ramas")

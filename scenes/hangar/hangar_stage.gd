@@ -43,6 +43,11 @@ signal bay_pressed(index: int)
 signal background_pressed
 ## Se pulso tu robot, sin arrastrarlo.
 signal robot_pressed
+## Algo del robot desarmado (TeardownView): "slot:<hueco>",
+## "system:<mejora>" o "core".
+signal teardown_picked(key: String)
+## Una tecla de la etiqueta de lo elegido (TeardownTag).
+signal tag_pressed(key: String)
 
 ## Lo que hay en la pared y se pulsa: tres pantallas y el cuadro de control
 ## de los ajustes.
@@ -68,6 +73,12 @@ const LAUNCH_WALK := 250.0
 ##  "weight", "max_weight", "overload", "upgrades" (de 0 a 1, una por mejora)
 ##  y "weight_delta" (lo que cambiaria el peso con la pieza bajo el raton)}.
 var info: Dictionary = {}
+## El robot desarmado en revision (OBS-048) en lugar del robot armado,
+## sin bahias, sin las pantallas de taller, mejoras y habilidades y sin
+## el monitor de misiones.
+var teardown_on := true
+var teardown := TeardownView.new()
+var tag := TeardownTag.new()
 ## La computadora del taller y la pantalla de cerca: WorkshopScreen les da
 ## lo que ensenan y oye lo que se pulsa en ellas.
 var loadout := LoadoutScreen.new()
@@ -148,6 +159,10 @@ func _ready() -> void:
 	_board.channel_picked.connect(func(channel: String) -> void: channel_picked.emit(channel))
 	_board.pick_changed.connect(func(key: String, step: int) -> void: pick_changed.emit(key, step))
 	_board.protection_picked.connect(func(kind: String) -> void: protection_picked.emit(kind))
+	add_child(teardown)
+	move_child(teardown, _world.get_index() + 1)
+	add_child(tag)
+	move_child(tag, teardown.get_index() + 1)
 	add_child(projector)
 	_wall_robot.scan = true
 	add_child(_wall_robot)
@@ -371,7 +386,7 @@ func target_rect() -> Rect2:
 
 
 func _on_target(at: Vector2) -> bool:
-	return can_test and not _mission_on and target_rect().has_point(at)
+	return can_test and not _mission_on and not teardown_on and target_rect().has_point(at)
 
 
 ## Probar un arma: primero el robot vuelve al perfil. Si salta a la diana
@@ -389,6 +404,18 @@ func test_fire(slot: String, fx: String, color: Color) -> void:
 func _fit() -> void:
 	if _mech.build == null or size.y <= 0.0:
 		return
+	_mech.visible = not teardown_on
+	teardown.visible = teardown_on
+	_wall_robot.visible = not teardown_on
+	_bay_layer.visible = not teardown_on
+	_board.visible = not teardown_on
+	# Desarmado no hay diana: el robot no esta entero para probar.
+	if teardown_on:
+		_target_alpha = 0.0
+	teardown.position = Vector2.ZERO
+	teardown.size = size
+	tag.position = Vector2.ZERO
+	tag.size = size
 	_mech.place(Vector2.ZERO)
 	var bounds := Rect2(Vector2.ZERO, Vector2.ZERO)
 	for slot in TOUCHABLE:
@@ -404,6 +431,9 @@ func _fit() -> void:
 	_world.position = Vector2(size.x * 0.43 - center, _floor_y)
 	var legs := _world_rect("legs")
 	_platform_width = maxf(legs.size.x, 80.0) * zoom * 1.7
+	if teardown_on:
+		var stand := teardown.rect_of("slot:legs")
+		_platform_width = maxf(stand.size.x, 80.0) + 20.0
 	_layout()
 	_refresh_still()
 
@@ -428,6 +458,10 @@ func _layout() -> void:
 	if loadout.is_open():
 		show_loadout(loadout.state)
 	_bay_rects.clear()
+	if teardown_on:
+		for terminal: String in ["taller", "mejoras", "habilidades"]:
+			_terminal_rects.erase(terminal)
+		return
 	for i in BAY_X.size():
 		var feet := Vector2(size.x * BAY_X[i], _bay_floor())
 		var height := size.y * 0.3
@@ -479,7 +513,8 @@ func _draw() -> void:
 	else:
 		# Hasta que la textura esta pintada, lo quieto va directo.
 		_draw_still(self)
-	_draw_bays_live()
+	if not teardown_on:
+		_draw_bays_live()
 	for terminal in TERMINALS:
 		if _terminal_rects.has(terminal):
 			var hover := _hover_terminal == terminal
@@ -519,20 +554,24 @@ func _draw_still(c: CanvasItem) -> void:
 	var rect := Rect2(Vector2.ZERO, size)
 	HangarArt.draw_wall(c, rect, _floor_y, 1.0)
 	HangarArt.draw_gantry(c, rect, 1.0)
-	HangarProps.back_row(c, size, _bay_floor(), BAY_X, _font)
+	if not teardown_on:
+		HangarProps.back_row(c, size, _bay_floor(), BAY_X, _font)
 	for terminal in TERMINALS:
 		if _terminal_rects.has(terminal):
 			HangarProps.terminal_still(c, _font, terminal, _terminal_rects[terminal])
 	var board := Rect2(_board.position, _board.size)
-	HangarProps.cable(c, Vector2(board.position.x + board.size.x * 0.8, board.end.y))
+	if not teardown_on:
+		HangarProps.cable(c, Vector2(board.position.x + board.size.x * 0.8, board.end.y))
 	var center := _platform_center()
 	HangarArt.draw_floor(c, rect, _floor_y, Vector2(center, _floor_y - size.y * 0.9))
 	HangarProps.floor_marks(c, size, _floor_y, center, _font)
 	HangarArt.draw_light_cone(c, rect, center, _floor_y)
-	if _mech.build != null:
+	if _mech.build != null and not teardown_on:
 		HangarArt.draw_platform(c, Vector2(center, _floor_y), _platform_width)
 	HangarProps.clutter(c, size, _floor_y)
-	HangarProps.target_stand(c, _world.position + _target_point() * _world.scale.x, _floor_y)
+	if not teardown_on:
+		var target := _world.position + _target_point() * _world.scale.x
+		HangarProps.target_stand(c, target, _floor_y)
 	HangarArt.draw_vignette(c, rect, 1.2)
 
 
@@ -544,7 +583,14 @@ func _refresh_still() -> void:
 	var pixels := get_viewport().get_final_transform().get_scale().x
 	var key := (
 		"%s %.3f %.1f %.1f %.1f %s"
-		% [size, pixels, _floor_y, _platform_center(), _platform_width, _mech.build != null]
+		% [
+			size,
+			pixels,
+			_floor_y,
+			_platform_center(),
+			_platform_width,
+			"%s %s" % [_mech.build != null, teardown_on],
+		]
 	)
 	if key == _still_key:
 		return
@@ -578,6 +624,8 @@ func _scale_rect() -> Rect2:
 func _platform_center() -> float:
 	if _launching or _striking:
 		return _launch_center
+	if teardown_on:
+		return size.x * 0.5
 	var legs := _world_rect("legs")
 	if legs.size == Vector2.ZERO:
 		return _world.position.x
@@ -613,7 +661,7 @@ func _draw_bays_live() -> void:
 
 func _draw_overlay() -> void:
 	super._draw_overlay()
-	if _mech.build == null or _mission_on:
+	if _mech.build == null or _mission_on or teardown_on:
 		return
 	if can_test:
 		# La diana llama: un aro que late y, debajo, que hace.
@@ -663,6 +711,7 @@ func _clear_hover() -> void:
 	_hover_target = false
 	_hover_robot = false
 	_row.hover = false
+	teardown.hover = ""
 	_overlay.queue_redraw()
 
 
@@ -686,7 +735,7 @@ func _bay_at(at: Vector2) -> int:
 
 ## True si ese punto cae sobre el robot (lo que ocupa de perfil).
 func _over_robot(at: Vector2) -> bool:
-	if _mech.build == null:
+	if _mech.build == null or teardown_on:
 		return false
 	var body := Rect2(
 		_world.position + _bounds.position * _world.scale.x, _bounds.size * _world.scale.x
@@ -721,7 +770,21 @@ func _gui_input(event: InputEvent) -> void:
 				Sfx.play("ui_tic")
 		var free := terminal == "" and bay < 0 and not on_rival and not on_sign and not on_target
 		_hover_robot = free and _over_robot(motion.position)
+		var tag_key := tag.key_at(motion.position) if free else ""
+		if tag_key != tag.hover_key:
+			tag.hover_key = tag_key
+			tag.queue_redraw()
+			if tag_key != "":
+				Sfx.play("ui_tic")
+		free = free and not tag.has_point(motion.position)
+		var piece := teardown.item_at(motion.position) if free and teardown_on else ""
+		if piece != teardown.hover:
+			teardown.hover = piece
+			teardown.queue_redraw()
+			if piece != "":
+				Sfx.play("ui_tic")
 		var pointing := terminal != "" or bay >= 0 or on_rival or on_sign or on_target
+		pointing = pointing or piece != "" or tag_key != ""
 		mouse_default_cursor_shape = (
 			Control.CURSOR_POINTING_HAND if pointing or _hover_robot else Control.CURSOR_ARROW
 		)
@@ -745,6 +808,16 @@ func _gui_input(event: InputEvent) -> void:
 		if bay >= 0 and bay < bays.size():
 			_pressed_bay = bay
 			bay_pressed.emit(int(bays[bay]["index"]))
+			return
+		var tag_key := tag.key_at(click.position)
+		if tag_key != "":
+			tag_pressed.emit(tag_key)
+			return
+		if tag.has_point(click.position):
+			return
+		var piece := teardown.item_at(click.position) if teardown_on else ""
+		if piece != "":
+			teardown_picked.emit(piece)
 			return
 		# Tu robot: se acerca la computadora del taller.
 		if _over_robot(click.position):
