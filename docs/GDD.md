@@ -416,7 +416,7 @@ Unas 58 piezas con nombres propios (nunca los del original).
 
 **Cada fase, su nombre** (aprobados por el usuario el 2026-11-21: "sí, me parece bien los nombres"; `Txt.PHASE_NAMES`): 0 Prototipo, 1 Serie, 2 Reforzado, 3 Táctico, 4 Élite, 5 Vanguardia, 6 Campeón, 7 Legendario, 8 Estelar, 9 Soberano, 10 Divino. La ficha de cada pieza enseña el de su fase ("Táctico 12/12") en vez del de su clase; el color sigue siendo el de la clase.
 
-**Las armas, hasta la última.** Con la evolución (§8, "Evolucionar un arma") un arma pasa de tipo al tope del suyo (balas → cañón → bláster → láser) y llega a la fase 9; con un núcleo, a la Única. Su dibujo cambia por tipo; dentro de cada tipo, por fase, cuando haya dibujos.
+**Las armas, hasta la última.** Con la evolución (§8, "Evolucionar un arma") un arma pasa de tipo al tope del suyo (balas → cañón → bláster → láser) y llega a la fase 9; con un núcleo, a la Única. Su dibujo cambia por tipo y, dentro de cada tipo, por fase (pedido del usuario: "ahora vamos a poner al mismo nivel las armas"): cada tipo vive en las fases de sus clases (balas 0-3, cañón 2-5, bláster 2-7, láser 4-10), su dibujo de siempre es la primera y las siguientes salen encadenadas (`tools/art/weapon_phases.py`), con la misma escalera que los torsos hasta el dios robot. El juego busca "<pieza>_f<fase>" (`MechSprites.weapon_look`). El rifle de hombro usa las fases del de brazo.
 
 **Orden:** elegir la cadena del torso piloto → exportarla → nombres en el juego → el resto de torsos, piernas, especiales y armas, por lotes.
 
