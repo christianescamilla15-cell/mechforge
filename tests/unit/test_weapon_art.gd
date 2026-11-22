@@ -77,7 +77,7 @@ func test_un_arma_sin_dibujos_de_evolucion_se_ve_como_siempre() -> void:
 	var anchors := MechSprites._load_anchors(MechSprites.WEAPON_SET)
 	for item in _mounted():
 		var base := MechSprites.weapon_kind(item)
-		if anchors.has(base + "_c0_1"):
+		if anchors.has(base + "_c0_1") or _has_phases(anchors, base):
 			continue
 		var grown := _resolved(item.id, item.tier_min, 6)
 		assert_eq(MechSprites.weapon_look(grown), base, "%s sigue con su dibujo" % item.id)
@@ -116,3 +116,36 @@ func test_el_arma_piloto_suma_un_periferico_por_nivel_y_cambia_de_modelo_al_tran
 	var plain := MechSprites.icon_for(_resolved("hoja_balas_ter", ItemDef.Tier.COMMON, 0))
 	var loaded := MechSprites.icon_for(_resolved("hoja_balas_ter", ItemDef.Tier.COMMON, 6))
 	assert_ne(plain, loaded)
+
+
+func _has_phases(anchors: Dictionary, base: String) -> bool:
+	for phase in range(1, 11):
+		if anchors.has("%s_f%d" % [base, phase]):
+			return true
+	return false
+
+
+## OBS-047: las armas, como los torsos, se ven por fase ("<pieza>_f<fase>",
+## o la mas alta que haya por debajo); sin fases, como siempre.
+func test_un_arma_se_ve_por_su_fase() -> void:
+	var real := MechSprites._load_anchors(MechSprites.WEAPON_SET)
+	var fake := real.duplicate(true)
+	for phase in range(1, 11):
+		fake.erase("arm_medio_laser_f%d" % phase)
+	fake["arm_medio_laser_f6"] = (real["arm_medio_laser"] as Dictionary).duplicate()
+	fake["arm_medio_laser_f8"] = (real["arm_medio_laser"] as Dictionary).duplicate()
+	MechSprites._anchors[MechSprites.WEAPON_SET] = fake
+	var epic := _resolved("medio_laser_ter", ItemDef.Tier.EPIC, 0)
+	assert_eq(MechSprites.weapon_look(epic), "arm_medio_laser", "fase 4: su dibujo de siempre")
+	var top := RulesConfig.new().tier_max_level[ItemDef.Tier.EPIC]
+	var epic_top := _resolved("medio_laser_ter", ItemDef.Tier.EPIC, top)
+	assert_eq(MechSprites.weapon_look(epic_top), "arm_medio_laser", "fase 5 sin dibujo: la 4")
+	var legendary := _resolved("medio_laser_ter", ItemDef.Tier.LEGENDARY, 0)
+	assert_eq(MechSprites.weapon_look(legendary), "arm_medio_laser_f6", "fase 6")
+	var legendary_top := _resolved("medio_laser_ter", ItemDef.Tier.LEGENDARY, 24)
+	assert_eq(
+		MechSprites.weapon_look(legendary_top), "arm_medio_laser_f6", "fase 7 sin dibujo: la 6"
+	)
+	var mythic_top := _resolved("medio_laser_ter", ItemDef.Tier.MYTHIC, 30)
+	assert_eq(MechSprites.weapon_look(mythic_top), "arm_medio_laser_f8", "fase 9 sin dibujo: la 8")
+	MechSprites._anchors[MechSprites.WEAPON_SET] = real

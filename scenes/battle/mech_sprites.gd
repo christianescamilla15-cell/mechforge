@@ -237,6 +237,13 @@ static func weapon_look(item: ItemDef) -> String:
 	if base == "":
 		return ""
 	var anchors := _load_anchors(WEAPON_SET)
+	# Las diez fases (OBS-047, del usuario: "ahora vamos a poner al mismo
+	# nivel las armas"): "<pieza>_f<fase>" o la mas alta que haya por debajo.
+	var phase := ItemScaling.phase(_rules(), item.tier, item.level)
+	for step in range(phase, 0, -1):
+		var named := "%s_f%d" % [base, step]
+		if anchors.get(named) is Dictionary:
+			return named
 	var own := maxi(item.tier - item.tier_min, 0)
 	for tier in range(own, -1, -1):
 		var from := look_step(item) if tier == own else LOOK_STEPS
