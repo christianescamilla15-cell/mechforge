@@ -198,6 +198,9 @@ func _ready() -> void:
 		elif _args["menu-shot"] == "zona":
 			_live_test().zone_test()
 			return
+		elif _args["menu-shot"] == "estuche":
+			_live_test().case_test()
+			return
 		elif _args["menu-shot"] == "desarmado":
 			_live_test().teardown_test()
 			return

@@ -11,6 +11,9 @@ extends Control
 ##   piezas que caben en la casilla elegida, las tuyas y las de la tienda, por
 ##   tipo: se pulsan para montarlas o comprarlas, y ahi mismo se suben de
 ##   nivel. La diana del hangar prueba el arma de la ultima casilla tocada;
+## - desde la OBS-048 el robot esta desarmado (TeardownView): cada pieza se
+##   elige donde esta y "Cambiar pieza" abre a su lado el estuche de piezas
+##   (PartsCase), sin la computadora;
 ## - tus otros robots en las bahias del fondo: un clic y pasas a usarlo; una
 ##   bahia vacia proyecta lo que puede fabricar (BayProjector): un armazon
 ##   de cada tipo de robot, que se adquiere pulsandolo dos veces;
@@ -78,12 +81,14 @@ func _ready() -> void:
 	_stage.specialist.piece_picked.connect(pick_proto_slot)
 	_stage.specialist.proto_confirmed.connect(buy_prototype)
 	_stage.specialist.close_pressed.connect(close_panels)
-	var rack := _stage.loadout.rack
-	rack.chosen.connect(_on_rack_chosen)
-	rack.bought.connect(buy)
-	rack.hovered.connect(hover_item)
-	rack.upgrade_pressed.connect(upgrade_selected)
-	rack.paint_picked.connect(paint_selected)
+	# El catalogo de la computadora y el del estuche junto a la pieza.
+	for rack: PartsRack in [_stage.loadout.rack, _stage.parts_case.rack]:
+		rack.chosen.connect(_on_rack_chosen)
+		rack.bought.connect(buy)
+		rack.hovered.connect(hover_item)
+		rack.upgrade_pressed.connect(upgrade_selected)
+		rack.paint_picked.connect(paint_selected)
+	_stage.parts_case.close_pressed.connect(close_panels)
 	var console := _stage.console
 	console.upgrade_picked.connect(buy_upgrade)
 	console.skill_picked.connect(learn)
@@ -156,12 +161,18 @@ func refresh() -> void:
 	else:
 		_stage.show_mission(main.mission_state(_channel))
 	_stage.set_bays(_bays())
-	# La computadora del taller: el plano y el catalogo de la casilla elegida.
-	if _arming:
+	# Cambiar pieza: en el robot desarmado, el estuche junto a la pieza
+	# (OBS-048); en el hangar de antes, la computadora del taller, con el
+	# plano y el catalogo de la casilla elegida.
+	if _arming and _stage.teardown_on:
+		_stage.hide_loadout()
+		_stage.show_case(brief.rack(profile, _selected), "slot:" + _selected)
+	elif _arming:
 		_stage.loadout.show_build(shown, ghosts)
 		_stage.show_loadout(brief.loadout(profile, main.robot_name(profile.active), _selected))
 	else:
 		_stage.hide_loadout()
+		_stage.hide_case()
 	_refresh_info()
 	# Con todo recogido, la diana prueba el arma de la ultima casilla tocada.
 	var item := _selected_item()
@@ -193,6 +204,20 @@ func refresh() -> void:
 ## Algo del robot desarmado (OBS-048): se elige (o se suelta si ya lo estaba).
 func _on_teardown_picked(key: String) -> void:
 	var view := _stage.teardown
+	# Con el estuche abierto, otra pieza se lo lleva a su lado; la misma pieza
+	# o lo que no es pieza lo cierra.
+	if _arming:
+		if key.begins_with("slot:") and key != view.selected:
+			_selected = key.trim_prefix("slot:")
+			view.selected = key
+			_hover_id = ""
+			_hover_slot = ""
+			Sfx.play("ui_tic")
+			refresh()
+			return
+		close_panels()
+		if key == view.selected:
+			return
 	view.selected = "" if view.selected == key else key
 	if view.selected.begins_with("slot:"):
 		_selected = view.selected.trim_prefix("slot:")
@@ -203,6 +228,10 @@ func _on_teardown_picked(key: String) -> void:
 
 ## La etiqueta de lo elegido en el robot desarmado, junto a ello.
 func _show_tag() -> void:
+	# Con el estuche abierto, la etiqueta se recoge: el estuche la sustituye.
+	if _arming and _stage.teardown_on:
+		_stage.tag.hide_tag()
+		return
 	var key := _stage.teardown.selected
 	var brief := main._bench
 	var profile := main._profile
@@ -258,6 +287,7 @@ func _refresh_info() -> void:
 		"upgrades": upgrades,
 	}
 	_stage.loadout.rack.stats = reading["rows"]
+	_stage.parts_case.rack.stats = reading["rows"]
 
 
 func _console_state() -> Dictionary:
@@ -327,10 +357,13 @@ func show_page(page: String) -> void:
 		open_parts()
 
 
-## Acerca la computadora del taller, con la casilla elegida.
+## Cambiar la pieza del hueco elegido: el estuche junto a ella en el robot
+## desarmado (OBS-048) o, en el hangar de antes, la computadora del taller.
 func open_parts() -> void:
 	if _launching:
 		return
+	if _stage.teardown_on:
+		_stage.teardown.selected = "slot:" + _selected
 	close_missions()
 	_console = ""
 	_offering = false
@@ -592,7 +625,7 @@ func equip(slot: String, id: String) -> void:
 		open_parts()
 	var item := main._bench.resolved(main._profile, id)
 	if item != null:
-		_stage.loadout.flash(slot, PartIcon.TIER_COLORS[item.tier])
+		_flash(slot, PartIcon.TIER_COLORS[item.tier])
 
 
 ## Pinta de ese color (Garage.PAINTS) la pieza del hueco elegido (OBS-010).
@@ -607,7 +640,7 @@ func paint_selected(color: String) -> void:
 	main._save()
 	Sfx.play("taller_montar")
 	refresh()
-	_stage.loadout.flash(_selected, WorkshopBrief.PAINT_COLORS[color])
+	_flash(_selected, WorkshopBrief.PAINT_COLORS[color])
 
 
 ## Deja un hueco vacio.
@@ -655,7 +688,7 @@ func evolve_selected() -> void:
 	refresh()
 	var now := _selected_item()
 	if now != null:
-		_stage.loadout.flash(_selected, PartIcon.TIER_COLORS[now.tier])
+		_flash(_selected, PartIcon.TIER_COLORS[now.tier])
 
 
 func level_up_selected() -> void:
@@ -669,7 +702,7 @@ func level_up_selected() -> void:
 	main._save()
 	Sfx.play("ui_subir_nivel")
 	refresh()
-	_stage.loadout.flash(_selected, PartIcon.TIER_COLORS[item.tier])
+	_flash(_selected, PartIcon.TIER_COLORS[item.tier])
 
 
 func transform_selected() -> void:
@@ -687,7 +720,7 @@ func transform_selected() -> void:
 	Sfx.play("ui_transformar")
 	refresh()
 	var now := main._bench.resolved(main._profile, item.id)
-	_stage.loadout.flash(_selected, PartIcon.TIER_COLORS[now.tier])
+	_flash(_selected, PartIcon.TIER_COLORS[now.tier])
 
 
 func _selected_item() -> ItemDef:
@@ -765,6 +798,14 @@ func test_fire() -> void:
 	if item == null or item.fx == "":
 		return
 	_stage.test_fire(_selected, item.fx, ShotFx.ammo_color(item.element))
+
+
+## Destello al montar, pintar, subir o transformar: en la casilla de la
+## computadora y, si esta abierto, en el estuche y su pieza.
+func _flash(slot: String, color: Color) -> void:
+	_stage.loadout.flash(slot, color)
+	if _stage.parts_case.is_open():
+		_stage.parts_case.flash(color)
 
 
 ## Aviso pasajero arriba (lo que paso en el ultimo combate, por ejemplo).

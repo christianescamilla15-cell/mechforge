@@ -150,6 +150,65 @@ func teardown_test() -> void:
 	get_tree().quit(0)
 
 
+## Prueba en vivo del estuche de piezas (`--menu-shot=estuche`, con
+## `--real-profile` y sin guardar; OBS-048): "Cambiar pieza" en la etiqueta
+## de un arma abre el estuche a su lado; pasar por una pieza del estuche,
+## llevarlo a otras piezas pulsandolas y cerrarlo pulsando la misma.
+func case_test() -> void:
+	var hangar := main._menu as WorkshopScreen
+	var stage := hangar._stage
+	var view := stage.teardown
+	var box := stage.parts_case
+	await get_tree().create_timer(0.8).timeout
+	await _click(view.rect_of("slot:side0").get_center())
+	await get_tree().create_timer(0.4).timeout
+	var change: Rect2 = stage.tag._keys.get("change", Rect2())
+	await _click(change.get_center())
+	await get_tree().create_timer(0.6).timeout
+	print(
+		(
+			"ESTUCHE abierto=%s pieza=%s etiqueta=%s computadora=%s"
+			% [box.is_open(), box.key, stage.tag.is_open(), stage.loadout.is_open()]
+		)
+	)
+	await shot("brazo")
+	var part := box.rack.part_rect(1)
+	if part.size != Vector2.ZERO:
+		await _move(box.position + box.rack.position + part.get_center())
+		await get_tree().create_timer(0.5).timeout
+		await shot("brazo_encima")
+	# Llevarlo a otras piezas a la vista: el hombro y las de la izquierda.
+	for key: String in ["slot:top0", "slot:side1", "slot:module0", "slot:module4", "slot:hook"]:
+		if view.rect_of(key).size == Vector2.ZERO:
+			continue
+		await _click(view.rect_of(key).get_center())
+		await get_tree().create_timer(0.6).timeout
+		print("ESTUCHE en %s: abierto=%s hueco=%s" % [key, box.is_open(), box.key])
+		await shot(key.trim_prefix("slot:"))
+	# Pulsar la misma pieza lo cierra y vuelve su etiqueta.
+	await _click(view.rect_of(box.key).get_center())
+	await get_tree().create_timer(0.5).timeout
+	print("ESTUCHE cerrado=%s etiqueta=%s" % [not box.is_open(), stage.tag.is_open()])
+	await shot("cerrado")
+	# El torso, desde su etiqueta; y cerrarlo con la tecla de su esquina.
+	await _click(view.rect_of("slot:torso").get_center())
+	await get_tree().create_timer(0.4).timeout
+	change = stage.tag._keys.get("change", Rect2())
+	await _click(change.get_center())
+	await get_tree().create_timer(0.6).timeout
+	print("ESTUCHE torso: abierto=%s hueco=%s" % [box.is_open(), box.key])
+	await shot("torso")
+	await _click(box.position + box.close_center())
+	await get_tree().create_timer(0.5).timeout
+	print(
+		(
+			"ESTUCHE cerrado con la tecla=%s robot=%s"
+			% [not box.is_open(), main.robot_name(main._profile.active)]
+		)
+	)
+	get_tree().quit(0)
+
+
 ## Prueba en vivo de la zona de combate (`--menu-shot=zona`, con
 ## `--real-profile` y sin guardar ni pelear; OBS-048): pasar por la
 ## compuerta del hangar, entrar, pasar por el rival y volver por el rotulo.

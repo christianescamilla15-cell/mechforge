@@ -83,6 +83,8 @@ var info: Dictionary = {}
 var teardown_on := true
 var teardown := TeardownView.new()
 var tag := TeardownTag.new()
+## El estuche de piezas que se abre junto a la pieza elegida (OBS-048).
+var parts_case := PartsCase.new()
 ## La computadora del taller y la pantalla de cerca: WorkshopScreen les da
 ## lo que ensenan y oye lo que se pulsa en ellas.
 var loadout := LoadoutScreen.new()
@@ -174,6 +176,8 @@ func _ready() -> void:
 	move_child(teardown, _world.get_index() + 1)
 	add_child(tag)
 	move_child(tag, teardown.get_index() + 1)
+	add_child(parts_case)
+	move_child(parts_case, tag.get_index() + 1)
 	add_child(projector)
 	_wall_robot.scan = true
 	add_child(_wall_robot)
@@ -357,6 +361,17 @@ func hide_loadout() -> void:
 	loadout.close()
 
 
+## Abre el estuche de piezas junto a lo elegido del robot desarmado
+## ("slot:<hueco>") con ese estado (WorkshopBrief.rack).
+func show_case(state: Dictionary, key: String, instant: bool = false) -> void:
+	var around := teardown.tray_rect() if teardown.in_tray(key) else Rect2()
+	parts_case.open(state, key, teardown.rect_of(key), size, instant, around)
+
+
+func hide_case() -> void:
+	parts_case.close()
+
+
 ## Acerca el banco del especialista con ese estado (SpecialistBrief.state):
 ## crece desde su sitio en el suelo hasta casi todo el hangar.
 func show_specialist(state: Dictionary, instant: bool = false) -> void:
@@ -470,6 +485,10 @@ func _layout() -> void:
 	_row.layout(size, _floor_y, _world.scale.x, under_board + 4.0)
 	if loadout.is_open():
 		show_loadout(loadout.state)
+	if parts_case.is_open():
+		var key := parts_case.key
+		var around := teardown.tray_rect() if teardown.in_tray(key) else Rect2()
+		parts_case.place(teardown.rect_of(key), size, around)
 	_bay_rects.clear()
 	if teardown_on:
 		for terminal: String in ["taller", "mejoras", "habilidades"]:
@@ -827,6 +846,11 @@ func _terminal_at(at: Vector2) -> String:
 
 
 func _bay_at(at: Vector2) -> int:
+	# Desarmado (OBS-048), tus otros robots solo estan en la zona de combate:
+	# en el hangar sus sitios caen sobre el brazo izquierdo y la bandeja, y
+	# pulsarlos cambiaba de robot sin verlos.
+	if teardown_on and not _mission_on:
+		return -2
 	for i in _bay_rects.size():
 		if _bay_rects[i].has_point(at):
 			return i

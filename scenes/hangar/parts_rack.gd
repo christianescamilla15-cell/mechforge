@@ -107,6 +107,9 @@ var stats: Array = []:
 ## Dentro de una pantalla (LoadoutScreen): sin riel, sin tablero perforado y
 ## sin entrar rodando; su sitio lo pone quien lo contiene.
 var embedded := false
+## Con `embedded`, el marco fino de la pantalla; dentro del estuche junto a la
+## pieza (PartsCase, OBS-048) no lo lleva: el borde es el del estuche.
+var framed := true
 ## Donde cuelga cuando esta fuera (lo pone quien lo contiene).
 var home := Rect2():
 	set(value):
@@ -238,6 +241,12 @@ func _line_rect() -> Rect2:
 	return Rect2(MARGIN, _showcase_rect().end.y + 6.0, size.x - MARGIN * 2.0, LINE_HEIGHT)
 
 
+## Donde acaba la vitrina con su linea de la terminal (lo de arriba del
+## maletin): ahi va la bisagra del estuche que lo contiene.
+func lid_bottom() -> float:
+	return _line_rect().end.y + 3.0
+
+
 ## El maletin: de la linea de la terminal a la lectura del robot.
 func _case_rect() -> Rect2:
 	var top := _line_rect().end.y + 6.0
@@ -290,10 +299,25 @@ func _stats_rect() -> Rect2:
 	return Rect2(MARGIN, top, size.x - MARGIN * 2.0, STATS_HEIGHT - 4.0)
 
 
-## La tecla de subir o transformar, al pie de la ficha.
+## La tecla de subir o transformar, al pie de la ficha: tan ancha como su
+## texto ("Hacerla Unica · 1 nucleo" no cabia en un estuche estrecho).
 func _key_rect() -> Rect2:
 	var sheet := _sheet_rect()
-	return Rect2(sheet.end.x - 132.0, sheet.end.y - 32.0, 128.0, 28.0)
+	var label := str(state.get("key", {}).get("label", ""))
+	var wide := _font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x + 20.0
+	wide = clampf(wide, 96.0, sheet.size.x - 4.0)
+	return Rect2(sheet.end.x - wide - 4.0, sheet.end.y - 32.0, wide, 28.0)
+
+
+## El tamano de letra (de `biggest` a `smallest`) con el que un texto cabe
+## en ese ancho.
+func _fitting(text: String, wide: float, biggest: int, smallest: int) -> int:
+	var font_size := biggest
+	while font_size > smallest:
+		if _font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x <= wide:
+			break
+		font_size -= 1
+	return font_size
 
 
 func _pager_rect(zone: String) -> Rect2:
@@ -474,6 +498,8 @@ func _draw() -> void:
 ## El panel: riel con sus dos carros, tablero perforado y borde.
 func _draw_board() -> void:
 	if embedded:
+		if not framed:
+			return
 		# Dentro de una pantalla solo queda un marco fino sobre el cristal.
 		var frame := Rect2(Vector2.ZERO, size)
 		draw_rect(frame, Color(HOLO, 0.05))
@@ -765,9 +791,9 @@ func _draw_showcase() -> void:
 		draw_rect(tag, Color(plate_tone, 0.8), false, 1.0)
 		HangarProps.text(self, _font, tag.position + Vector2(6, 11), plate, wide, 9, plate_tone)
 	var sheet := _sheet_rect()
-	HangarProps.text(
-		self, _font, sheet.position + Vector2(0, 16), item.display_name, sheet.size.x, 15, TEXT
-	)
+	var name_size := _fitting(item.display_name, sheet.size.x, 15, 11)
+	var name_at := sheet.position + Vector2(0, 16)
+	HangarProps.text(self, _font, name_at, item.display_name, sheet.size.x, name_size, TEXT)
 	var tone := GOLD if bool(shown.get("mounted", false)) else PartIcon.TIER_COLORS[item.tier]
 	var detail := str(shown.get("detail", ""))
 	HangarProps.text(

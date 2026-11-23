@@ -154,6 +154,17 @@ func _layout() -> void:
 		_rects["slot:module%d" % i] = Rect2(at, chips.size / 3.0).grow(-2.0)
 
 
+## La bandeja de herramientas (especiales y modulos), en la vista.
+func tray_rect() -> Rect2:
+	return _tray_rect()
+
+
+## Si lo elegido es de la bandeja (un especial o un modulo).
+static func in_tray(key: String) -> bool:
+	var slot := key.trim_prefix("slot:")
+	return slot.begins_with("module") or slot in SPECIALS
+
+
 func _tray_rect() -> Rect2:
 	return Rect2(
 		Vector2(size.x * TRAY.position.x, size.y * TRAY.position.y),
