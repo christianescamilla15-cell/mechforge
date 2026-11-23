@@ -12,9 +12,9 @@ del anime, oro y blanco, con mas detalle (pasada final suave).
 
 Las imagenes van a art_raw/parts/<tanda>/<pieza>_f<NN>_<semilla>.png.
 Uso:
-  tools/art/run.ps1 tools/art/weapon_phases.py arm_medio_laser arm_largo_laser --batch fases_armas
-  tools/art/run.ps1 -KeepWatcher tools/art/weapon_phases.py arm_medio_laser --batch fases_armas
-      --export arm_medio_laser=101
+  tools/art/run.ps1 tools/art/weapon_phases.py arm_medio_laser arm_largo_laser --batch fases_armas2
+  tools/art/run.ps1 -KeepWatcher tools/art/weapon_phases.py arm_medio_laser --batch fases_armas2
+      --export arm_medio_laser=103
 """
 
 import argparse
@@ -52,8 +52,13 @@ PHASES = [
 # Cuanto se amplia la silueta que se repinta (pixeles del lienzo, mas en
 # las fases altas: halos y aletas necesitan sitio) y el radio de la union
 # con el robot que no se toca (unidades del bloque).
-GROW = 20
-GROW_PER_PHASE = 6
+GROW = 30
+GROW_PER_PHASE = 9
+# Recorte de las fases: las altas pintan un brillo y una sombra suaves
+# alrededor del arma, que con la tolerancia de siempre (14) se quedaban
+# pegados como un halo; con 45 el arma sale limpia (en los dibujos base
+# apenas quita nada: menos del 1 %).
+CUT_TOLERANCE = 45
 KEEP_UNION = 60
 # Los rifles de hombro llevan el mismo dibujo que los de brazo, mas arriba
 # (OBS-033): se exportan copiando las fases del de brazo.
@@ -176,7 +181,9 @@ def export(args):
             if not source.exists():
                 continue
             key = "%s_f%d" % (name, phase)
-            anchors[key], _ = export_weapons.export(key, source, placement=wt.placement(name))
+            anchors[key], _ = export_weapons.export(
+                key, source, placement=wt.placement(name), tolerance=CUT_TOLERANCE
+            )
             print("exportada %s: %s" % (key, json.dumps(anchors[key])))
             for arm, shoulder in SHOULDER_COPY.items():
                 if not name.startswith(arm):
@@ -200,15 +207,16 @@ def main():
     parser.add_argument("names", nargs="+", choices=sorted(export_weapons.CHOSEN))
     parser.add_argument("--batch", required=True)
     parser.add_argument("--seeds", type=int, nargs="+", default=[101, 102, 103])
-    parser.add_argument("--strength", type=float, default=0.6)
-    parser.add_argument("--strength-end", type=float, default=0.85)
-    parser.add_argument("--control", type=float, default=0.25, help="cuanto manda el bloque del arma")
+    # Ajustes del piloto 2 (2026-11-23, los dos laseres): con el control a
+    # 0.25 y fuerza 0.6-0.85 (piloto 1) el arma casi no cambiaba de fase en
+    # fase; los torsos, que si evolucionaron, iban con el control a 0 y
+    # fuerza 0.7-0.92, y con eso y mas sitio para crecer las armas tambien.
+    parser.add_argument("--strength", type=float, default=0.7)
+    parser.add_argument("--strength-end", type=float, default=0.92)
+    parser.add_argument("--control", type=float, default=0.0, help="cuanto manda el bloque del arma")
     parser.add_argument("--steps", type=int, default=style.STEPS)
-    parser.add_argument("--refine", type=float, default=0.35, help="pasada de detalle (0 = sin ella)")
+    parser.add_argument("--refine", type=float, default=0.4, help="pasada de detalle (0 = sin ella)")
     parser.add_argument("--refine-from", type=int, default=7)
-    # Piloto 2 (2026-11-23): con el control a 0.25 y fuerza 0.6-0.85 el arma
-    # casi no cambiaba de fase en fase; los torsos, que si evolucionaron,
-    # iban con el control a 0 y fuerza 0.7-0.92.
     parser.add_argument("--grow", type=int, default=GROW, help="pixeles que crece la silueta")
     parser.add_argument("--grow-step", type=int, default=GROW_PER_PHASE, help="y cuanto mas por fase")
     parser.add_argument("--refine-tags", default="intricate details, ornate engravings, detailed mechanical parts")

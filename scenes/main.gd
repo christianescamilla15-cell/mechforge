@@ -165,6 +165,10 @@ func _ready() -> void:
 		if _args.has("chest"):
 			_profile.owned.append(_args["chest"])
 			_profile.build["chest"] = _args["chest"]
+		# --armas=side0:<id>,top0:<id>: otras armas montadas (para ver sus fases).
+		for pair: String in str(_args.get("armas", "")).split(",", false):
+			_profile.owned.append(pair.get_slice(":", 1))
+			Garage.set_slot(_profile.build, pair.get_slice(":", 0), pair.get_slice(":", 1))
 		# --paint=torso:ENERGY,side0:HEAT: piezas pintadas (Garage.PAINTS).
 		for pair: String in str(_args.get("paint", "")).split(",", false):
 			Garage.set_paint(_profile.build, pair.get_slice(":", 0), pair.get_slice(":", 1))
