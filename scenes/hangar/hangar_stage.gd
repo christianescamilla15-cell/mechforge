@@ -442,6 +442,8 @@ func _fit() -> void:
 		_target_alpha = 0.0
 	teardown.position = Vector2.ZERO
 	teardown.size = size
+	# En la zona de combate el rival sale de verdad, frente a tu robot.
+	_row.ring = teardown_on
 	tag.position = Vector2.ZERO
 	tag.size = size
 	_mech.place(Vector2.ZERO)
@@ -483,6 +485,7 @@ func _layout() -> void:
 	_board.size = Vector2(size.x * 0.255, size.y * 0.27)
 	var under_board := _board.position.y + _board.size.y
 	_row.layout(size, _floor_y, _world.scale.x, under_board + 4.0)
+	_row.player_feet = Vector2(_robot_center(), _floor_y)
 	if loadout.is_open():
 		show_loadout(loadout.state)
 	if parts_case.is_open():
@@ -573,6 +576,7 @@ func _draw_arena() -> void:
 		_arena.draw_colored_polygon(points, pool)
 	_draw_bays_live(_arena)
 	ZoneArt.fighter_name(_arena, _font, feet, str(info.get("name", "")), mission)
+	_row.player_name = str(info.get("name", ""))
 	if _terminal_rects.has("volver"):
 		var back := _terminal_rects["volver"]
 		ZoneArt.back_sign(_arena, _font, back, _hover_terminal == "volver", mission)

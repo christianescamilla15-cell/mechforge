@@ -9,6 +9,13 @@ extends Node2D
 ## se pulsa para salir a combatir; los demas se pierden en la sombra. Al
 ## ganar, el vencido se apaga y la fila avanza un sitio.
 ##
+## En la zona de combate (`ring`, OBS-048, del usuario: "ahora si ves a tus
+## combatientes en tamano real... como un combate previo a la WWE") el que
+## toca no es una proyeccion: sale de verdad, a tu tamano, andando desde el
+## lado derecho bajo un foco que lo sigue; al llegar pisa fuerte, saltan
+## chispas y su nombre se enciende en grande frente al tuyo, con un VS entre
+## los dos. Los de detras siguen siendo proyecciones en la sombra.
+##
 ## No decide nada: ensena lo que le da MissionBrief ("rivals") y HangarStage
 ## le dice donde esta el suelo y si el raton esta encima del primero.
 
@@ -39,6 +46,16 @@ const ENTER_STAGGER := 0.1
 const BEATEN_HOLD := 0.35
 const BEATEN_SECONDS := 0.5
 const ADVANCE_SECONDS := 0.55
+## La entrada en la zona de combate: su tamano (el de tu robot), lo que tarda
+## en llegar andando, el destello al pisar y lo que tarda su nombre.
+const RING_SCALE := 1.0
+const WALK_SECONDS := 1.5
+const BURST_SECONDS := 0.8
+const TITLE_SECONDS := 0.5
+const RING_ACCENT := Color("ff5a3c")
+const TITLE_SIZE := 34
+## Hueco entre tu nombre y el suyo, donde va el VS.
+const VS_GAP := 76.0
 const HOLO_SHADER := """
 shader_type canvas_item;
 // Una proyeccion: el dibujo tira al color del haz y lleva lineas de barrido.
@@ -74,6 +91,14 @@ class Rival:
 	## Como estaba la ultima vez que se coloco (para no recolocar lo quieto).
 	var placed_depth := -1.0
 	var placed_alpha := -1.0
+	## En la zona de combate: llegando andando, su nombre (0 a 1) y el
+	## destello de chispas al pisar (de 1 a 0).
+	var entering := false
+	var title := 1.0
+	var burst := 0.0
+	## Lo que su dibujo agranda por su cuenta (MechView.DRAW_SCALE y, si es
+	## jefe, BOSS_SCALE): cuenta para que quepa bajo el monitor.
+	var draw_factor := 1.0
 
 
 ## El raton esta sobre el primero.
@@ -96,6 +121,11 @@ var confirm_text := ""
 ## Hay que pulsar dos veces.
 var confirm := false
 var font: Font
+## En la zona de combate (OBS-048): el que toca sale de verdad y no como
+## proyeccion. Y los pies de tu robot, para el VS entre los dos nombres.
+var ring := false
+var player_feet := Vector2.ZERO
+var player_name := ""
 
 var _rivals: Array[Rival] = []
 var _leaving: Array[Rival] = []
@@ -152,10 +182,17 @@ func show_rivals(rivals: Array[Dictionary], how: String = "enter", beaten: Dicti
 	for rival in _rivals:
 		_retire(rival, 0.0 if instant else 0.16)
 	_rivals.clear()
+	var walkers: Array[Rival] = []
 	for i in rivals.size():
 		var rival := _make(rivals[i])
 		_rivals.append(rival)
 		rival.depth = float(i)
+		if ring and i == 0 and how != "none":
+			rival.alpha = 1.0
+			rival.title = 0.0
+			rival.entering = true
+			walkers.append(rival)
+			continue
 		match how:
 			"advance":
 				rival.depth = float(i + 1)
@@ -171,6 +208,9 @@ func show_rivals(rivals: Array[Dictionary], how: String = "enter", beaten: Dicti
 	if how == "advance":
 		_advance(beaten)
 	_place_all()
+	var wait := BEATEN_HOLD + BEATEN_SECONDS * 0.7 if how == "advance" else 0.15
+	for rival in walkers:
+		_walk_in(rival, wait)
 
 
 ## Apaga la fila (al salir del modo mision).
@@ -203,7 +243,9 @@ func front_rect() -> Rect2:
 
 
 func front_has_point(at: Vector2) -> bool:
-	return not _rivals.is_empty() and _rivals[0].alpha > 0.5 and front_rect().has_point(at)
+	if _rivals.is_empty() or _rivals[0].entering:
+		return false
+	return _rivals[0].alpha > 0.5 and front_rect().has_point(at)
 
 
 ## True si pulsar al primero sirve de algo.
@@ -237,8 +279,63 @@ func _make(info: Dictionary) -> Rival:
 	rival.view.setup(build, -1)
 	if build.chest != null:
 		rival.view.show_deployed()
-	rival.height = maxf(rival.view.standing_height(), 120.0)
+	# Lo que mide de verdad: el arma de hombro asoma por encima del torso y
+	# standing_height no la cuenta.
+	var top := rival.view.standing_height()
+	for slot in BODY_SLOTS:
+		var rect := rival.view.slot_rect(slot)
+		if rect.size != Vector2.ZERO:
+			top = maxf(top, -rect.position.y)
+	rival.height = maxf(top, 120.0)
+	rival.view.set_facing(-1)
+	rival.draw_factor = absf(rival.view.scale.y)
+	rival.view.footstep.connect(_on_step.bind(rival))
 	return rival
+
+
+## La entrada en la zona de combate: tras `delay`, el rival sale del borde
+## derecho y anda hasta su sitio.
+func _walk_in(rival: Rival, delay: float) -> void:
+	var home := _feet(rival)
+	rival.view.position = Vector2(_size.x + MECH_WIDTH * _scale(rival), home.y)
+	var start := create_tween()
+	start.tween_interval(delay)
+	start.tween_callback(
+		func() -> void:
+			if rival in _rivals and is_instance_valid(rival.view):
+				var walk := rival.view.move_to(home, WALK_SECONDS)
+				walk.finished.connect(_arrived.bind(rival))
+	)
+	_tweens.append(start)
+
+
+## Llego a su sitio: pisa fuerte, saltan chispas y se enciende su nombre.
+func _arrived(rival: Rival) -> void:
+	rival.entering = false
+	if not rival in _rivals or not is_instance_valid(rival.view):
+		return
+	rival.view.place(_feet(rival))
+	Sfx.play("pisoton")
+	rival.burst = 1.0
+	_animate(rival, "burst", 0.0, BURST_SECONDS, 0.0)
+	_animate(rival, "title", 1.0, TITLE_SECONDS, 0.1)
+
+
+func _on_step(_at: Vector2, rival: Rival) -> void:
+	if rival.entering:
+		Sfx.play("paso")
+
+
+## Donde esta ahora (andando, su sitio de verdad; si no, el de la fila).
+func _at(rival: Rival) -> Vector2:
+	if rival.entering and is_instance_valid(rival.view):
+		return rival.view.position
+	return _feet(rival)
+
+
+## El que sale de verdad (en la zona de combate y delante).
+func _is_real(rival: Rival) -> bool:
+	return ring and rival.depth < 0.5
 
 
 func _signature_of(rivals: Array[Dictionary]) -> String:
@@ -357,7 +454,10 @@ func _feet(rival: Rival) -> Vector2:
 ## pase del borde del monitor.
 func _scale(rival: Rival) -> float:
 	var room := _floor_y - _slot(SLOT_LIFT, rival.depth) - _ceiling
-	return minf(_slot(SLOT_SCALE, rival.depth) * _zoom, room / rival.height)
+	var share := _slot(SLOT_SCALE, rival.depth)
+	if ring:
+		share = lerpf(RING_SCALE, share, clampf(rival.depth, 0.0, 1.0))
+	return minf(share * _zoom, room / (rival.height * rival.draw_factor))
 
 
 func _beam(rival: Rival) -> Color:
@@ -376,8 +476,10 @@ func _apply(rival: Rival) -> void:
 	var d := clampf(rival.depth, 0.0, float(last))
 	var i := int(d)
 	var shade := SLOT_SHADE[i].lerp(SLOT_SHADE[mini(i + 1, last)], d - i)
-	view.place(_feet(rival))
+	if not rival.entering:
+		view.place(_feet(rival))
 	view.set_facing(-1)
+	view.material = null if _is_real(rival) else rival.material
 	view.scale *= _scale(rival)
 	# Mientras se enciende o se apaga, la proyeccion parpadea y es pura luz.
 	var flicker := 1.0
@@ -427,7 +529,7 @@ func _draw() -> void:
 	for rival in ordered:
 		if rival.alpha <= 0.01:
 			continue
-		var feet := _feet(rival)
+		var feet := _at(rival)
 		var k := _scale(rival)
 		var rx := MECH_WIDTH * 0.42 * k
 		var ry := maxf(rx * 0.17, 3.0)
@@ -449,6 +551,13 @@ func _draw() -> void:
 					]
 				)
 				draw_colored_polygon(cone, Color(0.62, 0.8, 1.0, 0.04 * near * rival.alpha))
+		# En la zona de combate no hay proyector: un charco de luz en el suelo.
+		if _is_real(rival):
+			for step in 3:
+				var spread := 1.0 + 0.35 * step
+				var pool := Color(1.0, 0.86, 0.78, (0.12 - 0.03 * step) * rival.alpha)
+				_ellipse(feet + Vector2(0, ry * 0.5), rx * spread, ry * spread * 1.3, pool)
+			continue
 		# Proyector: la base en el suelo, su aro encendido y el haz que sube.
 		_ellipse(
 			feet + Vector2(0, ry * 0.8), rx * 1.08, ry * 1.3, Color(0, 0, 0, 0.5 * rival.alpha)
@@ -514,10 +623,14 @@ func _draw_fx() -> void:
 	var front := _rivals[0]
 	if front.alpha <= 0.3 or front.depth > 0.5:
 		return
-	var live := hover and can_press()
+	var live := hover and can_press() and not front.entering
 	if live:
 		_brackets(front_rect().grow(6.0), GOLD)
-	_draw_label(front, live)
+	if _is_real(front):
+		_draw_burst(front)
+		_draw_ring_title(front, live)
+	else:
+		_draw_label(front, live)
 
 
 ## Rotulo del que toca, proyectado en el suelo delante de el: su nombre, su
@@ -580,6 +693,136 @@ func _draw_label(front: Rival, live: bool) -> void:
 	if warning != "" and blocked == "":
 		var tone := BAD if danger else GOLD
 		_text(Vector2(left - 60.0, y + 58.0 + drop), warning, width + 120.0, 11, tone, alpha * 0.95)
+
+
+## Las chispas al pisar: dos fuentes a los lados y una onda en el suelo.
+func _draw_burst(front: Rival) -> void:
+	if front.burst <= 0.01:
+		return
+	var feet := _at(front)
+	var k := _scale(front)
+	var rx := MECH_WIDTH * 0.5 * k
+	var life := 1.0 - front.burst
+	# La onda, sobre el suelo.
+	var reach := rx * (0.7 + 1.8 * life)
+	var wave := PackedVector2Array()
+	for i in 41:
+		var a := TAU * i / 40.0
+		wave.append(feet + Vector2(cos(a) * reach, sin(a) * reach * 0.2))
+	_fx.draw_polyline(wave, Color(1.0, 0.92, 0.8, 0.75 * front.burst), 2.0, true)
+	# Dos fuentes de chispas a los lados: cada una sale en arco y cae.
+	var speed := front.height * k * 1.6
+	for side: float in [-1.0, 1.0]:
+		var base := feet + Vector2(side * rx * 1.1, 0.0)
+		for n in 18:
+			var spread := fposmod(n * 0.618, 1.0)
+			var angle := deg_to_rad(62.0 + 26.0 * spread)
+			var v := speed * (0.55 + 0.45 * fposmod(n * 0.371, 1.0))
+			var t := life * 0.9
+			var fly := Vector2(side * cos(angle) * v * t, -sin(angle) * v * t + speed * 1.1 * t * t)
+			var at := base + fly
+			var tone := GOLD if n % 3 else Color.WHITE
+			var trail := Vector2(side * cos(angle), -sin(angle) + 2.2 * t).normalized() * 8.0
+			_fx.draw_line(at - trail, at, Color(tone, 0.55 * front.burst), 1.5)
+			_fx.draw_circle(at, 1.8 * front.burst + 0.6, Color(tone, front.burst))
+
+
+## Su nombre en grande, como el tuyo, con su raya roja; un VS entre los dos
+## nombres; debajo su clase y nivel, como pelea y lo que pasa al pulsarlo.
+func _draw_ring_title(front: Rival, live: bool) -> void:
+	var show := front.title
+	if show <= 0.01:
+		return
+	var feet := _feet(front)
+	var boss := bool(front.info.get("boss", false))
+	var accent := BOSS_BEAM if boss else RING_ACCENT
+	var label := str(front.info.get("name", "")).to_upper()
+	# Su nombre, bajo el y del tamano del tuyo; nunca encima del tuyo: si no
+	# cabe se corre a la derecha y, si aun asi no, encoge.
+	var floor_from := _player_name_end() + VS_GAP
+	var room := _size.x - 14.0 - floor_from
+	var title_size := TITLE_SIZE
+	var wide := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, title_size).x
+	while wide > room and title_size > 18:
+		title_size -= 1
+		wide = font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, title_size).x
+	var left_x := clampf(feet.x - wide * 0.5, floor_from, maxf(floor_from, _size.x - 14.0 - wide))
+	var center := left_x + wide * 0.5
+	var lift := 14.0 * (1.0 - show)
+	var at := Vector2(left_x, feet.y + 58.0 + lift)
+	var shadow := Color(0, 0, 0, 0.7 * show)
+	_fx.draw_string(
+		font, at + Vector2(2, 2), label, HORIZONTAL_ALIGNMENT_LEFT, -1, title_size, shadow
+	)
+	_fx.draw_string(
+		font, at, label, HORIZONTAL_ALIGNMENT_LEFT, -1, title_size, Color("ffe6dc", show)
+	)
+	var bar_wide := wide * 1.15 * show
+	var bar := Rect2(center - bar_wide * 0.5, feet.y + 68.0, bar_wide, 3.0)
+	_fx.draw_rect(bar, Color(accent, 0.9 * show))
+	_fx.draw_rect(bar.grow(3.0), Color(accent, 0.18 * show))
+	_draw_vs(Vector2((_player_name_end() + left_x) * 0.5, at.y - lift), show)
+	feet.x = center
+	var width := 320.0
+	var left := feet.x - width * 0.5
+	var y := feet.y + 92.0
+	_text(
+		Vector2(left, y), str(front.info.get("detail", "")), width, 12, accent.lightened(0.45), show
+	)
+	var traits := str(front.info.get("traits", ""))
+	if traits != "":
+		y += 16.0
+		_text(Vector2(left, y), traits, width, 11, GOLD, show * 0.85)
+	var cue := Txt.t("mission_go_boss" if boss else "mission_go")
+	var cue_color := GOLD
+	var cue_alpha := 0.55
+	if blocked != "":
+		cue = blocked
+		cue_color = BAD
+		cue_alpha = 1.0
+	elif armed:
+		cue = confirm_text if confirm_text != "" else Txt.t("mission_confirm")
+		cue_color = BAD.lerp(GOLD, 0.5 + 0.5 * sin(_time * 9.0))
+		cue_alpha = 1.0
+	elif live:
+		cue = "▶  %s  ◀" % cue
+		cue_alpha = 0.8 + 0.2 * sin(_time * 7.0)
+	y += 20.0
+	_text(Vector2(left - 60.0, y), cue, width + 120.0, 13, cue_color, show * cue_alpha)
+	if warning != "" and blocked == "":
+		var tone := BAD if danger else GOLD
+		_text(Vector2(left - 60.0, y + 18.0), warning, width + 120.0, 11, tone, show * 0.95)
+
+
+## El VS, entre tu nombre y el suyo, en su misma linea (como en un cartel
+## de pelea): con un halo detras y latiendo. `at`: su centro en la linea.
+func _draw_vs(at: Vector2, show: float) -> void:
+	if player_feet == Vector2.ZERO or player_name == "":
+		return
+	var vs := Txt.t("zone_vs")
+	var vs_size := 28
+	var vs_wide := font.get_string_size(vs, HORIZONTAL_ALIGNMENT_LEFT, -1, vs_size).x
+	var pulse := 0.85 + 0.15 * sin(_time * 4.0)
+	for ring_step in 3:
+		var r := (18.0 + ring_step * 8.0) * (0.8 + 0.2 * show)
+		_fx.draw_circle(at + Vector2(0, -10), r, Color(RING_ACCENT, 0.08 * show))
+	var left := at - Vector2(vs_wide * 0.5, 0.0)
+	var outline := Color(0.05, 0.02, 0.02, 0.9 * show)
+	_fx.draw_string_outline(font, left, vs, HORIZONTAL_ALIGNMENT_LEFT, -1, vs_size, 6, outline)
+	var tone := Color(GOLD, show * pulse)
+	_fx.draw_string(font, left, vs, HORIZONTAL_ALIGNMENT_LEFT, -1, vs_size, tone)
+
+
+## Donde acaba el nombre de tu robot (ZoneArt.fighter_name, centrado bajo
+## el, del mismo tamano).
+func _player_name_end() -> float:
+	if player_feet == Vector2.ZERO or player_name == "":
+		return 0.0
+	var text := player_name.to_upper()
+	return (
+		player_feet.x
+		+ font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, TITLE_SIZE).x * 0.5
+	)
 
 
 func _brackets(rect: Rect2, color: Color) -> void:

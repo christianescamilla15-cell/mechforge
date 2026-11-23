@@ -249,18 +249,38 @@ func test_si_el_robot_no_puede_pelear_el_rival_lo_dice() -> void:
 	assert_true(stage._row.can_press())
 
 
+## En el hangar de antes la fila avanza un sitio; en la zona de combate
+## (OBS-048) el siguiente sale andando desde el borde mientras los de
+## detras avanzan.
 func test_al_ganar_el_vencido_se_apaga_y_la_fila_avanza() -> void:
-	var stage := _stage()
+	for ring: bool in [false, true]:
+		await _advance_case(ring)
+
+
+func _advance_case(ring: bool) -> void:
+	var stage := HangarStage.new()
+	stage.teardown_on = ring
+	stage.size = Vector2(1280, 720)
+	add_child_autofree(stage)
+	var build := _library.make("fisico_vanguardia", _catalog, _rules, ItemDef.Tier.COMMON, 6)
+	stage.show_build(build, [] as Array[String])
 	var before := _brief.campaign_state(_profile(0))
 	var after := _brief.campaign_state(_profile(1))
 	stage.show_mission(after, "advance", before["rivals"][0])
 	var row := stage._row
-	# Al principio el vencido sigue delante y los demas, un sitio mas atras.
+	# Al principio el vencido sigue delante y los demas, un sitio mas atras
+	# (o, en la zona, el siguiente fuera, a punto de entrar).
 	assert_eq(row._leaving.size(), 1)
-	assert_almost_eq(row._rivals[0].depth, 1.0, 0.001)
+	if ring:
+		assert_true(row._rivals[0].entering, "zona: el siguiente entra andando")
+		assert_almost_eq(row._rivals[1].depth, 2.0, 0.001)
+	else:
+		assert_almost_eq(row._rivals[0].depth, 1.0, 0.001)
+	var walk := RivalRow.WALK_SECONDS if ring else 0.0
 	await wait_seconds(
-		RivalRow.BEATEN_HOLD + RivalRow.BEATEN_SECONDS + RivalRow.ADVANCE_SECONDS + 0.3
+		RivalRow.BEATEN_HOLD + RivalRow.BEATEN_SECONDS + RivalRow.ADVANCE_SECONDS + walk + 0.3
 	)
+	assert_false(row._rivals[0].entering, "ya llego")
 	assert_eq(row._leaving.size(), 0, "el vencido ya se apago")
 	for i in row._rivals.size():
 		assert_almost_eq(row._rivals[i].depth, float(i), 0.001)

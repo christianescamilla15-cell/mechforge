@@ -224,6 +224,14 @@ func zone_test() -> void:
 	await get_tree().create_timer(1.2).timeout
 	print("ZONA abierta=%s canal=%s" % [stage.is_mission_on(), hangar.missions_channel()])
 	await shot("zona")
+	# La arena: el rival que va a salir, delante de tu robot.
+	hangar.open_missions("arena")
+	# Su entrada (OBS-048): andando, al pisar y con su nombre.
+	for wait: float in [0.9, 0.85, 0.9]:
+		await get_tree().create_timer(wait).timeout
+		await shot("zona_arena")
+	hangar.open_missions("campaign", "none")
+	await get_tree().create_timer(0.4).timeout
 	await _click(Vector2(stage.size.x * 0.5, stage.size.y * 0.55))
 	await get_tree().create_timer(0.3).timeout
 	print("ZONA tras pulsar el fondo sigue=%s" % stage.is_mission_on())
