@@ -82,11 +82,11 @@ def negative(tags):
     return ", ".join(kept)
 
 
-def repaint_mask(image, name, phase):
+def repaint_mask(image, name, phase, grow_base=GROW, grow_step=GROW_PER_PHASE):
     """La silueta del arma ampliada, sin la union con el robot."""
     figure = Image.fromarray((cutout.clean_figure(image) * 255).astype(np.uint8))
     # Dilatar con desenfoque y umbral: lo mismo que un filtro de maximo, rapido.
-    grow = GROW + GROW_PER_PHASE * phase
+    grow = grow_base + grow_step * phase
     mask = figure.filter(ImageFilter.GaussianBlur(grow / 2.0)).point(lambda v: 255 if v > 6 else 0)
     zoom, origin = wt.placement(name)
     radius = KEEP_UNION * zoom
@@ -138,7 +138,7 @@ def generate(args):
                 if args.refine > 0 and phase >= args.refine_from:
                     passes.append((refine_prompt, args.refine, seed + phase + 1000))
                 for text, power, noise in passes:
-                    mask = repaint_mask(current, name, phase)
+                    mask = repaint_mask(current, name, phase, args.grow, args.grow_step)
                     image = pipe(
                         prompt=text,
                         negative_prompt=neg,
@@ -204,6 +204,11 @@ def main():
     parser.add_argument("--steps", type=int, default=style.STEPS)
     parser.add_argument("--refine", type=float, default=0.35, help="pasada de detalle (0 = sin ella)")
     parser.add_argument("--refine-from", type=int, default=7)
+    # Piloto 2 (2026-11-23): con el control a 0.25 y fuerza 0.6-0.85 el arma
+    # casi no cambiaba de fase en fase; los torsos, que si evolucionaron,
+    # iban con el control a 0 y fuerza 0.7-0.92.
+    parser.add_argument("--grow", type=int, default=GROW, help="pixeles que crece la silueta")
+    parser.add_argument("--grow-step", type=int, default=GROW_PER_PHASE, help="y cuanto mas por fase")
     parser.add_argument("--refine-tags", default="intricate details, ornate engravings, detailed mechanical parts")
     parser.add_argument("--export", nargs="+", default=None, metavar="PIEZA=SEMILLA")
     args = parser.parse_args()
