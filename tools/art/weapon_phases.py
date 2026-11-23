@@ -141,7 +141,8 @@ def generate(args):
                     passes.append((refine_prompt, args.refine, seed + phase + 1000))
                 for text, power, noise in passes:
                     mask = repaint_mask(current, name, phase, args.grow, args.grow_step)
-                    image = turn.pipe()(
+                    image = turn.run(
+                        noise,
                         prompt=text,
                         negative_prompt=neg,
                         image=current,
@@ -155,7 +156,6 @@ def generate(args):
                         guidance_scale=style.CFG,
                         width=current.width,
                         height=current.height,
-                        generator=torch.Generator("cpu").manual_seed(noise),
                     ).images[0]
                     current = Image.composite(image, current, mask.filter(ImageFilter.GaussianBlur(4)))
                 file_name = "%s_f%02d_%d.png" % (name, phase, seed)

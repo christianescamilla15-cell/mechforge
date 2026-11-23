@@ -131,7 +131,8 @@ def main():
             end = args.strength if args.strength_end is None else args.strength_end
             share = (phase - 1) / max(1, len(prompts) - 1)
             strength = args.strength + (end - args.strength) * share
-            image = turn.pipe()(
+            image = turn.run(
+                seed + phase,
                 prompt=prompt,
                 negative_prompt=negatives[phase - 1],
                 image=current,
@@ -145,11 +146,11 @@ def main():
                 guidance_scale=style.CFG,
                 width=halves_test.SIZE,
                 height=halves_test.SIZE,
-                generator=torch.Generator("cpu").manual_seed(seed + phase),
             ).images[0]
             current = Image.composite(image, current, soft)
             if args.refine > 0:
-                image = turn.pipe()(
+                image = turn.run(
+                    seed + phase + 1000,
                     prompt=refine_prompt,
                     negative_prompt=negatives[phase - 1],
                     image=current,
@@ -163,7 +164,6 @@ def main():
                     guidance_scale=style.CFG,
                     width=halves_test.SIZE,
                     height=halves_test.SIZE,
-                    generator=torch.Generator("cpu").manual_seed(seed + phase + 1000),
                 ).images[0]
                 current = Image.composite(image, current, soft)
             name = "fase%02d_%d.png" % (phase, seed)

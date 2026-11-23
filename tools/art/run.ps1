@@ -65,6 +65,13 @@ if ($cpuOnly -notcontains $scriptName) {
 # scripts de generacion hacen lo mismo con tools/art/gpu_turn.py (el
 # 2026-11-23 una tanda de armas tiro una junta).
 function Test-Meeting {
+    # Conectado a la laptop en el 8766: la junta empezo (o va a pedir la
+    # tarjeta en un momento); se ve antes que en la GPU.
+    $links = Get-NetTCPConnection -RemotePort 8766 -State Established -ErrorAction SilentlyContinue
+    foreach ($link in $links) {
+        $p = Get-CimInstance Win32_Process -Filter "ProcessId=$($link.OwningProcess)" -ErrorAction SilentlyContinue
+        if ($p -and $p.CommandLine -match 'trabajador_gpu') { return $true }
+    }
     $ids = & nvidia-smi --query-compute-apps=pid --format=csv,noheader 2>$null
     foreach ($id in $ids) {
         $n = 0
