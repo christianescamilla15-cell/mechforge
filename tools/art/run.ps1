@@ -54,6 +54,28 @@ if ($cpuOnly -notcontains $scriptName) {
     }
 }
 
+# Una junta en vivo (puente de transcripcion: trabajador_gpu.py en la GPU)
+# va antes que el arte: no se arranca mientras dure. Entre imagenes, los
+# scripts de generacion hacen lo mismo con tools/art/gpu_turn.py (el
+# 2026-11-23 una tanda de armas tiro una junta).
+function Test-Meeting {
+    $ids = & nvidia-smi --query-compute-apps=pid --format=csv,noheader 2>$null
+    foreach ($id in $ids) {
+        $n = 0
+        if ([int]::TryParse("$id".Trim(), [ref]$n)) {
+            $p = Get-CimInstance Win32_Process -Filter "ProcessId=$n" -ErrorAction SilentlyContinue
+            if ($p -and $p.CommandLine -match 'trabajador_gpu') { return $true }
+        }
+    }
+    return $false
+}
+if ($cpuOnly -notcontains $scriptName) {
+    while (Test-Meeting) {
+        Write-Output 'Hay una junta en vivo usando la GPU; espero a que termine...'
+        Start-Sleep -Seconds 60
+    }
+}
+
 if (-not $KeepWatcher -and ($cpuOnly -notcontains $scriptName)) {
     $task = Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
     if ($task -and $task.State -eq 'Running') {

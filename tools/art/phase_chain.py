@@ -21,6 +21,7 @@ import torch
 from PIL import Image, ImageFilter
 
 import blockout
+import gpu_turn
 import halves_test
 import sd
 import style
@@ -92,7 +93,10 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
     row, x = args.ring
     start = Image.open(args.start).convert("RGB")
-    pipe = sd.load_pipeline("fp8", controlled="inpaint")
+    # Cede la tarjeta si empieza una junta en vivo (gpu_turn): el pipeline
+    # vive solo en `turn`; aqui se guarda el tokenizador, que no usa la GPU.
+    turn = gpu_turn.Turn(lambda: sd.load_pipeline("fp8", controlled="inpaint"))
+    tokenizer = turn.pipe().tokenizer
     _, block_control, _ = blockout.render("chassis", "physical")
     colors = style.colors_for("chassis", "physical")
     mask = halves_test.zone_mask(args.zone, row, x)
@@ -101,20 +105,20 @@ def main():
     for number, tags in args.tag:
         phases[int(number) - 1] = tags
     refine_prompt = style.prompt(style.subject_for("chassis") + ", " + args.refine_tags, colors)
-    if len(pipe.tokenizer(refine_prompt).input_ids) > 77:
+    if len(tokenizer(refine_prompt).input_ids) > 77:
         raise SystemExit("prompt de detalle de mas de 77 tokens")
     prompts = []
     negatives = []
     for tags in phases:
         prompt = style.prompt(style.subject_for("chassis") + ", " + tags, colors)
-        tokens = len(pipe.tokenizer(prompt).input_ids)
+        tokens = len(tokenizer(prompt).input_ids)
         if tokens > 77:
             raise SystemExit("prompt de %d tokens (maximo 77): %s" % (tokens, tags))
         prompts.append(prompt)
         negatives.append(negative(args.zone, tags))
         # El negativo tambien se corta en 77: solo se avisa, lo que cae es
         # la cola generica (calidad), no lo de la zona.
-        cut = len(pipe.tokenizer(negatives[-1]).input_ids)
+        cut = len(tokenizer(negatives[-1]).input_ids)
         if cut > 77:
             print("aviso: negativo de %d tokens en: %s" % (cut, tags), flush=True)
     for seed in args.seeds:
@@ -127,7 +131,7 @@ def main():
             end = args.strength if args.strength_end is None else args.strength_end
             share = (phase - 1) / max(1, len(prompts) - 1)
             strength = args.strength + (end - args.strength) * share
-            image = pipe(
+            image = turn.pipe()(
                 prompt=prompt,
                 negative_prompt=negatives[phase - 1],
                 image=current,
@@ -145,7 +149,7 @@ def main():
             ).images[0]
             current = Image.composite(image, current, soft)
             if args.refine > 0:
-                image = pipe(
+                image = turn.pipe()(
                     prompt=refine_prompt,
                     negative_prompt=negatives[phase - 1],
                     image=current,

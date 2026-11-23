@@ -27,6 +27,7 @@ from PIL import Image, ImageDraw, ImageFilter
 
 import cutout
 import export_weapons
+import gpu_turn
 import style
 import weapons_test as wt
 
@@ -117,7 +118,8 @@ def generate(args):
 
     import sd
 
-    pipe = sd.load_pipeline("fp8", controlled="inpaint")
+    # Cede la tarjeta si empieza una junta en vivo (gpu_turn).
+    turn = gpu_turn.Turn(lambda: sd.load_pipeline("fp8", controlled="inpaint"))
     colors = style.colors_for("chassis", "physical")
     out = OUT / args.batch
     out.mkdir(parents=True, exist_ok=True)
@@ -126,7 +128,7 @@ def generate(args):
         low, _ = TYPE_PHASES[kind_of(name)]
         start = Image.open(OUT / SOURCE / ("%s_%d.png" % (name, export_weapons.CHOSEN[name]))).convert("RGB")
         _, control = wt.render(name)
-        plan = prompts_for(name, pipe, colors)
+        plan = prompts_for(name, turn.pipe(), colors)
         refine_prompt = style.prompt(subject_options(name)[1] + ", " + refine_tags, colors)
         for seed in args.seeds:
             current = start
@@ -139,7 +141,7 @@ def generate(args):
                     passes.append((refine_prompt, args.refine, seed + phase + 1000))
                 for text, power, noise in passes:
                     mask = repaint_mask(current, name, phase, args.grow, args.grow_step)
-                    image = pipe(
+                    image = turn.pipe()(
                         prompt=text,
                         negative_prompt=neg,
                         image=current,
