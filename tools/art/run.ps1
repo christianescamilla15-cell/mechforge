@@ -36,6 +36,12 @@ $watcherLog = 'C:\Users\DANNY\Syncthing\watcher.log'
 $cpuOnly = @('download_models.py', 'contact_sheet.py', 'blockout.py', 'cut_body.py', 'export_assist.py', 'export_weapons.py', 'export_parts.py', 'extract_overlay.py', 'recolor.py')
 $scriptName = Split-Path -Leaf $Rest[0]
 $pausedWatcher = $false
+# Marca de que este lanzador pauso el vigilante. Si una corrida muere sin
+# llegar a su finally (matada a mano), la marca queda y la siguiente corrida
+# lo rearranca: asi no se queda caido en silencio durante dias (paso el
+# 2026-11-21). Sin marca no se toca: si el vigilante esta parado por otra
+# razon, no es cosa de este lanzador.
+$pauseMark = Join-Path $env:TEMP 'mechforge-art-vigilante-pausado.txt'
 
 # La GPU es compartida con la granja de render del museo (blender -b). Un
 # script de GPU espera a que no haya Blender: la granja toma trabajos nuevos
@@ -76,6 +82,19 @@ if ($cpuOnly -notcontains $scriptName) {
     }
 }
 
+if (Test-Path $pauseMark) {
+    $task = Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
+    if ($task -and $task.State -eq 'Running') {
+        Remove-Item $pauseMark -ErrorAction SilentlyContinue
+    } elseif (Test-Meeting) {
+        Write-Output 'El vigilante quedo pausado por una corrida anterior; hay junta: lo dejo para despues.'
+    } elseif ($task) {
+        Start-ScheduledTask -TaskName $taskName
+        Remove-Item $pauseMark -ErrorAction SilentlyContinue
+        Write-Output 'Vigilante de transcripciones rearrancado (lo habia dejado pausado una corrida anterior).'
+    }
+}
+
 if (-not $KeepWatcher -and ($cpuOnly -notcontains $scriptName)) {
     $task = Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
     if ($task -and $task.State -eq 'Running') {
@@ -90,6 +109,7 @@ if (-not $KeepWatcher -and ($cpuOnly -notcontains $scriptName)) {
         Stop-ScheduledTask -TaskName $taskName
         Start-Sleep -Seconds 3
         $pausedWatcher = $true
+        Set-Content -Path $pauseMark -Value (Get-Date -Format 's') -Encoding ascii
         Write-Output 'Vigilante de transcripciones en pausa mientras se usa la GPU.'
     }
 }
@@ -104,6 +124,7 @@ try {
 } finally {
     if ($pausedWatcher) {
         Start-ScheduledTask -TaskName $taskName
+        Remove-Item $pauseMark -ErrorAction SilentlyContinue
         Write-Output 'Vigilante de transcripciones arrancado de nuevo.'
     }
 }
