@@ -14,6 +14,10 @@ las de perfil, con el aro en la fila 397 y la columna 384, y se llaman
 frente_<juego>:
   tools/art/run.ps1 tools/art/export_parts.py --torso f.png --hip 397 384 \
         --scale 0.6667 --holes --name frente_ligero_13 --out assets/mechs
+
+Las fases de un torso (tools/art/phase_chain.py) se exportan con --glow-free:
+  tools/art/run.ps1 tools/art/export_parts.py --torso fase03_101.png \
+        --hip 530 493 --glow-free --name ligero_13_f3 --out assets/mechs
 """
 
 import argparse
@@ -30,11 +34,17 @@ import recolor
 ELEMENTS = {"PHYSICAL": None, "HEAT": recolor.SCHEMES["calor"], "ENERGY": recolor.SCHEMES["energia"]}
 
 
-def piece(path, hip, keep_upper, holes=False):
+def piece(path, hip, keep_upper, holes=False, glow_free=False):
     """Devuelve (imagen original, mascara de la pieza). `holes`: quita tambien
-    el fondo encerrado por la figura (de frente, entre las piernas)."""
+    el fondo encerrado por la figura (de frente, entre las piernas).
+    `glow_free`: deja fuera el brillo y la sombra suaves que pintan las fases
+    altas (cutout.glow_free_figure), que si no se quedan como un halo."""
     image = Image.open(path).convert("RGB")
-    mask = cutout.clean_figure(image)
+    if glow_free:
+        mask, tolerance = cutout.glow_free_figure(image)
+        print("recorte %s: tolerancia %d" % (path.name, tolerance))
+    else:
+        mask = cutout.clean_figure(image)
     if holes:
         mask = cutout.drop_holes(image, mask)
     row = hip[0]
@@ -54,6 +64,7 @@ def main():
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--scale", type=float, default=0.5, help="reduccion respecto al lienzo de 1024")
     parser.add_argument("--holes", action="store_true", help="quita el fondo encerrado por la figura")
+    parser.add_argument("--glow-free", action="store_true", help="sin el brillo de alrededor (las fases)")
     args = parser.parse_args()
 
     args.out.mkdir(parents=True, exist_ok=True)
@@ -69,7 +80,7 @@ def main():
     for kind, path, keep_upper in (("torso", args.torso, True), ("legs", args.legs, False)):
         if path is None:
             continue
-        image, mask = piece(path, hip, keep_upper, args.holes)
+        image, mask = piece(path, hip, keep_upper, args.holes, args.glow_free)
         for element, scheme in ELEMENTS.items():
             colored = recolor.recolor(image, scheme)
             sprite, anchor = cut_body.crop_piece(colored, mask, hip)
