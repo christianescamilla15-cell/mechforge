@@ -73,14 +73,23 @@ func test_en_la_primera_clase_cada_nivel_es_un_paso_de_aspecto() -> void:
 	)
 
 
+## Desde el 2026-11-23 todas las armas tienen fases (OBS-047) o su evolucion
+## por nivel: se quitan, solo aqui, para ver que sin ellas cada una vuelve a
+## su dibujo de siempre.
 func test_un_arma_sin_dibujos_de_evolucion_se_ve_como_siempre() -> void:
-	var anchors := MechSprites._load_anchors(MechSprites.WEAPON_SET)
+	var real := MechSprites._load_anchors(MechSprites.WEAPON_SET)
+	var evolution := RegEx.create_from_string("_(f\\d+|c\\d+_\\d+)$")
+	var plain := {}
+	for key: String in real:
+		if evolution.search(key) == null:
+			plain[key] = real[key]
+	assert_lt(plain.size(), real.size(), "hay dibujos de evolucion que quitar")
+	MechSprites._anchors[MechSprites.WEAPON_SET] = plain
 	for item in _mounted():
 		var base := MechSprites.weapon_kind(item)
-		if anchors.has(base + "_c0_1") or _has_phases(anchors, base):
-			continue
-		var grown := _resolved(item.id, item.tier_min, 6)
+		var grown := _resolved(item.id, item.tier_max, 6)
 		assert_eq(MechSprites.weapon_look(grown), base, "%s sigue con su dibujo" % item.id)
+	MechSprites._anchors[MechSprites.WEAPON_SET] = real
 
 
 func test_el_arma_piloto_suma_un_periferico_por_nivel_y_cambia_de_modelo_al_transformarla() -> void:
@@ -116,13 +125,6 @@ func test_el_arma_piloto_suma_un_periferico_por_nivel_y_cambia_de_modelo_al_tran
 	var plain := MechSprites.icon_for(_resolved("hoja_balas_ter", ItemDef.Tier.COMMON, 0))
 	var loaded := MechSprites.icon_for(_resolved("hoja_balas_ter", ItemDef.Tier.COMMON, 6))
 	assert_ne(plain, loaded)
-
-
-func _has_phases(anchors: Dictionary, base: String) -> bool:
-	for phase in range(1, 11):
-		if anchors.has("%s_f%d" % [base, phase]):
-			return true
-	return false
 
 
 ## OBS-047: las armas, como los torsos, se ven por fase ("<pieza>_f<fase>",
