@@ -103,12 +103,24 @@ func start_autoplay() -> void:
 		_record_start_ms = Time.get_ticks_msec()
 		Sfx.current().log_plays = true
 	get_tree().create_timer(0.8).timeout.connect(shot.bind("inicio"))
+	# --shots-every=<s>: una captura cada tantos segundos (para ver como
+	# anda una pieza nueva, p. ej. las fases de las piernas).
+	if main._args.has("shots-every"):
+		_shots_every(float(main._args["shots-every"]))
 	if main._args.has("pause-test"):
 		# Tiempo real: la pausa para los temporizadores normales.
 		get_tree().create_timer(3.0, true, false, true).timeout.connect(_autoplay_pause_test)
 	# A menos velocidad el combate dura mas.
 	var timeout := AUTOPLAY_TIMEOUT_SECONDS * maxf(1.0, 3.0 / main._battle.speed)
 	get_tree().create_timer(timeout).timeout.connect(_on_autoplay_timeout)
+
+
+func _shots_every(seconds: float) -> void:
+	var count := 0
+	while is_inside_tree() and main._battle != null and count < 40:
+		await get_tree().create_timer(seconds).timeout
+		count += 1
+		await shot("cada_%02d" % count)
 
 
 ## Piezas de un mech todas en clase Basica y ese nivel (para la prueba en vivo).
