@@ -80,10 +80,16 @@ def export(name, source, sheet_row=None, placement=None, keep=None, tolerance=14
     son los del diseno `name` (las etapas de tools/art/evolve_weapons.py).
     `keep`: zonas del lienzo donde lo dibujado se conserva aunque quede
     suelto (los perifericos pequenos, que el recorte tomaria por motas).
-    `tolerance`: cuanto se separa la figura del color del fondo (mas alta
-    deja fuera el brillo y la sombra que pintan las fases altas)."""
+    `tolerance`: cuanto se separa la figura del color del fondo; "auto" la
+    elige para dejar fuera el brillo y la sombra que pintan las fases altas
+    sin comerse la pieza (cutout.glow_free_figure)."""
     image = Image.open(source).convert("RGB")
-    mask = np.logical_and(cutout.clean_figure(image, tolerance), ~export_assist.enclosed_background(image))
+    if tolerance == "auto":
+        figure, tolerance = cutout.glow_free_figure(image)
+        print("recorte %s: tolerancia %d" % (name, tolerance))
+    else:
+        figure = cutout.clean_figure(image, tolerance)
+    mask = np.logical_and(figure, ~export_assist.enclosed_background(image))
     if keep is not None:
         mask = np.logical_or(mask, np.logical_and(cutout.foreground_mask(image), keep))
     zoom, origin = placement or weapons_test.placement(name)

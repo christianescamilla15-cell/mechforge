@@ -56,9 +56,10 @@ GROW = 30
 GROW_PER_PHASE = 9
 # Recorte de las fases: las altas pintan un brillo y una sombra suaves
 # alrededor del arma, que con la tolerancia de siempre (14) se quedaban
-# pegados como un halo; con 45 el arma sale limpia (en los dibujos base
-# apenas quita nada: menos del 1 %).
-CUT_TOLERANCE = 45
+# pegados como un halo. Una fija de 45 los quitaba, pero vaciaba las piezas
+# claras sobre el fondo claro (el cuerpo de la ancla laser en la fase 7):
+# se elige en cada imagen (cutout.glow_free_figure).
+CUT_TOLERANCE = "auto"
 KEEP_UNION = 60
 # Los rifles de hombro llevan el mismo dibujo que los de brazo, mas arriba
 # (OBS-033): se exportan copiando las fases del de brazo.
@@ -175,6 +176,12 @@ def export(args):
     anchors = json.loads(path.read_text(encoding="utf-8"))
     for pick in args.export:
         name, seed = pick.split("=")
+        # El arma piloto de la evolucion (2026-11-20) ya cambia en cada nivel
+        # y en cada clase (<pieza>_c<clase>_<paso>), mas fino que sus fases,
+        # y el juego busca antes las fases: no se le ponen.
+        if name + "_c0_1" in anchors:
+            print("%s ya tiene su evolucion por nivel: sin fases" % name)
+            continue
         low, high = TYPE_PHASES[kind_of(name)]
         for phase in range(low + 1, high + 1):
             source = OUT / args.batch / ("%s_f%02d_%s.png" % (name, phase, seed))

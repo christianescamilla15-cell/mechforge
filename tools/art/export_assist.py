@@ -31,15 +31,24 @@ GUN_TOP = (0.95, -0.515)
 GUN_LOW = (0.85, 0.46)
 
 
-def enclosed_background(image, tolerance=20, min_area=400):
+def enclosed_background(image, tolerance=20, min_area=400, hole_color=8):
     """Fondo que quedo encerrado dentro de la figura (el hueco de un anillo):
-    manchas grandes del color del fondo que no tocan el borde."""
+    manchas grandes del color del fondo que no tocan el borde. Un hueco deja
+    ver el fondo tal cual (de media, a 3 del color del borde); una plancha
+    gris clara de la pieza se le parece pero no tanto (a unos 15: el cuerpo
+    de la ancla laser en la fase 7 salia con agujeros): solo cuentan las
+    manchas a menos de `hole_color` de media."""
     pixels = np.asarray(image).astype(np.int16)
     border = np.concatenate([pixels[:6].reshape(-1, 3), pixels[-6:].reshape(-1, 3)])
-    similar = (np.abs(pixels - np.median(border, axis=0)).max(axis=2) < tolerance).astype(np.uint8)
+    difference = np.abs(pixels - np.median(border, axis=0)).max(axis=2)
+    similar = (difference < tolerance).astype(np.uint8)
     similar = cv2.morphologyEx(similar, cv2.MORPH_OPEN, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7, 7)))
     count, labels, stats, _ = cv2.connectedComponentsWithStats(similar, connectivity=4)
-    keep = [index for index in range(1, count) if stats[index, cv2.CC_STAT_AREA] >= min_area]
+    keep = [
+        index
+        for index in range(1, count)
+        if stats[index, cv2.CC_STAT_AREA] >= min_area and difference[labels == index].mean() < hole_color
+    ]
     return np.isin(labels, keep)
 
 

@@ -661,15 +661,15 @@
   "arm_medio_laser_f9": {
     "hip": [
       70,
-      108
+      110
     ],
     "size": [
-      279,
-      87
+      280,
+      91
     ],
     "tip": [
-      279,
-      36
+      280,
+      39
     ]
   },
   "arm_medio_laser_f10": {
@@ -679,11 +679,11 @@
     ],
     "size": [
       283,
-      94
+      95
     ],
     "tip": [
       283,
-      57
+      55
     ]
   },
   "arm_largo_laser_f5": {
@@ -852,6 +852,1266 @@
     "tip": [
       344,
       54
+    ]
+  },
+  "arm_corto_balas_f1": {
+    "hip": [
+      77,
+      115
+    ],
+    "size": [
+      234,
+      118
+    ],
+    "tip": [
+      234,
+      45
+    ]
+  },
+  "arm_corto_balas_f2": {
+    "hip": [
+      78,
+      114
+    ],
+    "size": [
+      234,
+      116
+    ],
+    "tip": [
+      234,
+      43
+    ]
+  },
+  "arm_corto_balas_f3": {
+    "hip": [
+      78,
+      114
+    ],
+    "size": [
+      245,
+      115
+    ],
+    "tip": [
+      245,
+      61
+    ]
+  },
+  "arm_largo_balas_f1": {
+    "hip": [
+      85,
+      122
+    ],
+    "size": [
+      354,
+      126
+    ],
+    "tip": [
+      354,
+      54
+    ]
+  },
+  "shoulder_largo_balas_f1": {
+    "hip": [
+      127,
+      275
+    ],
+    "size": [
+      354,
+      126
+    ],
+    "tip": [
+      354,
+      54
+    ]
+  },
+  "arm_largo_balas_f2": {
+    "hip": [
+      86,
+      122
+    ],
+    "size": [
+      355,
+      126
+    ],
+    "tip": [
+      355,
+      54
+    ]
+  },
+  "shoulder_largo_balas_f2": {
+    "hip": [
+      128,
+      275
+    ],
+    "size": [
+      355,
+      126
+    ],
+    "tip": [
+      355,
+      54
+    ]
+  },
+  "arm_largo_balas_f3": {
+    "hip": [
+      86,
+      121
+    ],
+    "size": [
+      349,
+      125
+    ],
+    "tip": [
+      349,
+      51
+    ]
+  },
+  "shoulder_largo_balas_f3": {
+    "hip": [
+      128,
+      274
+    ],
+    "size": [
+      349,
+      125
+    ],
+    "tip": [
+      349,
+      51
+    ]
+  },
+  "arm_medio_balas_f1": {
+    "hip": [
+      82,
+      112
+    ],
+    "size": [
+      294,
+      115
+    ],
+    "tip": [
+      294,
+      43
+    ]
+  },
+  "arm_medio_balas_f2": {
+    "hip": [
+      82,
+      111
+    ],
+    "size": [
+      295,
+      115
+    ],
+    "tip": [
+      295,
+      43
+    ]
+  },
+  "arm_medio_balas_f3": {
+    "hip": [
+      82,
+      111
+    ],
+    "size": [
+      294,
+      114
+    ],
+    "tip": [
+      294,
+      42
+    ]
+  },
+  "shoulder_bateria_balas_f1": {
+    "hip": [
+      141,
+      278
+    ],
+    "size": [
+      216,
+      123
+    ],
+    "tip": [
+      216,
+      45
+    ]
+  },
+  "shoulder_bateria_balas_f2": {
+    "hip": [
+      142,
+      282
+    ],
+    "size": [
+      217,
+      127
+    ],
+    "tip": [
+      217,
+      50
+    ]
+  },
+  "shoulder_bateria_balas_f3": {
+    "hip": [
+      138,
+      279
+    ],
+    "size": [
+      214,
+      124
+    ],
+    "tip": [
+      214,
+      47
+    ]
+  },
+  "arm_corto_canon_f3": {
+    "hip": [
+      70,
+      112
+    ],
+    "size": [
+      220,
+      110
+    ],
+    "tip": [
+      220,
+      46
+    ]
+  },
+  "arm_corto_canon_f4": {
+    "hip": [
+      77,
+      112
+    ],
+    "size": [
+      217,
+      108
+    ],
+    "tip": [
+      217,
+      41
+    ]
+  },
+  "arm_corto_canon_f5": {
+    "hip": [
+      80,
+      113
+    ],
+    "size": [
+      213,
+      115
+    ],
+    "tip": [
+      213,
+      46
+    ]
+  },
+  "arm_largo_canon_f3": {
+    "hip": [
+      93,
+      123
+    ],
+    "size": [
+      363,
+      129
+    ],
+    "tip": [
+      363,
+      52
+    ]
+  },
+  "shoulder_largo_canon_f3": {
+    "hip": [
+      135,
+      271
+    ],
+    "size": [
+      363,
+      129
+    ],
+    "tip": [
+      363,
+      52
+    ]
+  },
+  "arm_largo_canon_f4": {
+    "hip": [
+      87,
+      122
+    ],
+    "size": [
+      356,
+      126
+    ],
+    "tip": [
+      356,
+      50
+    ]
+  },
+  "shoulder_largo_canon_f4": {
+    "hip": [
+      129,
+      270
+    ],
+    "size": [
+      356,
+      126
+    ],
+    "tip": [
+      356,
+      50
+    ]
+  },
+  "arm_largo_canon_f5": {
+    "hip": [
+      89,
+      121
+    ],
+    "size": [
+      358,
+      126
+    ],
+    "tip": [
+      358,
+      50
+    ]
+  },
+  "shoulder_largo_canon_f5": {
+    "hip": [
+      131,
+      269
+    ],
+    "size": [
+      358,
+      126
+    ],
+    "tip": [
+      358,
+      50
+    ]
+  },
+  "arm_medio_canon_f3": {
+    "hip": [
+      75,
+      113
+    ],
+    "size": [
+      281,
+      112
+    ],
+    "tip": [
+      281,
+      46
+    ]
+  },
+  "arm_medio_canon_f4": {
+    "hip": [
+      75,
+      112
+    ],
+    "size": [
+      280,
+      111
+    ],
+    "tip": [
+      280,
+      45
+    ]
+  },
+  "arm_medio_canon_f5": {
+    "hip": [
+      74,
+      112
+    ],
+    "size": [
+      280,
+      110
+    ],
+    "tip": [
+      280,
+      44
+    ]
+  },
+  "shoulder_ancla_canon_f3": {
+    "hip": [
+      127,
+      240
+    ],
+    "size": [
+      242,
+      83
+    ],
+    "tip": [
+      242,
+      23
+    ]
+  },
+  "shoulder_ancla_canon_f4": {
+    "hip": [
+      126,
+      242
+    ],
+    "size": [
+      244,
+      84
+    ],
+    "tip": [
+      244,
+      24
+    ]
+  },
+  "shoulder_ancla_canon_f5": {
+    "hip": [
+      129,
+      242
+    ],
+    "size": [
+      243,
+      87
+    ],
+    "tip": [
+      243,
+      23
+    ]
+  },
+  "shoulder_artilleria_canon_f3": {
+    "hip": [
+      124,
+      282
+    ],
+    "size": [
+      223,
+      127
+    ],
+    "tip": [
+      223,
+      27
+    ]
+  },
+  "shoulder_artilleria_canon_f4": {
+    "hip": [
+      126,
+      283
+    ],
+    "size": [
+      226,
+      128
+    ],
+    "tip": [
+      226,
+      30
+    ]
+  },
+  "shoulder_artilleria_canon_f5": {
+    "hip": [
+      129,
+      275
+    ],
+    "size": [
+      230,
+      120
+    ],
+    "tip": [
+      230,
+      14
+    ]
+  },
+  "shoulder_bateria_canon_f3": {
+    "hip": [
+      146,
+      287
+    ],
+    "size": [
+      162,
+      129
+    ],
+    "tip": [
+      162,
+      56
+    ]
+  },
+  "shoulder_bateria_canon_f4": {
+    "hip": [
+      144,
+      287
+    ],
+    "size": [
+      160,
+      130
+    ],
+    "tip": [
+      160,
+      58
+    ]
+  },
+  "shoulder_bateria_canon_f5": {
+    "hip": [
+      144,
+      290
+    ],
+    "size": [
+      164,
+      133
+    ],
+    "tip": [
+      164,
+      54
+    ]
+  },
+  "arm_corto_blaster_f3": {
+    "hip": [
+      68,
+      114
+    ],
+    "size": [
+      226,
+      86
+    ],
+    "tip": [
+      226,
+      46
+    ]
+  },
+  "arm_corto_blaster_f4": {
+    "hip": [
+      76,
+      113
+    ],
+    "size": [
+      235,
+      89
+    ],
+    "tip": [
+      235,
+      45
+    ]
+  },
+  "arm_corto_blaster_f5": {
+    "hip": [
+      74,
+      113
+    ],
+    "size": [
+      233,
+      84
+    ],
+    "tip": [
+      233,
+      45
+    ]
+  },
+  "arm_corto_blaster_f6": {
+    "hip": [
+      71,
+      114
+    ],
+    "size": [
+      229,
+      87
+    ],
+    "tip": [
+      229,
+      47
+    ]
+  },
+  "arm_corto_blaster_f7": {
+    "hip": [
+      67,
+      111
+    ],
+    "size": [
+      228,
+      84
+    ],
+    "tip": [
+      228,
+      42
+    ]
+  },
+  "arm_largo_blaster_f3": {
+    "hip": [
+      91,
+      122
+    ],
+    "size": [
+      357,
+      94
+    ],
+    "tip": [
+      357,
+      54
+    ]
+  },
+  "shoulder_largo_blaster_f3": {
+    "hip": [
+      133,
+      244
+    ],
+    "size": [
+      357,
+      94
+    ],
+    "tip": [
+      357,
+      54
+    ]
+  },
+  "arm_largo_blaster_f4": {
+    "hip": [
+      87,
+      123
+    ],
+    "size": [
+      359,
+      99
+    ],
+    "tip": [
+      359,
+      56
+    ]
+  },
+  "shoulder_largo_blaster_f4": {
+    "hip": [
+      129,
+      245
+    ],
+    "size": [
+      359,
+      99
+    ],
+    "tip": [
+      359,
+      56
+    ]
+  },
+  "arm_largo_blaster_f5": {
+    "hip": [
+      90,
+      124
+    ],
+    "size": [
+      361,
+      103
+    ],
+    "tip": [
+      361,
+      58
+    ]
+  },
+  "shoulder_largo_blaster_f5": {
+    "hip": [
+      132,
+      246
+    ],
+    "size": [
+      361,
+      103
+    ],
+    "tip": [
+      361,
+      58
+    ]
+  },
+  "arm_largo_blaster_f6": {
+    "hip": [
+      94,
+      124
+    ],
+    "size": [
+      363,
+      102
+    ],
+    "tip": [
+      363,
+      58
+    ]
+  },
+  "shoulder_largo_blaster_f6": {
+    "hip": [
+      136,
+      246
+    ],
+    "size": [
+      363,
+      102
+    ],
+    "tip": [
+      363,
+      58
+    ]
+  },
+  "arm_largo_blaster_f7": {
+    "hip": [
+      93,
+      121
+    ],
+    "size": [
+      365,
+      102
+    ],
+    "tip": [
+      365,
+      56
+    ]
+  },
+  "shoulder_largo_blaster_f7": {
+    "hip": [
+      135,
+      243
+    ],
+    "size": [
+      365,
+      102
+    ],
+    "tip": [
+      365,
+      56
+    ]
+  },
+  "arm_medio_blaster_f3": {
+    "hip": [
+      68,
+      112
+    ],
+    "size": [
+      268,
+      84
+    ],
+    "tip": [
+      268,
+      45
+    ]
+  },
+  "arm_medio_blaster_f4": {
+    "hip": [
+      67,
+      112
+    ],
+    "size": [
+      268,
+      84
+    ],
+    "tip": [
+      268,
+      46
+    ]
+  },
+  "arm_medio_blaster_f5": {
+    "hip": [
+      67,
+      113
+    ],
+    "size": [
+      270,
+      85
+    ],
+    "tip": [
+      270,
+      47
+    ]
+  },
+  "arm_medio_blaster_f6": {
+    "hip": [
+      70,
+      118
+    ],
+    "size": [
+      274,
+      92
+    ],
+    "tip": [
+      274,
+      52
+    ]
+  },
+  "arm_medio_blaster_f7": {
+    "hip": [
+      71,
+      112
+    ],
+    "size": [
+      278,
+      89
+    ],
+    "tip": [
+      278,
+      45
+    ]
+  },
+  "arm_saboteador_blaster_f3": {
+    "hip": [
+      67,
+      112
+    ],
+    "size": [
+      256,
+      85
+    ],
+    "tip": [
+      256,
+      44
+    ]
+  },
+  "arm_saboteador_blaster_f4": {
+    "hip": [
+      68,
+      114
+    ],
+    "size": [
+      255,
+      86
+    ],
+    "tip": [
+      255,
+      45
+    ]
+  },
+  "arm_saboteador_blaster_f5": {
+    "hip": [
+      68,
+      110
+    ],
+    "size": [
+      253,
+      82
+    ],
+    "tip": [
+      253,
+      41
+    ]
+  },
+  "arm_saboteador_blaster_f6": {
+    "hip": [
+      66,
+      112
+    ],
+    "size": [
+      251,
+      82
+    ],
+    "tip": [
+      251,
+      43
+    ]
+  },
+  "arm_saboteador_blaster_f7": {
+    "hip": [
+      67,
+      106
+    ],
+    "size": [
+      252,
+      77
+    ],
+    "tip": [
+      252,
+      39
+    ]
+  },
+  "shoulder_bateria_blaster_f3": {
+    "hip": [
+      131,
+      276
+    ],
+    "size": [
+      155,
+      118
+    ],
+    "tip": [
+      155,
+      43
+    ]
+  },
+  "shoulder_bateria_blaster_f4": {
+    "hip": [
+      142,
+      277
+    ],
+    "size": [
+      166,
+      119
+    ],
+    "tip": [
+      166,
+      44
+    ]
+  },
+  "shoulder_bateria_blaster_f5": {
+    "hip": [
+      142,
+      276
+    ],
+    "size": [
+      164,
+      118
+    ],
+    "tip": [
+      164,
+      42
+    ]
+  },
+  "shoulder_bateria_blaster_f6": {
+    "hip": [
+      138,
+      277
+    ],
+    "size": [
+      162,
+      119
+    ],
+    "tip": [
+      162,
+      44
+    ]
+  },
+  "shoulder_bateria_blaster_f7": {
+    "hip": [
+      140,
+      275
+    ],
+    "size": [
+      160,
+      117
+    ],
+    "tip": [
+      160,
+      74
+    ]
+  },
+  "arm_corto_laser_f5": {
+    "hip": [
+      64,
+      112
+    ],
+    "size": [
+      227,
+      87
+    ],
+    "tip": [
+      227,
+      42
+    ]
+  },
+  "arm_corto_laser_f6": {
+    "hip": [
+      64,
+      113
+    ],
+    "size": [
+      225,
+      77
+    ],
+    "tip": [
+      225,
+      46
+    ]
+  },
+  "arm_corto_laser_f7": {
+    "hip": [
+      76,
+      112
+    ],
+    "size": [
+      238,
+      77
+    ],
+    "tip": [
+      238,
+      46
+    ]
+  },
+  "arm_corto_laser_f8": {
+    "hip": [
+      85,
+      109
+    ],
+    "size": [
+      256,
+      74
+    ],
+    "tip": [
+      256,
+      40
+    ]
+  },
+  "arm_corto_laser_f9": {
+    "hip": [
+      88,
+      112
+    ],
+    "size": [
+      270,
+      86
+    ],
+    "tip": [
+      270,
+      41
+    ]
+  },
+  "arm_corto_laser_f10": {
+    "hip": [
+      83,
+      112
+    ],
+    "size": [
+      248,
+      93
+    ],
+    "tip": [
+      248,
+      42
+    ]
+  },
+  "arm_hoja_laser_f5": {
+    "hip": [
+      68,
+      112
+    ],
+    "size": [
+      352,
+      85
+    ],
+    "tip": [
+      352,
+      44
+    ]
+  },
+  "arm_hoja_laser_f6": {
+    "hip": [
+      70,
+      114
+    ],
+    "size": [
+      355,
+      96
+    ],
+    "tip": [
+      355,
+      47
+    ]
+  },
+  "arm_hoja_laser_f7": {
+    "hip": [
+      77,
+      124
+    ],
+    "size": [
+      350,
+      103
+    ],
+    "tip": [
+      350,
+      58
+    ]
+  },
+  "arm_hoja_laser_f8": {
+    "hip": [
+      77,
+      121
+    ],
+    "size": [
+      372,
+      118
+    ],
+    "tip": [
+      372,
+      57
+    ]
+  },
+  "arm_hoja_laser_f9": {
+    "hip": [
+      77,
+      126
+    ],
+    "size": [
+      381,
+      127
+    ],
+    "tip": [
+      381,
+      60
+    ]
+  },
+  "arm_hoja_laser_f10": {
+    "hip": [
+      77,
+      126
+    ],
+    "size": [
+      381,
+      130
+    ],
+    "tip": [
+      381,
+      58
+    ]
+  },
+  "shoulder_ancla_laser_f5": {
+    "hip": [
+      129,
+      241
+    ],
+    "size": [
+      229,
+      82
+    ],
+    "tip": [
+      229,
+      25
+    ]
+  },
+  "shoulder_ancla_laser_f6": {
+    "hip": [
+      124,
+      240
+    ],
+    "size": [
+      216,
+      85
+    ],
+    "tip": [
+      216,
+      25
+    ]
+  },
+  "shoulder_ancla_laser_f7": {
+    "hip": [
+      125,
+      243
+    ],
+    "size": [
+      213,
+      84
+    ],
+    "tip": [
+      213,
+      27
+    ]
+  },
+  "shoulder_ancla_laser_f8": {
+    "hip": [
+      125,
+      263
+    ],
+    "size": [
+      215,
+      108
+    ],
+    "tip": [
+      215,
+      45
+    ]
+  },
+  "shoulder_ancla_laser_f9": {
+    "hip": [
+      126,
+      252
+    ],
+    "size": [
+      209,
+      94
+    ],
+    "tip": [
+      209,
+      36
+    ]
+  },
+  "shoulder_ancla_laser_f10": {
+    "hip": [
+      127,
+      274
+    ],
+    "size": [
+      222,
+      115
+    ],
+    "tip": [
+      222,
+      58
+    ]
+  },
+  "shoulder_artilleria_laser_f5": {
+    "hip": [
+      126,
+      280
+    ],
+    "size": [
+      249,
+      122
+    ],
+    "tip": [
+      249,
+      12
+    ]
+  },
+  "shoulder_artilleria_laser_f6": {
+    "hip": [
+      129,
+      281
+    ],
+    "size": [
+      253,
+      123
+    ],
+    "tip": [
+      253,
+      15
+    ]
+  },
+  "shoulder_artilleria_laser_f7": {
+    "hip": [
+      126,
+      279
+    ],
+    "size": [
+      249,
+      121
+    ],
+    "tip": [
+      249,
+      11
+    ]
+  },
+  "shoulder_artilleria_laser_f8": {
+    "hip": [
+      127,
+      283
+    ],
+    "size": [
+      252,
+      125
+    ],
+    "tip": [
+      252,
+      13
+    ]
+  },
+  "shoulder_artilleria_laser_f9": {
+    "hip": [
+      126,
+      287
+    ],
+    "size": [
+      252,
+      129
+    ],
+    "tip": [
+      252,
+      5
+    ]
+  },
+  "shoulder_artilleria_laser_f10": {
+    "hip": [
+      121,
+      283
+    ],
+    "size": [
+      214,
+      125
+    ],
+    "tip": [
+      214,
+      7
     ]
   }
 }
