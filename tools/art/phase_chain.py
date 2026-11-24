@@ -17,10 +17,13 @@ import argparse
 import time
 from pathlib import Path
 
+import cv2
+import numpy as np
 import torch
 from PIL import Image, ImageFilter
 
 import blockout
+import cutout
 import gpu_turn
 import halves_test
 import sd
@@ -48,6 +51,24 @@ PHASES = [
 ]
 
 
+# Lo que se niega primero en una zona, ademas de lo de halves_test. Las
+# piernas son UNA pierna de perfil: el juego la dibuja dos veces (la de
+# delante y la de detras) y la dobla por cadera, rodilla y tobillo a alturas
+# fijas (scenes/battle/leg_rig.gd); el primer piloto de fases de piernas
+# (2026-11-23) dibujaba dos piernas en otra postura desde la fase 3 o 4.
+EXTRA_NEGATIVE = {"legs": "two legs, extra legs, multiple legs, walking pose"}
+
+
+def shape_control(image, mask):
+    """El contorno de la pieza (lo opaco dentro de la zona) como lineas
+    blancas sobre negro: guia la silueta y la postura, no el detalle."""
+    figure = cutout.clean_figure(image) & (np.asarray(mask) > 0)
+    contours, _ = cv2.findContours(figure.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+    lines = np.zeros(figure.shape, dtype=np.uint8)
+    cv2.drawContours(lines, contours, -1, 255, blockout.LINE_WIDTH)
+    return Image.fromarray(lines).convert("RGB")
+
+
 def negative(zone, tags):
     """El negativo de una fase: lo de la zona primero (CLIP corta en 77
     tokens y antes se perdian "claws, mechanical arms...", de ahi los punos
@@ -55,7 +76,8 @@ def negative(zone, tags):
     fases chocaban con el "wings" del chasis)."""
     wanted = {word.strip() for word in tags.split(",")}
     words = (
-        halves_test.ZONE_NEGATIVE.get(zone, "").split(",")
+        EXTRA_NEGATIVE.get(zone, "").split(",")
+        + halves_test.ZONE_NEGATIVE.get(zone, "").split(",")
         + style.PART_NEGATIVE["chassis"].split(",")
         + style.NEGATIVE.split(",")
     )
@@ -87,6 +109,9 @@ def main():
     # cambiar la forma (el usuario, 2026-11-21: "mas detallados y mas arte").
     parser.add_argument("--refine", type=float, default=0.0, help="fuerza de la pasada de detalle (0 = sin ella)")
     parser.add_argument("--refine-tags", default="intricate details, ornate engravings, detailed mechanical parts")
+    # Que la pieza conserve su silueta y su postura (las piernas): fuerza del
+    # control con el contorno del dibujo de partida (0 = sin el).
+    parser.add_argument("--keep-shape", type=float, default=0.0)
     args = parser.parse_args()
 
     out = OUT / args.batch
@@ -101,6 +126,19 @@ def main():
     colors = style.colors_for("chassis", "physical")
     mask = halves_test.zone_mask(args.zone, row, x)
     soft = mask.filter(ImageFilter.GaussianBlur(4))
+    control = dict(
+        control_image=[block_control],
+        control_mode=[sd.MODE_SCRIBBLE],
+        controlnet_conditioning_scale=0.0,
+        control_guidance_end=0.35,
+    )
+    if args.keep_shape > 0:
+        control = dict(
+            control_image=[shape_control(start, mask)],
+            control_mode=[sd.MODE_SCRIBBLE],
+            controlnet_conditioning_scale=args.keep_shape,
+            control_guidance_end=0.6,
+        )
     phases = list(PHASES[: args.phases])
     for number, tags in args.tag:
         phases[int(number) - 1] = tags
@@ -138,10 +176,7 @@ def main():
                 image=current,
                 mask_image=mask,
                 strength=strength,
-                control_image=[block_control],
-                control_mode=[sd.MODE_SCRIBBLE],
-                controlnet_conditioning_scale=0.0,
-                control_guidance_end=0.35,
+                **control,
                 num_inference_steps=args.steps,
                 guidance_scale=style.CFG,
                 width=halves_test.SIZE,
@@ -156,10 +191,7 @@ def main():
                     image=current,
                     mask_image=mask,
                     strength=args.refine,
-                    control_image=[block_control],
-                    control_mode=[sd.MODE_SCRIBBLE],
-                    controlnet_conditioning_scale=0.0,
-                    control_guidance_end=0.35,
+                    **control,
                     num_inference_steps=args.steps,
                     guidance_scale=style.CFG,
                     width=halves_test.SIZE,
