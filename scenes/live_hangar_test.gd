@@ -100,7 +100,7 @@ func evolution_test() -> void:
 func phases_test() -> void:
 	var hangar := main._menu as WorkshopScreen
 	var ids: Array[String] = []
-	for slot: String in ["torso", "side0", "side1", "top0"]:
+	for slot: String in ["torso", "legs", "side0", "side1", "top0"]:
 		var mounted := Garage.get_slot(main._profile.build, slot)
 		if mounted != "":
 			ids.append(mounted)
@@ -120,6 +120,8 @@ func phases_test() -> void:
 				var torsos := MechSprites.TORSO_SETS
 				var base: String = torsos[absi(item.id.hash()) % torsos.size()]
 				looks.append(MechSprites.class_set(base, item, "torso"))
+			elif item.type == ItemDef.Type.LEGS:
+				looks.append(MechSprites.legs_set_for(item))
 			else:
 				looks.append(MechSprites.weapon_look(item))
 		print("FASES fase=%d %s" % [phase, ", ".join(looks)])

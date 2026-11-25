@@ -161,3 +161,31 @@ func test_la_fase_de_una_pieza_va_con_las_ligas() -> void:
 		var tier := campaign.tier_of(zone)
 		var cap := campaign.level_cap(zone)
 		assert_eq(ItemScaling.phase(_rules, tier, cap), zone, "la liga %d, su fase" % (zone + 1))
+
+
+## Las piernas de una pieza (orugas, ruedas, levitar) tambien cambian por fase:
+## buscan `<su juego>_f<fase>` como las demas, y si no hay, el de siempre. Las
+## orugas tienen sus diez fases dibujadas (art_raw/parts/fases_orugas).
+func test_las_piernas_de_una_pieza_cambian_por_fase() -> void:
+	var base: String = MechSprites.SPECIAL_LEGS[ItemDef.TAG_TRACKS]
+	var spec := {"torso": "torso_baluarte", "legs": "piernas_orugas"}
+	var basic := MechSprites.for_build(_catalog.make_build(spec, _rules, T.COMMON, 0))
+	assert_eq(basic.legs_set, base, "en Basica, el de siempre")
+	assert_true(basic.rigid_legs)
+	var epic := _catalog.make_build(spec, _rules, T.EPIC, 18)
+	var phase := ItemScaling.phase(_rules, epic.legs.tier, epic.legs.level)
+	assert_gte(phase, 3)
+	var shown := MechSprites.for_build(epic)
+	assert_eq(shown.legs_set, "%s_f%d" % [base, phase], "el de su fase")
+	assert_true(MechSprites.has_piece(shown.legs_set, "legs"))
+	assert_true(shown.rigid_legs, "sigue siendo de una pieza")
+	# Su miniatura del taller, la misma.
+	assert_eq(MechSprites.legs_set_for(epic.legs), shown.legs_set)
+	var element := int(epic.legs.element)
+	assert_eq(
+		MechSprites.icon_for(epic.legs),
+		MechSprites.texture(shown.legs_set, "legs", element),
+		"la miniatura de la pieza, igual"
+	)
+	# Sin dibujo de fase, el de siempre (unas piernas que andan, sin fases).
+	assert_eq(MechSprites.class_set("no_existe", epic.legs, "legs"), "no_existe")

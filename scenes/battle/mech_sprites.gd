@@ -95,9 +95,10 @@ static func for_build(build: MechBuild) -> MechSprites:
 		torsos[absi(build.torso.id.hash()) % torsos.size()], build.torso, "torso"
 	)
 	out.legs_set = class_set(legs[absi(build.legs.id.hash()) % legs.size()], build.legs, "legs")
+	# Las de una pieza tambien cambian por fase (OBS-047), si tienen dibujo.
 	for tag: String in SPECIAL_LEGS:
 		if build.legs.has_tag(tag) and has_piece(SPECIAL_LEGS[tag], "legs"):
-			out.legs_set = SPECIAL_LEGS[tag]
+			out.legs_set = class_set(SPECIAL_LEGS[tag], build.legs, "legs")
 			out.rigid_legs = true
 	return out
 
@@ -254,6 +255,19 @@ static func weapon_look(item: ItemDef) -> String:
 	return base
 
 
+## El juego de dibujos de unas piernas, en su fase: el suyo si son de una
+## pieza (orugas, ruedas, levitar) y si no, el de su id entre LEGS_SETS. ""
+## si no hay arte de piernas.
+static func legs_set_for(item: ItemDef) -> String:
+	for tag: String in SPECIAL_LEGS:
+		if item.has_tag(tag) and has_piece(SPECIAL_LEGS[tag], "legs"):
+			return class_set(SPECIAL_LEGS[tag], item, "legs")
+	var legs := _available(LEGS_SETS, "legs")
+	if legs.is_empty():
+		return ""
+	return class_set(legs[absi(item.id.hash()) % legs.size()], item, "legs")
+
+
 ## Dibujo de una pieza para su miniatura en el taller (el mismo que lleva el
 ## mech); null si esa pieza no tiene arte. `paint`: el color (elemento) con
 ## el que esta pintada; -1, el de su elemento.
@@ -272,14 +286,8 @@ static func icon_for(item: ItemDef, paint: int = -1) -> Texture2D:
 			var torso_set := class_set(torsos[absi(item.id.hash()) % torsos.size()], item, "torso")
 			return _texture(torso_set, "torso", element)
 		ItemDef.Type.LEGS:
-			for tag: String in SPECIAL_LEGS:
-				if item.has_tag(tag) and has_piece(SPECIAL_LEGS[tag], "legs"):
-					return _texture(SPECIAL_LEGS[tag], "legs", element)
-			var legs := _available(LEGS_SETS, "legs")
-			if legs.is_empty():
-				return null
-			var legs_set := class_set(legs[absi(item.id.hash()) % legs.size()], item, "legs")
-			return _texture(legs_set, "legs", element)
+			var legs_set := legs_set_for(item)
+			return _texture(legs_set, "legs", element) if legs_set != "" else null
 		ItemDef.Type.CHEST:
 			return _texture(chest_set(item), "chest", element)
 		ItemDef.Type.ASSIST:

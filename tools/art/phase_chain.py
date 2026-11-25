@@ -69,14 +69,16 @@ def shape_control(image, mask):
     return Image.fromarray(lines).convert("RGB")
 
 
-def negative(zone, tags):
+def negative(zone, tags, avoid=None):
     """El negativo de una fase: lo de la zona primero (CLIP corta en 77
     tokens y antes se perdian "claws, mechanical arms...", de ahi los punos
     dentro del torso) y sin lo que la fase pide (las alas de las ultimas
-    fases chocaban con el "wings" del chasis)."""
+    fases chocaban con el "wings" del chasis). `avoid` sustituye a lo propio
+    de la zona: las piernas de una pieza (orugas, ruedas, levitar) niegan
+    piernas y pies, no "dos piernas"."""
     wanted = {word.strip() for word in tags.split(",")}
     words = (
-        EXTRA_NEGATIVE.get(zone, "").split(",")
+        (EXTRA_NEGATIVE.get(zone, "") if avoid is None else avoid).split(",")
         + halves_test.ZONE_NEGATIVE.get(zone, "").split(",")
         + style.PART_NEGATIVE["chassis"].split(",")
         + style.NEGATIVE.split(",")
@@ -112,6 +114,7 @@ def main():
     # Que la pieza conserve su silueta y su postura (las piernas): fuerza del
     # control con el contorno del dibujo de partida (0 = sin el).
     parser.add_argument("--keep-shape", type=float, default=0.0)
+    parser.add_argument("--avoid", default=None, help="lo que se niega primero, en vez de lo de la zona")
     args = parser.parse_args()
 
     out = OUT / args.batch
@@ -153,7 +156,7 @@ def main():
         if tokens > 77:
             raise SystemExit("prompt de %d tokens (maximo 77): %s" % (tokens, tags))
         prompts.append(prompt)
-        negatives.append(negative(args.zone, tags))
+        negatives.append(negative(args.zone, tags, args.avoid))
         # El negativo tambien se corta en 77: solo se avisa, lo que cae es
         # la cola generica (calidad), no lo de la zona.
         cut = len(tokenizer(negatives[-1]).input_ids)
