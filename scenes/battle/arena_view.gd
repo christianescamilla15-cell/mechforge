@@ -87,12 +87,16 @@ var _time := 0.0
 var _stage: Dictionary = DEFAULT_STAGE.duplicate(true)
 ## Fuerza de la sacudida de camara en curso.
 var _shake := 0.0
+## Ruido de la sacudida (OBS-052): mas organica que un seno, y se apaga suave.
+var _shake_noise := FastNoiseLite.new()
 ## Caida de la bonificacion desde la nave: 0 arriba, 1 en el suelo.
 var _drop_fall := 1.0
 
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
+	_shake_noise.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
+	_shake_noise.frequency = 0.9
 	clip_contents = true
 	add_child(_world)
 	_world.add_child(_floor)
@@ -291,6 +295,26 @@ func strike(
 	_shots.play(fx, from, mechs[target].hit_point(), color, seconds)
 
 
+## Pausa al golpear (OBS-052): quien ataca y los disparos se congelan unos
+## cuadros mientras la victima tiembla y la camara sacude.
+func hitstop(actor: int, frames: float, speed: float) -> void:
+	var frozen: Array[Node] = [mechs[actor], _shots]
+	await HitJuice.hitstop(get_tree(), frozen, HitJuice.stop_seconds(frames, speed))
+
+
+## "Super flash" del critico (OBS-052): la arena se oscurece un instante, una
+## estrella dorada en el golpe y la camara se acerca de golpe.
+func super_flash(at: Vector2, color: Color, speed: float) -> void:
+	HitJuice.dim(self, _world, speed)
+	flash(at, color, 170.0, 0.3 / maxf(speed, 1.0))
+	_zoom *= 1.07
+
+
+## Vapor que sale del mech al enfriar (OBS-052).
+func steam(index: int, seconds: float) -> void:
+	_shots.steam(mechs[index].hit_point() + Vector2(0.0, -40.0), seconds)
+
+
 ## Fogonazo: una estrella que se encoge y se apaga.
 func flash(at: Vector2, color: Color, radius: float, seconds: float) -> void:
 	var star := Polygon2D.new()
@@ -429,8 +453,14 @@ func _follow(delta: float) -> void:
 	_world.scale = Vector2(_zoom, _zoom)
 	_world.position = Vector2(size.x / 2.0 - _camera_x * _zoom, size.y - FLOOR_MARGIN)
 	if _shake > 0.0:
-		_world.position += Vector2(sin(_time * 71.0), cos(_time * 53.0)) * _shake
-		_shake = maxf(0.0, _shake - delta * 36.0)
+		# Sacudida por "trauma" (Eiserloh, GDC 2016): el ruido da la forma y
+		# la fuerza cae al cuadrado, de golpe al principio y suave al final.
+		var wobble := Vector2(
+			_shake_noise.get_noise_2d(_time * 60.0, 0.0),
+			_shake_noise.get_noise_2d(0.0, _time * 60.0)
+		)
+		_world.position += wobble * _shake * 1.6
+		_shake = maxf(0.0, _shake - delta * (10.0 + _shake * 2.2))
 
 
 ## Cuanto se ha desplazado la camara desde el centro del campo.

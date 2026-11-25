@@ -23,9 +23,12 @@ const COLOR_REPAIR := Color("7dff9b")
 const COLOR_DARK_MATTER := Color("b07bff")
 const COLOR_CRIT := Color("ffd23d")
 const COLOR_WARNING := Color("ff9a7d")
-## Parte de la vida del rival desde la que el golpe de un arma de hombro es
-## un impacto medio y no ligero.
+## Parte de la vida del rival desde la que un golpe es un impacto medio y no
+## ligero.
 const MEDIUM_IMPACT_SHARE := 0.07
+## Desde esta parte de la vida maxima, un golpe es grave (OBS-052: antes solo
+## el arma de pecho lo era, y casi todos los golpes contaban como ligeros).
+const HEAVY_IMPACT_SHARE := 0.16
 
 var rules: RulesConfig
 var engine: BattleEngine
@@ -245,17 +248,24 @@ func _play_event(entry: Dictionary) -> void:
 			var damage: int = entry.get("damage", 0)
 			if entry.get("shielded", false):
 				_arena.float_text(_state[target]["pos"], Txt.t("shield_hit"), COLOR_COOL)
+			var crit: bool = entry.get("crit", false)
 			if damage > 0:
-				_arena.mechs[target].hit(step)
+				_arena.mechs[target].hit(step, shot_color)
 				_arena.impact(target, _impact_tier(def, damage, target), step)
 				_float_damage(entry, target, damage)
-			if entry.get("crit", false):
-				# Critico (GDD 2.9): aviso y lo que le hace al rival.
+			if crit:
+				# Critico (GDD 2.9): aviso, lo que le hace al rival y su "super
+				# flash" (OBS-052).
 				Sfx.play("critico")
 				_arena.shake(12.0)
+				_arena.super_flash(_arena.mechs[target].hit_point(), COLOR_CRIT, speed)
 				var cell: int = _state[target]["pos"]
 				_arena.float_text(cell, Txt.t("crit_hit"), COLOR_CRIT)
 				_arena.float_text(cell, Txt.t("crit_" + str(entry["crit_effect"])), COLOR_CRIT)
+			if damage > 0:
+				# Pausa al golpear (OBS-052): mas larga cuanto mas quita.
+				var share := float(damage) / float(maxi(engine.mechs[target].max_health, 1))
+				await _arena.hitstop(actor, HitJuice.stop_frames(share, crit), speed)
 			var heat_gain: int = snapshot[target]["heat"] - _state[target]["heat"]
 			if heat_gain > 0:
 				_arena.float_text(_state[target]["pos"], "+%d" % heat_gain, COLOR_HEAT)
@@ -287,6 +297,7 @@ func _play_event(entry: Dictionary) -> void:
 		"cool", "forced_cool", "shutdown":
 			var amount: int = entry.get("amount", 0)
 			_arena.float_text(_state[actor]["pos"], "-%d" % amount, COLOR_COOL)
+			_arena.steam(actor, step)
 			Sfx.play("apagado" if event == "shutdown" else "enfriar")
 			if event == "shutdown":
 				_arena.mechs[actor].set_heat(1.0, true)
@@ -323,7 +334,9 @@ func _play_event(entry: Dictionary) -> void:
 			if engine.mechs[actor].slots.has("chest"):
 				chest_type = engine.mechs[actor].slots["chest"].def.weapon_type
 			await _arena.dark_matter(actor, target, chest_type, COLOR_DARK_MATTER, step)
-			_arena.mechs[target].hit(step)
+			_arena.mechs[target].hit(step, COLOR_DARK_MATTER)
+			_arena.super_flash(_arena.mechs[target].hit_point(), COLOR_DARK_MATTER, speed)
+			await _arena.hitstop(actor, HitJuice.STOP_KO, speed)
 			var cell: int = _state[target]["pos"]
 			_arena.float_text(cell, "-%d" % entry["damage"], COLOR_DARK_MATTER)
 			if entry.get("crit", false):
@@ -345,6 +358,8 @@ func _play_event(entry: Dictionary) -> void:
 			await get_tree().create_timer(step).timeout
 		"win":
 			var loser := 1 - int(entry["winner"])
+			# El golpe final se congela mas (OBS-052).
+			await _arena.hitstop(1 - loser, HitJuice.STOP_KO, speed)
 			Sfx.play("destruido")
 			_arena.explode(_arena.mechs[loser].hit_point(), step * 2.0)
 			await _arena.mechs[loser].destroy(step * 2.0).finished
@@ -399,13 +414,12 @@ func _event_def(entry: Dictionary, actor: int) -> ItemDef:
 func _impact_tier(def: ItemDef, damage: int, target: int) -> String:
 	if def == null:
 		return "light"
-	match def.type:
-		ItemDef.Type.CHEST:
-			return "heavy"
-		ItemDef.Type.TOP:
-			var share := float(damage) / float(maxi(engine.mechs[target].max_health, 1))
-			return "medium" if share >= MEDIUM_IMPACT_SHARE else "light"
-	return "light"
+	if def.type == ItemDef.Type.CHEST:
+		return "heavy"
+	var share := float(damage) / float(maxi(engine.mechs[target].max_health, 1))
+	if share >= HEAVY_IMPACT_SHARE:
+		return "heavy"
+	return "medium" if share >= MEDIUM_IMPACT_SHARE else "light"
 
 
 ## Las armas que no son cuerpo a cuerpo disparan un proyectil.

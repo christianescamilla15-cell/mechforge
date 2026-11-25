@@ -776,7 +776,7 @@ Menú · Taller (armado con resumen de stats, barra de peso y avisos) · Inventa
 
 ### 12.0 Coherencia con el diseño
 Requisito del usuario (2026-11-16): las interacciones deben ir acordes al diseño. Todo lo que se mueve, suena o se pulsa sigue el lenguaje visual de la referencia de estilo (§11):
-- **Efectos:** fogonazos, explosiones, humo y chispas dibujados con el mismo trazo de tinta y color plano, no partículas brillantes genéricas.
+- **Efectos:** fogonazos, explosiones, humo y chispas dibujados con el mismo trazo de tinta y color plano, no partículas brillantes genéricas. **Cambio decidido por el usuario (2026-11-24, OBS-052):** brillo con tinta: láser, plasma, fuego, energía y los especiales llevan brillo aditivo, pero siempre con contorno de tinta y formas dibujadas; el humo, los restos y el negro siguen en color plano. Investigación y propuesta en `docs/reference/efectos-combate.md`.
 - **Movimiento:** peso mecánico creíble. Los mechs arrancan y frenan con inercia, las armas tienen retroceso y los golpes desplazan; nada de rebotes de caricatura.
 - **Interfaz:** paneles, botones y tipografía con aire de plano técnico, en la misma paleta contenida; los colores vivos se reservan para el elemento (acero, naranja, cian) y para los avisos.
 - **Escenarios:** mismo trazo y misma paleta, con menos contraste que los mechs para que no compitan con ellos.

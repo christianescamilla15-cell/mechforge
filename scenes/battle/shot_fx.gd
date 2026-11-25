@@ -93,6 +93,11 @@ const AMMO_COLORS: Array[Color] = [
 const CORE := Color("fff3d6")
 const FIRE := Color("ffb347")
 const SMOKE := Color(0.62, 0.62, 0.66)
+## Contorno de tinta de las chispas, y su ritmo y su caida (OBS-052).
+const INK := Color("1c1a24")
+const SPARK_FPS := 24.0
+const SPARK_GRAVITY := 140.0
+const STEAM := Color("eef4f8")
 const METAL := Color("6a7384")
 const CABLE := Color("c8d2de")
 
@@ -205,6 +210,14 @@ func play(id: String, from: Vector2, to: Vector2, color: Color, seconds: float) 
 ## Carga de la materia oscura en la boca del arma de pecho: particulas que
 ## llegan (derechas, en espiral o en rayas segun `style`) y una esfera negra
 ## que crece. Vuelve cuando esta cargada.
+## Vapor al enfriar (OBS-052, GDD 12.2): bocanadas blancas que suben.
+func steam(at: Vector2, seconds: float) -> void:
+	for j in 5:
+		var side := Vector2((_noise(j, 11.0) - 0.5) * 60.0, -24.0 * _noise(j, 12.0))
+		var puff := {"at": at + side, "r0": 10.0, "r1": 36.0, "rise": 110.0}
+		_add(_effect("steam", _time + 0.12 * seconds * j, seconds * 1.8, STEAM, 1.0, puff))
+
+
 func charge(at: Vector2, color: Color, seconds: float, style: String) -> void:
 	var kind := style if style in CHARGE_STYLES else "canon"
 	_add(_effect("charge", _time, seconds, color, 1.0, {"at": at, "style": kind}))
@@ -409,10 +422,29 @@ func _draw() -> void:
 				var radius := lerpf(effect["r0"], effect["r1"], t)
 				draw_circle(effect["at"] + rise, radius, _alpha(SMOKE, 0.32 * (1.0 - t)))
 			"spark":
-				var eased := 1.0 - (1.0 - t) * (1.0 - t)
-				var head: Vector2 = effect["at"] + effect["dir"] * effect["reach"] * eased
-				var tail: Vector2 = head - effect["dir"] * (8.0 + 12.0 * (1.0 - t))
-				draw_line(tail, head, _alpha(effect["color"], 1.0 - t), 3.0, true)
+				_draw_spark(effect, t)
+			"steam":
+				var lift := Vector2(0.0, -float(effect["rise"]) * t)
+				var puff_radius := lerpf(effect["r0"], effect["r1"], t)
+				draw_circle(
+					effect["at"] + lift, puff_radius, _alpha(effect["color"], 0.55 * (1.0 - t))
+				)
+
+
+## Chispa de anime (OBS-052): avanza a cuadros (24 por segundo, como un
+## dibujo animado y no como una particula), cae con la gravedad y lleva
+## contorno de tinta con el brillo dentro.
+func _draw_spark(e: Dictionary, t: float) -> void:
+	var frames := maxf(2.0, float(e["life"]) * SPARK_FPS)
+	var stepped := floorf(t * frames) / frames
+	var eased := 1.0 - (1.0 - stepped) * (1.0 - stepped)
+	var fall := Vector2(0.0, SPARK_GRAVITY * float(e["size"]) * stepped * stepped)
+	var head: Vector2 = e["at"] + e["dir"] * e["reach"] * eased + fall
+	var tail: Vector2 = head - e["dir"] * (10.0 + 16.0 * (1.0 - stepped))
+	var fade := 1.0 - stepped
+	draw_line(tail, head, _alpha(INK, 0.8 * fade), 5.5, true)
+	draw_line(tail, head, _alpha(e["color"], fade), 3.0, true)
+	draw_line(tail.lerp(head, 0.5), head, _alpha(CORE, fade), 1.5, true)
 
 
 func _draw_charge(e: Dictionary, t: float) -> void:

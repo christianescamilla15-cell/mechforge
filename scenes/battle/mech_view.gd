@@ -333,10 +333,9 @@ func is_melee(slot: String) -> bool:
 
 
 ## Destello y sacudida al recibir un golpe.
-func hit(seconds: float) -> Tween:
-	var tween := create_tween()
-	modulate = Color(2.2, 2.2, 2.2)
-	tween.tween_property(self, "modulate", Color.WHITE, seconds)
+func hit(seconds: float, color: Color = Color.WHITE) -> Tween:
+	# Destello blanco y luego del color del golpe (OBS-052, HitJuice).
+	var tween := HitJuice.flash(self, color, seconds)
 	var shake := create_tween()
 	for offset: float in [-7.0, 6.0, -4.0, 2.0, 0.0]:
 		shake.tween_property(self, "position", _base_position + Vector2(offset, 0.0), seconds / 5.0)
