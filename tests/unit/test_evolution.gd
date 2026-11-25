@@ -82,6 +82,15 @@ func test_evolucionar_sustituye_el_arma_y_se_lleva_lo_suyo() -> void:
 	assert_eq(profile.gold, gold - _workshop.transform_cost(T.EPIC))
 
 
+## Los aspectos (OBS-051) van con el arma a la que evoluciona.
+func test_evolucionar_se_lleva_los_aspectos() -> void:
+	var profile := _profile()
+	profile.aspects["medio_canon_cin"] = {"potencia": 4, "filo": 2}
+	assert_eq(profile.evolve(_workshop, _rules, _catalog, "medio_canon_cin", T.LEGENDARY), "")
+	assert_false(profile.aspects.has("medio_canon_cin"))
+	assert_eq(profile.aspects["medio_blaster_cin"], {"potencia": 4, "filo": 2})
+
+
 func test_no_evoluciona_antes_de_tiempo() -> void:
 	var profile := _profile()
 	profile.parts["medio_canon_cin"] = {"tier": T.EPIC, "level": 10}

@@ -178,8 +178,14 @@ static func problems() -> Array[String]:
 
 ## Dispara `id` de `from` a `to` con el color de su municion. Vuelve cuando
 ## llega el ultimo impacto; los efectos siguen solos hasta apagarse.
-func play(id: String, from: Vector2, to: Vector2, color: Color, seconds: float) -> void:
+## `power`: cuanto crecen el proyectil, el fogonazo y el impacto (la potencia
+## de disparo de los aspectos, OBS-051; 1 = como siempre).
+func play(
+	id: String, from: Vector2, to: Vector2, color: Color, seconds: float, power: float = 1.0
+) -> void:
 	var s := shot(id)
+	if power != 1.0:
+		s["size"] = float(s["size"]) * power
 	_core = DARK_CORE if s["core"] == "dark" else CORE
 	var k := clampf(seconds / REFERENCE_STEP, 0.3, 2.5)
 	var count: int = s["count"]

@@ -34,6 +34,9 @@ var shop_levels: Dictionary[String, int] = {}
 ## Las que no estan van en clase Basica nivel 0. Dos piezas iguales del mech
 ## suben juntas.
 var parts: Dictionary[String, Dictionary] = {}
+## Aspectos de cada pieza (PieceAspects, OBS-051): clave de progreso de la
+## pieza -> {aspecto: nivel}.
+var aspects: Dictionary[String, Dictionary] = {}
 ## Prototipos del especialista (GDD 8.6), por la clave de progreso de la
 ## pieza: {id del prototipo: rango}. Van con la pieza; se combinan.
 var prototypes: Dictionary = {}
@@ -222,6 +225,7 @@ func end_run() -> void:
 	skills.clear()
 	shop_levels.clear()
 	parts.clear()
+	aspects.clear()
 	unique_cores = 0
 	skill_bonus = 0
 	arena_pot = 0
@@ -404,6 +408,13 @@ func evolve(
 		fresh = had
 	parts.erase(id)
 	parts[next.id] = fresh
+	# Sus aspectos van con ella a la pieza nueva (lo mas alto de cada uno).
+	if aspects.has(id):
+		var into: Dictionary = aspects.get(next.id, {}).duplicate()
+		for aspect: String in aspects[id]:
+			into[aspect] = maxi(int(into.get(aspect, 0)), int(aspects[id][aspect]))
+		aspects.erase(id)
+		aspects[next.id] = into
 	if prototypes.has(id):
 		var moved: Dictionary = prototypes[id]
 		var into: Dictionary = prototypes.get(next.id, {})
@@ -479,6 +490,7 @@ func to_dict() -> Dictionary:
 		"skills": skills.duplicate(),
 		"shop_levels": shop_levels.duplicate(),
 		"parts": parts.duplicate(true),
+		"aspects": aspects.duplicate(true),
 		"prototypes": prototypes.duplicate(true),
 		"unique_cores": unique_cores,
 		"skill_bonus": skill_bonus,
@@ -573,6 +585,19 @@ static func from_dict(data: Dictionary) -> PlayerProfile:
 			if raw is Dictionary:
 				var tier := clampi(int(raw.get("tier", 0)), 0, ItemDef.Tier.DIVINE)
 				profile.parts[id] = {"tier": tier, "level": maxi(0, int(raw.get("level", 0)))}
+	var saved_aspects: Variant = data.get("aspects", {})
+	if saved_aspects is Dictionary:
+		for id: String in saved_aspects:
+			var raw: Variant = saved_aspects[id]
+			if not raw is Dictionary:
+				continue
+			var levels := {}
+			for aspect: Variant in raw:
+				var level := int(raw[aspect])
+				if level > 0:
+					levels[str(aspect)] = level
+			if not levels.is_empty():
+				profile.aspects[id] = levels
 	var saved_protos: Variant = data.get("prototypes", {})
 	if saved_protos is Dictionary:
 		for key: String in saved_protos:

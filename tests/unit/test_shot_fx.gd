@@ -88,3 +88,25 @@ func test_cada_disparo_lanza_sus_efectos_y_termina() -> void:
 	assert_eq(count, 14, "la rotativa suelta 14 balas")
 	await fx.play("obus", Vector2.ZERO, Vector2(1800.0, 0.0), Color.WHITE, 0.01)
 	assert_true(true, "el ultimo disparo termino")
+
+
+## La potencia de disparo de los aspectos (OBS-051) agranda el disparo.
+func test_la_potencia_agranda_el_disparo() -> void:
+	var plain := ShotFx.new()
+	add_child_autofree(plain)
+	plain.play("obus", Vector2.ZERO, Vector2(700.0, 0.0), Color.WHITE, 0.01)
+	var strong := ShotFx.new()
+	add_child_autofree(strong)
+	strong.play("obus", Vector2.ZERO, Vector2(700.0, 0.0), Color.WHITE, 0.01, 1.5)
+	var biggest := func(fx: ShotFx) -> float:
+		var top := 0.0
+		for effect: Dictionary in fx._effects:
+			if effect.get("kind", "") == "projectile":
+				top = maxf(top, float(effect.get("size", 0.0)))
+		return top
+	assert_gt(biggest.call(plain), 0.0)
+	assert_almost_eq(biggest.call(strong), biggest.call(plain) * 1.5, 0.001)
+	var gun := Fx.gun()
+	assert_eq(AspectLook.shot_scale(gun), 1.0)
+	gun.aspects = {"potencia": 10}
+	assert_almost_eq(AspectLook.shot_scale(gun), 1.5, 0.0001)

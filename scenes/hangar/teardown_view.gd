@@ -413,7 +413,9 @@ func _draw_piece(slot: String) -> void:
 		var far := Color(0.62, 0.66, 0.72, 1.0)
 		var back := offset + MechView.FAR_LEG_OFFSET
 		_sprites.draw_piece(self, art["set"], art["kind"], element, far, back)
-	_sprites.draw_piece(self, art["set"], art["kind"], element, Color.WHITE, offset)
+	# Con las capas de sus aspectos (OBS-051): cambia en el momento al subirlos.
+	var item := _build.item_at(slot) if _build != null else null
+	_sprites.draw_dressed(self, art["set"], art["kind"], element, Color.WHITE, offset, item, _time)
 	draw_set_transform(Vector2.ZERO)
 
 

@@ -143,6 +143,10 @@ const BOOSTS: Array[String] = ["arms", "shoulder", "special", "all"]
 ## {efecto: valor}. Vacios en las piezas del catalogo y en las de los rivales.
 @export var protos: Dictionary = {}
 @export var proto_effects: Dictionary = {}
+## Niveles de sus aspectos (PieceAspects, OBS-051) en las piezas del
+## jugador: {aspecto: nivel}. Vacio en las demas. Solo para dibujarlos: los
+## numeros ya van cambiados.
+@export var aspects: Dictionary = {}
 @export var range_min: int = 0
 @export var range_max: int = 0
 

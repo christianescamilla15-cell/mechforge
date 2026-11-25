@@ -238,6 +238,8 @@ func _play_event(entry: Dictionary) -> void:
 			var shot_color := _shot_color(entry, actor)
 			var def := _event_def(entry, actor)
 			var fx := def.fx if def != null else ""
+			# La potencia de disparo de sus aspectos agranda el disparo (OBS-051).
+			_arena.shot_power = AspectLook.shot_scale(def)
 			if event == "drone":
 				var drone_slot: String = entry.get("slot", "drone")
 				await _arena.fire_between(actor, target, fx, shot_color, step, true, drone_slot)

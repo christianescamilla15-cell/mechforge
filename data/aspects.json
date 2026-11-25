@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "comment": "Aspectos de cada pieza (OBS-051, del usuario: 'personalizacion de cada uno... si eliges reforzarla mas eso supondria una modificacion directa y en tiempo real, lo mismo con las espadas para mayor filo'; 'al menos 5 aspectos del arma o armadura'; 'hasta 10 niveles... cuesta cada vez mas'; 'tambien en las armas hay que permitir que se mejore la potencia de disparo'). Cada pieza del jugador sube cada uno de sus aspectos por separado, con celdas: el primer nivel cuesta first_cost y cada uno siguiente growth veces el anterior. for: 'weapon' (armas de brazo, hombro y pecho) o 'armor' (torso). needs: la estadistica que tiene que tener la pieza para que el aspecto le sirva ('spread': dano minimo por debajo del maximo). scale: lo que multiplica cada nivel (0.04 = +4 % por nivel; negativo, -3 %). add: lo que suma cada nivel. spread: parte de la distancia del dano minimo al maximo que se cierra por nivel. melee_name: el nombre en las armas cuerpo a cuerpo.",
+  "max_level": 10,
+  "first_cost": 5000,
+  "growth": 1.8,
+  "aspects": [
+    {"id": "potencia", "name": "Potencia de disparo", "for": "weapon", "needs": "dmg_max", "scale": {"dmg_min": 0.04, "dmg_max": 0.04}},
+    {"id": "precision", "name": "Precisión", "for": "weapon", "needs": "spread", "spread": 0.07},
+    {"id": "filo", "name": "Calibre", "melee_name": "Filo", "for": "weapon", "needs": "crit", "add": {"crit": 1}},
+    {"id": "material", "name": "Material", "for": "weapon", "needs": "weight", "scale": {"weight": -0.03}},
+    {"id": "refrigeracion", "name": "Refrigeración", "for": "weapon", "needs": "heat_cost", "scale": {"heat_cost": -0.05}},
+    {"id": "eficiencia", "name": "Eficiencia", "for": "weapon", "needs": "energy_cost", "scale": {"energy_cost": -0.05}},
+    {"id": "grosor", "name": "Grosor", "for": "armor", "needs": "health", "scale": {"health": 0.03}},
+    {"id": "aleacion", "name": "Aleación", "for": "armor", "needs": "health", "scale": {"res_physical": 0.05, "res_heat": 0.05, "res_energy": 0.05}},
+    {"id": "ligereza", "name": "Ligereza", "for": "armor", "needs": "weight", "scale": {"weight": -0.03}},
+    {"id": "disipacion", "name": "Disipación", "for": "armor", "needs": "heat_cap", "scale": {"heat_cap": 0.04, "cooling": 0.04}},
+    {"id": "reactor", "name": "Reactor", "for": "armor", "needs": "energy_cap", "scale": {"energy_cap": 0.04, "energy_regen": 0.04}}
+  ]
+}

@@ -328,6 +328,32 @@ func draw_piece(
 	canvas.draw_texture_rect(texture, Rect2(top_left, texture.get_size() * UNIT_SCALE), false, tint)
 
 
+## Dibuja una pieza con las capas de sus aspectos (OBS-051, AspectLook);
+## sin aspectos (o sin pieza), como draw_piece. `time`: el reloj de la vista.
+func draw_dressed(
+	canvas: CanvasItem,
+	set_name: String,
+	kind: String,
+	element: int,
+	tint: Color,
+	offset: Vector2,
+	item: ItemDef,
+	time: float
+) -> void:
+	var levels: Dictionary = item.aspects if item != null else {}
+	if levels.is_empty():
+		draw_piece(canvas, set_name, kind, element, tint, offset)
+		return
+	var anchors := _load_anchors(set_name)
+	var texture := _texture(set_name, kind, element)
+	if not anchors.get(kind) is Dictionary or texture == null:
+		return
+	var anchor := Vector2(anchors[kind]["hip"][0], anchors[kind]["hip"][1])
+	var box := Rect2(hip_point() - anchor * UNIT_SCALE + offset, texture.get_size() * UNIT_SCALE)
+	var tip := piece_tip(set_name, kind) + offset
+	AspectLook.draw(canvas, texture, box, tip, element, tint, levels, time)
+
+
 ## Esqueleto de las piernas en el color de su elemento (null sin arte).
 func leg_rig(element: int) -> LegRig:
 	var texture := legs_texture(element)

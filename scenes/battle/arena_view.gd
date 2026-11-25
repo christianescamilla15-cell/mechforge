@@ -63,6 +63,8 @@ var mechs: Array[MechView] = []
 ## Mientras esta puesta, la camara se aleja hasta que cabe el campo entero y
 ## se puede pulsar cualquier casilla.
 var overview := false
+## Cuanto crece el siguiente disparo (la potencia de los aspectos, OBS-051).
+var shot_power := 1.0
 ## Casillas resaltadas: {indice: color}.
 var _highlights: Dictionary = {}
 var _hovered: int = -1
@@ -224,7 +226,7 @@ func fire_between(
 		ShotFx.kick(shooter, fx, seconds * 0.6, slot, seconds)
 	var from := shooter.muzzle_point(from_drone, slot)
 	var to := mechs[target].hit_point()
-	await _shots.play(fx, from, to, color, seconds)
+	await _shots.play(fx, from, to, color, seconds, shot_power)
 	if slot == "chest" and not from_drone:
 		# Y se guarda: la proxima vez vuelve a desplegarse.
 		shooter.stow(seconds * 1.1)
@@ -292,7 +294,7 @@ func strike(
 	if fall > 0.0:
 		await get_tree().create_timer(fall).timeout
 	var from := mechs[actor].hit_point()
-	_shots.play(fx, from, mechs[target].hit_point(), color, seconds)
+	_shots.play(fx, from, mechs[target].hit_point(), color, seconds, shot_power)
 
 
 ## Pausa al golpear (OBS-052): quien ataca y los disparos se congelan unos

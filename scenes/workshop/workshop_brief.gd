@@ -55,6 +55,8 @@ var progression: Progression
 var styles: StyleLibrary
 ## Los prototipos del especialista (GDD 8.6); sin ella, las piezas van sin.
 var prototypes: PrototypeLibrary
+## Los aspectos de cada pieza (OBS-051); sin ellos, las piezas van sin.
+var aspects: PieceAspects
 
 
 static func _group_order() -> Array[String]:
@@ -105,6 +107,8 @@ func build_of(profile: PlayerProfile, spec: Dictionary, parts: Dictionary = {}) 
 	build.upgrades = shop.upgrades_for(profile.shop_levels)
 	if prototypes != null:
 		prototypes.apply(build, profile)
+	if aspects != null:
+		aspects.apply_build(build, profile.aspects)
 	return build
 
 

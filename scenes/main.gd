@@ -27,6 +27,7 @@ var _garage := Garage.load_file("res://data/part_shop.json")
 var _progression := Progression.load_file("res://data/progression.json")
 var _skills := SkillTree.load_file("res://data/skills.json")
 var _tree := UpgradeTree.load_file("res://data/upgrade_tree.json")
+var _aspects := PieceAspects.load_file("res://data/aspects.json")
 ## Celdas, mejoras, avance e historial del jugador.
 var _profile := PlayerProfile.new()
 ## Las pruebas automaticas no tocan el guardado del jugador.
@@ -108,6 +109,7 @@ func _ready() -> void:
 	_bench.progression = _progression
 	_bench.styles = _styles
 	_bench.prototypes = _prototypes
+	_bench.aspects = _aspects
 	_arena_seed = randi()
 	if _args.has("showcase"):
 		# Muestra de movimientos para revisar animaciones (tools/clip.ps1 -Showcase).
@@ -225,6 +227,9 @@ func _ready() -> void:
 			return
 		elif _args["menu-shot"] == "arbol":
 			_live_test().tree_test()
+			return
+		elif _args["menu-shot"] == "aspectos":
+			_live_test().aspects_test()
 			return
 		elif _args["menu-shot"] == "garaje":
 			_live_test().garage_test()
@@ -696,6 +701,7 @@ func _start_battle(spec: Dictionary) -> void:
 	if rewarded:
 		player_build.upgrades = _shop.upgrades_for(_profile.shop_levels)
 		_prototypes.apply(player_build, _profile)
+		_aspects.apply_build(player_build, _profile.aspects)
 		_apply_tree(player_build, boss or int(spec.get("streak", -1)) >= TITAN_STEP)
 	var enemy_build := _library.make(
 		spec["enemy"],

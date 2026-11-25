@@ -86,6 +86,16 @@ func start_autoplay() -> void:
 	# combates con recompensa (--fight).
 	if main._args.has("tree"):
 		main._profile.tree.assign(str(main._args["tree"]).split(","))
+	# --aspects=<nivel>: todos los aspectos de sus armas y su torso a ese
+	# nivel (OBS-051); cuentan en los combates con recompensa (--fight).
+	if main._args.has("aspects"):
+		for id in BuildLibrary.items_of(spec["items"]):
+			var def := main._catalog.get_item(id)
+			var levels := {}
+			for aspect in main._aspects.ids_for(def):
+				levels[aspect] = int(main._args["aspects"])
+			if not levels.is_empty():
+				main._profile.aspects[def.progress_id()] = levels
 	main._start_battle(spec)
 	var driver := BattleAI.new(BattleAI.Difficulty.NORMAL, int(spec["seed"]) + 7)
 	if main._args.has("ui"):

@@ -520,3 +520,50 @@ func tree_test() -> void:
 	await get_tree().create_timer(0.6).timeout
 	await shot("armeria_vuelta")
 	get_tree().quit(0)
+
+
+## Prueba en vivo de los aspectos (OBS-051, `--menu-shot=aspectos`): en el
+## robot desarmado se elige un arma, se abre la etiqueta de sus aspectos, se
+## sube uno con el raton y luego se ven el arma y el torso con todos sus
+## aspectos a 0, 3, 6 y 10, para comprobar que cada tramo se nota. Sin guardar.
+func aspects_test() -> void:
+	var profile := main._profile
+	profile.gold = maxi(profile.gold, 50_000_000)
+	main._show_menu()
+	await get_tree().create_timer(0.8).timeout
+	var workshop := main.open_workshop()
+	var stage := workshop._stage
+	await get_tree().create_timer(0.5).timeout
+	var slot := str(main._args.get("slot", "side0"))
+	var view := stage.teardown
+	await _click(view.global_position + view.rect_of("slot:" + slot).get_center())
+	await get_tree().create_timer(0.6).timeout
+	await shot("pieza")
+	var tag := stage.tag
+	if not tag._keys.has("aspects"):
+		print("ASPECTOS sin tecla en %s" % slot)
+		get_tree().quit(1)
+		return
+	await _click(tag.global_position + tag._keys["aspects"].get_center())
+	await get_tree().create_timer(0.5).timeout
+	await shot("aspectos")
+	var weapon := workshop._selected_item()
+	var first: String = main._aspects.ids_for(weapon)[0]
+	var gold := profile.gold
+	await _click(tag.global_position + tag._keys["aspect:" + first].get_center())
+	await get_tree().create_timer(0.5).timeout
+	await shot("aspecto_subido")
+	print("ASPECTOS %s %s celdas=%d" % [weapon.id, profile.aspects, gold - profile.gold])
+	var torso := main._bench.resolved(profile, str(profile.build.get("torso", "")))
+	for level: int in [0, 3, 6, 10]:
+		for def: ItemDef in [weapon, torso]:
+			if def == null:
+				continue
+			var levels := {}
+			for id in main._aspects.ids_for(def):
+				levels[id] = level
+			profile.aspects[def.progress_id()] = levels
+		workshop.refresh()
+		await get_tree().create_timer(0.9).timeout
+		await shot("nivel_%02d" % level)
+	get_tree().quit(0)

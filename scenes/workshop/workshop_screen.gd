@@ -49,6 +49,8 @@ var _offering := false
 ## El banco del especialista esta abierto (GDD 8.6), con esa pieza elegida
 ## y lo que acaba de decir.
 var _special := false
+## La etiqueta de la pieza elegida ensena sus aspectos (OBS-051).
+var _aspecting := false
 var _proto_slot := "side0"
 var _said := ""
 ## Canal del modo mision ("campaign", "arena" o "free"); "" = apagado.
@@ -221,6 +223,7 @@ func _on_teardown_picked(key: String) -> void:
 		if key == view.selected:
 			return
 	view.selected = "" if view.selected == key else key
+	_aspecting = false
 	if view.selected.begins_with("slot:"):
 		_selected = view.selected.trim_prefix("slot:")
 	Sfx.play("ui_tic")
@@ -239,7 +242,16 @@ func _show_tag() -> void:
 	var profile := main._profile
 	var state := {}
 	if key.begins_with("slot:"):
-		state = brief.piece_tag(profile, key.trim_prefix("slot:"))
+		var slot := key.trim_prefix("slot:")
+		state = brief.piece_tag(profile, slot)
+		# Sus aspectos (OBS-051): la tecla que los abre, o sus filas.
+		var item := brief.resolved(profile, Garage.get_slot(profile.build, slot))
+		var label := AspectBrief.key_label(main._aspects, profile, item)
+		if label != "" and brief.lock_reason(profile, slot) == "":
+			if _aspecting:
+				state = AspectBrief.state(main._aspects, profile, item)
+			else:
+				state["aspects"] = label
 	elif key.begins_with("system:"):
 		state = brief.system_tag(profile, key.trim_prefix("system:"))
 		_add_tree_key(state, key.trim_prefix("system:"))
@@ -273,6 +285,12 @@ func _on_tag_pressed(key: String) -> void:
 	elif key == "tree":
 		_stage.tag.hide_tag()
 		open_console("arbol")
+	elif key == "aspects" or key == "aspects_back":
+		_aspecting = key == "aspects"
+		Sfx.play("ui_clic")
+		_show_tag()
+	elif key.begins_with("aspect:"):
+		raise_aspect(key.trim_prefix("aspect:"))
 	elif key.begins_with("learn:"):
 		learn(key.trim_prefix("learn:"))
 
@@ -707,6 +725,19 @@ func evolve_selected() -> void:
 	var now := _selected_item()
 	if now != null:
 		_flash(_selected, PartIcon.TIER_COLORS[now.tier])
+
+
+## Sube un nivel un aspecto de la pieza elegida (OBS-051): cobra, guarda y
+## la pieza cambia en el momento en el robot desarmado.
+func raise_aspect(id: String) -> void:
+	var item := _selected_item()
+	if item == null or main._aspects.raise(main._profile, item, id) != "":
+		Sfx.play("ui_cerrar")
+		return
+	main._save()
+	Sfx.play("ui_subir_nivel")
+	refresh()
+	_flash(_selected, AspectLook.color_of(id))
 
 
 func level_up_selected() -> void:

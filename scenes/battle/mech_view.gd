@@ -492,12 +492,22 @@ func _draw_sprites(dim: float) -> void:
 	var torso := _sprites.piece_rect(_sprites.torso_set, "torso", body)
 	if _layer("body"):
 		var torso_tint := _ghost_tint(tint, "torso")
-		_sprites.draw_piece(
-			self, _sprites.torso_set, "torso", build.paint_of("torso"), torso_tint, body
+		_sprites.draw_dressed(
+			self,
+			_sprites.torso_set,
+			"torso",
+			build.paint_of("torso"),
+			torso_tint,
+			body,
+			build.torso,
+			_time
 		)
 		MechWear.draw_marks(self, torso, health_ratio, _wear_salt())
 	if has_cannon() and _deploy >= 1.0 and _layer("chest"):
-		_sprites.draw_piece(self, _chest_set(), "chest", _chest_paint(), tint, cannon_at)
+		var chest := build.chest
+		_sprites.draw_dressed(
+			self, _chest_set(), "chest", _chest_paint(), tint, cannon_at, chest, _time
+		)
 	if _layer("near") or _layer("near_top"):
 		_draw_weapons(tint, body, false)
 	if _layer("body"):
@@ -712,12 +722,22 @@ func _draw_weapons(tint: Color, body: Vector2, far: bool) -> void:
 			# El tajo: la hoja gira sobre el eje de su hombro.
 			var pivot := at + _sprites.hip_point() + WEAPON_SHOULDER
 			draw_set_transform(pivot, _swing, Vector2.ONE)
-			_sprites.draw_piece(
-				self, MechSprites.WEAPON_SET, mounted["kind"], element, shade, at - pivot
+			_sprites.draw_dressed(
+				self,
+				MechSprites.WEAPON_SET,
+				mounted["kind"],
+				element,
+				shade,
+				at - pivot,
+				mounted["item"],
+				_time
 			)
 			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 			continue
-		_sprites.draw_piece(self, MechSprites.WEAPON_SET, mounted["kind"], element, shade, at)
+		var looks: ItemDef = mounted["item"]
+		_sprites.draw_dressed(
+			self, MechSprites.WEAPON_SET, mounted["kind"], element, shade, at, looks, _time
+		)
 		if slot == disabled_slot:
 			var joint := _sprites.piece_tip(MechSprites.WEAPON_SET, mounted["kind"]) + at
 			MechWear.draw_broken_weapon(self, joint.lerp(_sprites.hip_point() + at, 0.5), _time)
