@@ -31,10 +31,34 @@ func _base() -> int:
 
 func test_la_racha_esta_en_los_datos() -> void:
 	assert_eq(_campaign.errors, [] as Array[String])
-	assert_eq(_campaign.streak_fights(), 5, "hasta el quinto combate")
+	# OBS-051: "lo podemos expandir hasta 20 veces".
+	assert_eq(_campaign.streak_fights(), 20, "hasta el combate 20")
 	for step in 5:
 		assert_eq(_campaign.streak_prize(step), pow(2.0, step), "el premio se dobla")
+	# Desde el sexto crece mas despacio (su eleccion: x 1.25 por combate).
+	for step in range(5, 20):
+		var ratio := _campaign.streak_prize(step) / _campaign.streak_prize(step - 1)
+		assert_almost_eq(ratio, 1.25, 0.002, "paso %d: x 1.25" % step)
 	assert_eq(_base(), 960, "los 960 de su ejemplo")
+
+
+## OBS-051: "el bonus tambien sera de experiencia y demas para gastar en
+## puntos de mejora". Cada combate da mas experiencia que el anterior y pone
+## puntos en el bote; los hitos (10, 15 y 20) dan mas.
+func test_la_racha_da_experiencia_y_puntos_que_crecen() -> void:
+	var total := 0
+	for step in 20:
+		if step > 0:
+			assert_gt(_campaign.streak_xp(step), _campaign.streak_xp(step - 1), "paso %d" % step)
+		assert_gt(_campaign.streak_points(step), 0, "paso %d: da puntos" % step)
+		total += _campaign.streak_points(step)
+	for milestone: int in [9, 14, 19]:
+		assert_gt(
+			_campaign.streak_points(milestone),
+			_campaign.streak_points(milestone - 1),
+			"el combate %d es un hito" % (milestone + 1)
+		)
+	assert_eq(total, 66, "una racha entera")
 
 
 func test_ganar_pone_el_premio_en_el_bote_sin_cobrarlo() -> void:
@@ -67,13 +91,44 @@ func test_perder_en_la_racha_pierde_el_bote_entero() -> void:
 func test_la_racha_completa_se_cobra_sola() -> void:
 	var profile := _profile()
 	var out := {}
-	for step in 5:
+	var expected := 0
+	for step in 20:
+		expected += roundi(960 * _campaign.streak_prize(step))
 		out = _campaign.finish_fight(profile, _shop, "arena", true)
-	assert_false(out["more"], "no hay sexto combate")
-	assert_eq(out["gold"], 960 * 31, "960 + 1920 + 3840 + 7680 + 15360")
-	assert_eq(profile.gold, 1000 + 960 * 31)
+		if step < 19:
+			assert_true(out["more"], "tras el %d se puede seguir" % (step + 1))
+	assert_false(out["more"], "no hay combate 21")
+	assert_eq(out["gold"], expected, "todo el bote de celdas")
+	assert_eq(profile.gold, 1000 + expected)
+	assert_eq(out["points_cashed"], 66, "y sus puntos")
+	assert_eq(profile.upgrade_points, 66)
 	assert_eq(profile.arena_pot, 0)
+	assert_eq(profile.arena_points, 0)
 	assert_eq(profile.arena_streak, 0)
+
+
+## Su eleccion: al perder se pierden las celdas y los puntos del bote; la
+## experiencia se gana siempre.
+func test_los_puntos_van_al_bote_y_se_pierden_con_el() -> void:
+	var profile := _profile()
+	var progression := Progression.load_file("res://data/progression.json")
+	var won := _campaign.finish_fight(profile, _shop, "arena", true, progression)
+	assert_eq(won["points"], _campaign.streak_points(0))
+	assert_eq(profile.arena_points, _campaign.streak_points(0), "al bote, sin cobrar")
+	assert_eq(profile.upgrade_points, 0)
+	var second := _campaign.finish_fight(profile, _shop, "arena", true, progression)
+	var base_xp := progression.xp_for("win")
+	assert_eq(second["xp"], roundi(base_xp * _campaign.streak_xp(1)), "mas experiencia")
+	var xp_before := profile.xp
+	var lost := _campaign.finish_fight(profile, _shop, "arena", false, progression)
+	assert_eq(lost["points_lost"], _campaign.streak_points(0) + _campaign.streak_points(1))
+	assert_eq(profile.arena_points, 0)
+	assert_eq(profile.upgrade_points, 0, "no se cobra nada")
+	assert_eq(profile.xp, xp_before + progression.xp_for("loss"), "la experiencia se queda")
+	# Cobrar a mitad de racha pasa los puntos a los de gastar.
+	_campaign.finish_fight(profile, _shop, "arena", true)
+	_campaign.cash_arena(profile)
+	assert_eq(profile.upgrade_points, _campaign.streak_points(0))
 
 
 func test_cobrar_y_volver_a_abrir_el_juego() -> void:
@@ -91,10 +146,13 @@ func test_cobrar_y_volver_a_abrir_el_juego() -> void:
 	_campaign.finish_fight(profile, _shop, "arena", true)
 	_campaign.begin_arena(profile)
 	assert_true(profile.arena_live, "con bote en juego, el combate queda marcado")
+	var points := profile.upgrade_points
 	resumed = _campaign.resume_arena(profile)
 	assert_eq(resumed["lost"], 960)
 	assert_eq(profile.gold, 2920, "no se cobra")
 	assert_eq(profile.arena_pot, 0)
+	assert_eq(profile.arena_points, 0, "los puntos tambien se pierden")
+	assert_eq(profile.upgrade_points, points)
 
 
 func test_el_primer_combate_no_marca_nada_que_perder() -> void:
@@ -123,8 +181,14 @@ func test_cada_rival_de_la_racha_sale_mas_fuerte() -> void:
 	var first_edge := float(same.get("edge", 0.0))
 	assert_eq(first_edge, 0.0, "el primero, sin plus")
 	var top := _campaign.arena_streak_fight(zone, _library, 4242, _rules, power, {}, 4)
-	assert_gt(float(top["edge"]), first_edge, "el ultimo, con plus")
+	assert_gt(float(top["edge"]), first_edge, "el quinto, con plus")
 	assert_gt(int(top["tier"]), _campaign.tier_of(zone), "pasa de la clase de la liga")
+	# OBS-051: "los enemigos deben ser realmente desafiantes": desde el sexto,
+	# la IA dificil, y el plus sigue creciendo hasta el 20.
+	var sixth := _campaign.arena_streak_fight(zone, _library, 4242, _rules, power, {}, 5)
+	assert_eq(sixth["difficulty"], "HARD")
+	var last := _campaign.arena_streak_fight(zone, _library, 4242, _rules, power, {}, 19)
+	assert_gt(float(last["edge"]), float(sixth["edge"]))
 
 
 func test_la_racha_se_guarda_con_la_partida() -> void:
@@ -132,12 +196,21 @@ func test_la_racha_se_guarda_con_la_partida() -> void:
 	profile.arena_pot = 2880
 	profile.arena_streak = 2
 	profile.arena_live = true
+	profile.arena_points = 2
+	profile.upgrade_points = 17
 	var copy := PlayerProfile.from_dict(profile.to_dict())
 	assert_eq(copy.arena_pot, 2880)
 	assert_eq(copy.arena_streak, 2)
 	assert_true(copy.arena_live)
+	assert_eq(copy.arena_points, 2)
+	assert_eq(copy.upgrade_points, 17)
 	var old := PlayerProfile.from_dict({})
 	assert_eq(old.arena_pot, 0, "una partida vieja no tiene bote")
+	assert_eq(old.upgrade_points, 0, "ni puntos de mejora")
+	# Perder la partida los pierde, como lo demas.
+	profile.end_run()
+	assert_eq(profile.upgrade_points, 0)
+	assert_eq(profile.arena_points, 0)
 
 
 ## Cuando el jugador ya esta en lo mas alto, mas clase no hace al rival mas

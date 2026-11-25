@@ -116,7 +116,18 @@ func _load_streak(raw: Variant) -> void:
 		if hard != "" and not hard in DIFFICULTIES:
 			errors.append("'arena_streak': dificultad '%s' desconocida" % hard)
 			return
-	arena_streak = {"fights": fights, "prize": prize, "steps": steps}
+	# La experiencia (cuanto multiplica la de ganar) y los puntos de mejora de
+	# cada combate (OBS-051); sin ellos, la de siempre y ninguno.
+	var xp: Variant = raw.get("xp", [])
+	var points: Variant = raw.get("points", [])
+	for list: Variant in [xp, points]:
+		if (
+			not list is Array
+			or ((list as Array).size() != fights and not (list as Array).is_empty())
+		):
+			errors.append("'arena_streak': 'xp' y 'points' llevan un valor por combate")
+			return
+	arena_streak = {"fights": fights, "prize": prize, "steps": steps, "xp": xp, "points": points}
 
 
 func zone_count() -> int:
@@ -308,6 +319,18 @@ func streak_prize(step: int) -> float:
 	return float(prize[clampi(step, 0, prize.size() - 1)])
 
 
+## Lo que multiplica la experiencia de ganar el combate `step` de la racha.
+func streak_xp(step: int) -> float:
+	var xp: Array = arena_streak.get("xp", [])
+	return 1.0 if xp.is_empty() else float(xp[clampi(step, 0, xp.size() - 1)])
+
+
+## Los puntos de mejora que pone en el bote ganar el combate `step`.
+func streak_points(step: int) -> int:
+	var points: Array = arena_streak.get("points", [])
+	return 0 if points.is_empty() else int(points[clampi(step, 0, points.size() - 1)])
+
+
 ## El rival del combate `step` de una racha: el de arena_fight con mas poder
 ## (y, si hace falta, una clase mas), entrenado y con otra dificultad. El
 ## primero es el de siempre.
@@ -345,6 +368,8 @@ func cash_arena(profile: PlayerProfile) -> int:
 	var amount := profile.arena_pot
 	profile.gold += amount
 	profile.arena_pot = 0
+	profile.upgrade_points += profile.arena_points
+	profile.arena_points = 0
 	profile.arena_streak = 0
 	profile.arena_live = false
 	return amount
@@ -356,10 +381,12 @@ func resume_arena(profile: PlayerProfile) -> Dictionary:
 	if profile.arena_live:
 		var lost := profile.arena_pot
 		profile.arena_pot = 0
+		profile.arena_points = 0
 		profile.arena_streak = 0
 		profile.arena_live = false
 		return {"cashed": 0, "lost": lost}
-	return {"cashed": cash_arena(profile) if profile.arena_pot > 0 else 0, "lost": 0}
+	var pending := profile.arena_pot > 0 or profile.arena_points > 0
+	return {"cashed": cash_arena(profile) if pending else 0, "lost": 0}
 
 
 ## El equipo con el que sale a pelear un mech, para medirle el rival de la
@@ -487,7 +514,8 @@ func finish_fight(
 ) -> Dictionary:
 	var out := _settle(profile, shop, mode, won)
 	# Experiencia: tambien en la arena y al perder (menos), nunca al perder
-	# la partida contra un jefe.
+	# la partida contra un jefe. En la racha de la arena, ganar da mas cuanto
+	# mas lejos va (OBS-051), y no se arriesga.
 	out["xp"] = 0
 	out["level_up"] = false
 	if progression != null and not out["game_over"]:
@@ -495,7 +523,8 @@ func finish_fight(
 		if won:
 			kind = "boss_win" if out["boss"] else "win"
 		var before := progression.level_for(profile.xp)
-		out["xp"] = progression.xp_for(kind)
+		var boost := streak_xp(int(out["step"])) if mode == "arena" and won else 1.0
+		out["xp"] = roundi(progression.xp_for(kind) * boost)
 		profile.xp += out["xp"]
 		out["level_up"] = progression.level_for(profile.xp) > before
 	return out
@@ -513,21 +542,31 @@ func _settle_arena(
 	profile.arena_live = false
 	out["prize"] = 0
 	out["lost"] = 0
+	out["points"] = 0
+	out["points_lost"] = 0
+	out["step"] = step
 	if won:
 		profile.wins += 1
 		var prize := roundi(shop.reward("arena_win") * mult * streak_prize(step))
 		profile.arena_pot += prize
+		profile.arena_points += streak_points(step)
 		profile.arena_streak = step + 1
 		out["prize"] = prize
+		out["points"] = streak_points(step)
 	else:
 		out["lost"] = profile.arena_pot
+		out["points_lost"] = profile.arena_points
 		profile.arena_pot = 0
+		profile.arena_points = 0
 		profile.arena_streak = 0
 		out["gold"] = profile.earn(shop, "arena_loss", mult)
 	out["pot"] = profile.arena_pot
+	out["points_pot"] = profile.arena_points
 	out["streak"] = profile.arena_streak
 	out["more"] = won and profile.arena_streak < streak_fights()
+	out["points_cashed"] = 0
 	if won and not out["more"]:
+		out["points_cashed"] = profile.arena_points
 		out["gold"] = cash_arena(profile)
 	return out
 

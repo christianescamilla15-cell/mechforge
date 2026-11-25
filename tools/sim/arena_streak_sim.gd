@@ -11,6 +11,8 @@ extends SceneTree
 ##     --battles=6        combates contra cada uno
 ##     --player=HARD      dificultad de la IA que hace de jugador
 ##     --only=N           solo el combate N de la racha (0 es el primero)
+##     --campaign=<ruta>  otro campaign.json (para probar una rampa sin tocar
+##                        los datos del juego)
 
 const DIFFICULTY := {
 	"EASY": BattleAI.Difficulty.EASY,
@@ -37,7 +39,9 @@ func _initialize() -> void:
 	var catalog := Catalog.load_file("res://data/catalog.json")
 	var library := BuildLibrary.load_file("res://data/builds.json")
 	var chassis := ChassisLibrary.load_file("res://data/chassis.json")
-	var campaign := Campaign.load_file("res://data/campaign.json", library)
+	var campaign := Campaign.load_file(
+		str(args.get("campaign", "res://data/campaign.json")), library
+	)
 	var skills := SkillTree.load_file("res://data/skills.json")
 	var shop := ArenaShop.load_file("res://data/arena_shop.json")
 	var tempers := TemperLibrary.load_file("res://data/tempers.json")

@@ -49,6 +49,11 @@ var skill_bonus: int = 0
 var arena_pot: int = 0
 var arena_streak: int = 0
 var arena_live: bool = false
+## Puntos de mejora (OBS-051): se ganan en la racha de la arena y se gastan
+## en las ramas del arbol que salen de la armeria. `arena_points` es el bote
+## de puntos sin cobrar de la racha en marcha; se pierde con el de celdas.
+var upgrade_points: int = 0
+var arena_points: int = 0
 ## Piezas que tiene (ids del catalogo). Una pieza que se tiene se puede
 ## montar en tantos huecos como quiera; las copias suben juntas.
 var owned: Array[String] = []
@@ -220,6 +225,8 @@ func end_run() -> void:
 	arena_pot = 0
 	arena_streak = 0
 	arena_live = false
+	upgrade_points = 0
+	arena_points = 0
 	owned.clear()
 	mechs.clear()
 	active = 0
@@ -475,6 +482,8 @@ func to_dict() -> Dictionary:
 		"arena_pot": arena_pot,
 		"arena_streak": arena_streak,
 		"arena_live": arena_live,
+		"upgrade_points": upgrade_points,
+		"arena_points": arena_points,
 		"owned": owned.duplicate(),
 		"mechs": mechs.duplicate(true),
 		"active": active,
@@ -510,6 +519,8 @@ static func from_dict(data: Dictionary) -> PlayerProfile:
 	profile.arena_pot = maxi(0, int(data.get("arena_pot", 0)))
 	profile.arena_streak = maxi(0, int(data.get("arena_streak", 0)))
 	profile.arena_live = bool(data.get("arena_live", false))
+	profile.upgrade_points = maxi(0, int(data.get("upgrade_points", 0)))
+	profile.arena_points = maxi(0, int(data.get("arena_points", 0)))
 	for id: Variant in data.get("owned", []):
 		if not str(id) in profile.owned:
 			profile.owned.append(str(id))

@@ -2,17 +2,20 @@
 # en build\windows\MechForge.exe: un solo .exe con los datos dentro. Necesita
 # las plantillas de exportacion de Godot 4.7.2 en
 # %APPDATA%\Godot\export_templates\4.7.2.stable (ver docs/PLAN.md, F9).
-#   tools\export.ps1 [-Debug]
+#   tools\export.ps1 [-Debug] [-Name MechForgeNuevo.exe]
+# Con el juego abierto (OBS-001: no se cierra) se exporta con otro nombre.
 param(
     # Con la plantilla de depuracion (errores en consola) en vez de la final.
-    [switch]$Debug
+    [switch]$Debug,
+    # Nombre del ejecutable (con el juego abierto, MechForgeNuevo.exe).
+    [string]$Name = 'MechForge.exe'
 )
 $root = Split-Path -Parent $PSScriptRoot
 $out = Join-Path $root 'build\windows'
 New-Item -ItemType Directory -Force $out | Out-Null
 & "$PSScriptRoot\godot.ps1" --headless --path $root --import *> $null
 $mode = if ($Debug) { '--export-debug' } else { '--export-release' }
-& "$PSScriptRoot\godot.ps1" --headless --path $root $mode 'Windows Desktop' (Join-Path $out 'MechForge.exe') 2>&1 |
+& "$PSScriptRoot\godot.ps1" --headless --path $root $mode 'Windows Desktop' (Join-Path $out $Name) 2>&1 |
     Select-String -Pattern 'ERROR|WARNING|savepack|export' 
 $code = $LASTEXITCODE
 Get-ChildItem $out | Select-Object Name, Length | Format-Table -AutoSize | Out-String

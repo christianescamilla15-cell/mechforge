@@ -734,6 +734,8 @@ func _on_rematch() -> void:
 func _on_battle_finished(player_won: bool) -> void:
 	var result := _campaign.finish_fight(_profile, _shop, _spec["mode"], player_won, _progression)
 	_save()
+	if _persist:
+		FightLog.append(_fight_entry(player_won, result))
 	if _spec["mode"] == "campaign" and player_won:
 		# En el hangar, el vencido se apaga y la fila avanza un sitio.
 		_return["how"] = "advance"
@@ -767,6 +769,32 @@ func _on_battle_finished(player_won: bool) -> void:
 	_battle.set_result_note(_last_result)
 
 
+## Lo que se apunta de un combate en el registro (FightLog, OBS-051).
+func _fight_entry(player_won: bool, result: Dictionary) -> Dictionary:
+	var me: BattleMech = _battle.engine.mechs[_battle.player]
+	var foe: BattleMech = _battle.engine.mechs[1 - _battle.player]
+	return {
+		"when": Time.get_datetime_string_from_system(),
+		"mode": _spec["mode"],
+		"zone": int(_spec.get("zone", -1)),
+		"step": int(result.get("step", -1)),
+		"enemy": _spec["enemy"],
+		"tier": int(_spec["enemy_tier"]),
+		"level": int(_spec["enemy_level"]),
+		"edge": float(_spec.get("enemy_edge", 0.0)),
+		"skills": int(_spec.get("enemy_skills", 0)),
+		"difficulty": DIFFICULTY_IDS[_spec["difficulty"]],
+		"won": player_won,
+		"turns": _battle.engine.turn_number,
+		"hp": snappedf(float(me.health) / maxf(1.0, me.max_health), 0.01),
+		"enemy_hp": snappedf(float(foe.health) / maxf(1.0, foe.max_health), 0.01),
+		"gold": int(result.get("gold", 0)),
+		"xp": int(result.get("xp", 0)),
+		"points": int(result.get("points", 0)),
+		"pot": int(result.get("pot", 0)),
+	}
+
+
 ## La racha de la arena tras un combate (OBS-049): lo que paso con el bote
 ## y las dos teclas, otro combate (con lo que pagaria) o cobrar.
 func _arena_result(result: Dictionary) -> void:
@@ -780,17 +808,27 @@ func _arena_result(result: Dictionary) -> void:
 		var mult := _campaign.reward_mult(_profile.zone)
 		var factor := _campaign.streak_prize(int(result["streak"]))
 		var next := roundi(_shop.reward("arena_win") * mult * factor)
-		_last_result = Txt.t(
-			"arena_pot_note", [HangarProps.thousands(prize), HangarProps.thousands(pot)]
-		)
+		var note := [
+			HangarProps.thousands(prize),
+			int(result["points"]),
+			HangarProps.thousands(pot),
+			int(result["points_pot"]),
+		]
+		_last_result = Txt.t("arena_pot_note", note)
 		_last_result += String.chr(10) + Txt.t("arena_risk")
 		again = Txt.t("arena_more", [HangarProps.thousands(next)])
 		back = Txt.t("arena_cash", [HangarProps.thousands(pot)])
 	elif prize > 0:
-		_last_result = Txt.t("arena_streak_done", [HangarProps.thousands(result["gold"])])
-	elif lost > 0:
-		_last_result = Txt.t("arena_pot_lost", [HangarProps.thousands(lost)])
+		var done := [HangarProps.thousands(result["gold"]), int(result["points_cashed"])]
+		_last_result = Txt.t("arena_streak_done", done)
+	elif lost > 0 or int(result.get("points_lost", 0)) > 0:
+		var gone := [HangarProps.thousands(lost), int(result["points_lost"])]
+		_last_result = Txt.t("arena_pot_lost", gone)
 		_last_result += String.chr(10) + Txt.t("result_reward", [result["gold"]])
+	if prize > 0:
+		var boost := _campaign.streak_xp(int(result["step"]))
+		var xp := [HangarProps.thousands(result["xp"]), "%.1f" % boost]
+		_last_result += String.chr(10) + Txt.t("arena_xp", xp)
 	if bool(result.get("level_up", false)):
 		_last_result += String.chr(10) + Txt.t("result_level_up", [_player_level()])
 	_battle.set_result_choices(again, true, back)
@@ -803,22 +841,25 @@ func _on_battle_menu() -> void:
 		if _profile.arena_live:
 			_campaign.resume_arena(_profile)
 			_save()
-		elif _profile.arena_pot > 0:
+		elif _profile.arena_pot > 0 or _profile.arena_points > 0:
+			var points := _profile.arena_points
 			var cashed := _campaign.cash_arena(_profile)
 			_save()
-			_last_result = Txt.t("arena_cashed", [HangarProps.thousands(cashed)])
+			_last_result = Txt.t("arena_cashed", [HangarProps.thousands(cashed), points])
 	_show_menu()
 
 
 ## Al abrir el juego: el bote de la arena que se quedo sin cobrar se cobra;
 ## el de un combate a medias, se pierde (OBS-049).
 func _resume_arena() -> void:
+	var points := _profile.arena_points
+	var live := _profile.arena_live
 	var resumed := _campaign.resume_arena(_profile)
-	if int(resumed["cashed"]) > 0:
-		_last_result = Txt.t("arena_cashed", [HangarProps.thousands(resumed["cashed"])])
+	if not live and (int(resumed["cashed"]) > 0 or points > 0):
+		_last_result = Txt.t("arena_cashed", [HangarProps.thousands(resumed["cashed"]), points])
 		_save()
-	elif int(resumed["lost"]) > 0:
-		_last_result = Txt.t("arena_pot_lost", [HangarProps.thousands(resumed["lost"])])
+	elif live and (int(resumed["lost"]) > 0 or points > 0):
+		_last_result = Txt.t("arena_pot_lost", [HangarProps.thousands(resumed["lost"]), points])
 		_save()
 
 

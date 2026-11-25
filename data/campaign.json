@@ -7,14 +7,31 @@
     "rematch": 7500
   },
   "arena_streak": {
-    "fights": 5,
-    "prize": [1, 2, 4, 8, 16],
+    "fights": 20,
+    "prize": [1, 2, 4, 8, 16, 20, 25, 31.25, 39.06, 48.83, 61.04, 76.29, 95.37, 119.21, 149.01, 186.26, 232.83, 291.04, 363.8, 454.75],
+    "xp": [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5, 5.5, 6, 6.5, 7, 7.5, 8, 8.5, 9, 9.5, 10, 10.5],
+    "points": [1, 1, 1, 1, 1, 2, 2, 2, 2, 5, 3, 3, 3, 3, 8, 4, 4, 4, 4, 12],
     "steps": [
       {"power": 1.0, "tier_bonus": 0, "skills": 0, "difficulty": "", "edge": 0.0},
       {"power": 1.25, "tier_bonus": 1, "skills": 6, "difficulty": "", "edge": 0.3},
       {"power": 1.25, "tier_bonus": 1, "skills": 10, "difficulty": "", "edge": 0.35},
       {"power": 1.25, "tier_bonus": 1, "skills": 14, "difficulty": "", "edge": 0.4},
-      {"power": 1.25, "tier_bonus": 1, "skills": 14, "difficulty": "", "edge": 0.43}
+      {"power": 1.25, "tier_bonus": 1, "skills": 14, "difficulty": "", "edge": 0.43},
+      {"power": 1.25, "tier_bonus": 1, "skills": 14, "difficulty": "HARD", "edge": 0.69},
+      {"power": 1.25, "tier_bonus": 1, "skills": 14, "difficulty": "HARD", "edge": 0.76},
+      {"power": 1.25, "tier_bonus": 1, "skills": 14, "difficulty": "HARD", "edge": 0.78},
+      {"power": 1.25, "tier_bonus": 1, "skills": 14, "difficulty": "HARD", "edge": 0.82},
+      {"power": 1.25, "tier_bonus": 1, "skills": 14, "difficulty": "HARD", "edge": 0.87},
+      {"power": 1.25, "tier_bonus": 1, "skills": 14, "difficulty": "HARD", "edge": 0.91},
+      {"power": 1.25, "tier_bonus": 1, "skills": 14, "difficulty": "HARD", "edge": 0.94},
+      {"power": 1.25, "tier_bonus": 1, "skills": 14, "difficulty": "HARD", "edge": 0.97},
+      {"power": 1.25, "tier_bonus": 1, "skills": 14, "difficulty": "HARD", "edge": 1.01},
+      {"power": 1.25, "tier_bonus": 1, "skills": 14, "difficulty": "HARD", "edge": 1.03},
+      {"power": 1.25, "tier_bonus": 1, "skills": 14, "difficulty": "HARD", "edge": 1.05},
+      {"power": 1.25, "tier_bonus": 1, "skills": 14, "difficulty": "HARD", "edge": 1.07},
+      {"power": 1.25, "tier_bonus": 1, "skills": 14, "difficulty": "HARD", "edge": 1.09},
+      {"power": 1.25, "tier_bonus": 1, "skills": 14, "difficulty": "HARD", "edge": 1.11},
+      {"power": 1.25, "tier_bonus": 1, "skills": 14, "difficulty": "HARD", "edge": 1.13}
     ]
   },
   "zones": [
