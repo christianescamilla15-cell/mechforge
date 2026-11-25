@@ -470,3 +470,53 @@ func _key(code: Key) -> void:
 		event.pressed = pressed
 		Input.parse_input_event(event)
 		await get_tree().process_frame
+
+
+## Prueba en vivo del arbol de mejoras (`--menu-shot=arbol`, OBS-051), con el
+## raton: abrir la armeria, pasar al arbol por su rotulo, aprender el primer
+## nodo de una rama abierta y volver. Sin guardar nada (con --real-profile,
+## sobre su partida).
+func tree_test() -> void:
+	var profile := main._profile
+	if profile.upgrade_points == 0:
+		profile.upgrade_points = 30
+	main._show_menu()
+	await get_tree().create_timer(0.8).timeout
+	var workshop := main.open_workshop()
+	var stage := workshop._stage
+	await get_tree().create_timer(0.5).timeout
+	# En el robot desarmado: un sistema al nivel 10 y su tecla del arbol.
+	var track := ""
+	for id: String in main._shop.track_ids():
+		if track == "" and profile.level_of(id) >= UpgradeTree.OPENS_AT:
+			track = id
+	print("ARBOL sistema=%s" % track)
+	var view := stage.teardown
+	await _click(view.global_position + view.rect_of("system:" + track).get_center())
+	await get_tree().create_timer(0.6).timeout
+	await shot("sistema")
+	var tag := stage.tag
+	await _click(tag.global_position + tag._keys["tree"].get_center())
+	await get_tree().create_timer(0.8).timeout
+	await shot("arbol")
+	var console := stage.console
+	var pick := ""
+	for branch: Dictionary in TreeBrief.state(main._tree, main._shop, profile)["branches"]:
+		for options: Array in branch["steps"]:
+			for node: Dictionary in options:
+				if pick == "" and node["state"] == "next" and node["reason"] == "":
+					pick = str(node["id"])
+	print("ARBOL puntos=%d primero=%s" % [profile.upgrade_points, pick])
+	if pick != "":
+		var at := console.global_position + console.zone_rect("tree:" + pick).get_center()
+		await _move(at)
+		await get_tree().create_timer(0.3).timeout
+		await shot("arbol_nodo")
+		await _click(at)
+		await get_tree().create_timer(0.4).timeout
+		await shot("arbol_aprendida")
+		print("ARBOL aprendida=%s puntos=%d" % [pick in profile.tree, profile.upgrade_points])
+	await _click(console.global_position + console.zone_rect("page:mejoras").get_center())
+	await get_tree().create_timer(0.6).timeout
+	await shot("armeria_vuelta")
+	get_tree().quit(0)

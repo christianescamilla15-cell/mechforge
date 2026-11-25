@@ -15,6 +15,8 @@ const MENU_DIFFICULTIES: Array[BattleAI.Difficulty] = [
 	BattleAI.Difficulty.EASY, BattleAI.Difficulty.NORMAL, BattleAI.Difficulty.HARD
 ]
 const DIFFICULTY_IDS: Array[String] = ["EASY", "NORMAL", "HARD"]
+## Desde este combate de la racha (0 es el primero) el rival cuenta como titan.
+const TITAN_STEP := 5
 
 var _rules := RulesConfig.new()
 var _stages := StageLibrary.load_file("res://data/stages.json")
@@ -24,6 +26,7 @@ var _workshop := Workshop.load_file("res://data/workshop.json")
 var _garage := Garage.load_file("res://data/part_shop.json")
 var _progression := Progression.load_file("res://data/progression.json")
 var _skills := SkillTree.load_file("res://data/skills.json")
+var _tree := UpgradeTree.load_file("res://data/upgrade_tree.json")
 ## Celdas, mejoras, avance e historial del jugador.
 var _profile := PlayerProfile.new()
 ## Las pruebas automaticas no tocan el guardado del jugador.
@@ -219,6 +222,9 @@ func _ready() -> void:
 			return
 		elif _args["menu-shot"] == "armeria":
 			_live_test().armory_test()
+			return
+		elif _args["menu-shot"] == "arbol":
+			_live_test().tree_test()
 			return
 		elif _args["menu-shot"] == "garaje":
 			_live_test().garage_test()
@@ -615,6 +621,7 @@ func _spec_for(mode: String, zone: int, fight: Dictionary) -> Dictionary:
 		"enemy_body": Campaign.body_of(fight),
 		"enemy_loadout": fight.get("loadout", {}),
 		"enemy_edge": float(fight.get("edge", 0.0)),
+		"streak": int(fight.get("streak", -1)),
 		"difficulty": DIFFICULTY_IDS.find(fight["difficulty"]),
 		"seed": randi(),
 	}
@@ -689,6 +696,7 @@ func _start_battle(spec: Dictionary) -> void:
 	if rewarded:
 		player_build.upgrades = _shop.upgrades_for(_profile.shop_levels)
 		_prototypes.apply(player_build, _profile)
+		_apply_tree(player_build, boss or int(spec.get("streak", -1)) >= TITAN_STEP)
 	var enemy_build := _library.make(
 		spec["enemy"],
 		_catalog,
@@ -732,7 +740,10 @@ func _on_rematch() -> void:
 ## Al terminar un combate de campana o de arena el jugador cobra, avanza o,
 ## si perdio contra un jefe, pierde la partida. Se guarda el progreso.
 func _on_battle_finished(player_won: bool) -> void:
-	var result := _campaign.finish_fight(_profile, _shop, _spec["mode"], player_won, _progression)
+	var bonus := _tree.effects_for(_profile.tree)
+	var result := _campaign.finish_fight(
+		_profile, _shop, _spec["mode"], player_won, _progression, bonus
+	)
 	_save()
 	if _persist:
 		FightLog.append(_fight_entry(player_won, result))
@@ -767,6 +778,18 @@ func _on_battle_finished(player_won: bool) -> void:
 	if _spec["mode"] == "arena":
 		_arena_result(result)
 	_battle.set_result_note(_last_result)
+
+
+## El arbol de mejoras en el robot del jugador (OBS-051): lo que suma a sus
+## habilidades y a su armeria y, contra un titan (un campeon o un rival de la
+## racha desde el sexto), la rama Titanes.
+func _apply_tree(build: MechBuild, titan: bool) -> void:
+	var grown := _tree.effects_for(_profile.tree)
+	build.skills.add(grown)
+	build.upgrades.backfire += float(grown.get("backfire", 0.0))
+	build.upgrades.assist += float(grown.get("assist", 0.0))
+	if titan:
+		build.upgrades.damage += float(grown.get("titan_damage", 0.0))
 
 
 ## Lo que se apunta de un combate en el registro (FightLog, OBS-051).

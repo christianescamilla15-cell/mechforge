@@ -151,7 +151,7 @@ func _height() -> float:
 		"piece":
 			return 196.0 if str(state.get("gain", "")) != "" else 176.0
 		"system":
-			return 150.0
+			return 150.0 + (KEY_HEIGHT + 8.0 if state.has("tree") else 0.0)
 		"skills":
 			return 64.0 + 58.0 * (state.get("branches", []) as Array).size()
 	return 100.0
@@ -214,6 +214,10 @@ func _draw_system(at: Vector2) -> void:
 	if label != "":
 		var can := str(state.get("state", "")) == "ok"
 		_key("buy", Rect2(at.x, at.y + 92.0, WIDTH - PAD * 2.0, KEY_HEIGHT), label, can)
+	# Al nivel 10, su rama del arbol de mejoras (OBS-051).
+	if state.has("tree"):
+		var below := at.y + 92.0 + KEY_HEIGHT + 8.0
+		_key("tree", Rect2(at.x, below, WIDTH - PAD * 2.0, KEY_HEIGHT), str(state["tree"]), true)
 
 
 func _draw_skills(at: Vector2) -> void:

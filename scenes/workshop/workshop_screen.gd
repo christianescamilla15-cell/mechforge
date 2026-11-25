@@ -31,7 +31,7 @@ extends Control
 signal closed
 
 ## Lo que se puede abrir por su nombre (show_page).
-const CONSOLES: Array[String] = ["mejoras", "habilidades", "robot", "ajustes"]
+const CONSOLES: Array[String] = ["mejoras", "habilidades", "robot", "ajustes", "arbol"]
 const COLOR_GOLD := Color("ffd36b")
 
 var main: MainScreen
@@ -92,6 +92,8 @@ func _ready() -> void:
 	var console := _stage.console
 	console.upgrade_picked.connect(buy_upgrade)
 	console.skill_picked.connect(learn)
+	console.tree_picked.connect(learn_tree)
+	console.page_picked.connect(open_console)
 	console.remove_pressed.connect(_on_robot_removed)
 	console.setting_changed.connect(_on_setting_changed)
 	console.quit_pressed.connect(func() -> void: get_tree().quit(0))
@@ -240,12 +242,23 @@ func _show_tag() -> void:
 		state = brief.piece_tag(profile, key.trim_prefix("slot:"))
 	elif key.begins_with("system:"):
 		state = brief.system_tag(profile, key.trim_prefix("system:"))
+		_add_tree_key(state, key.trim_prefix("system:"))
 	elif key == "core":
 		state = brief.core_tag(profile)
 	if state.is_empty():
 		_stage.tag.hide_tag()
 	else:
 		_stage.tag.show_tag(state, _stage.teardown.rect_of(key))
+
+
+## Un sistema al nivel 10 abre su rama del arbol de mejoras (OBS-051): su
+## etiqueta lleva la tecla que lo ensena.
+func _add_tree_key(state: Dictionary, track: String) -> void:
+	if state.is_empty() or int(state.get("level", 0)) < UpgradeTree.OPENS_AT:
+		return
+	for branch: Dictionary in main._tree.branches:
+		if branch["from"] == track:
+			state["tree"] = Txt.t("tag_tree", [branch["name"]])
 
 
 ## Una tecla de la etiqueta: subir la pieza, cambiarla, subir un sistema
@@ -257,6 +270,9 @@ func _on_tag_pressed(key: String) -> void:
 		open_parts()
 	elif key == "buy":
 		buy_upgrade(_stage.teardown.selected.trim_prefix("system:"))
+	elif key == "tree":
+		_stage.tag.hide_tag()
+		open_console("arbol")
 	elif key.begins_with("learn:"):
 		learn(key.trim_prefix("learn:"))
 
@@ -297,6 +313,8 @@ func _console_state() -> Dictionary:
 			return brief.upgrades(main._profile)
 		"habilidades":
 			return brief.skill_tree(main._profile)
+		"arbol":
+			return TreeBrief.state(main._tree, main._shop, main._profile)
 		"ajustes":
 			return WallConsole.settings_state(main._settings, true)
 	return brief.robot(main._profile, main.robot_name(main._profile.active))
@@ -786,6 +804,15 @@ func buy_upgrade(track: String) -> void:
 ## Aprende la siguiente habilidad de una rama.
 func learn(id: String) -> void:
 	if main._skills.learn(main._profile, id, main._player_level()) != "":
+		return
+	Sfx.play("ui_habilidad")
+	main._save()
+	refresh()
+
+
+## Aprende un nodo del arbol de mejoras (OBS-051) con puntos de mejora.
+func learn_tree(id: String) -> void:
+	if main._tree.learn(main._profile, id) != "":
 		return
 	Sfx.play("ui_habilidad")
 	main._save()

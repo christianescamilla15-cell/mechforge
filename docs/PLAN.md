@@ -328,6 +328,21 @@ Estado (2026-11-21): **1 a 5 hechos en su primera versión**, con capturas revis
 
 Son medidas sueltas de tres segundos (varían ±10 de una a otra). Con el monitor de 144 Hz ya no queda por debajo de la mitad del refresco.
 
+### Arena sin fin, árbol, aspectos y efectos (2026-11-24, OBS-051 y OBS-052, pedido del usuario)
+Fuera del orden de fases: lo pidió el usuario con su partida en lo más alto (ligas superadas, armería al tope). Diseño en GDD §9.2 y en OBS-051; efectos en `docs/reference/efectos-combate.md`.
+
+| Paso | Qué | Estado |
+|---|---|---|
+| A1 | Racha de 20 con experiencia y puntos de mejora; rivales con rampa de plus calibrada con su robot; registro de combates (`FightLog`) | **Hecho** (61f6c0b) |
+| A2 | Efectos, primer bloque: pausa al golpear, destello con shader, "super flash" del crítico, sacudida con ruido, chispas a cuadros, vapor | **Hecho** (1e56cca) |
+| A3 | Árbol: la armería como tronco (celdas, sin cambios); cada línea a 10 abre su rama de 5 nodos pagada con puntos, con una bifurcación de dos especializaciones; más Botín, Titanes y Fortuna. Primero lo que ya maneja el motor (más allá de los topes, recompensas); luego los efectos nuevos (perforación, crítico, reflejo, absorción, regeneración, bastión, movilidad, contraataque, drenaje, eficiencia, ignición, refrigeración, enjambre) | **En curso:** hecho el árbol (`data/upgrade_tree.json`, `UpgradeTree`, `TreeBrief`), su pantalla (sale de la etiqueta de un sistema al nivel 10 del robot desarmado) y lo que ya maneja el juego: daño, energía, calor, resistencias, vida, retroceso y asistente más allá de los topes, Botín y el daño de Titanes. Los nodos con efectos nuevos se ven como "pronto" y no se aprenden. Falta: esos efectos, Forja y Fortuna |
+| A4 | Aspectos de cada pieza: armas (potencia de disparo, filo, material, refrigeración, eficiencia, precisión) y blindaje (grosor, material, ligereza, disipación, reactor); 10 niveles, celdas × 1.8 por nivel (5 000 el primero); cada nivel se ve de forma notable (capa visual por aspecto sobre el dibujo) | Pendiente |
+| A5 | Armas de arena: diseños nuevos con el estilo de las fases altas; los hitos 10, 15 y 20 dan una al azar, el resto se forja (rama Forja) | Pendiente |
+| A6 | El plus de los rivales de la racha cuenta parte de lo que el jugador lleve de más (árbol, aspectos, equipo de arena) | Pendiente (con A3-A5) |
+| A7 | Efectos, segundo bloque: impactos por elemento, materia oscura con "super flash", KO completo, estelas, brillo aditivo con tinta, efectos animados de alta resolución para los momentos estrella | Pendiente |
+
+**Puerta:** con su partida, una racha llega más lejos con el árbol y los aspectos que sin ellos, y lo alto sigue sin ser un paseo (registro de combates); cada nivel de aspecto se ve en la pieza; GUT en verde.
+
 ## Herramientas
 | Herramienta | Estado | Para qué |
 |---|---|---|

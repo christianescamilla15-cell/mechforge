@@ -21,6 +21,10 @@ extends Control
 
 signal upgrade_picked(track: String)
 signal skill_picked(id: String)
+## Un nodo del arbol de mejoras que se puede aprender (OBS-051).
+signal tree_picked(id: String)
+## El rotulo de arriba: pasar a otra pantalla ("arbol" o "mejoras").
+signal page_picked(kind: String)
 signal remove_pressed
 ## Un ajuste cambiado: "speed" (indice), "fullscreen" (bool) o
 ## "volume:<canal>" (de 0 a 1).
@@ -41,6 +45,8 @@ const HEAD := 46.0
 const FOOT := 58.0
 ## Segmentos de una barra de volumen (cada uno, un 5 %).
 const VOLUME_STEPS := 20
+## Ancho de los nombres de las ramas en el arbol de mejoras.
+const TREE_NAMES := 150.0
 
 ## Lo que ensena. Siempre lleva "kind" ("mejoras", "habilidades", "robot" o
 ## "ajustes") y "title"; el resto depende de la pantalla (ver WorkshopBrief
@@ -172,6 +178,7 @@ func _layout_zones() -> void:
 	var glass := _glass()
 	match str(state.get("kind", "")):
 		"mejoras":
+			_zones["page:arbol"] = _tab_rect()
 			var rows: Array = state.get("rows", [])
 			var top := glass.position.y + HEAD + 20.0
 			var each := (glass.end.y - FOOT - top) / maxf(rows.size(), 1.0)
@@ -188,6 +195,20 @@ func _layout_zones() -> void:
 					_zones["node:" + str(nodes[n]["id"])] = Rect2(
 						at - Vector2(15, 12), Vector2(30, 24)
 					)
+		"arbol":
+			_zones["page:mejoras"] = _tab_rect()
+			var branches: Array = state.get("branches", [])
+			for row in branches.size():
+				var steps: Array = branches[row]["steps"]
+				for step in steps.size():
+					var options: Array = steps[step]
+					for option in options.size():
+						var at := _tree_point(
+							row, branches.size(), step, steps.size(), option, options.size()
+						)
+						_zones["tree:" + str(options[option]["id"])] = Rect2(
+							at - Vector2(12, 9), Vector2(24, 18)
+						)
 		"robot":
 			if bool(state.get("can_remove", false)):
 				_zones["remove"] = Rect2(
@@ -281,6 +302,15 @@ func press(zone: String) -> void:
 			skill_picked.emit(str(node["id"]))
 		else:
 			Sfx.play("ui_cerrar")
+	elif zone.begins_with("tree:"):
+		var picked := _tree_node(zone.trim_prefix("tree:"))
+		if str(picked.get("state", "")) == "next" and str(picked.get("reason", "")) == "":
+			tree_picked.emit(str(picked["id"]))
+		else:
+			Sfx.play("ui_cerrar")
+	elif zone.begins_with("page:"):
+		Sfx.play("ui_clic")
+		page_picked.emit(zone.trim_prefix("page:"))
 	elif zone.begins_with("speed:"):
 		setting_changed.emit("speed", int(zone.trim_prefix("speed:")))
 		Sfx.play("ui_clic")
@@ -324,6 +354,35 @@ func _node(id: String) -> Dictionary:
 	return {}
 
 
+func _tree_node(id: String) -> Dictionary:
+	for branch: Dictionary in state.get("branches", []):
+		for options: Array in branch.get("steps", []):
+			for node: Dictionary in options:
+				if str(node["id"]) == id:
+					return node
+	return {}
+
+
+## El rotulo de arriba que pasa de la armeria al arbol y vuelve.
+func _tab_rect() -> Rect2:
+	var glass := _glass()
+	return Rect2(glass.get_center().x - 85.0, glass.position.y + 10.0, 170.0, 24.0)
+
+
+## Sitio de un nodo del arbol: una fila por rama, una columna por paso, y las
+## dos especializaciones de la bifurcacion una encima de otra.
+func _tree_point(row: int, rows: int, step: int, steps: int, option: int, options: int) -> Vector2:
+	var glass := _glass()
+	var top := glass.position.y + HEAD + 4.0
+	var tall := (glass.end.y - FOOT - 4.0 - top) / maxf(rows, 1.0)
+	var y := top + tall * (row + 0.5)
+	if options > 1:
+		y += (option - 0.5) * minf(tall * 0.55, 18.0)
+	var left := glass.position.x + PAD + TREE_NAMES
+	var x := left + (glass.end.x - PAD - left) * (step + 0.5) / maxf(steps, 1.0)
+	return Vector2(x, y)
+
+
 func _set_hover(zone: String) -> void:
 	if zone == _hover:
 		return
@@ -365,6 +424,10 @@ func _draw() -> void:
 			_draw_robot(glass, alpha)
 		"ajustes":
 			_draw_settings(glass, alpha)
+		"arbol":
+			_draw_tree(glass, alpha)
+	if str(state.get("kind", "")) in ["mejoras", "arbol"]:
+		_draw_tab(alpha)
 
 
 func _text(
@@ -554,6 +617,83 @@ func _draw_skills(glass: Rect2, alpha: float) -> void:
 		note = Txt.t("console_skill_learn")
 		tone = GOLD
 	_foot(glass, str(hovered["name"]), "%s · %s" % [str(hovered["text"]), note], tone, alpha)
+
+
+## El rotulo para pasar entre la armeria y el arbol de mejoras.
+func _draw_tab(alpha: float) -> void:
+	var on_tree := str(state.get("kind", "")) == "arbol"
+	var zone := "page:mejoras" if on_tree else "page:arbol"
+	var rect: Rect2 = _zones.get(zone, Rect2())
+	var hover := _hover == zone
+	draw_rect(rect, Color(GOLD, (0.25 if hover else 0.1) * alpha))
+	draw_rect(rect, Color(GOLD, 0.8 * alpha), false, 1.5)
+	var label := Txt.t("console_armory_tab" if on_tree else "console_tree_tab")
+	_text(
+		rect.position + Vector2(0, 17),
+		label,
+		rect.size.x,
+		12,
+		GOLD,
+		alpha,
+		HORIZONTAL_ALIGNMENT_CENTER
+	)
+
+
+## El arbol de mejoras (OBS-051): una fila por rama, sus cinco pasos y la
+## bifurcacion (dos nodos apilados); los cables se encienden con lo aprendido.
+func _draw_tree(glass: Rect2, alpha: float) -> void:
+	var points := int(state.get("points", 0))
+	var tone := GOLD if points > 0 else MUTED
+	_head_value(glass, str(points), Txt.t("console_upgrade_points"), tone, alpha)
+	var branches: Array = state.get("branches", [])
+	var hovered := {}
+	for row in branches.size():
+		var branch: Dictionary = branches[row]
+		var steps: Array = branch["steps"]
+		var open := bool(branch["open"])
+		var name_at := _tree_point(row, branches.size(), 0, steps.size(), 0, 1)
+		_text(
+			Vector2(glass.position.x + PAD, name_at.y + 4.0),
+			str(branch["name"]).to_upper(),
+			TREE_NAMES - 8.0,
+			11,
+			TEXT if open else MUTED,
+			alpha * (1.0 if open else 0.55)
+		)
+		for step in range(1, steps.size()):
+			var lit := step <= int(branch["done"])
+			draw_line(
+				_tree_point(row, branches.size(), step - 1, steps.size(), 0, 1),
+				_tree_point(row, branches.size(), step, steps.size(), 0, 1),
+				Color(TEXT if lit else LINE, (0.9 if lit else 0.25) * alpha),
+				2.0 if lit else 1.0
+			)
+		for step in steps.size():
+			var options: Array = steps[step]
+			for option in options.size():
+				var node: Dictionary = options[option]
+				var hover := _hover == "tree:" + str(node["id"])
+				if hover:
+					hovered = node
+				var at := _tree_point(
+					row, branches.size(), step, steps.size(), option, options.size()
+				)
+				var shown := node.duplicate()
+				if not str(node["state"]) in ["done", "next"]:
+					shown["state"] = "closed"
+				_draw_node(at, shown, hover, alpha * (1.0 if open else 0.6))
+	if hovered.is_empty():
+		_foot(glass, "", Txt.t("tree_hint"), MUTED, alpha)
+		return
+	var note := str(hovered.get("reason", ""))
+	var foot_tone := BAD
+	if str(hovered["state"]) == "done":
+		note = Txt.t("tree_done")
+		foot_tone = GOOD
+	elif note == "":
+		note = Txt.t("tree_learn", [int(hovered["cost"])])
+		foot_tone = GOLD
+	_foot(glass, str(hovered["name"]), "%s · %s" % [str(hovered["text"]), note], foot_tone, alpha)
 
 
 ## Un nodo: hexagono lleno si esta aprendido, latiendo si es el siguiente.

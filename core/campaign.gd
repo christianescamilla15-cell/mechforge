@@ -510,9 +510,10 @@ func finish_fight(
 	shop: ArenaShop,
 	mode: String,
 	won: bool,
-	progression: Progression = null
+	progression: Progression = null,
+	bonus: Dictionary = {}
 ) -> Dictionary:
-	var out := _settle(profile, shop, mode, won)
+	var out := _settle(profile, shop, mode, won, bonus)
 	# Experiencia: tambien en la arena y al perder (menos), nunca al perder
 	# la partida contra un jefe. En la racha de la arena, ganar da mas cuanto
 	# mas lejos va (OBS-051), y no se arriesga.
@@ -524,6 +525,9 @@ func finish_fight(
 			kind = "boss_win" if out["boss"] else "win"
 		var before := progression.level_for(profile.xp)
 		var boost := streak_xp(int(out["step"])) if mode == "arena" and won else 1.0
+		# El arbol (rama Botin, OBS-051): mas experiencia en la arena.
+		if mode == "arena":
+			boost *= 1.0 + float(bonus.get("arena_xp", 0.0))
 		out["xp"] = roundi(progression.xp_for(kind) * boost)
 		profile.xp += out["xp"]
 		out["level_up"] = progression.level_for(profile.xp) > before
@@ -536,7 +540,12 @@ func finish_fight(
 ## Anade a `out`: "prize", "pot", "lost", "streak" y "more" (se puede
 ## pedir otro).
 func _settle_arena(
-	profile: PlayerProfile, shop: ArenaShop, won: bool, mult: float, out: Dictionary
+	profile: PlayerProfile,
+	shop: ArenaShop,
+	won: bool,
+	mult: float,
+	out: Dictionary,
+	bonus: Dictionary = {}
 ) -> Dictionary:
 	var step := clampi(profile.arena_streak, 0, streak_fights() - 1)
 	profile.arena_live = false
@@ -547,12 +556,16 @@ func _settle_arena(
 	out["step"] = step
 	if won:
 		profile.wins += 1
-		var prize := roundi(shop.reward("arena_win") * mult * streak_prize(step))
+		# El arbol (rama Botin): mas celdas y mas puntos en la racha.
+		var gold_bonus := 1.0 + float(bonus.get("arena_gold", 0.0))
+		var prize := roundi(shop.reward("arena_win") * mult * streak_prize(step) * gold_bonus)
+		var points_bonus := 1.0 + float(bonus.get("arena_points", 0.0))
+		var points := roundi(streak_points(step) * points_bonus)
 		profile.arena_pot += prize
-		profile.arena_points += streak_points(step)
+		profile.arena_points += points
 		profile.arena_streak = step + 1
 		out["prize"] = prize
-		out["points"] = streak_points(step)
+		out["points"] = points
 	else:
 		out["lost"] = profile.arena_pot
 		out["points_lost"] = profile.arena_points
@@ -571,7 +584,9 @@ func _settle_arena(
 	return out
 
 
-func _settle(profile: PlayerProfile, shop: ArenaShop, mode: String, won: bool) -> Dictionary:
+func _settle(
+	profile: PlayerProfile, shop: ArenaShop, mode: String, won: bool, bonus: Dictionary = {}
+) -> Dictionary:
 	var out := {
 		"gold": 0,
 		"game_over": false,
@@ -582,7 +597,7 @@ func _settle(profile: PlayerProfile, shop: ArenaShop, mode: String, won: bool) -
 	}
 	var mult := reward_mult(profile.zone)
 	if mode == "arena":
-		return _settle_arena(profile, shop, won, mult, out)
+		return _settle_arena(profile, shop, won, mult, out, bonus)
 	if mode != "campaign" or profile.zone >= zone_count():
 		out["gold"] = profile.earn(shop, "arena_win" if won else "arena_loss", mult)
 		return out
@@ -599,7 +614,8 @@ func _settle(profile: PlayerProfile, shop: ArenaShop, mode: String, won: bool) -
 		profile.campaign_on = false
 		out["zone_cleared"] = true
 	elif won:
-		out["gold"] = profile.earn(shop, "campaign_win", mult)
+		var campaign_bonus := 1.0 + float(bonus.get("campaign_gold", 0.0))
+		out["gold"] = profile.earn(shop, "campaign_win", mult * campaign_bonus)
 		profile.fight += 1
 		profile.campaign_on = true
 	elif on_loss != "new_game":

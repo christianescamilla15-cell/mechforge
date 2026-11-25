@@ -331,6 +331,13 @@ func hide_console() -> void:
 ## Sitio de una pantalla en la pared y el que ocupa de cerca.
 func console_rects(kind: String) -> Array[Rect2]:
 	match kind:
+		"arbol":
+			# El arbol de mejoras crece desde el sistema elegido del robot
+			# desarmado (o desde la pantalla de la armeria), y es grande.
+			var from: Rect2 = _terminal_rects.get("mejoras", Rect2())
+			if teardown_on and teardown.selected != "":
+				from = teardown.rect_of(teardown.selected)
+			return [from, Rect2(size.x * 0.03, size.y * 0.05, size.x * 0.6, size.y * 0.8)]
 		"mejoras":
 			return [
 				_terminal_rects.get(kind, Rect2()),

@@ -1,0 +1,117 @@
+{
+  "schema_version": 1,
+  "comment": "Arbol de mejoras (OBS-051, GDD 9.2): la armeria es el tronco y cada una de sus lineas, al llegar al nivel 10, abre su rama, que se paga con puntos de mejora de la racha de la arena. Cada rama tiene cinco nodos que se aprenden en orden; el tercero es una bifurcacion: se elige una de dos especializaciones y la otra queda cerrada. Botin, Titanes y Fortuna son ramas de la arena (de la tienda de arena del original: oro de arena y campana, dano a Titanes, cajas de fortuna) y se abren con cualquier linea a 10. costs: puntos de cada nodo, del primero al quinto. effects: lo que suma cada nodo (fracciones salvo los enteros de UpgradeTree.WHOLE).",
+  "costs": [2, 3, 5, 7, 9],
+  "branches": [
+    {"id": "sobrecarga", "name": "Sobrecarga", "from": "damage", "nodes": [
+      {"id": "sobrecarga_1", "name": "Sobrecarga I", "effects": {"damage": 0.03}},
+      {"id": "sobrecarga_2", "name": "Sobrecarga II", "effects": {"damage": 0.03}},
+      {"fork": [
+        {"id": "perforacion", "name": "Perforación", "effects": {"pierce": 0.12}},
+        {"id": "golpe_certero", "name": "Golpe certero", "effects": {"crit": 0.06}}
+      ]},
+      {"id": "sobrecarga_4", "name": "Sobrecarga III", "effects": {"damage": 0.04}},
+      {"id": "sobrecarga_5", "name": "Sobrecarga total", "effects": {"damage": 0.05}}
+    ]},
+    {"id": "reactor", "name": "Reactor", "from": "energy", "nodes": [
+      {"id": "reactor_1", "name": "Reactor I", "effects": {"energy": 0.04}},
+      {"id": "reactor_2", "name": "Reactor II", "effects": {"energy": 0.04}},
+      {"fork": [
+        {"id": "drenaje", "name": "Drenaje", "effects": {"drain": 0.25}},
+        {"id": "eficiencia", "name": "Eficiencia", "effects": {"efficiency": 0.15}}
+      ]},
+      {"id": "reactor_4", "name": "Reactor III", "effects": {"energy": 0.05}},
+      {"id": "reactor_5", "name": "Reactor estelar", "effects": {"energy": 0.06}}
+    ]},
+    {"id": "fundicion", "name": "Fundición", "from": "heat", "nodes": [
+      {"id": "fundicion_1", "name": "Fundición I", "effects": {"heat": 0.04}},
+      {"id": "fundicion_2", "name": "Fundición II", "effects": {"heat": 0.04}},
+      {"fork": [
+        {"id": "ignicion", "name": "Ignición", "effects": {"ignition": 0.25}},
+        {"id": "refrigeracion", "name": "Refrigeración", "effects": {"cooling": 0.25}}
+      ]},
+      {"id": "fundicion_4", "name": "Fundición III", "effects": {"heat": 0.05}},
+      {"id": "fundicion_5", "name": "Núcleo de forja", "effects": {"heat": 0.06}}
+    ]},
+    {"id": "fase", "name": "Escudo de fase", "from": "resistance", "nodes": [
+      {"id": "fase_1", "name": "Fase I", "effects": {"resistance": 0.06}},
+      {"id": "fase_2", "name": "Fase II", "effects": {"resistance": 0.06}},
+      {"fork": [
+        {"id": "reflejo", "name": "Reflejo", "effects": {"reflect": 0.1}},
+        {"id": "absorcion", "name": "Absorción", "effects": {"absorb": 0.1}}
+      ]},
+      {"id": "fase_4", "name": "Fase III", "effects": {"resistance": 0.08}},
+      {"id": "fase_5", "name": "Fase plena", "effects": {"resistance": 0.1}}
+    ]},
+    {"id": "coraza", "name": "Coraza", "from": "health", "nodes": [
+      {"id": "coraza_1", "name": "Coraza I", "effects": {"health": 0.03}},
+      {"id": "coraza_2", "name": "Coraza II", "effects": {"health": 0.03}},
+      {"fork": [
+        {"id": "regeneracion", "name": "Regeneración", "effects": {"regen": 0.02}},
+        {"id": "bastion", "name": "Bastión", "effects": {"bastion": 0.15}}
+      ]},
+      {"id": "coraza_4", "name": "Coraza III", "effects": {"health": 0.04}},
+      {"id": "coraza_5", "name": "Coraza de titán", "effects": {"health": 0.05}}
+    ]},
+    {"id": "estabilizadores", "name": "Estabilizadores", "from": "backfire", "nodes": [
+      {"id": "estabilizadores_1", "name": "Estabilizadores I", "effects": {"backfire": 0.05}},
+      {"id": "estabilizadores_2", "name": "Estabilizadores II", "effects": {"backfire": 0.05}},
+      {"fork": [
+        {"id": "contraataque", "name": "Contraataque", "effects": {"counter": 0.15}},
+        {"id": "movilidad", "name": "Movilidad", "effects": {"mobility": 1}}
+      ]},
+      {"id": "estabilizadores_4", "name": "Estabilizadores III", "effects": {"backfire": 0.05}},
+      {"id": "estabilizadores_5", "name": "Anclaje total", "effects": {"backfire": 0.05}}
+    ]},
+    {"id": "enjambre", "name": "Enjambre", "from": "assist", "nodes": [
+      {"id": "enjambre_1", "name": "Enjambre I", "effects": {"assist": 0.05}},
+      {"id": "enjambre_2", "name": "Enjambre II", "effects": {"assist": 0.05}},
+      {"fork": [
+        {"id": "doble_disparo", "name": "Doble disparo", "effects": {"swarm": 1}},
+        {"id": "escudo_dron", "name": "Escudo del dron", "effects": {"drone_shield": 1}}
+      ]},
+      {"id": "enjambre_4", "name": "Enjambre III", "effects": {"assist": 0.05}},
+      {"id": "enjambre_5", "name": "Colmena", "effects": {"assist": 0.05}}
+    ]},
+    {"id": "forja", "name": "Forja", "from": "core", "nodes": [
+      {"id": "forja_1", "name": "Forja del hito 10", "effects": {"forge": 1}},
+      {"id": "forja_2", "name": "Forja del hito 15", "effects": {"forge": 1}},
+      {"fork": [
+        {"id": "temple", "name": "Temple", "effects": {"forge_quality": 0.1}},
+        {"id": "aleacion", "name": "Aleación", "effects": {"forge_discount": 0.25}}
+      ]},
+      {"id": "forja_4", "name": "Forja del hito 20", "effects": {"forge": 1}},
+      {"id": "forja_5", "name": "Forja maestra", "effects": {"forge_quality": 0.1}}
+    ]},
+    {"id": "botin", "name": "Botín", "from": "", "nodes": [
+      {"id": "botin_1", "name": "Botín I", "effects": {"arena_gold": 0.25}},
+      {"id": "botin_2", "name": "Botín II", "effects": {"arena_xp": 0.25}},
+      {"fork": [
+        {"id": "puntos_extra", "name": "Puntos de más", "effects": {"arena_points": 0.25}},
+        {"id": "botin_campana", "name": "Botín de campaña", "effects": {"campaign_gold": 0.5}}
+      ]},
+      {"id": "botin_4", "name": "Botín III", "effects": {"arena_gold": 0.25}},
+      {"id": "botin_5", "name": "Tesoro de la arena", "effects": {"arena_xp": 0.5}}
+    ]},
+    {"id": "titanes", "name": "Titanes", "from": "", "nodes": [
+      {"id": "titanes_1", "name": "Cazatitanes I", "effects": {"titan_damage": 0.05}},
+      {"id": "titanes_2", "name": "Cazatitanes II", "effects": {"titan_damage": 0.05}},
+      {"fork": [
+        {"id": "titanes_coraza", "name": "Aguante de titán", "effects": {"titan_health": 0.1}},
+        {"id": "titanes_furia", "name": "Furia de titán", "effects": {"titan_damage": 0.08}}
+      ]},
+      {"id": "titanes_4", "name": "Cazatitanes III", "effects": {"titan_damage": 0.06}},
+      {"id": "titanes_5", "name": "Matatitanes", "effects": {"titan_damage": 0.08}}
+    ]},
+    {"id": "fortuna", "name": "Fortuna", "from": "", "nodes": [
+      {"id": "fortuna_1", "name": "Fortuna I", "effects": {"fortune": 0.1}},
+      {"id": "fortuna_2", "name": "Fortuna II", "effects": {"fortune": 0.1}},
+      {"fork": [
+        {"id": "buena_estrella", "name": "Buena estrella", "effects": {"fortune_quality": 1}},
+        {"id": "doble_premio", "name": "Doble premio", "effects": {"fortune_double": 0.15}}
+      ]},
+      {"id": "fortuna_4", "name": "Fortuna III", "effects": {"fortune": 0.1}},
+      {"id": "fortuna_5", "name": "Favor de la arena", "effects": {"fortune": 0.15}}
+    ]}
+  ]
+}
