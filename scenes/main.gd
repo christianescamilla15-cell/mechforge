@@ -686,9 +686,15 @@ func _start_battle(spec: Dictionary) -> void:
 	if rewarded:
 		player_build.upgrades = _shop.upgrades_for(_profile.shop_levels)
 		_prototypes.apply(player_build, _profile)
+		var plain: MechBuild = player_build.duplicate(true)
 		_gear.apply_build(player_build, _profile, _tree.effects_for(_profile.tree))
 		_aspects.apply_build(player_build, _profile.aspects)
 		_apply_tree(player_build, boss or int(spec.get("streak", -1)) >= TITAN_STEP)
+		# El rival de la racha cuenta parte de lo que llevas de mas (A6).
+		spec["enemy_extra"] = 0.0
+		if int(spec.get("streak", -1)) >= 0:
+			var extra := StreakEdge.extra(_rules, plain, player_build, _gear.boost)
+			spec["enemy_extra"] = StreakEdge.rival_extra(extra, _gear.rival_share)
 	var enemy_build := _library.make(
 		spec["enemy"],
 		_catalog,
@@ -702,7 +708,8 @@ func _start_battle(spec: Dictionary) -> void:
 	# En la campana y la arena los rivales llevan la armeria del Orden.
 	if spec.has("zone"):
 		var edge := float(spec.get("enemy_edge", 0.0))
-		enemy_build.upgrades = _campaign.fight_upgrades(spec["zone"], _shop, edge)
+		var extra := float(spec.get("enemy_extra", 0.0))
+		enemy_build.upgrades = _campaign.fight_upgrades(spec["zone"], _shop, edge, extra)
 	# Los jefes del Orden llevan su entrenamiento (GDD 9.3).
 	var trained := _skills.spread(int(spec.get("enemy_skills", 0)))
 	enemy_build.skills = _skills.effects_for(trained)
@@ -818,6 +825,7 @@ func _fight_entry(player_won: bool, result: Dictionary) -> Dictionary:
 		"tier": int(_spec["enemy_tier"]),
 		"level": int(_spec["enemy_level"]),
 		"edge": float(_spec.get("enemy_edge", 0.0)),
+		"extra": snappedf(float(_spec.get("enemy_extra", 0.0)), 0.001),
 		"skills": int(_spec.get("enemy_skills", 0)),
 		"difficulty": DIFFICULTY_IDS[_spec["difficulty"]],
 		"won": player_won,

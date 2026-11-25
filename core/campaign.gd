@@ -254,11 +254,20 @@ func enemy_upgrades(zone: int, shop: ArenaShop) -> ArenaUpgrades:
 
 
 ## La armeria de un rival de esa zona con su plus de la racha de la arena
-## ("edge" de arena_streak: mas vida y mas dano).
-func fight_upgrades(zone: int, shop: ArenaShop, edge: float = 0.0) -> ArenaUpgrades:
+## ("edge" de arena_streak: mas vida y mas dano) y, encima, `extra`: la parte
+## de lo que el jugador lleva de mas (StreakEdge, OBS-051 A6). Su ventaja es
+## una razon, asi que el extra multiplica la vida y el dano del rival en vez
+## de sumarse: un 20 % de mas pesa lo mismo en el primer combate que en el
+## vigesimo.
+func fight_upgrades(
+	zone: int, shop: ArenaShop, edge: float = 0.0, extra: float = 0.0
+) -> ArenaUpgrades:
 	var out := enemy_upgrades(zone, shop)
 	out.health += edge
 	out.damage += edge
+	if extra > 0.0:
+		out.health = (1.0 + out.health) * (1.0 + extra) - 1.0
+		out.damage = (1.0 + out.damage) * (1.0 + extra) - 1.0
 	return out
 
 

@@ -18,6 +18,8 @@ extends SceneTree
 ##                        especializacion) o esos nodos
 ##     --arena=N          sus armas de brazo y hombro cambiadas por las de
 ##                        arena de su forma y elemento, de rango N (1-3)
+##     --share=X          la parte de lo que lleva de mas que pasa al plus
+##                        del rival (A6; por defecto la de arena_gear.json)
 
 ## Desde este combate de la racha (0 es el primero) cuenta Titanes (MainScreen.TITAN_STEP).
 const TITAN_STEP := 5
@@ -94,6 +96,18 @@ func _initialize() -> void:
 	var titan_build := brief.build_of(profile, profile.build)
 	_apply_tree(tree, profile, build, false)
 	_apply_tree(tree, profile, titan_build, true)
+	# Lo que lleva de mas (A6, StreakEdge): su robot sin arbol, aspectos ni
+	# rangos de arena, y la parte que pasa al plus del rival.
+	var bare := PlayerProfile.from_dict(profile.to_dict())
+	bare.aspects.clear()
+	bare.arena_gear.clear()
+	bare.tree.clear()
+	var plain := brief.build_of(bare, bare.build)
+	var share := float(args.get("share", str(brief.gear.rival_share)))
+	var boost := brief.gear.boost
+	var extra := StreakEdge.rival_extra(StreakEdge.extra(_rules, plain, build, boost), share)
+	var titan_raw := StreakEdge.extra(_rules, plain, titan_build, boost)
+	var titan_extra := StreakEdge.rival_extra(titan_raw, share)
 	# El poder del jugador, como lo mide el juego (MainScreen._player_items).
 	var items: Array[String] = []
 	var carried := profile.build.has("assist")
@@ -111,6 +125,12 @@ func _initialize() -> void:
 		(
 			"Liga %d, tu %s (poder medio %.0f), %d rivales x %d combates por paso, %s"
 			% [zone + 1, profile.style, power, rivals, battles, _extras(args)]
+		)
+	)
+	print(
+		(
+			"  lleva de mas: rival x%.2f de vida y dano (x%.2f desde el %d.º, con Titanes; parte %.2f)"
+			% [1.0 + extra, 1.0 + titan_extra, TITAN_STEP + 1, share]
 		)
 	)
 	var reach := 1.0
@@ -137,7 +157,9 @@ func _initialize() -> void:
 				{},
 				fight.get("loadout", {})
 			)
-			rival.upgrades = campaign.fight_upgrades(zone, shop, float(fight.get("edge", 0.0)))
+			var more := titan_extra if step >= TITAN_STEP else extra
+			var edge := float(fight.get("edge", 0.0))
+			rival.upgrades = campaign.fight_upgrades(zone, shop, edge, more)
 			rival.skills = skills.effects_for(skills.spread(int(fight.get("skills", 0))))
 			rival.skills.add(Campaign.kits_of(fight))
 			var rival_ai: BattleAI.Difficulty = BattleAI.Difficulty[str(fight["difficulty"])]
@@ -170,12 +192,13 @@ func _initialize() -> void:
 					% [step + 1, 100.0 * rate, prize, pot, 100.0 * reach]
 				)
 				+ (
-					"   rival: %s, IA %s, entrenamiento %d, plus %d %%"
+					"   rival: %s, IA %s, entrenamiento %d, plus %d %% y x%.2f"
 					% [
 						", ".join(PackedStringArray(seen.keys())),
 						sample["difficulty"],
 						int(sample.get("skills", 0)),
-						roundi(100.0 * float(sample.get("edge", 0.0)))
+						roundi(100.0 * float(sample.get("edge", 0.0))),
+						1.0 + (titan_extra if step >= TITAN_STEP else extra)
 					]
 				)
 			)

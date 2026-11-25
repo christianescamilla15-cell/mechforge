@@ -263,7 +263,9 @@ func streak_test() -> void:
 	await shot("gano_1")
 	main._on_rematch()
 	await get_tree().create_timer(1.2).timeout
-	print("RACHA rival del 2: %s, plus %.2f" % [main._spec["enemy"], main._spec["enemy_edge"]])
+	var said := [main._spec["enemy"], main._spec["enemy_edge"], main._spec.get("enemy_extra", 0.0)]
+	said[2] = 1.0 + float(said[2])
+	print("RACHA rival del 2: %s, plus %.2f, por lo que llevas de mas x%.2f" % said)
 	main._on_battle_finished(false)
 	main._battle._result.show()
 	await get_tree().create_timer(0.3).timeout

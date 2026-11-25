@@ -16,6 +16,10 @@ var ranks: Array[Dictionary] = []
 var scale: Array[String] = []
 var forge_prices: Array[int] = []
 var melt: float = 0.0
+## Lo que pegan sobre el laser de su forma (el x1.3 del catalogo) y la parte
+## de lo que el jugador lleva de mas que pasa al rival de la racha (A6).
+var boost: float = 1.0
+var rival_share: float = 0.0
 var errors: Array[String] = []
 
 
@@ -47,6 +51,8 @@ static func from_dict(data: Dictionary) -> ArenaGear:
 	for price: Variant in data.get("forge_price", []):
 		gear.forge_prices.append(int(price))
 	gear.melt = float(data.get("melt", 0.0))
+	gear.boost = float(data.get("boost", 1.0))
+	gear.rival_share = float(data.get("rival_share", 0.0))
 	if gear.forge_prices.size() != gear.ranks.size():
 		gear.errors.append("un precio de forja por rango")
 	for rank: int in gear.milestones.values():

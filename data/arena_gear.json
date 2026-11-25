@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "comment": "Armas de arena (OBS-051, PLAN A5, core/arena_gear.gd). Las armas son las del catalogo con la etiqueta arena. milestones: el combate de la racha que, al ganarlo, da una al azar, y de que rango (1 bronce, 2 plata, 3 oro). ranks: lo que suma cada rango al dano del arma (las estadisticas de scale). forge_price: celdas por forjar una del rango que abre la rama Forja. melt: si ya las tiene todas de ese rango, el hito da esa parte del precio de forjarla en celdas.",
+  "comment": "Armas de arena (OBS-051, PLAN A5, core/arena_gear.gd). Las armas son las del catalogo con la etiqueta arena. milestones: el combate de la racha que, al ganarlo, da una al azar, y de que rango (1 bronce, 2 plata, 3 oro). ranks: lo que suma cada rango al dano del arma (las estadisticas de scale). forge_price: celdas por forjar una del rango que abre la rama Forja. melt: si ya las tiene todas de ese rango, el hito da esa parte del precio de forjarla en celdas. boost: cuanto pegan las armas de arena sobre el laser de su forma (el x1.3 del catalogo). rival_share: la parte de lo que el jugador lleva de mas (arbol, aspectos, armas de arena; StreakEdge) que se suma al plus del rival de la racha (PLAN A6).",
   "milestones": {"10": 1, "15": 2, "20": 3},
   "ranks": [
     {"id": "bronce", "damage": 0.0},
@@ -9,5 +9,7 @@
   ],
   "scale": ["dmg_min", "dmg_max", "heat_dmg", "energy_dmg", "res_dmg"],
   "forge_price": [1500000, 3000000, 6000000],
-  "melt": 0.25
+  "melt": 0.25,
+  "boost": 1.3,
+  "rival_share": 0.6
 }
