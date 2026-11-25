@@ -13,7 +13,12 @@ extends SceneTree
 ##     --only=N           solo el combate N de la racha (0 es el primero)
 ##     --campaign=<ruta>  otro campaign.json (para probar una rampa sin tocar
 ##                        los datos del juego)
+##     --aspects=N        todos los aspectos de sus armas y su torso a N
+##     --tree=a|b|<ids>   el arbol de mejoras entero (primera o segunda
+##                        especializacion) o esos nodos
 
+## Desde este combate de la racha (0 es el primero) cuenta Titanes (MainScreen.TITAN_STEP).
+const TITAN_STEP := 5
 const DIFFICULTY := {
 	"EASY": BattleAI.Difficulty.EASY,
 	"NORMAL": BattleAI.Difficulty.NORMAL,
@@ -56,6 +61,8 @@ func _initialize() -> void:
 	brief.styles = StyleLibrary.load_file("res://data/styles.json", catalog)
 	brief.workshop = Workshop.load_file("res://data/workshop.json")
 	brief.garage = Garage.load_file("res://data/part_shop.json")
+	brief.aspects = PieceAspects.load_file("res://data/aspects.json")
+	var tree := UpgradeTree.load_file("res://data/upgrade_tree.json")
 	if not campaign.errors.is_empty():
 		print("ERRORES en campaign.json: ", campaign.errors)
 		quit(1)
@@ -63,7 +70,24 @@ func _initialize() -> void:
 
 	var profile := PlayerProfile.load_or_new(path)
 	var zone := mini(int(args.get("zone", str(profile.zone))), campaign.zone_count() - 1)
+	# --aspects=<nivel>: todos los aspectos de sus armas y su torso a ese
+	# nivel (OBS-051), para medir cuanto ayudan. No se guarda nada.
+	if args.has("aspects"):
+		for id in BuildLibrary.items_of(profile.build) + [str(profile.build.get("chest", ""))]:
+			var def := catalog.get_item(id)
+			var levels := {}
+			for aspect in brief.aspects.ids_for(def):
+				levels[aspect] = int(args["aspects"])
+			if not levels.is_empty():
+				profile.aspects[def.progress_id()] = levels
+	# --tree=a|b|<nodo,nodo>: el arbol de mejoras entero con la primera (a) o
+	# la segunda (b) especializacion de cada bifurcacion, o esos nodos.
+	if args.has("tree"):
+		profile.tree.assign(_tree_nodes(tree, str(args["tree"])))
 	var build := brief.build_of(profile, profile.build)
+	var titan_build := brief.build_of(profile, profile.build)
+	_apply_tree(tree, profile, build, false)
+	_apply_tree(tree, profile, titan_build, true)
 	# El poder del jugador, como lo mide el juego (MainScreen._player_items).
 	var items: Array[String] = []
 	var carried := profile.build.has("assist")
@@ -79,8 +103,8 @@ func _initialize() -> void:
 	var base := shop.reward("arena_win") * mult
 	print(
 		(
-			"Liga %d, tu %s (poder medio %.0f), %d rivales x %d combates por paso"
-			% [zone + 1, profile.style, power, rivals, battles]
+			"Liga %d, tu %s (poder medio %.0f), %d rivales x %d combates por paso, %s"
+			% [zone + 1, profile.style, power, rivals, battles, _extras(args)]
 		)
 	)
 	var reach := 1.0
@@ -116,7 +140,7 @@ func _initialize() -> void:
 			for n in battles:
 				var result := BattleRunner.run(
 					_rules,
-					build,
+					titan_build if step >= TITAN_STEP else build,
 					rival,
 					BattleAI.new(player_ai, n * 2 + 1 + r * 31),
 					BattleAI.new(rival_ai, n * 2 + 2 + r * 31, temper),
@@ -163,3 +187,35 @@ func _initialize() -> void:
 			)
 		)
 	quit(0)
+
+
+## Los nodos del arbol: "a" o "b" (todo, con esa especializacion en cada
+## bifurcacion; solo los que ya funcionan) o una lista separada por comas.
+static func _tree_nodes(tree: UpgradeTree, which: String) -> Array[String]:
+	var out: Array[String] = []
+	if not which in ["a", "b"]:
+		out.assign(which.split(","))
+		return out
+	for branch: Dictionary in tree.branches:
+		for options: Array in branch["steps"]:
+			var node: Dictionary = options[mini(1 if which == "b" else 0, options.size() - 1)]
+			if tree.is_ready(str(node["id"])):
+				out.append(str(node["id"]))
+	return out
+
+
+## Lo mismo que MainScreen._apply_tree: el arbol en el robot del jugador.
+static func _apply_tree(
+	tree: UpgradeTree, profile: PlayerProfile, build: MechBuild, titan: bool
+) -> void:
+	var grown := tree.effects_for(profile.tree)
+	build.skills.add(grown)
+	build.upgrades.backfire += float(grown.get("backfire", 0.0))
+	build.upgrades.assist += float(grown.get("assist", 0.0))
+	if titan:
+		build.upgrades.damage += float(grown.get("titan_damage", 0.0))
+		build.skills.health += float(grown.get("titan_health", 0.0))
+
+
+static func _extras(args: Dictionary) -> String:
+	return "aspectos %s, arbol %s" % [args.get("aspects", "suyos"), args.get("tree", "suyo")]
