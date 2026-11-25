@@ -57,6 +57,9 @@ var styles: StyleLibrary
 var prototypes: PrototypeLibrary
 ## Los aspectos de cada pieza (OBS-051); sin ellos, las piezas van sin.
 var aspects: PieceAspects
+## Las armas de arena y el arbol que las forja (OBS-051); sin ellos, sin rango.
+var gear: ArenaGear
+var tree: UpgradeTree
 
 
 static func _group_order() -> Array[String]:
@@ -107,9 +110,16 @@ func build_of(profile: PlayerProfile, spec: Dictionary, parts: Dictionary = {}) 
 	build.upgrades = shop.upgrades_for(profile.shop_levels)
 	if prototypes != null:
 		prototypes.apply(build, profile)
+	if gear != null:
+		gear.apply_build(build, profile, tree_effects(profile))
 	if aspects != null:
 		aspects.apply_build(build, profile.aspects)
 	return build
+
+
+## Lo que suma el arbol de mejoras del jugador (vacio sin arbol).
+func tree_effects(profile: PlayerProfile) -> Dictionary:
+	return tree.effects_for(profile.tree) if tree != null else {}
 
 
 ## Una pieza con la clase y el nivel que tiene el jugador.
@@ -128,7 +138,10 @@ func resolved(profile: PlayerProfile, id: String) -> ItemDef:
 		elif tier > assist["tier"]:
 			part_level = 0
 		p = {"tier": tier, "level": part_level}
-	return ItemScaling.resolve(def, rules, p["tier"], p["level"])
+	var item := ItemScaling.resolve(def, rules, p["tier"], p["level"])
+	if gear != null and def.has_tag(ItemDef.TAG_ARENA):
+		item = gear.apply(item, ArenaGear.rank_of(profile, id), tree_effects(profile))
+	return item
 
 
 ## Clase y nivel de una pieza, en corto: "Basica 3/6".
@@ -139,8 +152,13 @@ func progress_text(profile: PlayerProfile, item: ItemDef) -> String:
 		return Txt.t("part_follows_assist")
 	var p := profile.part(item.progress_id())
 	var top: int = rules.tier_max_level[p["tier"]]
-	# El nombre de su fase (OBS-047), no el de su clase.
-	return Txt.t("part_level", [phase_name(p["tier"], p["level"]), p["level"], top])
+	# El nombre de su fase (OBS-047), no el de su clase; en las armas de
+	# arena, el de su rango (OBS-051): "Plata 12/50".
+	var named := phase_name(p["tier"], p["level"])
+	var rank := ArenaGear.rank_of(profile, item.id)
+	if rank > 0:
+		named = Txt.t("arena_rank_name_%d" % rank)
+	return Txt.t("part_level", [named, p["level"], top])
 
 
 ## El nombre de la fase de una pieza de esa clase y nivel ("Tactico").
@@ -256,6 +274,8 @@ func rack(profile: PlayerProfile, slot: String) -> Dictionary:
 				}
 			)
 		)
+	# Las armas de arena que se forjan (OBS-051).
+	sold.append_array(ForgeBrief.entries(self, profile, slot))
 	var mounted := {}
 	var key := {}
 	var can_test := false

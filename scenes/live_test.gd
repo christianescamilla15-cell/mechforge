@@ -96,6 +96,10 @@ func start_autoplay() -> void:
 				levels[aspect] = int(main._args["aspects"])
 			if not levels.is_empty():
 				main._profile.aspects[def.progress_id()] = levels
+	# --arena=<rango>: sus armas, por las de arena (OBS-051); cuentan en los
+	# combates con recompensa (--fight).
+	if main._args.has("arena"):
+		ArenaGear.dress(main._catalog, main._profile, spec["items"], int(main._args["arena"]))
 	main._start_battle(spec)
 	var driver := BattleAI.new(BattleAI.Difficulty.NORMAL, int(spec["seed"]) + 7)
 	if main._args.has("ui"):

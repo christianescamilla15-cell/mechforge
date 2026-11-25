@@ -17,6 +17,27 @@ const MENU_DIFFICULTIES: Array[BattleAI.Difficulty] = [
 const DIFFICULTY_IDS: Array[String] = ["EASY", "NORMAL", "HARD"]
 ## Desde este combate de la racha (0 es el primero) el rival cuenta como titan.
 const TITAN_STEP := 5
+## Las capturas del hangar que lleva una prueba en vivo propia
+## (`--menu-shot=<nombre>`): su funcion en LiveTest.
+const LIVE_SHOTS: Dictionary[String, String] = {
+	"inicio": "starter_test",
+	"ajustes": "settings_test",
+	"espada": "sword_test",
+	"evolucion": "evolution_test",
+	"racha": "streak_test",
+	"zona": "zone_test",
+	"estuche": "case_test",
+	"desarmado": "teardown_test",
+	"fases": "phases_test",
+	"observaciones": "observations_test",
+	"armeria": "armory_test",
+	"arbol": "tree_test",
+	"aspectos": "aspects_test",
+	"forja": "forge_test",
+	"hito": "milestone_test",
+	"garaje": "garage_test",
+	"misiones": "missions_test",
+}
 
 var _rules := RulesConfig.new()
 var _stages := StageLibrary.load_file("res://data/stages.json")
@@ -28,6 +49,7 @@ var _progression := Progression.load_file("res://data/progression.json")
 var _skills := SkillTree.load_file("res://data/skills.json")
 var _tree := UpgradeTree.load_file("res://data/upgrade_tree.json")
 var _aspects := PieceAspects.load_file("res://data/aspects.json")
+var _gear := ArenaGear.load_file("res://data/arena_gear.json")
 ## Celdas, mejoras, avance e historial del jugador.
 var _profile := PlayerProfile.new()
 ## Las pruebas automaticas no tocan el guardado del jugador.
@@ -110,6 +132,8 @@ func _ready() -> void:
 	_bench.styles = _styles
 	_bench.prototypes = _prototypes
 	_bench.aspects = _aspects
+	_bench.gear = _gear
+	_bench.tree = _tree
 	_arena_seed = randi()
 	if _args.has("showcase"):
 		# Muestra de movimientos para revisar animaciones (tools/clip.ps1 -Showcase).
@@ -182,6 +206,9 @@ func _ready() -> void:
 		if _args.has("real-profile"):
 			_profile = PlayerProfile.load_or_new(SAVE_PATH)
 			Garage.ensure_assist(_profile, _catalog)
+		# --arena=<rango>: sus armas, por las de arena (OBS-051, sin guardar).
+		if _args.has("arena"):
+			ArenaGear.dress(_catalog, _profile, _profile.build, int(_args["arena"]))
 		_show_menu()
 		if _args["menu-shot"] in ["equipo", "mejoras", "habilidades", "robot"]:
 			# El hangar con eso abierto (--slot=<hueco>: el hueco elegido).
@@ -189,53 +216,11 @@ func _ready() -> void:
 			if _args.has("slot"):
 				hangar._selected = _args["slot"]
 			hangar.show_page(_args["menu-shot"])
-		elif _args["menu-shot"] == "inicio":
-			_live_test().starter_test()
-			return
-		elif _args["menu-shot"] == "ajustes":
-			_live_test().settings_test()
-			return
-		elif _args["menu-shot"] == "espada":
-			_live_test().sword_test()
-			return
-		elif _args["menu-shot"] == "evolucion":
-			_live_test().evolution_test()
-			return
-		elif _args["menu-shot"] == "racha":
-			_live_test().streak_test()
-			return
-		elif _args["menu-shot"] == "zona":
-			_live_test().zone_test()
-			return
-		elif _args["menu-shot"] == "estuche":
-			_live_test().case_test()
-			return
-		elif _args["menu-shot"] == "desarmado":
-			_live_test().teardown_test()
-			return
-		elif _args["menu-shot"] == "fases":
-			_live_test().phases_test()
-			return
-		elif _args["menu-shot"] == "observaciones":
-			_live_test().observations_test()
-			return
 		elif _args["menu-shot"] == "taller":
 			_live_test().workshop_test(open_workshop())
 			return
-		elif _args["menu-shot"] == "armeria":
-			_live_test().armory_test()
-			return
-		elif _args["menu-shot"] == "arbol":
-			_live_test().tree_test()
-			return
-		elif _args["menu-shot"] == "aspectos":
-			_live_test().aspects_test()
-			return
-		elif _args["menu-shot"] == "garaje":
-			_live_test().garage_test()
-			return
-		elif _args["menu-shot"] == "misiones":
-			_live_test().missions_test()
+		elif LIVE_SHOTS.has(_args["menu-shot"]):
+			_live_test().call(LIVE_SHOTS[_args["menu-shot"]])
 			return
 		# --channel=<canal>: el hangar en modo mision, en ese canal (campaign,
 		# arena o free). Se espera a que los rivales terminen de encenderse.
@@ -701,6 +686,7 @@ func _start_battle(spec: Dictionary) -> void:
 	if rewarded:
 		player_build.upgrades = _shop.upgrades_for(_profile.shop_levels)
 		_prototypes.apply(player_build, _profile)
+		_gear.apply_build(player_build, _profile, _tree.effects_for(_profile.tree))
 		_aspects.apply_build(player_build, _profile.aspects)
 		_apply_tree(player_build, boss or int(spec.get("streak", -1)) >= TITAN_STEP)
 	var enemy_build := _library.make(
@@ -750,6 +736,10 @@ func _on_battle_finished(player_won: bool) -> void:
 	var result := _campaign.finish_fight(
 		_profile, _shop, _spec["mode"], player_won, _progression, bonus
 	)
+	# Los hitos de la racha (OBS-051): un arma de arena al azar.
+	var luck := RandomNumberGenerator.new()
+	luck.seed = hash([int(_spec.get("seed", 0)), _profile.wins])
+	var prize := _gear.reward(_profile, _catalog, result, bonus, luck) if player_won else {}
 	_save()
 	if _persist:
 		FightLog.append(_fight_entry(player_won, result))
@@ -783,7 +773,23 @@ func _on_battle_finished(player_won: bool) -> void:
 		_last_result += "\n" + Txt.t("result_level_up", [_player_level()])
 	if _spec["mode"] == "arena":
 		_arena_result(result)
+		_last_result += _milestone_text(prize)
 	_battle.set_result_note(_last_result)
+
+
+## Lo que dio un hito de la racha: sus armas de arena y su suerte.
+func _milestone_text(prize: Dictionary) -> String:
+	var out := ""
+	for got: Dictionary in prize.get("weapons", []):
+		var rank := Txt.t("arena_rank_%d" % int(got["rank"]))
+		var said := str(_catalog.get_item(str(got["id"])).display_name)
+		var key := "arena_weapon" if bool(got["new"]) else "arena_weapon_up"
+		out += String.chr(10) + Txt.t(key, [said, rank])
+	if int(prize.get("melted", 0)) > 0:
+		out += String.chr(10) + Txt.t("arena_melted", [HangarProps.thousands(prize["melted"])])
+	if int(prize.get("double", 0)) > 0:
+		out += String.chr(10) + Txt.t("arena_double", [HangarProps.thousands(prize["double"])])
+	return out
 
 
 ## El arbol de mejoras en el robot del jugador (OBS-051): lo que suma a sus

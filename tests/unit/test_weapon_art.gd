@@ -19,6 +19,10 @@ func _mounted() -> Array[ItemDef]:
 func test_cada_arma_montada_tiene_el_dibujo_de_su_forma_y_su_tipo() -> void:
 	var kinds := {}
 	for item in _mounted():
+		# Las de arena (OBS-051) llevan su propio dibujo.
+		if item.has_tag(ItemDef.TAG_ARENA):
+			assert_eq(MechSprites.weapon_kind(item), str(item.art["look"]), item.id)
+			continue
 		var prefix := "arm_" if item.type == ItemDef.Type.SIDE else "shoulder_"
 		var wanted := prefix + item.form + "_" + item.weapon_type
 		assert_eq(MechSprites.weapon_kind(item), wanted, "dibujo de %s" % item.id)

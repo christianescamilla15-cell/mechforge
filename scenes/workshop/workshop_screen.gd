@@ -806,9 +806,15 @@ func _pay(id: String) -> bool:
 		if main._bench.lock_reason(main._profile, "assist") != "":
 			return false
 	var open := main._campaign.boss_weapons_open(main._profile)
-	var why := main._garage.buy(
-		main._profile, main._catalog, main._rules, main._workshop, id, tier, open
-	)
+	var why := ""
+	if def != null and def.has_tag(ItemDef.TAG_ARENA):
+		# Las armas de arena se forjan (OBS-051, rama Forja del arbol).
+		var effects := main._bench.tree_effects(main._profile)
+		why = main._gear.forge(main._profile, main._catalog, id, effects)
+	else:
+		why = main._garage.buy(
+			main._profile, main._catalog, main._rules, main._workshop, id, tier, open
+		)
 	if why != "":
 		return false
 	Sfx.play("ui_comprar")

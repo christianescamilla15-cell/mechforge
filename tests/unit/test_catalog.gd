@@ -11,7 +11,7 @@ const FORBIDDEN_PATH := "res://docs/reference/original-item-names.txt"
 func test_el_catalogo_real_carga_sin_errores() -> void:
 	var catalog := Catalog.load_file(CATALOG_PATH)
 	assert_eq(catalog.errors, [] as Array[String])
-	assert_eq(catalog.items.size(), 145, "144 y el arma del campeon de la liga 5")
+	assert_eq(catalog.items.size(), 157, "144, el arma del campeon de la liga 5 y 12 de arena")
 
 
 func test_el_catalogo_real_pasa_el_validador() -> void:
@@ -27,8 +27,9 @@ func test_composicion_del_catalogo_real() -> void:
 	assert_eq(catalog.by_type(ItemDef.Type.TORSO).size(), 6)
 	assert_eq(catalog.by_type(ItemDef.Type.LEGS).size(), 6)
 	# Los rifles pasaron del brazo al hombro (OBS-033).
-	assert_eq(catalog.by_type(ItemDef.Type.SIDE).size(), 39, "13 disenos de brazo x 3 municiones")
-	assert_eq(catalog.by_type(ItemDef.Type.TOP).size(), 39, "13 disenos de hombro x 3")
+	# Mas las armas de arena (OBS-051): tres disenos de brazo y uno de hombro.
+	assert_eq(catalog.by_type(ItemDef.Type.SIDE).size(), 48, "13 de brazo y 3 de arena, x 3")
+	assert_eq(catalog.by_type(ItemDef.Type.TOP).size(), 42, "13 de hombro y 1 de arena, x 3")
 	assert_eq(catalog.by_type(ItemDef.Type.DRONE).size(), 18, "6 robots de soporte x 3")
 	assert_eq(
 		catalog.by_type(ItemDef.Type.MODULE).size(), 14, "10 de antes y 4 de ataque (OBS-040)"
@@ -45,8 +46,8 @@ func test_cada_tipo_de_arma_existe_en_sus_clases() -> void:
 	}
 	var catalog := Catalog.load_file(CATALOG_PATH)
 	for def: ItemDef in catalog.items.values():
-		# Las armas de campeon (GDD 9.4) son unicas: van aparte.
-		if def.has_tag(ItemDef.TAG_BOSS):
+		# Las armas de campeon (GDD 9.4) y las de arena son unicas: van aparte.
+		if def.has_tag(ItemDef.TAG_BOSS) or def.has_tag(ItemDef.TAG_ARENA):
 			continue
 		if (
 			def.type
@@ -61,7 +62,7 @@ func test_cada_diseno_existe_en_las_tres_municiones() -> void:
 	var catalog := Catalog.load_file(CATALOG_PATH)
 	var designs := {}
 	for def: ItemDef in catalog.items.values():
-		if def.form != "" and not def.has_tag(ItemDef.TAG_BOSS):
+		if def.form != "" and not def.has_tag(ItemDef.TAG_BOSS) and not def.has_tag("arena"):
 			var key := "%s_%s" % [def.form, def.weapon_type]
 			designs[key] = designs.get(key, []) + [def.element]
 	assert_eq(designs.size(), 37, "17 de brazo, 9 de hombro, 5 de pecho y 6 de soporte")

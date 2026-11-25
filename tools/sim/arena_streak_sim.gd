@@ -16,6 +16,8 @@ extends SceneTree
 ##     --aspects=N        todos los aspectos de sus armas y su torso a N
 ##     --tree=a|b|<ids>   el arbol de mejoras entero (primera o segunda
 ##                        especializacion) o esos nodos
+##     --arena=N          sus armas de brazo y hombro cambiadas por las de
+##                        arena de su forma y elemento, de rango N (1-3)
 
 ## Desde este combate de la racha (0 es el primero) cuenta Titanes (MainScreen.TITAN_STEP).
 const TITAN_STEP := 5
@@ -63,6 +65,8 @@ func _initialize() -> void:
 	brief.garage = Garage.load_file("res://data/part_shop.json")
 	brief.aspects = PieceAspects.load_file("res://data/aspects.json")
 	var tree := UpgradeTree.load_file("res://data/upgrade_tree.json")
+	brief.gear = ArenaGear.load_file("res://data/arena_gear.json")
+	brief.tree = tree
 	if not campaign.errors.is_empty():
 		print("ERRORES en campaign.json: ", campaign.errors)
 		quit(1)
@@ -84,6 +88,8 @@ func _initialize() -> void:
 	# la segunda (b) especializacion de cada bifurcacion, o esos nodos.
 	if args.has("tree"):
 		profile.tree.assign(_tree_nodes(tree, str(args["tree"])))
+	if args.has("arena"):
+		ArenaGear.dress(catalog, profile, profile.build, int(args["arena"]))
 	var build := brief.build_of(profile, profile.build)
 	var titan_build := brief.build_of(profile, profile.build)
 	_apply_tree(tree, profile, build, false)
@@ -218,4 +224,5 @@ static func _apply_tree(
 
 
 static func _extras(args: Dictionary) -> String:
-	return "aspectos %s, arbol %s" % [args.get("aspects", "suyos"), args.get("tree", "suyo")]
+	var said := [args.get("aspects", "suyos"), args.get("tree", "suyo"), args.get("arena", "-")]
+	return "aspectos %s, arbol %s, arena %s" % said

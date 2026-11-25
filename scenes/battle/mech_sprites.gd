@@ -210,6 +210,10 @@ static func assist_point(kind: String, key: String) -> Vector2:
 static func weapon_kind(item: ItemDef) -> String:
 	if item == null or item.form == "" or not WEAPON_PREFIX.has(item.type):
 		return ""
+	# Las armas con dibujo propio (las de arena, OBS-051): "art": {"look"}.
+	var own := str(item.art.get("look", ""))
+	if own != "" and has_piece(WEAPON_SET, own):
+		return own
 	var base: String = WEAPON_PREFIX[item.type] + item.form + "_"
 	if has_piece(WEAPON_SET, base + item.weapon_type):
 		return base + item.weapon_type
@@ -341,6 +345,10 @@ func draw_dressed(
 	time: float
 ) -> void:
 	var levels: Dictionary = item.aspects if item != null else {}
+	if item != null and item.arena_rank > 0:
+		# El rango de un arma de arena se dibuja como un aspecto mas (OBS-051).
+		levels = levels.duplicate()
+		levels["rango"] = item.arena_rank
 	if levels.is_empty():
 		draw_piece(canvas, set_name, kind, element, tint, offset)
 		return

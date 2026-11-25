@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "comment": "Armas de arena (OBS-051, PLAN A5, core/arena_gear.gd). Las armas son las del catalogo con la etiqueta arena. milestones: el combate de la racha que, al ganarlo, da una al azar, y de que rango (1 bronce, 2 plata, 3 oro). ranks: lo que suma cada rango al dano del arma (las estadisticas de scale). forge_price: celdas por forjar una del rango que abre la rama Forja. melt: si ya las tiene todas de ese rango, el hito da esa parte del precio de forjarla en celdas.",
+  "milestones": {"10": 1, "15": 2, "20": 3},
+  "ranks": [
+    {"id": "bronce", "damage": 0.0},
+    {"id": "plata", "damage": 0.15},
+    {"id": "oro", "damage": 0.3}
+  ],
+  "scale": ["dmg_min", "dmg_max", "heat_dmg", "energy_dmg", "res_dmg"],
+  "forge_price": [1500000, 3000000, 6000000],
+  "melt": 0.25
+}

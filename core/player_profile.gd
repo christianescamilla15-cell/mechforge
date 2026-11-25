@@ -37,6 +37,8 @@ var parts: Dictionary[String, Dictionary] = {}
 ## Aspectos de cada pieza (PieceAspects, OBS-051): clave de progreso de la
 ## pieza -> {aspecto: nivel}.
 var aspects: Dictionary[String, Dictionary] = {}
+## Armas de arena (ArenaGear, OBS-051): id -> rango (1 bronce, 2 plata, 3 oro).
+var arena_gear: Dictionary[String, int] = {}
 ## Prototipos del especialista (GDD 8.6), por la clave de progreso de la
 ## pieza: {id del prototipo: rango}. Van con la pieza; se combinan.
 var prototypes: Dictionary = {}
@@ -226,6 +228,7 @@ func end_run() -> void:
 	shop_levels.clear()
 	parts.clear()
 	aspects.clear()
+	arena_gear.clear()
 	unique_cores = 0
 	skill_bonus = 0
 	arena_pot = 0
@@ -491,6 +494,7 @@ func to_dict() -> Dictionary:
 		"shop_levels": shop_levels.duplicate(),
 		"parts": parts.duplicate(true),
 		"aspects": aspects.duplicate(true),
+		"arena_gear": arena_gear.duplicate(),
 		"prototypes": prototypes.duplicate(true),
 		"unique_cores": unique_cores,
 		"skill_bonus": skill_bonus,
@@ -598,6 +602,12 @@ static func from_dict(data: Dictionary) -> PlayerProfile:
 					levels[str(aspect)] = level
 			if not levels.is_empty():
 				profile.aspects[id] = levels
+	var saved_gear: Variant = data.get("arena_gear", {})
+	if saved_gear is Dictionary:
+		for id: Variant in saved_gear:
+			var rank := int(saved_gear[id])
+			if rank > 0:
+				profile.arena_gear[str(id)] = rank
 	var saved_protos: Variant = data.get("prototypes", {})
 	if saved_protos is Dictionary:
 		for key: String in saved_protos:

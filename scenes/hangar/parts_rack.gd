@@ -4,10 +4,9 @@ extends Control
 ## mitad de la pantalla donde se despliegan las piezas que caben en la
 ## casilla elegida del plano, "por tipo" (decision del usuario, 2026-11-21,
 ## OBS-030: "se te va a desplegar a un lado de esa pantalla las armas
-## disponibles"). Las tuyas, solidas; las que vende la tienda, como
-## hologramas con su precio.
+## disponibles"). Las tuyas, solidas; las de la tienda, hologramas con su precio.
 ## - pulsar una tuya la monta; pulsar la que ya llevas ahi la quita;
-## - pulsar un holograma lo deja armado y una segunda pulsacion lo compra;
+## - pulsar un holograma lo deja armado y una segunda pulsacion lo compra (o forja);
 ## - la rueda del raton (o sus flechas) pasa las filas;
 ## - cada tipo de pieza ("hojas", "cortas"...) lleva su rotulo en la primera.
 ## Hasta el 2026-11-21 era un tablero que colgaba de un riel junto al robot;
@@ -21,8 +20,7 @@ extends Control
 ## llevas, y la tecla de subirla de nivel o transformarla. Entre las dos, una
 ## linea de la terminal que dice, letra a letra, que hace pulsarla. Y al pie,
 ## la lectura del robot (peso, vida, energia, calor, resistencias): al pasar
-## el raton por una pieza ensena lo que quedaria con ella puesta y cuanto
-## cambia.
+## el raton por una pieza ensena lo que quedaria con ella puesta y cuanto cambia.
 ##
 ## Ensena un estado (WorkshopBrief.rack) y avisa de lo que se pulsa; no
 ## decide nada.
@@ -889,11 +887,13 @@ func _part_action(part: Dictionary) -> Array:
 		if str(part.get("where", "")) != "":
 			return [Txt.t("rack_click_move", [str(part["where"])]), TEXT]
 		return [_upper_first(Txt.t("rack_click_mount")), TEXT]
+	var verb := "rack_click_forge" if bool(part.get("forge", false)) else "rack_click_buy"
 	if str(part.get("reason", "")) != "":
-		return ["%s · %s" % [Txt.t("rack_click_buy", [price]), str(part["reason"])], BAD]
+		return ["%s · %s" % [Txt.t(verb, [price]), str(part["reason"])], BAD]
 	if _armed == str(part["id"]):
-		return [Txt.t("rack_buy_confirm", [price]), Color(GOLD, 0.75 + 0.25 * sin(_time * 8.0))]
-	var line := Txt.t("rack_click_buy", [price])
+		var sure := verb.replace("click_", "") + "_confirm"
+		return [Txt.t(sure, [price]), Color(GOLD, 0.75 + 0.25 * sin(_time * 8.0))]
+	var line := Txt.t(verb, [price])
 	if str(part.get("note", "")) != "":
 		line += " · " + str(part["note"])
 	return [line, TEXT]

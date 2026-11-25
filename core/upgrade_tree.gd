@@ -40,6 +40,12 @@ const READY: Array[String] = [
 	"mobility",
 	"swarm",
 	"drone_shield",
+	"forge",
+	"forge_quality",
+	"forge_discount",
+	"fortune",
+	"fortune_quality",
+	"fortune_double",
 ]
 ## Nivel de la linea de la armeria que abre su rama.
 const OPENS_AT := 10

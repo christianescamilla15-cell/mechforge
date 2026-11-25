@@ -75,8 +75,7 @@ func test_se_aprende_en_orden_y_gasta_sus_puntos() -> void:
 	assert_eq(_tree.why_cant_learn(poor, "sobrecarga_1"), "faltan puntos de mejora")
 
 
-## La bifurcacion: se elige una de las dos y la otra queda cerrada. Una cuyo
-## efecto aun no aplica el juego (la forja) se ve pero no se aprende.
+## La bifurcacion: se elige una de las dos y la otra queda cerrada.
 func test_la_bifurcacion_es_una_de_dos() -> void:
 	var profile := _ready_profile()
 	profile.shop_levels["health"] = 10
@@ -84,7 +83,7 @@ func test_la_bifurcacion_es_una_de_dos() -> void:
 		assert_eq(_tree.learn(profile, id), "")
 	assert_eq(_tree.learn(profile, "regeneracion"), "")
 	assert_eq(_tree.why_cant_learn(profile, "bastion"), "elegiste la otra")
-	assert_false(_tree.is_ready("forja_1"), "la forja llega con las armas de la arena")
+	assert_true(_tree.is_ready("forja_1"), "la forja llego con las armas de la arena")
 	assert_true(_tree.is_ready("sobrecarga_1"))
 	# Botin: sus dos caminos ya funcionan.
 	for id: String in ["botin_1", "botin_2"]:
@@ -132,18 +131,10 @@ func test_el_arbol_se_guarda_con_la_partida() -> void:
 
 
 ## Todas las especializaciones de las ramas de la armeria y de Botin y
-## Titanes ya funcionan en combate; solo Forja y Fortuna esperan a las armas
-## de la arena (A5).
-func test_solo_forja_y_fortuna_esperan() -> void:
+## Con las armas de arena (A5) ya funciona todo el arbol: Forja y Fortuna
+## tambien se aprenden.
+func test_todo_el_arbol_se_aprende() -> void:
 	for branch: Dictionary in _tree.branches:
-		var waits: bool = branch["id"] in ["forja", "fortuna"]
 		for step: Array in branch["steps"]:
 			for node: Dictionary in step:
-				var effects: Dictionary = node["effects"]
-				var later := effects.keys().any(
-					func(e: String) -> bool:
-						return e.begins_with("forge") or e.begins_with("fortune")
-				)
-				assert_eq(_tree.is_ready(node["id"]), not later, node["id"])
-				if not waits:
-					assert_true(_tree.is_ready(node["id"]), node["id"])
+				assert_true(_tree.is_ready(node["id"]), node["id"])

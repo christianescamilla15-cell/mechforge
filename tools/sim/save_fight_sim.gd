@@ -179,6 +179,7 @@ func _weapon_at(id: String, tier: ItemDef.Tier) -> String:
 		return id
 	for other: ItemDef in _catalog.by_type(def.type):
 		var same := other.form == def.form and other.element == def.element
+		same = same and not other.has_tag(ItemDef.TAG_ARENA)
 		if same and other.tier_min <= tier and tier <= other.tier_max:
 			return other.id
 	return id

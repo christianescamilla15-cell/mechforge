@@ -20,8 +20,11 @@ const TAG_HOVER := "levita"
 ## comprar, pero por un alto coste"): no esta en la tienda hasta vencerlo y
 ## cuesta mucho mas.
 const TAG_BOSS := "jefe"
+## Las armas de arena (OBS-051, ArenaGear): no se venden; se ganan en los
+## hitos de la racha o se forjan con la rama Forja del arbol.
+const TAG_ARENA := "arena"
 const KNOWN_TAGS: Array[String] = [
-	TAG_MELEE, TAG_SWORD, TAG_TRACKS, TAG_WHEELS, TAG_HOVER, TAG_BOSS
+	TAG_MELEE, TAG_SWORD, TAG_TRACKS, TAG_WHEELS, TAG_HOVER, TAG_BOSS, TAG_ARENA
 ]
 
 ## Estadisticas que crecen con el tier y el nivel (GDD 8).
@@ -147,6 +150,9 @@ const BOOSTS: Array[String] = ["arms", "shoulder", "special", "all"]
 ## jugador: {aspecto: nivel}. Vacio en las demas. Solo para dibujarlos: los
 ## numeros ya van cambiados.
 @export var aspects: Dictionary = {}
+## Rango de un arma de arena del jugador (ArenaGear): 1 bronce, 2 plata,
+## 3 oro; 0 en las demas. Como los aspectos, solo para dibujarlo.
+@export var arena_rank: int = 0
 @export var range_min: int = 0
 @export var range_max: int = 0
 

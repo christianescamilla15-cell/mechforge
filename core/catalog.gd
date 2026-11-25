@@ -46,7 +46,9 @@ func successor(def: ItemDef, tier: int) -> ItemDef:
 	for other in by_type(def.type):
 		if other.form != def.form or other.element != def.element:
 			continue
-		if other.has_tag(ItemDef.TAG_BOSS) or tier < other.tier_min or tier > other.tier_max:
+		if other.has_tag(ItemDef.TAG_BOSS) or other.has_tag(ItemDef.TAG_ARENA):
+			continue
+		if tier < other.tier_min or tier > other.tier_max:
 			continue
 		var rank := WEAPON_ORDER.find(other.weapon_type)
 		if rank > after and rank < best_rank:

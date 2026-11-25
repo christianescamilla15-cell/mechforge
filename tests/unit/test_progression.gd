@@ -79,7 +79,7 @@ func test_el_catalogo_tiene_las_111_armas_y_15_de_pecho() -> void:
 	var weapons := 0
 	for type in [ItemDef.Type.SIDE, ItemDef.Type.TOP, ItemDef.Type.CHEST, ItemDef.Type.DRONE]:
 		for def in _catalog.by_type(type):
-			if not def.has_tag(ItemDef.TAG_BOSS):
+			if not def.has_tag(ItemDef.TAG_BOSS) and not def.has_tag(ItemDef.TAG_ARENA):
 				weapons += 1
 				chests += 1 if type == ItemDef.Type.CHEST else 0
 	assert_eq(chests, 15)

@@ -567,3 +567,79 @@ func aspects_test() -> void:
 		await get_tree().create_timer(0.9).timeout
 		await shot("nivel_%02d" % level)
 	get_tree().quit(0)
+
+
+## La forja de las armas de arena (OBS-051): el estuche del brazo con las de
+## arena cerradas, abiertas con la Forja del hito 10 y una forjada (sin
+## guardar: la prueba en vivo nunca guarda).
+func forge_test() -> void:
+	var profile := main._profile
+	profile.gold = maxi(profile.gold, 20_000_000)
+	main._show_menu()
+	await get_tree().create_timer(0.8).timeout
+	var workshop := main.open_workshop()
+	var stage := workshop._stage
+	await get_tree().create_timer(0.5).timeout
+	var view := stage.teardown
+	await _click(view.global_position + view.rect_of("slot:side0").get_center())
+	await get_tree().create_timer(0.5).timeout
+	var change: Rect2 = stage.tag._keys.get("change", Rect2())
+	await _click(stage.tag.global_position + change.get_center())
+	await get_tree().create_timer(0.7).timeout
+	var rack := stage.parts_case.rack
+	var first := -1
+	for index in rack._parts.size():
+		if bool(rack._parts[index].get("forge", false)):
+			first = index
+			break
+	if first < 0:
+		print("FORJA sin armas de arena en el estuche")
+		get_tree().quit(1)
+		return
+	var id := str(rack._parts[first]["id"])
+	rack.scroll_rows(floori(first / float(PartsRack.COLUMNS)))
+	await get_tree().create_timer(0.6).timeout
+	var at := rack.global_position + rack.part_rect(first).get_center()
+	await _move(at)
+	await get_tree().create_timer(0.5).timeout
+	await shot("forja_cerrada")
+	profile.tree.assign(["forja_1"])
+	workshop.refresh()
+	await get_tree().create_timer(0.6).timeout
+	await _move(at + Vector2(1, 0))
+	await get_tree().create_timer(0.5).timeout
+	await shot("forja_abierta")
+	var gold := profile.gold
+	await _click(at)
+	await get_tree().create_timer(0.3).timeout
+	await _click(at)
+	await get_tree().create_timer(0.8).timeout
+	await shot("forjada")
+	var rank := ArenaGear.rank_of(profile, id)
+	print(
+		(
+			"FORJA %s tiene=%s rango=%d celdas=%d"
+			% [id, id in profile.owned, rank, gold - profile.gold]
+		)
+	)
+	get_tree().quit(0)
+
+
+## El premio de un hito de la racha (OBS-051): ganar el combate 10 (o el de
+## --streak=N) con la rama Fortuna aprendida, sin guardar.
+func milestone_test() -> void:
+	await get_tree().create_timer(0.6).timeout
+	var profile := main._profile
+	var won := int(main._args.get("streak", "10"))
+	profile.arena_streak = won - 1
+	profile.arena_pot = 100000
+	var luck := ["fortuna_1", "fortuna_2", "doble_premio", "fortuna_4", "fortuna_5"]
+	profile.tree.assign(luck)
+	main._on_arena_pressed()
+	await get_tree().create_timer(1.2).timeout
+	main._on_battle_finished(true)
+	main._battle._result.show()
+	await get_tree().create_timer(0.3).timeout
+	print("HITO %d: armas=%s celdas=%d" % [won, profile.arena_gear, profile.gold])
+	await shot("hito_%d" % won)
+	get_tree().quit(0)

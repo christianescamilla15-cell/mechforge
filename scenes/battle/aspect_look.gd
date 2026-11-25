@@ -34,6 +34,9 @@ const COLORS: Dictionary[String, Color] = {
 	"disipacion": HOT,
 	"reactor": CORE,
 }
+## El rango de un arma de arena (ArenaGear, OBS-051): bronce, plata y oro.
+## Lo dibuja como el aspecto "rango" (MechSprites.draw_dressed).
+const RANKS: Array[Color] = [Color(0.86, 0.52, 0.26), Color(0.86, 0.92, 1.0), Color(1.0, 0.8, 0.28)]
 ## Material por tramos de nivel: 1-3 acero templado, 4-6 titanio, 7-9
 ## aleacion negra y 10 oro estelar (por encima de 1, aclara).
 const METALS: Array[Color] = [
@@ -54,6 +57,8 @@ const AROUND: Array[Vector2] = [
 
 ## Lo que crece el disparo por cada nivel de potencia (x1.5 al 10).
 const SHOT_GROWTH := 0.05
+## Las siluetas en blanco ya hechas (_white), por dibujo.
+static var _whites: Dictionary = {}
 
 
 ## Cuanto crece el disparo de esa arma por su potencia (1 sin ella).
@@ -103,6 +108,18 @@ static func _level(levels: Dictionary, id: String) -> int:
 static func _under(
 	canvas: CanvasItem, texture: Texture2D, box: Rect2, tint: Color, levels: Dictionary, time: float
 ) -> void:
+	var rank := mini(_level(levels, "rango"), RANKS.size())
+	if rank > 0:
+		# Un aura por rango (una el bronce, tres el oro), que late despacio.
+		# Sobre la silueta en blanco: tenida por la pieza, el oro sobre una
+		# pieza azul salia verde.
+		var white := _white(texture)
+		var tone := RANKS[rank - 1]
+		for i in rank:
+			var pulse := 0.8 + 0.2 * sin(time * 2.4 - i)
+			var aura := Color(tone.r * 1.3, tone.g * 1.3, tone.b * 1.3, (0.36 - 0.09 * i) * pulse)
+			aura.a *= tint.a
+			_ring(canvas, white, box, 1.6 + 1.6 * (i + 1), aura)
 	var light := _level(levels, "ligereza")
 	var ghosts := 1 + floori(light / 4.0) if light > 0 else 0
 	for i in ghosts:
@@ -172,6 +189,27 @@ static func _over(
 
 
 ## La silueta de la pieza repetida alrededor: un contorno de ese color.
+## La silueta de una pieza en blanco (para un aura de un color puro); se
+## hace una vez por dibujo.
+static func _white(texture: Texture2D) -> Texture2D:
+	var key := texture.get_rid()
+	if _whites.has(key):
+		return _whites[key]
+	var shape := texture.get_image()
+	if shape == null:
+		return texture
+	if shape.is_compressed():
+		shape.decompress()
+	shape.convert(Image.FORMAT_RGBA8)
+	var size := shape.get_size()
+	var paint := Image.create(size.x, size.y, false, Image.FORMAT_RGBA8)
+	paint.fill(Color.WHITE)
+	var out := Image.create(size.x, size.y, false, Image.FORMAT_RGBA8)
+	out.blit_rect_mask(paint, shape, Rect2i(Vector2i.ZERO, size), Vector2i.ZERO)
+	_whites[key] = ImageTexture.create_from_image(out)
+	return _whites[key]
+
+
 static func _ring(
 	canvas: CanvasItem, texture: Texture2D, box: Rect2, width: float, color: Color
 ) -> void:

@@ -322,8 +322,9 @@ func stock_for(catalog: Catalog, zone_tier: int) -> Array[String]:
 		var ids: Array[String] = []
 		for def in catalog.by_type(type):
 			# Las armas de campeon no se venden aqui: se abren al vencerlo
-			# (Campaign.boss_weapons_open).
-			if def.has_tag(ItemDef.TAG_BOSS):
+			# (Campaign.boss_weapons_open). Ni las de arena: se ganan en la
+			# racha o se forjan (ArenaGear).
+			if def.has_tag(ItemDef.TAG_BOSS) or def.has_tag(ItemDef.TAG_ARENA):
 				continue
 			if def.tier_min <= zone_tier and zone_tier <= def.tier_max:
 				ids.append(def.id)
