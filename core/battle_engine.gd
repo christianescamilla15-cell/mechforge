@@ -299,11 +299,11 @@ func preview(action: BattleAction) -> Dictionary:
 		if hits:
 			out["dmg_min"] = _damage(def, me, foe, 0.0, 0.0, key)
 			out["dmg_max"] = _damage(def, me, foe, 1.0, 0.0, key)
-			out["crit_chance"] = crit_chance(def, foe)
+			out["crit_chance"] = crit_chance(def, foe, me)
 			out["crit_effect"] = def.crit_effect
-			out["target_heat"] = foe.heat + def.heat_dmg
+			out["target_heat"] = foe.heat + _heat_hit(def, me, 0.0)
 			if not foe.free_energy():
-				out["target_energy"] = maxi(0, foe.energy - def.energy_dmg)
+				out["target_energy"] = maxi(0, foe.energy - _energy_hit(def, me, 0.0))
 			out["self_health"] = me.health - me.backfire_of(def)
 		out["self_heat"] = me.heat + def.heat_cost
 		out["self_energy"] = me.energy - me.energy_cost(def)
@@ -397,9 +397,11 @@ func _begin_turn() -> void:
 	_maybe_spawn_drop()
 	for slot: BattleMech.Slot in me.slots.values():
 		slot.used_this_turn = false
-	# El escudo y la evasion del rival se recargan en cada turno de quien ataca.
+	# El escudo, la evasion y el bastion del rival se recargan en cada turno
+	# de quien ataca.
 	foe.shield_left = foe.shield_hits()
 	foe.evade_left = 1 if foe.evades() else 0
+	foe.bastion_ready = foe.skill("bastion") > 0.0
 	if me.regen_share() > 0.0 and me.health < me.max_health:
 		var repair := maxi(1, roundi(me.max_health * me.regen_share()))
 		repair = mini(repair, me.max_health - me.health)
@@ -509,7 +511,7 @@ func _use(
 		roll = fixed_roll if fixed_roll >= 0.0 else _rng.randf()
 	var shielded := def.deals_damage() and (target.shield_left > 0 or target.barrier > 0)
 	var crit := 0.0
-	var chance := crit_chance(def, target)
+	var chance := crit_chance(def, target, user)
 	if chance > 0.0:
 		if expected_crits:
 			crit = chance
@@ -532,9 +534,9 @@ func _use(
 	var soaked := target.hurt(damage)
 	# Un critico tambien calienta y drena mas: si no, solo lo aprovechaban las
 	# armas de dano directo (medido el 2026-11-18: el fisico laser gano el 67 %).
-	target.heat += roundi(def.heat_dmg * _crit_factor(crit))
+	target.heat += _heat_hit(def, user, crit)
 	if not target.free_energy():
-		target.energy = maxi(0, target.energy - roundi(def.energy_dmg * _crit_factor(crit)))
+		target.energy = maxi(0, target.energy - _energy_hit(def, user, crit))
 	if def.element != ItemDef.Element.COMBINED:
 		target.res[def.element] = maxi(0, target.res[def.element] - def.res_dmg)
 	if def.heat_cap_dmg > 0:
@@ -549,6 +551,8 @@ func _use(
 
 	var data := {"slot": key, "item": def.id, "damage": damage}
 	_note_layer(data, target, soaked)
+	if damage > 0:
+		data.merge(_answer_hit(user, target, damage))
 	if damage > 0 and not def.proto_effects.is_empty():
 		_proto_on_hit(user, def, damage, data)
 	if crit >= 1.0:
@@ -571,10 +575,13 @@ func _use(
 ## los criticos estan apagados o un escudo para el golpe.
 ## Con el percutor del especialista (GDD 8.6) se suma la suya, aunque los
 ## criticos esten apagados o el arma no tenga.
-func crit_chance(def: ItemDef, target: BattleMech) -> float:
+## `user`: quien golpea, con el critico de mas de su arbol de mejoras.
+func crit_chance(def: ItemDef, target: BattleMech, user: BattleMech = null) -> float:
 	if not def.deals_damage() or target.shield_left > 0 or target.barrier > 0:
 		return 0.0
 	var extra := float(def.proto_effects.get("crit", 0.0))
+	if user != null:
+		extra += user.skill("crit")
 	if not rules.crits_enabled or def.crit <= 0:
 		return clampf(extra, 0.0, rules.crit_cap)
 	var chance := def.crit / 100.0
@@ -656,18 +663,67 @@ func _damage(
 			damage = roundi(damage * _crit_factor(crit))
 		if def.element != ItemDef.Element.COMBINED:
 			var resistance: int = target.res[def.element]
-			# El critico de balas atraviesa la resistencia.
+			# El critico de balas atraviesa la resistencia, y la perforacion
+			# del arbol de mejoras ignora otra parte.
 			if def.crit_effect == "pierce":
 				resistance = roundi(resistance * (1.0 - crit))
+			var pierce := attacker.skill("pierce")
+			if pierce > 0.0:
+				resistance = roundi(resistance * (1.0 - pierce))
 			damage = maxi(1, damage - resistance)
 		# Bonificacion de armadura del rival (GDD 2.8); sin ella no cambia nada.
 		var armor := target.buff_amount("armor")
 		if armor > 0.0:
 			damage = maxi(1, roundi(damage * (1.0 - armor)))
 	# Rotura de energia: lo que el arma drena de mas se vuelve dano.
-	if target.free_energy():
-		return damage
-	return damage + maxi(0, roundi(def.energy_dmg * _crit_factor(crit)) - target.energy)
+	if not target.free_energy():
+		damage += maxi(0, _energy_hit(def, attacker, crit) - target.energy)
+	# Bastion del rival (arbol de mejoras): para parte del primer golpe.
+	if damage > 0 and target.bastion_ready:
+		damage = maxi(1, roundi(damage * (1.0 - target.skill("bastion"))))
+	return damage
+
+
+## Energia que le quita al rival un golpe de esa arma: con critico, mas, y
+## el drenaje del arbol de mejoras de quien dispara, mas aun.
+func _energy_hit(def: ItemDef, user: BattleMech, crit: float) -> int:
+	return roundi(def.energy_dmg * _crit_factor(crit) * (1.0 + user.skill("drain")))
+
+
+## Calor que le pone al rival un golpe de esa arma: con critico, mas, y la
+## ignicion del arbol de mejoras de quien dispara, mas aun.
+func _heat_hit(def: ItemDef, user: BattleMech, crit: float) -> int:
+	return roundi(def.heat_dmg * _crit_factor(crit) * (1.0 + user.skill("ignition")))
+
+
+## Lo que hacen las especializaciones de quien recibe un golpe (arbol de
+## mejoras, OBS-051): el bastion queda gastado, el reflejo devuelve parte del
+## dano, el contraataque otra parte si el golpe vino de cerca, y la absorcion
+## vuelve otra parte energia. Un robot destruido ya no devuelve nada.
+## Devuelve lo que va al registro.
+func _answer_hit(user: BattleMech, target: BattleMech, damage: int) -> Dictionary:
+	var out := {}
+	if target.bastion_ready:
+		target.bastion_ready = false
+		out["bastion"] = true
+	if target.health <= 0:
+		return out
+	var reflected := roundi(damage * target.skill("reflect"))
+	var near := absi(user.position - target.position) <= 1
+	var countered := roundi(damage * target.skill("counter")) if near else 0
+	if reflected > 0:
+		out["reflected"] = reflected
+	if countered > 0:
+		out["countered"] = countered
+	if reflected + countered > 0:
+		user.hurt(reflected + countered)
+	if not target.free_energy():
+		var room := target.energy_cap - target.energy
+		var gained := mini(roundi(damage * target.skill("absorb")), room)
+		if gained > 0:
+			target.energy += gained
+			out["absorbed"] = gained
+	return out
 
 
 ## Cuanto multiplica un critico: 1 sin critico, el multiplicador entero con

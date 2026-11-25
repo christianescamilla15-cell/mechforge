@@ -6,7 +6,14 @@ extends Resource
 
 ## Efectos que se cuentan en enteros (usos y marcas); los demas son fracciones.
 const WHOLE: Array[String] = [
-	"chest_uses", "shield_uses", "repair_uses", "dark_matter_uses", "point_blank"
+	"chest_uses",
+	"shield_uses",
+	"repair_uses",
+	"dark_matter_uses",
+	"point_blank",
+	"mobility",
+	"swarm",
+	"drone_shield",
 ]
 
 ## Fracciones que se suman: dano de las armas, energia y regeneracion, calor y
@@ -31,6 +38,31 @@ const WHOLE: Array[String] = [
 ## Parte de la vida maxima del rival que quita la materia oscura.
 @export var dark_matter_share: float = 0.0
 
+## Especializaciones del arbol de mejoras (OBS-051, UpgradeTree). Fracciones:
+## resistencias del rival que ignoran tus armas, probabilidad de critico de
+## mas, energia de mas que drenan, energia de menos que gastan tus armas,
+## calor de mas que causan y enfriamiento de mas.
+@export var pierce: float = 0.0
+@export var crit: float = 0.0
+@export var drain: float = 0.0
+@export var efficiency: float = 0.0
+@export var ignition: float = 0.0
+@export var cooling: float = 0.0
+## Partes del dano recibido: lo que devuelve el reflejo, lo que devuelve el
+## contraataque (solo a golpes de cerca) y lo que se vuelve energia.
+@export var reflect: float = 0.0
+@export var counter: float = 0.0
+@export var absorb: float = 0.0
+## Vida que recupera al empezar cada turno (parte de la maxima) y lo que
+## para el bastion del primer golpe de cada turno del rival.
+@export var regen: float = 0.0
+@export var bastion: float = 0.0
+## Enteros: casillas de mas al andar, disparos de mas del asistente y golpes
+## que para el escudo del dron en cada combate.
+@export var mobility: int = 0
+@export var swarm: int = 0
+@export var drone_shield: int = 0
+
 
 ## Suma un grupo de efectos ({campo: cuanto}): lo que da un tipo de robot
 ## (StyleLibrary) o lo que lleva un rival de la campana (Campaign.KITS). Los
@@ -50,8 +82,8 @@ func apply(stats: Dictionary) -> void:
 	stats["health"] = roundi(stats["health"] * (1.0 + health))
 	for key: String in ["energy_cap", "energy_regen"]:
 		stats[key] = roundi(stats[key] * (1.0 + energy))
-	for key: String in ["heat_cap", "cooling"]:
-		stats[key] = roundi(stats[key] * (1.0 + heat))
+	stats["heat_cap"] = roundi(stats["heat_cap"] * (1.0 + heat))
+	stats["cooling"] = roundi(stats["cooling"] * (1.0 + heat + cooling))
 	for key: String in ["res_physical", "res_heat", "res_energy"]:
 		stats[key] = roundi(stats[key] * (1.0 + resistance))
 

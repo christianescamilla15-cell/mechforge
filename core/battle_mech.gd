@@ -50,6 +50,9 @@ var evade_left: int = 0
 ## Escudo de energia activado (arbol de habilidades): golpes que absorbera,
 ## sean del turno que sean.
 var barrier: int = 0
+## Bastion (arbol de mejoras): el primer golpe que recibe en cada turno del
+## rival pega menos. true hasta que lo recibe.
+var bastion_ready: bool = false
 ## Usos que le quedan de las habilidades de combate: "shield", "repair" y
 ## "dark_matter".
 var kits: Dictionary = {}
@@ -115,6 +118,10 @@ func _init(p_build: MechBuild = null, rules: RulesConfig = null, p_position: int
 		}
 		if slots.has("chest") and slots["chest"].uses_left > 0:
 			slots["chest"].uses_left += build.skills.chest_uses
+		# Escudo del dron (arbol de mejoras): el asistente para golpes enteros
+		# como un escudo de energia ya puesto.
+		if slots.has("drone") or slots.has("drone_low"):
+			barrier += build.skills.drone_shield
 
 
 func clone() -> BattleMech:
@@ -138,6 +145,7 @@ func clone() -> BattleMech:
 	copy.relief_left = relief_left
 	copy.layer_max = layer_max
 	copy.barrier = barrier
+	copy.bastion_ready = bastion_ready
 	copy.kits = kits.duplicate()
 	copy.chest_fired = chest_fired
 	copy.disabled_slot = disabled_slot
@@ -149,11 +157,24 @@ func clone() -> BattleMech:
 	return copy
 
 
-## Energia que le cuesta a este mech usar una pieza: depende de su chasis.
+## Energia que le cuesta a este mech usar una pieza: depende de su chasis,
+## y la eficiencia del arbol de mejoras abarata sus armas.
 func energy_cost(def: ItemDef) -> int:
-	if build == null or build.chassis == null:
-		return def.energy_cost
-	return build.chassis.energy_cost(def)
+	var cost := def.energy_cost
+	if build != null and build.chassis != null:
+		cost = build.chassis.energy_cost(def)
+	var saving := skill("efficiency")
+	if saving > 0.0 and def.type in [ItemDef.Type.SIDE, ItemDef.Type.TOP, ItemDef.Type.CHEST]:
+		cost = roundi(cost * (1.0 - saving))
+	return cost
+
+
+## Cuanto le da una especializacion del arbol de mejoras (SkillSet), 0 si no
+## la tiene.
+func skill(effect: String) -> float:
+	if build == null or build.skills == null:
+		return 0.0
+	return float(build.skills.get(effect))
 
 
 ## Armas del robot de asistencia: disparan solas al acabar el turno.
@@ -196,8 +217,11 @@ func free_energy() -> bool:
 	return _chassis() != null and _chassis().free_energy
 
 
+## Vida que recupera al empezar su turno: la del jefe y la de la
+## regeneracion del arbol de mejoras.
 func regen_share() -> float:
-	return _chassis().regen_share if _chassis() != null else 0.0
+	var share := _chassis().regen_share if _chassis() != null else 0.0
+	return share + skill("regen")
 
 
 ## Recibe dano: primero lo gasta el manto y lo que sobra, la vida. Devuelve
@@ -248,7 +272,8 @@ func no_overheat() -> bool:
 
 
 func extra_drone_shots() -> int:
-	return _chassis().extra_drone_shots if _chassis() != null else 0
+	var shots := _chassis().extra_drone_shots if _chassis() != null else 0
+	return shots + int(skill("swarm"))
 
 
 func _chassis() -> ChassisDef:
@@ -306,8 +331,11 @@ func weapon_keys() -> Array[String]:
 	return out
 
 
+## Casillas que alcanza al moverse; la movilidad del arbol suma, salvo a
+## las piernas que no se mueven.
 func move_range() -> int:
-	return maxi(build.legs.walk, build.legs.jump)
+	var reach := maxi(build.legs.walk, build.legs.jump)
+	return reach + int(skill("mobility")) if reach > 0 else 0
 
 
 func can_jump() -> bool:

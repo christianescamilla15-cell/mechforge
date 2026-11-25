@@ -23,6 +23,8 @@ const COLOR_REPAIR := Color("7dff9b")
 const COLOR_DARK_MATTER := Color("b07bff")
 const COLOR_CRIT := Color("ffd23d")
 const COLOR_WARNING := Color("ff9a7d")
+## Lo que devuelven el reflejo y el contraataque del arbol de mejoras.
+const COLOR_REFLECT := Color("8ff0ff")
 ## Parte de la vida del rival desde la que un golpe es un impacto medio y no
 ## ligero.
 const MEDIUM_IMPACT_SHARE := 0.07
@@ -253,6 +255,7 @@ func _play_event(entry: Dictionary) -> void:
 				_arena.mechs[target].hit(step, shot_color)
 				_arena.impact(target, _impact_tier(def, damage, target), step)
 				_float_damage(entry, target, damage)
+				_float_answer(entry, actor, target, step)
 			if crit:
 				# Critico (GDD 2.9): aviso, lo que le hace al rival y su "super
 				# flash" (OBS-052).
@@ -396,7 +399,8 @@ func _is_jump(entry: Dictionary, actor: int) -> bool:
 	var from: int = entry["from"]
 	var to: int = entry["to"]
 	var rival: int = _state[1 - actor]["pos"]
-	var walk: int = engine.mechs[actor].slots["legs"].def.walk
+	var mech := engine.mechs[actor]
+	var walk: int = mech.slots["legs"].def.walk + int(mech.skill("mobility"))
 	return absi(to - from) > walk or (from - rival) * (to - rival) < 0
 
 
@@ -538,6 +542,23 @@ func _float_damage(entry: Dictionary, target: int, damage: int) -> void:
 		var mantle := _mantle(target)
 		if mantle != null:
 			mantle.burst()
+
+
+## Lo que hacen las especializaciones del robot golpeado (arbol de mejoras,
+## OBS-051): el bastion que paro parte, el reflejo y el contraataque que le
+## llegan a quien pego, y la energia que absorbio.
+func _float_answer(entry: Dictionary, actor: int, target: int, step: float) -> void:
+	var cell: int = _state[target]["pos"]
+	if entry.get("bastion", false):
+		_arena.float_text(cell, Txt.t("fx_bastion"), COLOR_COOL)
+	var back := int(entry.get("reflected", 0)) + int(entry.get("countered", 0))
+	if back > 0:
+		var said := "fx_counter" if entry.has("countered") else "fx_reflect"
+		_arena.float_text(cell, Txt.t(said), COLOR_REFLECT)
+		_arena.mechs[actor].hit(step, COLOR_REFLECT)
+		_arena.float_text(_state[actor]["pos"], "-%d" % back, COLOR_REFLECT)
+	if entry.has("absorbed"):
+		_arena.float_text(cell, Txt.t("fx_absorb", [int(entry["absorbed"])]), COLOR_COOL)
 
 
 ## El manto de plasma de un robot (lo crea la primera vez); null si no lleva.

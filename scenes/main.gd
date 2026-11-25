@@ -790,6 +790,7 @@ func _apply_tree(build: MechBuild, titan: bool) -> void:
 	build.upgrades.assist += float(grown.get("assist", 0.0))
 	if titan:
 		build.upgrades.damage += float(grown.get("titan_damage", 0.0))
+		build.skills.health += float(grown.get("titan_health", 0.0))
 
 
 ## Lo que se apunta de un combate en el registro (FightLog, OBS-051).

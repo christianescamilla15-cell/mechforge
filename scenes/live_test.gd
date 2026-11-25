@@ -82,6 +82,10 @@ func start_autoplay() -> void:
 			for node: Dictionary in branch["nodes"]:
 				main._profile.skills.append(node["id"])
 	spec["name"] = main._library.display_name(spec["player"])
+	# --tree=<nodo,nodo>: nodos del arbol de mejoras (OBS-051); cuentan en los
+	# combates con recompensa (--fight).
+	if main._args.has("tree"):
+		main._profile.tree.assign(str(main._args["tree"]).split(","))
 	main._start_battle(spec)
 	var driver := BattleAI.new(BattleAI.Difficulty.NORMAL, int(spec["seed"]) + 7)
 	if main._args.has("ui"):
@@ -152,6 +156,11 @@ func _on_autoplay_event(entry: Dictionary) -> void:
 	if entry.get("layer_broken", false) and not _shot_events.has("layer_broken"):
 		_shot_events["layer_broken"] = true
 		shot("manto_roto")
+	# Lo que devuelven las especializaciones del arbol de mejoras (OBS-051).
+	for key: String in ["bastion", "reflected", "countered", "absorbed"]:
+		if entry.has(key) and not _shot_events.has(key):
+			_shot_events[key] = true
+			shot("arbol_" + key)
 	if (
 		event
 		in [

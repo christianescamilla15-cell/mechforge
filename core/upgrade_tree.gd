@@ -25,6 +25,21 @@ const READY: Array[String] = [
 	"arena_points",
 	"campaign_gold",
 	"titan_damage",
+	"titan_health",
+	"pierce",
+	"crit",
+	"drain",
+	"efficiency",
+	"ignition",
+	"cooling",
+	"reflect",
+	"absorb",
+	"regen",
+	"bastion",
+	"counter",
+	"mobility",
+	"swarm",
+	"drone_shield",
 ]
 ## Nivel de la linea de la armeria que abre su rama.
 const OPENS_AT := 10
