@@ -28,7 +28,10 @@ const GOLD := Color("ffe27a")
 const BAD := Color("ff8a7a")
 const MUTED := Color("7fb5c4")
 const TAB_KEYS := {
-	"campaign": "mission_tab_campaign", "arena": "mission_tab_arena", "free": "mission_tab_free"
+	"campaign": "mission_tab_campaign",
+	"arena": "mission_tab_arena",
+	"exterminio": "mission_tab_exterminio",
+	"free": "mission_tab_free",
 }
 
 static var _shader: Shader

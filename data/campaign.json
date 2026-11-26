@@ -6,6 +6,12 @@
     "league": 3000,
     "rematch": 7500
   },
+  "exterminio": {
+    "comment": "Exterminio (OBS-053): oleadas sin final. Las primeras siguen los pasos de arena_streak; despues de la ultima, el rival suma edge_growth de plus por oleada. Cada victoria paga la de ganar en la arena por (1 + gold_growth x oleadas ganadas) y la experiencia por (1 + xp_growth x oleadas ganadas); no se arriesga.",
+    "edge_growth": 0.06,
+    "gold_growth": 0.5,
+    "xp_growth": 0.25
+  },
   "arena_streak": {
     "fights": 20,
     "prize": [1, 2, 4, 8, 16, 20, 25, 31.25, 39.06, 48.83, 61.04, 76.29, 95.37, 119.21, 149.01, 186.26, 232.83, 291.04, 363.8, 454.75],

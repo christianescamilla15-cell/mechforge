@@ -65,6 +65,10 @@ var protection_prices: Dictionary[String, int] = {}
 ## (en parte) por encima de su armeria: cuando el jugador ya esta en lo mas
 ## alto, mas clase no lo hace mas fuerte.
 var arena_streak: Dictionary = {"fights": 1, "prize": [1.0], "steps": [{}]}
+## Exterminio (OBS-053, del usuario: "una vez que entras no hay final, aqui
+## unicamente te llega un rival mas fuerte que el otro y asi sucesivamente
+## hasta que pierdes"): {"edge_growth", "gold_growth", "xp_growth"}.
+var exterminio: Dictionary = {"edge_growth": 0.0, "gold_growth": 0.0, "xp_growth": 0.0}
 var errors: Array[String] = []
 
 
@@ -90,6 +94,10 @@ static func load_file(path: String, library: BuildLibrary) -> Campaign:
 		else:
 			campaign.errors.append("falta el precio de la proteccion '%s'" % kind)
 	campaign._load_streak(parsed.get("arena_streak"))
+	var ramp: Variant = parsed.get("exterminio", {})
+	if ramp is Dictionary:
+		for key: String in campaign.exterminio:
+			campaign.exterminio[key] = float(ramp.get(key, 0.0))
 	for raw: Variant in parsed["zones"]:
 		campaign._add_zone(raw, library)
 	campaign.world_bosses = maxi(int(parsed.get("world_bosses", 0)), campaign.zones.size())
@@ -384,6 +392,94 @@ func cash_arena(profile: PlayerProfile) -> int:
 	return amount
 
 
+## El rival de una oleada del Exterminio (OBS-053; `wave`: las ganadas en
+## esta tanda, 0 la primera): hasta la ultima de la racha, el de su paso
+## (Campaign.arena_streak_fight); despues, el de la ultima con edge_growth
+## mas de plus por oleada, sin final. Lleva "wave" y "streak" (para los
+## Titanes y lo que el jugador lleva de mas, como en la racha).
+func exterminio_fight(
+	zone: int,
+	library: BuildLibrary,
+	seed_value: int,
+	rules: RulesConfig,
+	power: float,
+	loadout: Dictionary,
+	wave: int
+) -> Dictionary:
+	var last := streak_fights() - 1
+	var fight := arena_streak_fight(
+		zone, library, seed_value, rules, power, loadout, mini(wave, last)
+	)
+	var beyond := maxi(0, wave - last)
+	fight["edge"] = float(fight["edge"]) + beyond * float(exterminio["edge_growth"])
+	fight["streak"] = wave
+	fight["wave"] = wave
+	return fight
+
+
+## Lo que multiplica la paga de ganar en la arena una victoria del
+## Exterminio con `wave` oleadas ya ganadas.
+func exterminio_gold(wave: int) -> float:
+	return 1.0 + float(exterminio["gold_growth"]) * wave
+
+
+func exterminio_xp(wave: int) -> float:
+	return 1.0 + float(exterminio["xp_growth"]) * wave
+
+
+## Empieza un combate del Exterminio: queda marcado, y cerrar el juego o
+## salir en mitad cuenta como perderlo.
+func begin_exterminio(profile: PlayerProfile) -> void:
+	profile.exterminio_live = true
+
+
+## Un combate del Exterminio que se quedo a medias (se cerro el juego o se
+## salio de el) es una derrota: se acaba la tanda. Devuelve la oleada en la
+## que se quedo (-1 si no habia ninguno a medias).
+func resume_exterminio(profile: PlayerProfile) -> int:
+	if not profile.exterminio_live:
+		return -1
+	var wave := profile.exterminio_wave
+	profile.exterminio_live = false
+	profile.exterminio_wave = 0
+	profile.losses += 1
+	return wave
+
+
+## Un combate del Exterminio: ganar paga ya (celdas y, en finish_fight,
+## experiencia), no se arriesga, y llega la oleada siguiente; perder acaba la
+## tanda (vuelve a la 1) y paga lo de perder en la arena. El record queda.
+## Anade a `out`: "wave" (la oleada que se jugo, desde 0), "best" y "record"
+## (si esta victoria lo bate).
+func _settle_exterminio(
+	profile: PlayerProfile,
+	shop: ArenaShop,
+	won: bool,
+	mult: float,
+	out: Dictionary,
+	bonus: Dictionary = {}
+) -> Dictionary:
+	var wave := profile.exterminio_wave
+	profile.exterminio_live = false
+	out["wave"] = wave
+	out["step"] = wave
+	out["record"] = false
+	if won:
+		profile.wins += 1
+		var gold_bonus := 1.0 + float(bonus.get("arena_gold", 0.0))
+		var gold := roundi(shop.reward("arena_win") * mult * exterminio_gold(wave) * gold_bonus)
+		profile.gold += gold
+		out["gold"] = gold
+		profile.exterminio_wave = wave + 1
+		out["record"] = profile.exterminio_wave > profile.exterminio_best
+		profile.exterminio_best = maxi(profile.exterminio_best, profile.exterminio_wave)
+	else:
+		out["gold"] = profile.earn(shop, "arena_loss", mult)
+		profile.exterminio_wave = 0
+	out["best"] = profile.exterminio_best
+	return out
+
+
 ## Al abrir el juego: un bote que se quedo sin cobrar se cobra; uno que se
 ## quedo en mitad de un combate de la racha se pierde. {"cashed", "lost"}.
 func resume_arena(profile: PlayerProfile) -> Dictionary:
@@ -534,8 +630,11 @@ func finish_fight(
 			kind = "boss_win" if out["boss"] else "win"
 		var before := progression.level_for(profile.xp)
 		var boost := streak_xp(int(out["step"])) if mode == "arena" and won else 1.0
-		# El arbol (rama Botin, OBS-051): mas experiencia en la arena.
-		if mode == "arena":
+		if mode == "exterminio" and won:
+			boost = exterminio_xp(int(out["wave"]))
+		# El arbol (rama Botin, OBS-051): mas experiencia en la arena (y en
+		# el Exterminio, que es de la arena).
+		if mode in ["arena", "exterminio"]:
 			boost *= 1.0 + float(bonus.get("arena_xp", 0.0))
 		out["xp"] = roundi(progression.xp_for(kind) * boost)
 		profile.xp += out["xp"]
@@ -607,6 +706,8 @@ func _settle(
 	var mult := reward_mult(profile.zone)
 	if mode == "arena":
 		return _settle_arena(profile, shop, won, mult, out, bonus)
+	if mode == "exterminio":
+		return _settle_exterminio(profile, shop, won, mult, out, bonus)
 	if mode != "campaign" or profile.zone >= zone_count():
 		out["gold"] = profile.earn(shop, "arena_win" if won else "arena_loss", mult)
 		return out

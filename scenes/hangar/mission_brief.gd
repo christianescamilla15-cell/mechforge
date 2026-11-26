@@ -2,9 +2,9 @@ class_name MissionBrief
 extends RefCounted
 ## Lo que el hangar ensena al salir a combatir: el monitor de misiones
 ## (MissionBoard) y la fila de rivales proyectada en el suelo (RivalRow). Hay
-## tres canales: la campana (el combate que toca y los que le siguen, hasta
-## el jefe), la arena (un rival a tu medida) y el combate libre (el rival que
-## elijas, sin recompensa).
+## cuatro canales: la campana (el combate que toca y los que le siguen, hasta
+## el jefe), la arena (un rival a tu medida), el Exterminio (oleadas sin
+## final, OBS-053) y el combate libre (el rival que elijas, sin recompensa).
 ##
 ## Cada estado es un diccionario:
 ## {"channel", "zone_line", "title", "fights", "fight", "lines", "warning",
@@ -22,7 +22,7 @@ extends RefCounted
 ##   (clase, nivel y dificultad), "traits" (como pelea: "Agresivo · con
 ##   escudo"; "" si nada), "temper" (su caracter, "" si no tiene), "kits"}.
 
-const CHANNELS: Array[String] = ["campaign", "arena", "free"]
+const CHANNELS: Array[String] = ["campaign", "arena", "exterminio", "free"]
 ## Rivales de la campana que se ven en fila: el que toca y los siguientes.
 const ROW_SIZE := 4
 const DIFFICULTY_KEYS: Array[String] = ["difficulty_easy", "difficulty_normal", "difficulty_hard"]
@@ -145,6 +145,37 @@ func arena_state(
 		)
 	]
 	state["lines"] = lines
+	return state
+
+
+## El Exterminio (OBS-053): el rival de la oleada que toca (la misma semilla
+## da el mismo rival, asi que el que se ve es el que sale), la oleada, el
+## record y lo que paga.
+func exterminio_state(
+	profile: PlayerProfile, seed_value: int, power: float, loadout: Dictionary = {}
+) -> Dictionary:
+	var state := _blank("exterminio")
+	var zone := mini(profile.zone, campaign.zone_count() - 1)
+	var wave := profile.exterminio_wave
+	state["zone_line"] = Txt.t("mission_zone", [zone + 1, campaign.zone_name(zone)])
+	state["title"] = Txt.t("exterminio_title", [wave + 1])
+	var fight := campaign.exterminio_fight(zone, library, seed_value, rules, power, loadout, wave)
+	var rivals: Array[Dictionary] = [rival(fight, campaign.tier_of(zone))]
+	state["rivals"] = rivals
+	var pay := shop.reward("arena_win") * campaign.reward_mult(profile.zone)
+	pay = roundi(pay * campaign.exterminio_gold(wave))
+	var best := profile.exterminio_best
+	var lines: Array[String] = [
+		Txt.t("mission_exterminio_info"),
+		Txt.t("mission_exterminio_rule"),
+		(
+			Txt.t("mission_exterminio_best", [best, pay])
+			if best > 0
+			else Txt.t("mission_exterminio_first", [pay])
+		),
+	]
+	state["lines"] = lines
+	state["warning"] = Txt.t("mission_exterminio_warning")
 	return state
 
 

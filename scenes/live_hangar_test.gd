@@ -645,3 +645,39 @@ func milestone_test() -> void:
 	print("HITO %d: armas=%s celdas=%d" % [won, profile.arena_gear, profile.gold])
 	await shot("hito_%d" % won)
 	get_tree().quit(0)
+
+
+## El Exterminio (OBS-053): su canal en la zona de combate, ganar la oleada
+## que toca y perder la siguiente (sin guardar).
+func exterminio_test() -> void:
+	await get_tree().create_timer(0.8).timeout
+	var hangar := main.open_workshop()
+	await get_tree().create_timer(0.5).timeout
+	hangar.open_missions("exterminio")
+	await get_tree().create_timer(2.6).timeout
+	await shot("canal")
+	var profile := main._profile
+	var start := profile.exterminio_wave
+	main._on_exterminio_pressed()
+	await get_tree().create_timer(1.2).timeout
+	main._on_battle_finished(true)
+	main._battle._result.show()
+	await get_tree().create_timer(0.3).timeout
+	var state := [start + 1, profile.exterminio_wave, profile.exterminio_best]
+	print("EXTERMINIO gano la %d: oleada=%d record=%d" % state)
+	await shot("gano")
+	main._on_rematch()
+	await get_tree().create_timer(1.2).timeout
+	var rival := [main._spec["enemy"], main._spec["enemy_edge"], main._spec.get("enemy_extra")]
+	print("EXTERMINIO rival siguiente: %s, plus %.2f, extra %.2f" % rival)
+	main._on_battle_finished(false)
+	main._battle._result.show()
+	await get_tree().create_timer(0.3).timeout
+	print(
+		(
+			"EXTERMINIO perdio: oleada=%d record=%d"
+			% [profile.exterminio_wave, profile.exterminio_best]
+		)
+	)
+	await shot("perdio")
+	get_tree().quit(0)

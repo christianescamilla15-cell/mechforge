@@ -35,6 +35,7 @@ const LIVE_SHOTS: Dictionary[String, String] = {
 	"aspectos": "aspects_test",
 	"forja": "forge_test",
 	"hito": "milestone_test",
+	"exterminio": "exterminio_test",
 	"garaje": "garage_test",
 	"misiones": "missions_test",
 }
@@ -240,6 +241,11 @@ func _ready() -> void:
 		Garage.ensure_assist(_profile, _catalog)
 		_persist = true
 		_resume_arena()
+		# Un combate del Exterminio a medias al cerrar el juego: perdido.
+		var lost := _campaign.resume_exterminio(_profile)
+		if lost >= 0:
+			_last_result = Txt.t("exterminio_abandoned", [lost + 1])
+			_save()
 		_settings = GameSettings.load_from()
 		_settings.apply()
 		_show_menu()
@@ -399,10 +405,13 @@ func mission_state(channel: String = "campaign") -> Dictionary:
 	if _campaign.mode_locked(_profile, channel):
 		channel = "campaign"
 	match channel:
-		"arena":
+		"arena", "exterminio":
 			var power := Campaign.mean_power(_rules, _profile, _player_items())
 			var gear := Campaign.loadout_of(_player_build())
-			state = _brief.arena_state(_profile, _arena_seed, power, gear)
+			if channel == "arena":
+				state = _brief.arena_state(_profile, _arena_seed, power, gear)
+			else:
+				state = _brief.exterminio_state(_profile, _arena_seed, power, gear)
 		"free":
 			state = _brief.free_state(_last)
 		_:
@@ -412,6 +421,7 @@ func mission_state(channel: String = "campaign") -> Dictionary:
 	state["problems"] = Txt.t("mech_problems", [", ".join(problems)])
 	state["locks"] = {
 		"arena": _campaign.mode_locked(_profile, "arena"),
+		"exterminio": _campaign.mode_locked(_profile, "exterminio"),
 		"free": _campaign.mode_locked(_profile, "free"),
 	}
 	state["record"] = Txt.t(
@@ -429,6 +439,8 @@ func start_mission(channel: String) -> void:
 	match channel:
 		"arena":
 			_on_arena_pressed()
+		"exterminio":
+			_on_exterminio_pressed()
 		"free":
 			_on_free_pressed()
 		_:
@@ -573,6 +585,20 @@ func _on_arena_pressed() -> void:
 	if _profile.arena_live:
 		_save()
 	_start_battle(_spec_for("arena", zone, fight))
+
+
+## El Exterminio (OBS-053): el rival de la oleada que toca, mas fuerte que
+## el anterior. El combate queda marcado: salir o cerrar en mitad es perder.
+func _on_exterminio_pressed() -> void:
+	var zone := mini(_profile.zone, _campaign.zone_count() - 1)
+	var power := Campaign.mean_power(_rules, _profile, _player_items())
+	var gear := Campaign.loadout_of(_player_build())
+	var wave := _profile.exterminio_wave
+	var fight := _campaign.exterminio_fight(zone, _library, _arena_seed, _rules, power, gear, wave)
+	_arena_seed = randi()
+	_campaign.begin_exterminio(_profile)
+	_save()
+	_start_battle(_spec_for("exterminio", zone, fight))
 
 
 func _on_free_pressed() -> void:
@@ -732,6 +758,9 @@ func _on_rematch() -> void:
 	if _spec["mode"] == "arena":
 		_on_arena_pressed()
 		return
+	if _spec["mode"] == "exterminio":
+		_on_exterminio_pressed()
+		return
 	_spec["seed"] = randi()
 	_start_battle(_spec)
 
@@ -746,7 +775,8 @@ func _on_battle_finished(player_won: bool) -> void:
 	# Los hitos de la racha (OBS-051): un arma de arena al azar.
 	var luck := RandomNumberGenerator.new()
 	luck.seed = hash([int(_spec.get("seed", 0)), _profile.wins])
-	var prize := _gear.reward(_profile, _catalog, result, bonus, luck) if player_won else {}
+	var arena_won: bool = player_won and _spec["mode"] == "arena"
+	var prize := _gear.reward(_profile, _catalog, result, bonus, luck) if arena_won else {}
 	_save()
 	if _persist:
 		FightLog.append(_fight_entry(player_won, result))
@@ -781,6 +811,8 @@ func _on_battle_finished(player_won: bool) -> void:
 	if _spec["mode"] == "arena":
 		_arena_result(result)
 		_last_result += _milestone_text(prize)
+	elif _spec["mode"] == "exterminio":
+		_exterminio_result(result)
 	_battle.set_result_note(_last_result)
 
 
@@ -878,9 +910,37 @@ func _arena_result(result: Dictionary) -> void:
 	_battle.set_result_choices(again, true, back)
 
 
+## Tras un combate del Exterminio (OBS-053): la oleada superada y lo que
+## pago, o hasta donde llego; y las dos teclas, la oleada siguiente (o
+## empezar de nuevo) y el menu.
+func _exterminio_result(result: Dictionary) -> void:
+	var wave := int(result["wave"]) + 1
+	var won := int(_profile.exterminio_wave) > 0
+	if won:
+		_last_result = Txt.t("exterminio_won", [wave, HangarProps.thousands(result["gold"])])
+		if bool(result.get("record", false)):
+			_last_result += String.chr(10) + Txt.t("exterminio_record", [int(result["best"])])
+	else:
+		_last_result = Txt.t("exterminio_lost", [wave, int(result["best"])])
+		_last_result += String.chr(10) + Txt.t("result_reward", [result["gold"]])
+	if won and int(result.get("xp", 0)) > 0:
+		var boost := "%.2f" % _campaign.exterminio_xp(wave - 1)
+		var xp := [HangarProps.thousands(result["xp"]), boost]
+		_last_result += String.chr(10) + Txt.t("exterminio_xp", xp)
+	if bool(result.get("level_up", false)):
+		_last_result += String.chr(10) + Txt.t("result_level_up", [_player_level()])
+	var again := Txt.t("exterminio_next", [wave + 1]) if won else Txt.t("exterminio_restart")
+	_battle.set_result_choices(again, true, Txt.t("menu"))
+
+
 ## Volver del combate. En la arena, el bote se cobra al volver; si el
 ## combate de la racha no termino, se abandono y el bote se pierde.
 func _on_battle_menu() -> void:
+	# Salir en mitad de una oleada del Exterminio es perderla.
+	if _spec.get("mode", "") == "exterminio" and _profile.exterminio_live:
+		var lost := _campaign.resume_exterminio(_profile)
+		_save()
+		_last_result = Txt.t("exterminio_abandoned", [lost + 1])
 	if _spec.get("mode", "") == "arena":
 		if _profile.arena_live:
 			_campaign.resume_arena(_profile)
