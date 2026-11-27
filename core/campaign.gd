@@ -45,7 +45,8 @@ extends RefCounted
 const LOSS_RULES: Array[String] = ["new_game", "retry"]
 ## Protecciones, de la mejor a la peor: es el orden en que se gastan.
 const PROTECTIONS: Array[String] = ["rematch", "league"]
-const DIFFICULTIES: Array[String] = ["EASY", "NORMAL", "HARD"]
+## MASTER es la implacable (OBS-054).
+const DIFFICULTIES: Array[String] = ["EASY", "NORMAL", "HARD", "MASTER"]
 ## Habilidades que puede llevar un rival ("kits" de su combate).
 const KITS: Array[String] = ["shield_uses", "repair_uses", "repair_share"]
 
@@ -69,6 +70,11 @@ var arena_streak: Dictionary = {"fights": 1, "prize": [1.0], "steps": [{}]}
 ## unicamente te llega un rival mas fuerte que el otro y asi sucesivamente
 ## hasta que pierdes"): {"edge_growth", "gold_growth", "xp_growth"}.
 var exterminio: Dictionary = {"edge_growth": 0.0, "gold_growth": 0.0, "xp_growth": 0.0}
+## Sus campeones (OBS-054): cada "every" oleadas sale el campeon de una liga,
+## por orden, con la IA "difficulty", y ganarle da "points" puntos de mejora
+## y un arma de arena del rango "rank" (los dos segun cuantos van; el ultimo
+## se repite).
+var exterminio_champions: Dictionary = {"every": 0, "points": [], "rank": [], "difficulty": ""}
 var errors: Array[String] = []
 
 
@@ -98,6 +104,16 @@ static func load_file(path: String, library: BuildLibrary) -> Campaign:
 	if ramp is Dictionary:
 		for key: String in campaign.exterminio:
 			campaign.exterminio[key] = float(ramp.get(key, 0.0))
+		var champions: Variant = ramp.get("champions", {})
+		if champions is Dictionary:
+			campaign.exterminio_champions = {
+				"every": int(champions.get("every", 0)),
+				"points": Array(champions.get("points", [])),
+				"rank": Array(champions.get("rank", [])),
+				"difficulty": str(champions.get("difficulty", "")),
+			}
+			if not campaign.exterminio_champions["difficulty"] in DIFFICULTIES + [""]:
+				campaign.errors.append("dificultad de los campeones desconocida")
 	for raw: Variant in parsed["zones"]:
 		campaign._add_zone(raw, library)
 	campaign.world_bosses = maxi(int(parsed.get("world_bosses", 0)), campaign.zones.size())
@@ -414,7 +430,51 @@ func exterminio_fight(
 	fight["edge"] = float(fight["edge"]) + beyond * float(exterminio["edge_growth"])
 	fight["streak"] = wave
 	fight["wave"] = wave
+	# Cada tantas oleadas, un campeon de liga con su habilidad y su
+	# entrenamiento, al poder de la oleada (OBS-054).
+	var champion := exterminio_champion(wave)
+	if champion >= 0:
+		var boss: Dictionary = zones[champion]["boss"]
+		fight["enemy"] = str(boss["enemy"])
+		fight["body"] = body_of(boss)
+		fight["skills"] = maxi(int(fight["skills"]), int(boss.get("skills", 0)))
+		fight["champion"] = champion
+		if str(exterminio_champions["difficulty"]) != "":
+			fight["difficulty"] = str(exterminio_champions["difficulty"])
 	return fight
+
+
+## La liga (zona) cuyo campeon sale en la oleada `wave` (desde 0) del
+## Exterminio, o -1 si es una oleada normal. Salen por orden: con "every" 10,
+## en la oleada 10 el de la liga 1, en la 20 el de la 2... y vuelta a empezar.
+func exterminio_champion(wave: int) -> int:
+	var every := int(exterminio_champions["every"])
+	if every <= 0 or zones.is_empty() or (wave + 1) % every != 0:
+		return -1
+	return ((wave + 1) / every - 1) % zone_count()
+
+
+## La oleada (desde 0) del siguiente campeon desde `wave`; -1 si no hay.
+func next_exterminio_champion(wave: int) -> int:
+	var every := int(exterminio_champions["every"])
+	if every <= 0:
+		return -1
+	return ((wave / every) + 1) * every - 1
+
+
+## Lo que da vencer al campeon de la oleada `wave`: {"points", "rank"}.
+func exterminio_champion_prize(wave: int) -> Dictionary:
+	if exterminio_champion(wave) < 0:
+		return {"points": 0, "rank": 0}
+	var beaten := (wave + 1) / int(exterminio_champions["every"])
+	return {
+		"points": _nth(exterminio_champions["points"], beaten - 1),
+		"rank": _nth(exterminio_champions["rank"], beaten - 1),
+	}
+
+
+static func _nth(values: Array, index: int) -> int:
+	return 0 if values.is_empty() else int(values[clampi(index, 0, values.size() - 1)])
 
 
 ## Lo que multiplica la paga de ganar en la arena una victoria del
@@ -473,6 +533,13 @@ func _settle_exterminio(
 		profile.exterminio_wave = wave + 1
 		out["record"] = profile.exterminio_wave > profile.exterminio_best
 		profile.exterminio_best = maxi(profile.exterminio_best, profile.exterminio_wave)
+		# Un campeon vencido: puntos de mejora ya, y el arma de arena (rango
+		# "champion_rank") la da MainScreen con ArenaGear.
+		var prize := exterminio_champion_prize(wave)
+		out["champion"] = exterminio_champion(wave)
+		out["points"] = int(prize["points"])
+		out["champion_rank"] = int(prize["rank"])
+		profile.upgrade_points += out["points"]
 	else:
 		out["gold"] = profile.earn(shop, "arena_loss", mult)
 		profile.exterminio_wave = 0

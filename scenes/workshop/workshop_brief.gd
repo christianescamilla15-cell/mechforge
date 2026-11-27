@@ -117,6 +117,17 @@ func build_of(profile: PlayerProfile, spec: Dictionary, parts: Dictionary = {}) 
 	return build
 
 
+## Su robot sin lo de mas (A6, StreakEdge): sin prototipos, aspectos, rangos
+## de arena ni arbol. Es la vara con la que se mide cuanto lleva de mas.
+func plain_build(profile: PlayerProfile) -> MechBuild:
+	var bare := PlayerProfile.from_dict(profile.to_dict())
+	bare.prototypes.clear()
+	bare.aspects.clear()
+	bare.arena_gear.clear()
+	bare.tree.clear()
+	return build_of(bare, bare.build)
+
+
 ## Lo que suma el arbol de mejoras del jugador (vacio sin arbol).
 func tree_effects(profile: PlayerProfile) -> Dictionary:
 	return tree.effects_for(profile.tree) if tree != null else {}

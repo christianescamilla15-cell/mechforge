@@ -122,3 +122,41 @@ func test_se_cierra_con_la_campana_de_la_liga_en_marcha() -> void:
 	profile.campaign_on = true
 	profile.zone = 0
 	assert_true(_campaign.mode_locked(profile, "exterminio"))
+
+
+## Cada 10 oleadas, el campeon de una liga, por orden y vuelta a empezar
+## (OBS-054), con su entrenamiento y al poder de la oleada.
+func test_cada_diez_oleadas_un_campeon() -> void:
+	var zones := _campaign.zone_count()
+	assert_eq(_campaign.exterminio_champion(8), -1)
+	assert_eq(_campaign.exterminio_champion(9), 0, "la oleada 10: el de la liga 1")
+	assert_eq(_campaign.exterminio_champion(19), 1)
+	assert_eq(_campaign.exterminio_champion(10 * zones - 1), zones - 1)
+	assert_eq(_campaign.exterminio_champion(10 * zones + 9), 0, "y vuelta a empezar")
+	assert_eq(_campaign.next_exterminio_champion(0), 9)
+	assert_eq(_campaign.next_exterminio_champion(9), 9)
+	assert_eq(_campaign.next_exterminio_champion(10), 19)
+	var fight := _fight(19)
+	var boss: Dictionary = _campaign.zones[1]["boss"]
+	assert_eq(str(fight["enemy"]), str(boss["enemy"]))
+	assert_true(_library.is_boss(str(fight["enemy"])))
+	assert_gte(int(fight["skills"]), int(boss.get("skills", 0)))
+	assert_almost_eq(float(fight["edge"]), float(_fight(18)["edge"]), 0.2, "al poder de la oleada")
+	assert_false(_fight(18).has("champion"))
+	assert_eq(str(fight["difficulty"]), "MASTER", "con la implacable")
+
+
+func test_vencer_al_campeon_da_puntos_y_un_arma() -> void:
+	for case: Array in [[9, 5, 1], [19, 8, 2], [29, 12, 3], [59, 12, 3]]:
+		var profile := _profile()
+		profile.exterminio_wave = case[0]
+		var points := profile.upgrade_points
+		var result := _campaign.finish_fight(profile, _shop, "exterminio", true, _progression)
+		assert_eq(int(result["points"]), case[1], "oleada %d" % (case[0] + 1))
+		assert_eq(profile.upgrade_points, points + case[1])
+		assert_eq(int(result["champion_rank"]), case[2])
+	var plain := _profile()
+	plain.exterminio_wave = 4
+	var normal := _campaign.finish_fight(plain, _shop, "exterminio", true, _progression)
+	assert_eq([int(normal["points"]), int(normal["champion_rank"])], [0, 0])
+	assert_eq(int(normal["champion"]), -1)

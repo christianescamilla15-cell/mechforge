@@ -12,9 +12,12 @@ extends Control
 
 const SAVE_PATH := "user://save.json"
 const MENU_DIFFICULTIES: Array[BattleAI.Difficulty] = [
-	BattleAI.Difficulty.EASY, BattleAI.Difficulty.NORMAL, BattleAI.Difficulty.HARD
+	BattleAI.Difficulty.EASY,
+	BattleAI.Difficulty.NORMAL,
+	BattleAI.Difficulty.HARD,
+	BattleAI.Difficulty.MASTER,
 ]
-const DIFFICULTY_IDS: Array[String] = ["EASY", "NORMAL", "HARD"]
+const DIFFICULTY_IDS: Array[String] = ["EASY", "NORMAL", "HARD", "MASTER"]
 ## Desde este combate de la racha (0 es el primero) el rival cuenta como titan.
 const TITAN_STEP := 5
 ## Las capturas del hangar que lleva una prueba en vivo propia
@@ -712,13 +715,13 @@ func _start_battle(spec: Dictionary) -> void:
 	if rewarded:
 		player_build.upgrades = _shop.upgrades_for(_profile.shop_levels)
 		_prototypes.apply(player_build, _profile)
-		var plain: MechBuild = player_build.duplicate(true)
 		_gear.apply_build(player_build, _profile, _tree.effects_for(_profile.tree))
 		_aspects.apply_build(player_build, _profile.aspects)
 		_apply_tree(player_build, boss or int(spec.get("streak", -1)) >= TITAN_STEP)
 		# El rival de la racha cuenta parte de lo que llevas de mas (A6).
 		spec["enemy_extra"] = 0.0
 		if int(spec.get("streak", -1)) >= 0:
+			var plain := _bench.plain_build(_profile)
 			var extra := StreakEdge.extra(_rules, plain, player_build, _gear.boost)
 			spec["enemy_extra"] = StreakEdge.rival_extra(extra, _gear.rival_share)
 	var enemy_build := _library.make(
@@ -777,6 +780,9 @@ func _on_battle_finished(player_won: bool) -> void:
 	luck.seed = hash([int(_spec.get("seed", 0)), _profile.wins])
 	var arena_won: bool = player_won and _spec["mode"] == "arena"
 	var prize := _gear.reward(_profile, _catalog, result, bonus, luck) if arena_won else {}
+	# Un campeon del Exterminio vencido (OBS-054): tambien un arma de arena.
+	if player_won and int(result.get("champion_rank", 0)) > 0:
+		prize = _gear.grant(_profile, _catalog, int(result["champion_rank"]), bonus, luck)
 	_save()
 	if _persist:
 		FightLog.append(_fight_entry(player_won, result))
@@ -813,6 +819,7 @@ func _on_battle_finished(player_won: bool) -> void:
 		_last_result += _milestone_text(prize)
 	elif _spec["mode"] == "exterminio":
 		_exterminio_result(result)
+		_last_result += _milestone_text(prize)
 	_battle.set_result_note(_last_result)
 
 
@@ -920,6 +927,9 @@ func _exterminio_result(result: Dictionary) -> void:
 		_last_result = Txt.t("exterminio_won", [wave, HangarProps.thousands(result["gold"])])
 		if bool(result.get("record", false)):
 			_last_result += String.chr(10) + Txt.t("exterminio_record", [int(result["best"])])
+		if int(result.get("champion", -1)) >= 0:
+			var beaten := [int(result["champion"]) + 1, int(result["points"])]
+			_last_result += String.chr(10) + Txt.t("exterminio_champion_won", beaten)
 	else:
 		_last_result = Txt.t("exterminio_lost", [wave, int(result["best"])])
 		_last_result += String.chr(10) + Txt.t("result_reward", [result["gold"]])

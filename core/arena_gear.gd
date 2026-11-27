@@ -104,7 +104,34 @@ func reward(
 	var base := rank_for_win(int(result.get("step", -1)) + 1)
 	if base == 0:
 		return {}
-	var out := {"weapons": [], "double": 0, "melted": 0}
+	var out := grant(profile, catalog, base, effects, rng)
+	out["double"] = 0
+	if rng.randf() < float(effects.get("fortune_double", 0.0)):
+		var extra := int(result["prize"])
+		out["double"] = extra
+		if bool(result.get("more", false)):
+			profile.arena_pot += extra
+			result["pot"] = profile.arena_pot
+		else:
+			profile.gold += extra
+			result["gold"] = int(result.get("gold", 0)) + extra
+	return out
+
+
+## Un arma de arena al azar del rango `base`, con la suerte de la rama
+## Fortuna (un rango mas y, a veces, dos armas); si ya las tiene todas de ese
+## rango, parte de lo que cuesta forjarla, en celdas. Lo dan los hitos de la
+## racha y los campeones del Exterminio (OBS-054). {"weapons", "melted"}.
+func grant(
+	profile: PlayerProfile,
+	catalog: Catalog,
+	base: int,
+	effects: Dictionary,
+	rng: RandomNumberGenerator
+) -> Dictionary:
+	var out := {"weapons": [], "melted": 0}
+	if base <= 0:
+		return out
 	var rank := mini(base + int(effects.get("fortune_quality", 0)), max_rank())
 	var draws := 2 if rng.randf() < float(effects.get("fortune", 0.0)) else 1
 	for i in draws:
@@ -115,15 +142,6 @@ func reward(
 			out["melted"] += cells
 		else:
 			out["weapons"].append(got)
-	if rng.randf() < float(effects.get("fortune_double", 0.0)):
-		var extra := int(result["prize"])
-		out["double"] = extra
-		if bool(result.get("more", false)):
-			profile.arena_pot += extra
-			result["pot"] = profile.arena_pot
-		else:
-			profile.gold += extra
-			result["gold"] = int(result.get("gold", 0)) + extra
 	return out
 
 

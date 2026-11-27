@@ -20,6 +20,19 @@ extends SceneTree
 ##                        arena de su forma y elemento, de rango N (1-3)
 ##     --share=X          la parte de lo que lleva de mas que pasa al plus
 ##                        del rival (A6; por defecto la de arena_gear.json)
+##     --rival=MASTER     la IA de todos los rivales (por defecto, la del paso)
+##     --from=N           empieza en el rival N (para repartir en procesos)
+##     --trace            con --only: imprime un combate jugada a jugada
+##     --bench            con --only: juega un combate y mide en cada jugada
+##                        lo que tarda en pensar cada dificultad
+##     --exact=player|rival|both   esa IA valora los golpes como el motor
+##                        (lo hace siempre la implacable, OBS-054)
+##     --player-set=k=v,k=v  --rival-set=k=v  cambia valores de su AIConfig
+##     --norace=player|rival|both   esa implacable no valora como una carrera
+##     --noprotos         su robot sin los prototipos del especialista (como
+##                        media el simulador antes del 2026-11-26)
+##     --plain-protos     A6 cuenta los prototipos como base, no como de mas
+##     --rival-mult=X     el rival multiplica vida y dano por X (en vez de A6)
 
 ## Desde este combate de la racha (0 es el primero) cuenta Titanes (MainScreen.TITAN_STEP).
 const TITAN_STEP := 5
@@ -27,6 +40,7 @@ const DIFFICULTY := {
 	"EASY": BattleAI.Difficulty.EASY,
 	"NORMAL": BattleAI.Difficulty.NORMAL,
 	"HARD": BattleAI.Difficulty.HARD,
+	"MASTER": BattleAI.Difficulty.MASTER,
 }
 
 var _rules := RulesConfig.new()
@@ -69,6 +83,11 @@ func _initialize() -> void:
 	var tree := UpgradeTree.load_file("res://data/upgrade_tree.json")
 	brief.gear = ArenaGear.load_file("res://data/arena_gear.json")
 	brief.tree = tree
+	# Los prototipos del especialista, como en el juego (faltaban hasta el
+	# 2026-11-26: el robot del simulador era mas flojo que el suyo).
+	brief.prototypes = PrototypeLibrary.load_file("res://data/prototypes.json")
+	if args.has("noprotos"):
+		brief.prototypes = null
 	if not campaign.errors.is_empty():
 		print("ERRORES en campaign.json: ", campaign.errors)
 		quit(1)
@@ -96,18 +115,26 @@ func _initialize() -> void:
 	var titan_build := brief.build_of(profile, profile.build)
 	_apply_tree(tree, profile, build, false)
 	_apply_tree(tree, profile, titan_build, true)
-	# Lo que lleva de mas (A6, StreakEdge): su robot sin arbol, aspectos ni
-	# rangos de arena, y la parte que pasa al plus del rival.
-	var bare := PlayerProfile.from_dict(profile.to_dict())
-	bare.aspects.clear()
-	bare.arena_gear.clear()
-	bare.tree.clear()
-	var plain := brief.build_of(bare, bare.build)
+	# Lo que lleva de mas (A6, StreakEdge): su robot sin prototipos, arbol,
+	# aspectos ni rangos de arena, y la parte que pasa al plus del rival.
+	# Con --plain-protos los prototipos cuentan como base (como antes).
+	var plain := brief.plain_build(profile)
+	if args.has("plain-protos"):
+		var bare := PlayerProfile.from_dict(profile.to_dict())
+		bare.aspects.clear()
+		bare.arena_gear.clear()
+		bare.tree.clear()
+		plain = brief.build_of(bare, bare.build)
 	var share := float(args.get("share", str(brief.gear.rival_share)))
 	var boost := brief.gear.boost
 	var extra := StreakEdge.rival_extra(StreakEdge.extra(_rules, plain, build, boost), share)
 	var titan_raw := StreakEdge.extra(_rules, plain, titan_build, boost)
 	var titan_extra := StreakEdge.rival_extra(titan_raw, share)
+	# --rival-mult=X: el rival multiplica vida y dano por X en vez de lo que
+	# mide A6 (para buscar cuanto haria falta).
+	if args.has("rival-mult"):
+		extra = float(args["rival-mult"]) - 1.0
+		titan_extra = extra
 	# El poder del jugador, como lo mide el juego (MainScreen._player_items).
 	var items: Array[String] = []
 	var carried := profile.build.has("assist")
@@ -141,8 +168,10 @@ func _initialize() -> void:
 			continue
 		var wins := 0
 		var total := 0
+		var spent := 0
+		var decisions := 0
 		var seen := {}
-		for r in rivals:
+		for r in range(int(args.get("from", "0")), int(args.get("from", "0")) + rivals):
 			var seed_value := 1000 + r * 7919
 			var fight := campaign.arena_streak_fight(
 				zone, library, seed_value, _rules, power, gear, step
@@ -162,19 +191,35 @@ func _initialize() -> void:
 			rival.upgrades = campaign.fight_upgrades(zone, shop, edge, more)
 			rival.skills = skills.effects_for(skills.spread(int(fight.get("skills", 0))))
 			rival.skills.add(Campaign.kits_of(fight))
-			var rival_ai: BattleAI.Difficulty = BattleAI.Difficulty[str(fight["difficulty"])]
+			var rival_ai: BattleAI.Difficulty = BattleAI.Difficulty[str(
+				args.get("rival", fight["difficulty"])
+			)]
 			var temper := tempers.config(library.temper_of(fight["enemy"]))
 			seen["%s %d" % [Txt.TIER_NAMES[fight["tier"]], fight["level"]]] = true
+			if args.has("trace"):
+				var mine := titan_build if step >= TITAN_STEP else build
+				var player := _ai(player_ai, 1 + r * 31, null, args, "player")
+				var foe := _ai(rival_ai, 2 + r * 31, temper, args, "rival")
+				_trace(mine, rival, player, foe, int(args.get("seed", "7")))
+				quit(0)
+				return
+			if args.has("bench"):
+				_bench(titan_build if step >= TITAN_STEP else build, rival, temper)
+				quit(0)
+				return
 			for n in battles:
+				var started := Time.get_ticks_msec()
 				var result := BattleRunner.run(
 					_rules,
 					titan_build if step >= TITAN_STEP else build,
 					rival,
-					BattleAI.new(player_ai, n * 2 + 1 + r * 31),
-					BattleAI.new(rival_ai, n * 2 + 2 + r * 31, temper),
+					_ai(player_ai, n * 2 + 1 + r * 31, null, args, "player"),
+					_ai(rival_ai, n * 2 + 2 + r * 31, temper, args, "rival"),
 					n + 7 + r * 13,
 					n % 2
 				)
+				spent += Time.get_ticks_msec() - started
+				decisions += int(result["turns"])
 				wins += 1 if result["winner"] == 0 else 0
 				total += 1
 		var rate := float(wins) / total
@@ -192,13 +237,14 @@ func _initialize() -> void:
 					% [step + 1, 100.0 * rate, prize, pot, 100.0 * reach]
 				)
 				+ (
-					"   rival: %s, IA %s, entrenamiento %d, plus %d %% y x%.2f"
+					"   rival: %s, IA %s, entrenamiento %d, plus %d %% y x%.2f, %.0f ms por turno"
 					% [
 						", ".join(PackedStringArray(seen.keys())),
-						sample["difficulty"],
+						str(args.get("rival", sample["difficulty"])),
 						int(sample.get("skills", 0)),
 						roundi(100.0 * float(sample.get("edge", 0.0))),
-						1.0 + (titan_extra if step >= TITAN_STEP else extra)
+						1.0 + (titan_extra if step >= TITAN_STEP else extra),
+						float(spent) / maxf(1.0, float(decisions))
 					]
 				)
 			)
@@ -216,6 +262,129 @@ func _initialize() -> void:
 			)
 		)
 	quit(0)
+
+
+## Imprime un combate jugada a jugada con el estado de los dos.
+func _trace(build: MechBuild, rival: MechBuild, a: BattleAI, b: BattleAI, seed_value: int) -> void:
+	print("tu robot: ", build.summary(_rules))
+	print("rival: ", rival.summary(_rules))
+	var engine := BattleEngine.new(_rules, build, rival, seed_value, seed_value % 2)
+	var ais: Array[BattleAI] = [a, b]
+	var printed := 0
+	while not engine.is_over() and engine.turn_number <= 80:
+		var action := ais[engine.turn].choose_action(engine)
+		if action == null or engine.apply(action) != "":
+			break
+		while printed < engine.events.size():
+			var entry: Dictionary = engine.events[printed]
+			printed += 1
+			var detail := ""
+			for key: String in entry:
+				if not key in ["event", "turn", "actor", "state", "actions_left"]:
+					detail += " %s=%s" % [key, entry[key]]
+			var state := ""
+			for i in 2:
+				var m: Dictionary = entry["state"][i]
+				state += (
+					"  [%d] p%d v%d c%d/%d e%d/%d"
+					% [
+						i,
+						m["pos"],
+						m["health"],
+						m["heat"],
+						m["heat_cap"],
+						m["energy"],
+						m["energy_cap"]
+					]
+				)
+			print(
+				(
+					"t%02d %s %-12s%-40s|%s"
+					% [entry["turn"], entry["actor"], entry["event"], detail, state]
+				)
+			)
+	print("gana: ", ["tu robot", "el rival"][engine.winner] if engine.winner >= 0 else "nadie")
+
+
+## Juega un combate (implacable contra implacable) y en cada jugada mide lo
+## que tarda en pensar cada dificultad desde esa misma posicion.
+func _bench(build: MechBuild, rival: MechBuild, temper: AIConfig) -> void:
+	var engine := BattleEngine.new(_rules, build, rival, 7, 0)
+	var levels := [BattleAI.Difficulty.NORMAL, BattleAI.Difficulty.HARD, BattleAI.Difficulty.MASTER]
+	var spent := [0, 0, 0]
+	var worst := [0, 0, 0]
+	var count := 0
+	while not engine.is_over() and engine.turn_number < 60:
+		var chosen: BattleAction = null
+		for i in levels.size():
+			var ai := BattleAI.new(levels[i], 3, temper if engine.turn == 1 else null)
+			var started := Time.get_ticks_usec()
+			var action := ai.choose_action(engine.clone(false))
+			var took := Time.get_ticks_usec() - started
+			spent[i] += took
+			worst[i] = maxi(worst[i], took)
+			if i == levels.size() - 1:
+				chosen = action
+		count += 1
+		if chosen == null or engine.apply(chosen) != "":
+			break
+	# Lo que cuesta cada pieza de la busqueda, en microsegundos.
+	var probe := BattleEngine.new(_rules, build, rival, 7, 0)
+	var plain_ai := BattleAI.new(BattleAI.Difficulty.HARD, 3)
+	var exact_ai := BattleAI.new(BattleAI.Difficulty.MASTER, 3)
+	var first: BattleAction = probe.legal_actions()[0]
+	var marks := {}
+	var t := Time.get_ticks_usec()
+	for n in 2000:
+		probe.clone()
+	marks["clone"] = (Time.get_ticks_usec() - t) / 2000.0
+	t = Time.get_ticks_usec()
+	for n in 2000:
+		probe.clone().apply(first)
+	marks["clone+apply"] = (Time.get_ticks_usec() - t) / 2000.0
+	t = Time.get_ticks_usec()
+	for n in 2000:
+		plain_ai.evaluate(probe, 0)
+	marks["evaluate"] = (Time.get_ticks_usec() - t) / 2000.0
+	t = Time.get_ticks_usec()
+	for n in 2000:
+		exact_ai.evaluate(probe, 0)
+	marks["evaluate exacta"] = (Time.get_ticks_usec() - t) / 2000.0
+	t = Time.get_ticks_usec()
+	for n in 2000:
+		probe.legal_actions()
+	marks["legal_actions"] = (Time.get_ticks_usec() - t) / 2000.0
+	print("  us: ", marks)
+	for i in levels.size():
+		print(
+			(
+				"  %s: %.0f ms de media por jugada, %.0f la peor (%d jugadas, %d acciones posibles al empezar)"
+				% [
+					BattleAI.Difficulty.keys()[levels[i]],
+					spent[i] / 1000.0 / count,
+					worst[i] / 1000.0,
+					count,
+					BattleEngine.new(_rules, build, rival, 7, 0).legal_actions().size()
+				]
+			)
+		)
+
+
+## Una IA con los cambios de la linea de ordenes para ese lado ("player" o
+## "rival"): --exact y --player-set / --rival-set.
+static func _ai(
+	level: BattleAI.Difficulty, seed_value: int, temper: AIConfig, args: Dictionary, side: String
+) -> BattleAI:
+	var config: AIConfig = temper.duplicate() if temper != null else AIConfig.new()
+	for pair in str(args.get(side + "-set", "")).split(",", false):
+		var kv := pair.split("=")
+		config.set(kv[0], type_convert(kv[1], typeof(config.get(kv[0]))))
+	var ai := BattleAI.new(level, seed_value, config)
+	if str(args.get("exact", "")) in [side, "both"]:
+		ai.exact_strike = true
+	if str(args.get("norace", "")) in [side, "both"]:
+		ai.race_eval = false
+	return ai
 
 
 ## Los nodos del arbol: "a" o "b" (todo, con esa especializacion en cada

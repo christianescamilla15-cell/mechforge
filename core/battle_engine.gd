@@ -596,6 +596,25 @@ func crit_chance(def: ItemDef, target: BattleMech, user: BattleMech = null) -> f
 	return clampf(chance + extra, 0.0, rules.crit_cap)
 
 
+## Dano medio de un golpe de ese hueco (tirada media y critico esperado),
+## como si el rival no tuviera escudo ni bastion: con la potencia, los
+## modulos, la perforacion y la rotura de energia. Es la vara con la que la
+## IA implacable valora los golpes (GDD 7).
+func expected_hit(user: BattleMech, target: BattleMech, key: String) -> float:
+	if not user.slots.has(key) or not user.slots[key].def.deals_damage():
+		return 0.0
+	var def := user.slots[key].def
+	var guard := [target.shield_left, target.barrier, target.bastion_ready]
+	target.shield_left = 0
+	target.barrier = 0
+	target.bastion_ready = false
+	var damage := _damage(def, user, target, 0.5, crit_chance(def, target, user), key)
+	target.shield_left = guard[0]
+	target.barrier = guard[1]
+	target.bastion_ready = guard[2]
+	return float(damage)
+
+
 ## Efectos de un critico ademas del dano (el de "pierce" ya va en el dano).
 ## Devuelve lo que hay que anadir al registro.
 func _apply_crit(def: ItemDef, target: BattleMech) -> Dictionary:

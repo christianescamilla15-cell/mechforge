@@ -132,6 +132,33 @@ func test_con_todas_de_ese_rango_da_celdas() -> void:
 	assert_eq(profile.gold, gold + int(prize["melted"]))
 
 
+## Los campeones del Exterminio (OBS-054) dan un arma del rango que toca,
+## como un hito pero sin doble premio de celdas.
+func test_un_campeon_da_un_arma_de_su_rango() -> void:
+	var profile := _profile()
+	var prize := _gear.grant(profile, _catalog, 2, {}, _rng())
+	assert_eq(prize["weapons"].size(), 1)
+	assert_eq(int(prize["weapons"][0]["rank"]), 2)
+	assert_false(prize.has("double"))
+	assert_eq(_gear.grant(profile, _catalog, 0, {}, _rng()), {"weapons": [], "melted": 0})
+
+
+## A6 mide lo de mas sobre su robot sin prototipos, aspectos, rangos de
+## arena ni arbol (OBS-054: los prototipos no se contaban).
+func test_el_robot_sin_lo_de_mas() -> void:
+	var profile := _profile()
+	var weapon := str(profile.build["sides"][0])
+	var key := _catalog.get_item(weapon).progress_id()
+	profile.prototypes[key] = {"sobrecarga": 5}
+	_brief.prototypes = PrototypeLibrary.load_file("res://data/prototypes.json")
+	var full := _brief.build_of(profile, profile.build)
+	var plain := _brief.plain_build(profile)
+	_brief.prototypes = null
+	assert_almost_eq(float(full.sides[0].proto_effects.get("damage", 0.0)), 0.2, 0.001)
+	assert_eq(plain.sides[0].proto_effects, {})
+	assert_true(profile.prototypes.has(key), "su partida no cambia")
+
+
 ## Rama Fortuna: otra arma, un rango mas y doble premio.
 func test_fortuna_da_otra_arma_de_un_rango_mas_y_doble_premio() -> void:
 	var profile := _profile()

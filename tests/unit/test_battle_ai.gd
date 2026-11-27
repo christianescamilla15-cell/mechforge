@@ -87,7 +87,7 @@ func test_no_dispara_un_arma_que_la_mataria_por_backfire() -> void:
 
 
 func test_todas_las_dificultades_devuelven_acciones_legales() -> void:
-	for difficulty: BattleAI.Difficulty in [D.RANDOM, D.EASY, D.NORMAL, D.HARD]:
+	for difficulty: BattleAI.Difficulty in [D.RANDOM, D.EASY, D.NORMAL, D.HARD, D.MASTER]:
 		var e := Fx.engine(
 			Fx.build([Fx.gun(), Fx.gun({"range_min": 3, "range_max": 6})]), Fx.build([Fx.gun()])
 		)
@@ -207,12 +207,14 @@ func test_pensar_sobre_una_copia_exacta_da_la_misma_accion() -> void:
 	var rules := Fx.rules({"crits_enabled": true, "impact_enabled": true, "drops_enabled": true})
 	var a := library.make("fisico_vanguardia", catalog, rules, ItemDef.Tier.EPIC, 9)
 	var b := library.make("calor_horno_canon", catalog, rules, ItemDef.Tier.EPIC, 9)
-	for difficulty: D in [D.EASY, D.HARD]:
+	for difficulty: D in [D.EASY, D.HARD, D.MASTER]:
 		var e := BattleEngine.new(rules, a, b, 5)
 		var on_original := BattleAI.new(difficulty, 11)
 		var on_copy := BattleAI.new(difficulty, 11)
 		var steps := 0
-		while not e.is_over() and steps < 80:
+		# La implacable tarda mas en pensar: basta con el principio.
+		var limit := 16 if difficulty == D.MASTER else 80
+		while not e.is_over() and steps < limit:
 			var expected := on_original.choose_action(e)
 			var got := on_copy.choose_action(e.clone(false))
 			assert_eq(
@@ -223,3 +225,27 @@ func test_pensar_sobre_una_copia_exacta_da_la_misma_accion() -> void:
 			e.apply(expected)
 			steps += 1
 		assert_gt(steps, 10, "un combate entero")
+
+
+# --- Implacable (OBS-054) ---
+
+
+## La implacable mide los golpes con el motor: la potencia de su armeria
+## cuenta, y un escudo del rival no le hace creer que su arma no pega.
+func test_el_golpe_esperado_cuenta_la_potencia_y_no_el_escudo() -> void:
+	var strong := Fx.build([Fx.gun({"dmg_min": 80, "dmg_max": 120})])
+	strong.upgrades = ArenaUpgrades.new()
+	strong.upgrades.damage = 1.0
+	var e := Fx.engine(strong, Fx.build())
+	assert_eq(e.expected_hit(e.mechs[0], e.mechs[1], "side0"), 200.0)
+	e.mechs[1].shield_left = 1
+	assert_eq(e.expected_hit(e.mechs[0], e.mechs[1], "side0"), 200.0)
+	assert_eq(e.mechs[1].shield_left, 1, "deja el escudo como estaba")
+	assert_eq(e.expected_hit(e.mechs[0], e.mechs[1], "top0"), 0.0, "un hueco vacio no pega")
+
+
+## Las demas dificultades siguen valorando como se calibraron.
+func test_solo_la_implacable_valora_con_el_motor() -> void:
+	for difficulty: D in [D.EASY, D.NORMAL, D.HARD]:
+		assert_false(BattleAI.new(difficulty).exact_strike)
+	assert_true(BattleAI.new(D.MASTER).exact_strike)

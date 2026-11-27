@@ -25,7 +25,9 @@ extends RefCounted
 const CHANNELS: Array[String] = ["campaign", "arena", "exterminio", "free"]
 ## Rivales de la campana que se ven en fila: el que toca y los siguientes.
 const ROW_SIZE := 4
-const DIFFICULTY_KEYS: Array[String] = ["difficulty_easy", "difficulty_normal", "difficulty_hard"]
+const DIFFICULTY_KEYS: Array[String] = [
+	"difficulty_easy", "difficulty_normal", "difficulty_hard", "difficulty_master"
+]
 ## Lo elegido en el combate libre si aun no se eligio nada.
 const FREE_DEFAULTS := {"enemy": 1, "tier": 2, "difficulty": 1}
 
@@ -167,13 +169,23 @@ func exterminio_state(
 	var best := profile.exterminio_best
 	var lines: Array[String] = [
 		Txt.t("mission_exterminio_info"),
-		Txt.t("mission_exterminio_rule"),
+		Txt.t("mission_exterminio_next_champion", [campaign.next_exterminio_champion(wave) + 1]),
 		(
 			Txt.t("mission_exterminio_best", [best, pay])
 			if best > 0
 			else Txt.t("mission_exterminio_first", [pay])
 		),
 	]
+	# La oleada de un campeon (OBS-054): quien es y lo que da vencerle.
+	var champion := campaign.exterminio_champion(wave)
+	if champion >= 0:
+		var prize := campaign.exterminio_champion_prize(wave)
+		state["title"] = Txt.t("exterminio_champion_title", [wave + 1])
+		lines[0] = Txt.t("mission_exterminio_champion", [champion + 1])
+		lines[1] = Txt.t(
+			"mission_exterminio_champion_prize",
+			[int(prize["points"]), Txt.t("arena_rank_%d" % int(prize["rank"]))]
+		)
 	state["lines"] = lines
 	state["warning"] = Txt.t("mission_exterminio_warning")
 	return state

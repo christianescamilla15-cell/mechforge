@@ -648,8 +648,11 @@ func milestone_test() -> void:
 
 
 ## El Exterminio (OBS-053): su canal en la zona de combate, ganar la oleada
-## que toca y perder la siguiente (sin guardar).
+## que toca y perder la siguiente (sin guardar). Con --wave=N empieza en esa
+## oleada (la 10 es la del primer campeon, OBS-054).
 func exterminio_test() -> void:
+	if main._args.has("wave"):
+		main._profile.exterminio_wave = int(main._args["wave"]) - 1
 	await get_tree().create_timer(0.8).timeout
 	var hangar := main.open_workshop()
 	await get_tree().create_timer(0.5).timeout
@@ -659,12 +662,15 @@ func exterminio_test() -> void:
 	var profile := main._profile
 	var start := profile.exterminio_wave
 	main._on_exterminio_pressed()
+	var spec := [main._spec["enemy"], main._spec["difficulty"], main._spec["enemy_skills"]]
+	print("EXTERMINIO rival: %s, dificultad %d, entrenamiento %d" % spec)
 	await get_tree().create_timer(1.2).timeout
 	main._on_battle_finished(true)
 	main._battle._result.show()
 	await get_tree().create_timer(0.3).timeout
 	var state := [start + 1, profile.exterminio_wave, profile.exterminio_best]
 	print("EXTERMINIO gano la %d: oleada=%d record=%d" % state)
+	print("EXTERMINIO puntos=%d armas=%s" % [profile.upgrade_points, profile.arena_gear])
 	await shot("gano")
 	main._on_rematch()
 	await get_tree().create_timer(1.2).timeout

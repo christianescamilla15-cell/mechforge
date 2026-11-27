@@ -1,6 +1,7 @@
 extends GutTest
 ## El plus de los rivales de la racha cuenta lo que el jugador lleva de mas
-## (OBS-051, PLAN A6): arbol de mejoras, aspectos y armas de arena.
+## (OBS-051, PLAN A6): arbol de mejoras, aspectos, armas de arena y, desde
+## OBS-054, los prototipos del especialista.
 
 var _rules: RulesConfig
 var _catalog: Catalog
@@ -91,3 +92,18 @@ func test_el_extra_multiplica_al_rival() -> void:
 		assert_almost_eq(more.damage_mult(), plain.damage_mult() * 1.2, 0.0001)
 	var same := campaign.fight_upgrades(9, shop, 0.5, 0.0)
 	assert_almost_eq(same.health, campaign.fight_upgrades(9, shop, 0.5).health, 0.0001)
+
+
+## Los prototipos del especialista tambien son de mas (OBS-054): pegan mas,
+## critican mas y curan al golpear.
+func test_los_prototipos_cuentan() -> void:
+	var plain := _build(_spec())
+	var harder := _build(_spec())
+	for def in harder.sides + harder.tops:
+		def.proto_effects = {"damage": 0.2, "crit": 0.3}
+	var hit := StreakEdge.extra(_rules, plain, harder, _gear.boost)
+	assert_gt(hit, 0.1)
+	var thief := _build(_spec())
+	for def in thief.sides + thief.tops:
+		def.proto_effects = {"damage": 0.2, "crit": 0.3, "lifesteal": 0.2}
+	assert_gt(StreakEdge.extra(_rules, plain, thief, _gear.boost), hit, "y el robo de vida")

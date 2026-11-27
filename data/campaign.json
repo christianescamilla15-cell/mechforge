@@ -7,10 +7,11 @@
     "rematch": 7500
   },
   "exterminio": {
-    "comment": "Exterminio (OBS-053): oleadas sin final. Las primeras siguen los pasos de arena_streak; despues de la ultima, el rival suma edge_growth de plus por oleada. Cada victoria paga la de ganar en la arena por (1 + gold_growth x oleadas ganadas) y la experiencia por (1 + xp_growth x oleadas ganadas); no se arriesga.",
+    "comment": "Exterminio (OBS-053): oleadas sin final. Las primeras siguen los pasos de arena_streak; despues de la ultima, el rival suma edge_growth de plus por oleada. Cada victoria paga la de ganar en la arena por (1 + gold_growth x oleadas ganadas) y la experiencia por (1 + xp_growth x oleadas ganadas); no se arriesga. champions (OBS-054): cada every oleadas sale el campeon de una liga, por orden (la 10 el de la liga 1, la 20 el de la 2... y vuelta a empezar), con su habilidad, su entrenamiento y la IA difficulty (MASTER, la implacable), al poder de la oleada; ganarle da points puntos de mejora y un arma de arena del rango rank (1 bronce, 2 plata, 3 oro), segun cuantos campeones van en la tanda (el ultimo valor se repite).",
     "edge_growth": 0.06,
     "gold_growth": 0.5,
-    "xp_growth": 0.25
+    "xp_growth": 0.25,
+    "champions": {"every": 10, "points": [5, 8, 12], "rank": [1, 2, 3], "difficulty": "MASTER"}
   },
   "arena_streak": {
     "fights": 20,

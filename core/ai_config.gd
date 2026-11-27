@@ -54,3 +54,14 @@ extends Resource
 ## En dificil, cuantas de las mejores jugadas se revisan contra la mejor
 ## respuesta del rival.
 @export var hard_candidates: int = 6
+## En implacable, cuantas de sus mejores jugadas se revisan y, para cada una,
+## cuantas de las respuestas del rival que peor le dejan se siguen un turno mas.
+@export var master_candidates: int = 6
+@export var master_replies: int = 3
+## Al seguir esos turnos, cuantas primeras acciones (las que mejor dejan a
+## quien juega) se completan con la segunda; 0 son todas.
+@export var master_width: int = 6
+## Entre que valores queda lo que vale una barra de vida en la carrera de la
+## implacable (1 es lo que vale en las demas).
+@export var bar_worth_min: float = 0.25
+@export var bar_worth_max: float = 4.0

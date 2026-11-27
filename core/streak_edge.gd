@@ -6,7 +6,8 @@ extends RefCounted
 ## resistencia, etc., y eso puede repercutir mucho en los resultados". El
 ## rival ya se mide con la clase y el nivel de sus piezas (Campaign.
 ## arena_fight); aqui se mide lo demas: el arbol de mejoras, los aspectos y
-## las armas de arena (su ventaja sobre el laser de su forma y su rango).
+## las armas de arena (su ventaja sobre el laser de su forma y su rango) y,
+## desde el 2026-11-26 (OBS-054), los prototipos del especialista.
 ## Una parte (ArenaGear.rival_share) pasa al plus del rival: mejorar ayuda,
 ## pero lo alto de la racha sigue siendo dificil.
 ##
@@ -69,20 +70,33 @@ static func might(rules: RulesConfig, mech: BattleMech, ref: Dictionary, boost: 
 	var res_ref := float(ref["res"])
 	var hit := 0.0
 	var weapons := 0
+	# Lo que devuelven sus prototipos al golpear: vida, energia y calor.
+	var stolen := 0.0
+	var energy_back := 0.0
+	var vented := 0.0
 	for key in mech.weapon_keys():
 		var def: ItemDef = mech.slots[key].def
 		if def == null or not def.deals_damage():
 			continue
+		var fx := def.proto_effects
 		var damage := _damage_of(def, boost) * mech.damage_mult()
-		var crit := clampf(def.crit / 100.0 + mech.skill("crit"), 0.0, rules.crit_cap)
+		damage *= 1.0 + float(fx.get("damage", 0.0))
+		var chance := def.crit / 100.0 + mech.skill("crit") + float(fx.get("crit", 0.0))
+		var crit := clampf(chance, 0.0, rules.crit_cap)
 		damage *= 1.0 + crit * (rules.crit_damage_mult - 1.0)
-		hit += _after_res(mech, damage, res_ref)
+		var dealt := _after_res(mech, damage, res_ref)
+		hit += dealt
+		stolen += dealt * float(fx.get("lifesteal", 0.0))
+		energy_back += mech.energy_cap * float(fx.get("energy_on_hit", 0.0))
+		vented += mech.heat_cap * float(fx.get("cool_on_hit", 0.0))
 		var drained := def.heat_dmg * (1.0 + mech.skill("ignition"))
 		drained += def.energy_dmg * (1.0 + mech.skill("drain"))
 		hit += DRAIN_WEIGHT * drained
 		weapons += 1
 	# Un arma por accion: la media de sus golpes, por las acciones del turno.
-	hit = hit / maxi(weapons, 1) * (1 + mech.extra_actions())
+	var actions := (1 + mech.extra_actions()) / float(maxi(weapons, 1))
+	hit *= actions
+	stolen *= actions
 	# El asistente dispara una de sus dos armas por turno (mas con Enjambre).
 	var drones := 0.0
 	var count := 0
@@ -95,13 +109,15 @@ static func might(rules: RulesConfig, mech: BattleMech, ref: Dictionary, boost: 
 		var shot := _after_res(mech, drones / count, res_ref)
 		hit += shot * (1.0 + mech.extra_drone_shots())
 	# Sostener el fuego: mas energia que se recupera y mas enfriamiento.
-	var regen := maxf(1.0, mech.energy_regen) / float(ref["regen"])
-	var cool := maxf(1.0, mech.cooling) / float(ref["cooling"])
+	var regen := maxf(1.0, mech.energy_regen + energy_back * actions) / float(ref["regen"])
+	var cool := maxf(1.0, mech.cooling + vented * actions) / float(ref["cooling"])
 	hit *= pow(regen * cool, SUSTAIN_POWER)
 	var res := (mech.res[0] + mech.res[1] + mech.res[2]) / 3.0
 	var taken := maxf(1.0, float(ref["hit"]) - res)
 	var guard := (mech.max_health + mech.barrier) / taken
 	guard *= 1.0 + mech.regen_share() * TURNS
+	# El robo de vida cura como la regeneracion, por lo que pega.
+	guard += stolen * TURNS / taken
 	guard += mech.skill("bastion")
 	hit += taken * (mech.skill("reflect") + 0.5 * mech.skill("counter"))
 	return sqrt(maxf(hit, 1.0) * guard)

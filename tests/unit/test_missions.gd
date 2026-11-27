@@ -172,10 +172,14 @@ func test_el_rival_de_la_arena_que_se_ve_es_el_que_sale() -> void:
 
 func test_el_combate_libre_da_la_vuelta_al_elegir() -> void:
 	var count := _brief.free_count("enemy")
-	var pick := _brief.free_pick({"enemy": -1, "tier": 6, "difficulty": 4})
+	var levels := _brief.free_count("difficulty")
+	var pick := _brief.free_pick({"enemy": -1, "tier": 6, "difficulty": levels + 1})
 	assert_eq(pick["enemy"], count - 1, "antes del primero, el ultimo")
 	assert_eq(pick["tier"], 0, "despues de la ultima clase, la primera")
 	assert_eq(pick["difficulty"], 1)
+	# La ultima es la implacable (OBS-054).
+	var master := _brief.free_state({"enemy": 0, "tier": 1, "difficulty": levels - 1})
+	assert_eq(master["pickers"][2]["value"], Txt.t("difficulty_master"))
 	var state := _brief.free_state({"enemy": 0, "tier": 1, "difficulty": 2})
 	var rivals: Array = state["rivals"]
 	assert_eq(rivals[0]["id"], _library.all_ids()[0])
