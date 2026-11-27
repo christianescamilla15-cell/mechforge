@@ -433,11 +433,14 @@ func _begin_turn() -> void:
 		_regen(me)
 	if _first_turn and rules.m5_first_turn_single_action:
 		actions = mini(actions, 1)
+	# Critico de blaster (GDD 2.9): pierde una accion, pero le queda una; y
+	# con M7, en su turno siguiente no se le puede volver a sobrecargar.
+	me.stun_guard = false
 	if me.stunned:
-		# Critico de blaster (GDD 2.9): pierde una accion, pero le queda una.
 		me.stunned = false
 		if actions > 1:
 			actions -= 1
+			me.stun_guard = rules.m7_no_chain_stun
 			_log("stunned")
 	_first_turn = false
 	if shutdown:
@@ -628,7 +631,10 @@ func _apply_crit(def: ItemDef, target: BattleMech) -> Dictionary:
 				target.disabled_slot = key
 				out["disabled"] = key
 		"stun":
-			target.stunned = true
+			if target.stun_guard:
+				out["stun_resisted"] = true
+			else:
+				target.stunned = true
 	return out
 
 
@@ -971,4 +977,5 @@ func _snapshot(mech: BattleMech) -> Dictionary:
 		"immobilized": mech.immobilized,
 		"disabled": mech.disabled_slot,
 		"stunned": mech.stunned,
+		"stun_guard": mech.stun_guard,
 	}

@@ -152,6 +152,38 @@ func test_el_critico_de_plasma_le_quita_una_accion() -> void:
 	assert_eq(engine.actions_left, 2, "solo dura un turno")
 
 
+## M7 (OBS-055): quien acaba de perder una accion por sobrecarga no la
+## vuelve a perder en su turno siguiente; al otro, si.
+func test_no_hay_dos_sobrecargas_seguidas() -> void:
+	var engine := _engine(_gun(50, "stun"), _target())
+	engine.fixed_crit = 0.0
+	engine.apply(BattleAction.weapon("side0"))
+	engine.apply(BattleAction.cool())
+	assert_eq(engine.actions_left, 1, "la primera le quita una accion")
+	Fx.pass_turn(engine)
+	engine.apply(BattleAction.weapon("side0"))
+	var last: Dictionary = engine.events[-1]
+	assert_true(bool(last.get("stun_resisted", false)), "la segunda no entra")
+	engine.apply(BattleAction.cool())
+	assert_eq(engine.actions_left, 2)
+	Fx.pass_turn(engine)
+	engine.apply(BattleAction.weapon("side0"))
+	engine.apply(BattleAction.cool())
+	assert_eq(engine.actions_left, 1, "la tercera, con un turno libre entre medias, si")
+
+
+func test_sin_m7_se_encadenan() -> void:
+	var engine := _engine(_gun(50, "stun"), _target())
+	engine.rules.m7_no_chain_stun = false
+	engine.fixed_crit = 0.0
+	for turn in 2:
+		engine.apply(BattleAction.weapon("side0"))
+		engine.apply(BattleAction.cool())
+		assert_eq(engine.actions_left, 1, "turno %d" % turn)
+		Fx.pass_turn(engine)
+	engine.rules.m7_no_chain_stun = true
+
+
 func test_la_sobrecarga_le_deja_al_menos_una_accion() -> void:
 	var engine := _engine(_gun(50, "stun"), _target({"heat_cap": 10, "cooling": 100}))
 	engine.fixed_crit = 0.0

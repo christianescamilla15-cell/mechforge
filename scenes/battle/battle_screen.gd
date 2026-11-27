@@ -266,7 +266,7 @@ func _play_event(entry: Dictionary) -> void:
 				_arena.super_flash(_arena.mechs[target].hit_point(), COLOR_CRIT, speed)
 				var cell: int = _state[target]["pos"]
 				_arena.float_text(cell, Txt.t("crit_hit"), COLOR_CRIT)
-				_arena.float_text(cell, Txt.t("crit_" + str(entry["crit_effect"])), COLOR_CRIT)
+				_arena.float_text(cell, Txt.t(_crit_key(entry)), COLOR_CRIT)
 			if damage > 0:
 				# Pausa al golpear (OBS-052): mas larga cuanto mas quita.
 				var share := float(damage) / float(maxi(engine.mechs[target].max_health, 1))
@@ -347,7 +347,7 @@ func _play_event(entry: Dictionary) -> void:
 			if entry.get("crit", false):
 				Sfx.play("critico")
 				_arena.float_text(cell, Txt.t("crit_hit"), COLOR_CRIT)
-				_arena.float_text(cell, Txt.t("crit_" + str(entry["crit_effect"])), COLOR_CRIT)
+				_arena.float_text(cell, Txt.t(_crit_key(entry)), COLOR_CRIT)
 			await get_tree().create_timer(step).timeout
 			var edge: int = snapshot[target]["pos"]
 			if edge != cell:
@@ -946,3 +946,11 @@ func _label(parent: Node, font_size: int) -> Label:
 	label.add_theme_font_size_override("font_size", font_size)
 	parent.add_child(label)
 	return label
+
+
+## El rotulo del efecto de un critico; con M7, una sobrecarga que no entra
+## porque el rival acaba de perder una accion por otra.
+static func _crit_key(entry: Dictionary) -> String:
+	if entry.get("stun_resisted", false):
+		return "crit_stun_resisted"
+	return "crit_" + str(entry["crit_effect"])

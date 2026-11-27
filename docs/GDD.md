@@ -86,6 +86,7 @@ Cada una es un interruptor en `RulesConfig`, encendido por defecto, para poder m
 | M4 | El dron está siempre activo: no existe la acción de encenderlo o apagarlo. | Era una acción torpe que casi nadie usaba bien. |
 | M5 | Iniciativa: quien empieza tiene 1 sola acción en su primer turno. **Apagada desde el 2026-11-21** (OBS-034): el usuario lo vivía como una desventaja suya; los dos abren con todas sus acciones. | Compensaba la ventaja de abrir. |
 | M6 | La energía se regenera al inicio del turno propio, no al final. | Con la regla original, un drenaje dejaba al rival en 0 justo antes de jugar y lo bloqueaba por completo. Así siempre le queda su regeneración para actuar. |
+| M7 | Sin sobrecargas seguidas (2026-11-26, OBS-055): quien pierde una acción por un crítico de sobrecarga no puede volver a perderla en su turno siguiente; el crítico entra (daño, calor y drenaje) pero sin sobrecarga, y se ve "AGUANTA LA SOBRECARGA". | El arma de pecho con el crítico casi seguro (y el percutor) le quitaba al rival una acción en cada turno: ganaba quien la tuviera, sin pensar. Ahora hay que elegir cuándo sobrecargar. Medido con su robot (racha, liga 10, IA difícil): sigue ganando el 100 %, porque le sobra fuerza; donde se notará es con los tres robots seguidos del Exterminio. |
 
 **Efecto medido con el simulador (F3):**
 - **M1** hace los combates casi deterministas: entre mechs parejos, un 1 % de ventaja mueve la tasa de victoria unos 10 puntos. Por eso el balance se mide con el margen (vida que le sobra al ganador) además de la tasa.

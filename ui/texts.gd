@@ -148,6 +148,7 @@ const ES := {
 	"crit_pierce": "BLINDAJE PERFORADO",
 	"crit_immobilize": "INMOVILIZADO",
 	"crit_stun": "SOBRECARGA",
+	"crit_stun_resisted": "AGUANTA LA SOBRECARGA",
 	"crit_disable": "ARMA INUTILIZADA",
 	"crit_effect_pierce": "atraviesa la resistencia",
 	"crit_effect_immobilize": "lo inmoviliza un turno",

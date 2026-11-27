@@ -64,6 +64,9 @@ var disabled_slot: String = ""
 var immobilized: bool = false
 ## Sobrecargado por un critico de blaster: pierde una accion en su turno.
 var stunned: bool = false
+## Perdio una accion por sobrecarga en su ultimo turno: con M7 no se le
+## puede volver a sobrecargar hasta que empiece el siguiente.
+var stun_guard: bool = false
 ## Bonificaciones en vigor (GDD 2.8): {"kind", "amount", "turns"}.
 var buffs: Array[Dictionary] = []
 ## Huecos que actuan en combate: "legs", "side0", "side1", "top0",
@@ -151,6 +154,7 @@ func clone() -> BattleMech:
 	copy.disabled_slot = disabled_slot
 	copy.immobilized = immobilized
 	copy.stunned = stunned
+	copy.stun_guard = stun_guard
 	copy.buffs = buffs.duplicate(true)
 	for key in slots:
 		copy.slots[key] = slots[key].clone()

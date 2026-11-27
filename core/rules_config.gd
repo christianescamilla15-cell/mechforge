@@ -24,6 +24,12 @@ extends Resource
 ## M6: la energia se regenera al inicio del turno propio y no al final, para
 ## que un drenaje no deje al rival en cero justo antes de jugar.
 @export var m6_regen_at_turn_start: bool = true
+## M7: sin sobrecargas seguidas (OBS-055, del usuario: que "tambien cuente
+## la estrategia"). Quien pierde una accion por un critico de sobrecarga no
+## puede volver a perderla en su turno siguiente, como los apagados de M2:
+## hay que elegir cuando sobrecargar. Antes, un arma de pecho con el critico
+## casi seguro le quitaba al rival una accion en cada turno.
+@export var m7_no_chain_stun: bool = true
 
 @export_group("Progresion")
 ## Multiplicador de estadisticas por tier, de Comun a Divino (GDD 8).
