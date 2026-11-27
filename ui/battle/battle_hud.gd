@@ -339,6 +339,7 @@ func _draw_vitals(index: int) -> void:
 		hot = BAD.lerp(Color.WHITE, 0.5 + 0.5 * sin(_time * 10.0))
 	_bar(at + Vector2(0, 10), width, 4.0, float(state["heat"]), hot, alpha)
 	_bar(at + Vector2(0, 16), width, 4.0, float(state["energy"]), ENERGY, alpha)
+	_draw_states(state.get("states", {}), at + Vector2(0, 26), alpha)
 	if index != _turn:
 		return
 	for i in 2:
@@ -351,6 +352,20 @@ func _draw_vitals(index: int) -> void:
 			gem, Color(GOLD, alpha) if on else Color(0.08, 0.1, 0.14, 0.75 * alpha)
 		)
 		draw_polyline(gem + PackedVector2Array([gem[0]]), Color(GOLD, 0.9 * alpha), 1.2)
+
+
+## Los estados que lleva (OBS-055): una ficha por estado, de su color, con
+## su inicial y sus cargas.
+func _draw_states(states: Dictionary, at: Vector2, alpha: float) -> void:
+	var x := 0.0
+	for kind: String in states:
+		var color: Color = RuleFx.STATE_COLORS.get(kind, Color.WHITE)
+		var chip := Rect2(at + Vector2(x, 0), Vector2(30, 15))
+		draw_rect(chip, Color(color.darkened(0.6), 0.85 * alpha))
+		draw_rect(chip, Color(color, alpha), false, 1.0)
+		var label := "%s%d" % [Txt.t("state_short_" + kind), int(states[kind]["stacks"])]
+		draw_string(_font, chip.position + Vector2(0, 12), label, 1, 30, 11, Color(color, alpha))
+		x += 34.0
 
 
 func _bar(

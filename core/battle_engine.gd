@@ -33,6 +33,8 @@ var expected_crits: bool = false
 ## normal). Sin config no hay terreno.
 var terrain: Array[String] = []
 var terrain_config: TerrainConfig
+## Reglas de fuera del motor (ArenaRule): el terreno y los estados.
+var extra_rules: Array[ArenaRule] = []
 var _rng := RandomNumberGenerator.new()
 var _first_turn := true
 ## Las copias que usa la IA para probar jugadas no hacen caer bonificaciones.
@@ -89,6 +91,7 @@ func clone(for_search: bool = true) -> BattleEngine:
 	copy.fixed_crit = fixed_crit
 	copy.terrain = terrain.duplicate()
 	copy.terrain_config = terrain_config
+	copy.extra_rules = extra_rules.duplicate()
 	if for_search:
 		copy.logging = false
 		copy.fixed_roll = 0.5
@@ -109,9 +112,11 @@ func clone(for_search: bool = true) -> BattleEngine:
 ## Pone el terreno del combate (TerrainConfig.layout con su semilla); con
 ## config null, ninguno.
 func set_terrain(config: TerrainConfig, seed_value: int) -> void:
+	extra_rules.erase(terrain_config)
 	terrain_config = config
 	terrain.clear()
 	if config != null:
+		extra_rules.append(config)
 		var taken: Array[int] = [mechs[0].position, mechs[1].position]
 		terrain = config.layout(seed_value, rules.arena_size, taken)
 
@@ -349,6 +354,8 @@ func apply(action: BattleAction) -> String:
 			var amount := mini(me.cooling, me.heat)
 			me.heat -= amount
 			_log("cool", {"amount": amount})
+			for rule in extra_rules:
+				rule.on_cool(self, me)
 		BattleAction.Type.WALK:
 			_log("walk", {"from": me.position, "to": action.position})
 			me.position = action.position
@@ -403,8 +410,8 @@ func apply(action: BattleAction) -> String:
 			_log("dark_matter", data)
 	_evade_if_hit(foe, me, foe_health)
 	_check_pickup()
-	if terrain_config != null:
-		terrain_config.spring(self)
+	for rule in extra_rules:
+		rule.after_action(self)
 	actions_left -= 1
 	if _check_winner():
 		return ""
@@ -430,9 +437,9 @@ func _begin_turn() -> void:
 		repair = mini(repair, me.max_health - me.health)
 		me.health += repair
 		_log("repair", {"amount": repair})
-	# La casilla en la que empieza (OBS-055): lava o reparacion.
-	if terrain_config != null:
-		terrain_config.on_turn_start(self, me)
+	# El terreno y los estados (OBS-055): lava, reparacion, quemadura...
+	for rule in extra_rules:
+		rule.on_turn_start(self, me)
 	if me.no_overheat():
 		me.heat = mini(me.heat, me.heat_cap)
 	# Valvula de alivio (prototipo): un sobrecalentamiento que no le cuesta
@@ -484,10 +491,10 @@ func _end_turn(fire_drone: bool) -> void:
 	if not rules.m6_regen_at_turn_start:
 		_regen(me)
 	_check_pickup()
-	if terrain_config != null:
-		terrain_config.spring(self)
-		if _check_winner():
-			return
+	for rule in extra_rules:
+		rule.after_action(self)
+	if not extra_rules.is_empty() and _check_winner():
+		return
 	_tick_buffs(me)
 	# Los efectos de un critico duran el turno del mech que los sufrio.
 	me.disabled_slot = ""
@@ -583,8 +590,9 @@ func _use(
 		target.energy_regen = maxi(1, target.energy_regen - def.energy_regen_dmg)
 
 	var data := {"slot": key, "item": def.id, "damage": damage}
-	if terrain_config != null and terrain_config.cover_factor(self, user, target) < 1.0:
-		data["cover"] = def.deals_damage()
+	if damage > 0:
+		for rule in extra_rules:
+			rule.on_hit(self, user, target, key, damage, data)
 	_note_layer(data, target, soaked)
 	if damage > 0:
 		data.merge(_answer_hit(user, target, damage))
@@ -732,9 +740,9 @@ func _damage(
 		var armor := target.buff_amount("armor")
 		if armor > 0.0:
 			damage = maxi(1, roundi(damage * (1.0 - armor)))
-		# Su cobertura, si le dan desde lejos (OBS-055).
-		if terrain_config != null:
-			damage = maxi(1, roundi(damage * terrain_config.cover_factor(self, attacker, target)))
+		# Su cobertura, su corrosion... (OBS-055, ArenaRule).
+		for rule in extra_rules:
+			damage = maxi(1, roundi(damage * rule.damage_factor(self, attacker, target, def)))
 	# Rotura de energia: lo que el arma drena de mas se vuelve dano.
 	if not target.free_energy():
 		damage += maxi(0, _energy_hit(def, attacker, crit) - target.energy)

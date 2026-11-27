@@ -81,6 +81,8 @@ var _brief := MissionBrief.new()
 var _prototypes: PrototypeLibrary
 ## El terreno de la arena (OBS-055).
 var _terrain: TerrainConfig
+## Los estados del combate (OBS-055).
+var _states: StateConfig
 var _bench := WorkshopBrief.new()
 ## Lo que dice el panel al acabar un combate de la arena o del Exterminio.
 var _notes := ResultNotes.new()
@@ -126,6 +128,7 @@ func _ready() -> void:
 	_campaign = Campaign.load_file("res://data/campaign.json", _library)
 	_prototypes = PrototypeLibrary.load_file("res://data/prototypes.json")
 	_terrain = TerrainConfig.load_file("res://data/terrain.json")
+	_states = StateConfig.load_file("res://data/states.json")
 	_brief.rules = _rules
 	_brief.catalog = _catalog
 	_brief.library = _library
@@ -770,6 +773,7 @@ func _start_battle(spec: Dictionary) -> void:
 	enemy_build.skills.add(spec.get("enemy_kits", {}))
 	_battle.terrain = _terrain if _terrain.enabled_for(spec["mode"]) else null
 	_battle.keep_buffs = spec["mode"] == "exterminio"
+	_battle.states = _states if _states.enabled_for(spec["mode"]) else null
 	_battle.start(
 		_rules,
 		player_build,

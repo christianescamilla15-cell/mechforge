@@ -22,6 +22,7 @@ func _engine(a: MechBuild, b: MechBuild, cells: Dictionary, pair: int = 0) -> Ba
 	var e := Fx.engine(a, b, pair)
 	e.fixed_roll = 0.0
 	e.terrain_config = _config
+	e.extra_rules.append(_config)
 	e.terrain.resize(e.rules.arena_size)
 	e.terrain.fill("")
 	for cell: int in cells:

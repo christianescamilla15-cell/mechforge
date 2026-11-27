@@ -72,6 +72,9 @@ var buffs: Array[Dictionary] = []
 ## Exterminio (OBS-056): las bonificaciones que recoge no se gastan con los
 ## turnos; le duran la oleada entera y pasan al robot siguiente.
 var keep_buffs: bool = false
+## Estados (OBS-055, StateConfig): {"burn" | "corrosion" | "static":
+## {"stacks", "turns"}}.
+var states: Dictionary = {}
 ## Huecos que actuan en combate: "legs", "side0", "side1", "top0",
 ## "chest", "drone", "charge", "teleport", "hook".
 var slots: Dictionary[String, Slot] = {}
@@ -160,6 +163,7 @@ func clone() -> BattleMech:
 	copy.stun_guard = stun_guard
 	copy.buffs = buffs.duplicate(true)
 	copy.keep_buffs = keep_buffs
+	copy.states = states.duplicate(true)
 	for key in slots:
 		copy.slots[key] = slots[key].clone()
 	return copy
@@ -395,4 +399,5 @@ func snapshot() -> Dictionary:
 		"disabled": disabled_slot,
 		"stunned": stunned,
 		"stun_guard": stun_guard,
+		"states": states.duplicate(true),
 	}

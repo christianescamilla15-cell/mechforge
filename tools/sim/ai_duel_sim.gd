@@ -15,6 +15,8 @@ extends SceneTree
 ##     --battles=2             semillas por emparejamiento
 ##     --part=0 --parts=1      reparte los emparejamientos entre procesos
 ##     --terrain               con el terreno de la arena (OBS-055)
+##     --states                con los estados (OBS-055)
+## Ademas da, por robot, cuanto gana (para ver si un elemento sale ganando).
 
 var _rules := RulesConfig.new()
 
@@ -48,6 +50,10 @@ func _initialize() -> void:
 	var terrain: TerrainConfig = null
 	if args.has("terrain"):
 		terrain = TerrainConfig.load_file("res://data/terrain.json")
+	var states: StateConfig = null
+	if args.has("states"):
+		states = StateConfig.load_file("res://data/states.json")
+	var by_mech := {}
 	# Cada emparejamiento: el robot del lado 0, el del lado 1 y quien lleva
 	# el plus (-1 nadie).
 	var pairings: Array[Array] = []
@@ -88,7 +94,16 @@ func _initialize() -> void:
 					)
 				var started := Time.get_ticks_msec()
 				var result := BattleRunner.run(
-					_rules, builds[0], builds[1], ais[0], ais[1], seed_value, n % 2, 200, terrain
+					_rules,
+					builds[0],
+					builds[1],
+					ais[0],
+					ais[1],
+					seed_value,
+					n % 2,
+					200,
+					terrain,
+					states
 				)
 				spent += Time.get_ticks_msec() - started
 				turns += int(result["turns"])
@@ -99,10 +114,19 @@ func _initialize() -> void:
 				for key: String in ["all", kind]:
 					tally[key][0] += won
 					tally[key][1] += 1
+				# Por robot, en los emparejamientos parejos y de robots distintos.
+				if pairing[2] < 0 and pairing[0] != pairing[1]:
+					for side in 2:
+						var id: String = ids[pairing[side]]
+						var mine_won := 1 if result["winner"] == side else 0
+						var row: Array = by_mech.get(id, [0, 0])
+						by_mech[id] = [row[0] + mine_won, row[1] + 1]
 	var line := "DUELO %s contra %s:" % [args.get("a", "MASTER"), args.get("b", "HARD")]
 	for key: String in tally:
 		line += " %s %d/%d" % [key, tally[key][0], tally[key][1]]
 	print(line, " | %.0f ms por turno" % (float(spent) / maxf(1.0, float(turns))))
+	for id: String in by_mech:
+		print("ROBOT %s %d/%d" % [id, by_mech[id][0], by_mech[id][1]])
 	quit(0)
 
 

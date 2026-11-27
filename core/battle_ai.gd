@@ -155,6 +155,9 @@ func evaluate(e: BattleEngine, me: int) -> float:
 	# El terreno en el que esta cada uno (OBS-055).
 	var my_cell := _cell_terms(e, mine, my_strike, foe_strike)
 	var foe_cell := _cell_terms(e, foe, foe_strike, my_strike)
+	# Y sus estados (OBS-055): quemadura, corrosion y estatica.
+	my_cell += _state_terms(e, mine, my_strike, foe_strike)
+	foe_cell += _state_terms(e, foe, foe_strike, my_strike)
 	score += config.guard * my_cell.x - config.caution * my_cell.y
 	score += config.pressure * foe_cell.y - config.aggression * foe_cell.x
 	return score
@@ -177,6 +180,35 @@ func _cell_terms(e: BattleEngine, mech: BattleMech, strike: float, against: floa
 			var heat := mech.heat_cap * config_t.value("lava", "heat")
 			return Vector2(0.0, config.heat_discount * strike * heat / maxf(1.0, mech.cooling))
 	return Vector2.ZERO
+
+
+## Lo que valen los estados de `mech` (OBS-055, StateConfig), en las mismas
+## unidades que _cell_terms: la quemadura, como el calor que le costara
+## acciones; la corrosion, como lo que su barra perdera de mas; y la
+## estatica, como la parte de una accion que le acerca a perder.
+func _state_terms(e: BattleEngine, mech: BattleMech, strike: float, against: float) -> Vector2:
+	if mech.states.is_empty():
+		return Vector2.ZERO
+	var rules_s: StateConfig = null
+	for rule in e.extra_rules:
+		if rule is StateConfig:
+			rules_s = rule
+	if rules_s == null:
+		return Vector2.ZERO
+	var out := Vector2.ZERO
+	var burn := StateConfig.stacks(mech, "burn")
+	if burn > 0:
+		var turns := float((mech.states["burn"] as Dictionary).get("turns", 1))
+		var heat := mech.heat_cap * rules_s.value("burn", "heat") * burn * turns
+		out.y += config.heat_discount * strike * heat / maxf(1.0, mech.cooling)
+	var corrosion := StateConfig.stacks(mech, "corrosion")
+	if corrosion > 0:
+		var per_turn := float(e.rules.actions_per_turn)
+		out.x -= rules_s.value("corrosion", "damage") * corrosion * against * per_turn
+	var charge := StateConfig.stacks(mech, "static")
+	if charge > 0:
+		out.y += 0.5 * strike * charge / maxf(1.0, rules_s.value("static", "max"))
+	return out
 
 
 ## Implacable (OBS-054): lo mismo que evaluate, pero como una carrera. Cada
@@ -222,6 +254,8 @@ func _race_value(e: BattleEngine, me: int) -> float:
 	foe_bar += config.position_discount * my_strike * (1.0 - _reach(mine, distance))
 	var my_cell := _cell_terms(e, mine, my_strike, foe_strike)
 	var foe_cell := _cell_terms(e, foe, foe_strike, my_strike)
+	my_cell += _state_terms(e, mine, my_strike, foe_strike)
+	foe_cell += _state_terms(e, foe, foe_strike, my_strike)
 	my_bar += config.guard * my_cell.x + config.pressure * foe_cell.y
 	foe_bar += config.aggression * foe_cell.x + config.caution * my_cell.y
 	var buffs := config.buff_turn_value * (_buff_worth(mine) - _buff_worth(foe))

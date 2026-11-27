@@ -1,5 +1,5 @@
 class_name TerrainConfig
-extends RefCounted
+extends ArenaRule
 ## El terreno de la arena (OBS-055, del usuario: mecanicas "donde tambien
 ## cuente la estrategia, pero donde se vea mas implicada"). Algunas casillas
 ## son especiales:
@@ -147,3 +147,29 @@ func spring(engine: BattleEngine) -> void:
 		var data := {"who": who, "cell": mech.position, "damage": damage}
 		data["terrain"] = engine.terrain.duplicate()
 		engine.note("trap", data)
+
+
+# --- Como ArenaRule ------------------------------------------------------------
+
+
+func damage_factor(
+	engine: BattleEngine, user: BattleMech, target: BattleMech, _def: ItemDef
+) -> float:
+	return cover_factor(engine, user, target)
+
+
+## Un golpe que paro en parte la cobertura lo dice en el registro.
+func on_hit(
+	engine: BattleEngine,
+	user: BattleMech,
+	target: BattleMech,
+	_key: String,
+	_damage: int,
+	data: Dictionary
+) -> void:
+	if cover_factor(engine, user, target) < 1.0:
+		data["cover"] = true
+
+
+func after_action(engine: BattleEngine) -> void:
+	spring(engine)

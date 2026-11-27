@@ -42,6 +42,8 @@ var terrain: TerrainConfig
 ## Exterminio (OBS-056): las bonificaciones del jugador no se gastan con los
 ## turnos y pasan al robot siguiente de la oleada.
 var keep_buffs := false
+## Los estados (OBS-055, StateConfig); null si el modo no los lleva.
+var states: StateConfig
 ## Si no es null, la IA juega tambien por el jugador (pruebas automaticas).
 var player_ai: BattleAI
 ## Si no es null, elige las jugadas del jugador pero las ejecuta a traves de
@@ -122,8 +124,10 @@ func start(
 		engine.mechs[0].carry_from(carry)
 	# Y sus bonificaciones le duran la oleada (OBS-056).
 	engine.mechs[0].keep_buffs = keep_buffs
-	# Y el terreno de la arena, si el modo lo lleva (OBS-055).
+	# Y el terreno de la arena y los estados, si el modo los lleva (OBS-055).
 	engine.set_terrain(terrain, seed_value)
+	if states != null:
+		engine.extra_rules.append(states)
 	_arena.set_terrain(engine.terrain)
 	_shown = 0
 	_busy = true
@@ -267,8 +271,7 @@ func _play_event(entry: Dictionary) -> void:
 			var damage: int = entry.get("damage", 0)
 			if entry.get("shielded", false):
 				_arena.float_text(_state[target]["pos"], Txt.t("shield_hit"), COLOR_COOL)
-			if entry.get("cover", false):
-				_arena.float_text(_state[target]["pos"], Txt.t("terrain_cover_hit"), COLOR_COOL)
+			RuleFx.hit_texts(_arena, entry, _state[target]["pos"])
 			var crit: bool = entry.get("crit", false)
 			if damage > 0:
 				_arena.mechs[target].hit(step, shot_color)
@@ -372,8 +375,8 @@ func _play_event(entry: Dictionary) -> void:
 				await _arena.mechs[target].knockback_to(away, step * 2.6).finished
 				_arena.dust(away, step)
 			await get_tree().create_timer(step * 0.8).timeout
-		"lava", "terrain_repair", "trap":
-			await TerrainFx.play(_arena, entry, snapshot, step)
+		"lava", "terrain_repair", "trap", "burn", "burn_out":
+			await RuleFx.play(_arena, entry, snapshot, step)
 		"drop_taken":
 			Sfx.play("bonificacion")
 			var percent := roundi(float(entry["amount"]) * 100.0)
@@ -621,6 +624,7 @@ func _show_state() -> void:
 					"energy": energy,
 					"over": ratio > 1.0,
 					"layer": layer if layer_max > 0 else -1.0,
+					"states": state.get("states", {}),
 				}
 			)
 		)

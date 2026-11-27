@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "comment": "Estados (OBS-055, core/state_config.gd). Cada golpe con dano de un arma (brazo, hombro o pecho; no el asistente, las piernas ni las especiales) deja en el rival el estado de su elemento: una carga mas (hasta max) y vuelve a durar turns turnos suyos. burn (termica): al empezar su turno se calienta heat (parte de su tope) por carga; enfriar lo apaga. corrosion (cinetica): recibe damage mas de dano por carga. static (ionica): al llegar a max cargas se descarga y pierde una accion en su turno siguiente (con M7, no dos turnos seguidos). modes: los modos que llevan estados.",
+  "burn": {"element": "HEAT", "turns": 2, "max": 3, "heat": 0.05},
+  "corrosion": {"element": "PHYSICAL", "turns": 2, "max": 3, "damage": 0.06},
+  "static": {"element": "ENERGY", "turns": 2, "max": 3},
+  "modes": ["campaign", "arena", "exterminio", "free"]
+}

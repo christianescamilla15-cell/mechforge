@@ -34,6 +34,7 @@ extends SceneTree
 ##     --plain-protos     A6 cuenta los prototipos como base, no como de mas
 ##     --rival-mult=X     el rival multiplica vida y dano por X (en vez de A6)
 ##     --noterrain        sin el terreno de la arena (OBS-055)
+##     --nostates         sin los estados (OBS-055)
 ##     --exterminio       con --only=N: la oleada N del Exterminio, sus robots
 ##                        seguidos sin reparar (OBS-055)
 
@@ -49,6 +50,8 @@ const DIFFICULTY := {
 var _rules := RulesConfig.new()
 ## El terreno de la arena, como en el juego (OBS-055); --noterrain lo quita.
 var _terrain: TerrainConfig
+## Los estados, como en el juego (OBS-055); --nostates los quita.
+var _states: StateConfig
 
 
 func _initialize() -> void:
@@ -93,6 +96,8 @@ func _initialize() -> void:
 	brief.prototypes = PrototypeLibrary.load_file("res://data/prototypes.json")
 	if not args.has("noterrain"):
 		_terrain = TerrainConfig.load_file("res://data/terrain.json")
+	if not args.has("nostates"):
+		_states = StateConfig.load_file("res://data/states.json")
 	if args.has("noprotos"):
 		brief.prototypes = null
 	if not campaign.errors.is_empty():
@@ -244,7 +249,8 @@ func _initialize() -> void:
 					n + 7 + r * 13,
 					n % 2,
 					200,
-					_terrain
+					_terrain,
+					_states
 				)
 				spent += Time.get_ticks_msec() - started
 				decisions += int(result["turns"])
@@ -349,6 +355,8 @@ func _exterminio(
 				engine.mechs[0].carry_from(carry)
 			engine.mechs[0].keep_buffs = true
 			engine.set_terrain(_terrain, seed_value + robot)
+			if _states != null:
+				engine.extra_rules.append(_states)
 			var ais: Array[BattleAI] = [
 				_ai(
 					BattleAI.Difficulty[str(args.get("player", "HARD"))],
@@ -390,6 +398,8 @@ func _trace(build: MechBuild, rival: MechBuild, a: BattleAI, b: BattleAI, seed_v
 	print("rival: ", rival.summary(_rules))
 	var engine := BattleEngine.new(_rules, build, rival, seed_value, seed_value % 2)
 	engine.set_terrain(_terrain, seed_value)
+	if _states != null:
+		engine.extra_rules.append(_states)
 	print("terreno: ", engine.terrain)
 	var ais: Array[BattleAI] = [a, b]
 	var printed := 0
