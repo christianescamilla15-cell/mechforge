@@ -347,6 +347,7 @@ func _exterminio(
 			)
 			if carry != null:
 				engine.mechs[0].carry_from(carry)
+			engine.mechs[0].keep_buffs = true
 			engine.set_terrain(_terrain, seed_value + robot)
 			var ais: Array[BattleAI] = [
 				_ai(

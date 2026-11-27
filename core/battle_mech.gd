@@ -69,6 +69,9 @@ var stunned: bool = false
 var stun_guard: bool = false
 ## Bonificaciones en vigor (GDD 2.8): {"kind", "amount", "turns"}.
 var buffs: Array[Dictionary] = []
+## Exterminio (OBS-056): las bonificaciones que recoge no se gastan con los
+## turnos; le duran la oleada entera y pasan al robot siguiente.
+var keep_buffs: bool = false
 ## Huecos que actuan en combate: "legs", "side0", "side1", "top0",
 ## "chest", "drone", "charge", "teleport", "hook".
 var slots: Dictionary[String, Slot] = {}
@@ -156,6 +159,7 @@ func clone() -> BattleMech:
 	copy.stunned = stunned
 	copy.stun_guard = stun_guard
 	copy.buffs = buffs.duplicate(true)
+	copy.keep_buffs = keep_buffs
 	for key in slots:
 		copy.slots[key] = slots[key].clone()
 	return copy
@@ -164,8 +168,9 @@ func clone() -> BattleMech:
 ## Los robots seguidos del Exterminio (OBS-055): lo que se queda de un
 ## combate al siguiente, sin reparar: la vida y el manto, el calor, la
 ## energia, lo que le rompieron (topes, regeneracion, enfriamiento y
-## resistencias), los kits y los usos de sus armas. El sitio, las
-## bonificaciones y lo que dura un turno, no.
+## resistencias), los kits y los usos de sus armas; y, del usuario (OBS-056),
+## las bonificaciones que fue recogiendo, que se suman. El sitio y lo que
+## dura un turno, no.
 func carry_from(prev: BattleMech) -> void:
 	health = clampi(prev.health, 1, max_health)
 	layer = mini(prev.layer, layer_max)
@@ -179,6 +184,7 @@ func carry_from(prev: BattleMech) -> void:
 	kits = prev.kits.duplicate()
 	relief_left = prev.relief_left
 	barrier = prev.barrier
+	buffs = prev.buffs.duplicate(true)
 	for key: String in slots:
 		if prev.slots.has(key):
 			slots[key].uses_left = prev.slots[key].uses_left

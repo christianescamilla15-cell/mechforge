@@ -769,6 +769,7 @@ func _start_battle(spec: Dictionary) -> void:
 	# Y los rivales normales, sus habilidades (el escudo, la reparacion).
 	enemy_build.skills.add(spec.get("enemy_kits", {}))
 	_battle.terrain = _terrain if _terrain.enabled_for(spec["mode"]) else null
+	_battle.keep_buffs = spec["mode"] == "exterminio"
 	_battle.start(
 		_rules,
 		player_build,

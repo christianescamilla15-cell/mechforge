@@ -208,3 +208,22 @@ func test_entre_robots_no_se_repara() -> void:
 	assert_eq(next.kits_left("repair"), 1)
 	assert_eq(next.slots["side0"].uses_left, 1)
 	assert_eq(next.position, 4, "empieza en su sitio")
+
+
+## Sus bonificaciones le duran la oleada y se suman (OBS-056, del usuario:
+## "la acumulacion de los bonus que voy recogiendo en cada una de las 3
+## batallas de una oleada").
+func test_las_bonificaciones_se_acumulan_en_la_oleada() -> void:
+	var rules := Fx.rules({"drops_enabled": true})
+	var e := Fx.engine(Fx.build([Fx.gun()]), Fx.build([Fx.gun()]), 0, rules)
+	e.mechs[0].keep_buffs = true
+	e.mechs[0].buffs.append({"kind": "armor", "amount": 0.2, "turns": 1})
+	e.mechs[1].buffs.append({"kind": "armor", "amount": 0.2, "turns": 1})
+	Fx.pass_turn(e)
+	Fx.pass_turn(e)
+	assert_eq(e.mechs[0].buffs.size(), 1, "la suya no se gasta")
+	assert_eq(e.mechs[1].buffs.size(), 0, "la del rival, si")
+	var next := BattleMech.new(Fx.build([Fx.gun()]), rules, 4)
+	next.buffs.append({"kind": "firepower", "amount": 0.3, "turns": 3})
+	next.carry_from(e.mechs[0])
+	assert_eq(next.buff_amount("armor"), 0.2, "pasa al robot siguiente")

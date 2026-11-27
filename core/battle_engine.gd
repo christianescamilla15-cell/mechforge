@@ -907,6 +907,8 @@ func _check_pickup() -> void:
 
 ## Al acabar su turno, a las bonificaciones de un mech les queda un turno menos.
 func _tick_buffs(mech: BattleMech) -> void:
+	if mech.keep_buffs:
+		return
 	var kept: Array[Dictionary] = []
 	for buff in mech.buffs:
 		buff["turns"] -= 1

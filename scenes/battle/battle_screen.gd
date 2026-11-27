@@ -39,6 +39,9 @@ var player: int = 0
 var enemy_ai: BattleAI
 ## El terreno de la arena (OBS-055, TerrainConfig); null si el modo no lo lleva.
 var terrain: TerrainConfig
+## Exterminio (OBS-056): las bonificaciones del jugador no se gastan con los
+## turnos y pasan al robot siguiente de la oleada.
+var keep_buffs := false
 ## Si no es null, la IA juega tambien por el jugador (pruebas automaticas).
 var player_ai: BattleAI
 ## Si no es null, elige las jugadas del jugador pero las ejecuta a traves de
@@ -117,6 +120,8 @@ func start(
 	# acabo el combate anterior, sin reparar.
 	if carry != null:
 		engine.mechs[0].carry_from(carry)
+	# Y sus bonificaciones le duran la oleada (OBS-056).
+	engine.mechs[0].keep_buffs = keep_buffs
 	# Y el terreno de la arena, si el modo lo lleva (OBS-055).
 	engine.set_terrain(terrain, seed_value)
 	_arena.set_terrain(engine.terrain)
