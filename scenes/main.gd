@@ -83,6 +83,8 @@ var _prototypes: PrototypeLibrary
 var _terrain: TerrainConfig
 ## Los estados del combate (OBS-055).
 var _states: StateConfig
+## El medidor de definitiva (OBS-055).
+var _ultimate: UltimateConfig
 var _bench := WorkshopBrief.new()
 ## Lo que dice el panel al acabar un combate de la arena o del Exterminio.
 var _notes := ResultNotes.new()
@@ -129,6 +131,7 @@ func _ready() -> void:
 	_prototypes = PrototypeLibrary.load_file("res://data/prototypes.json")
 	_terrain = TerrainConfig.load_file("res://data/terrain.json")
 	_states = StateConfig.load_file("res://data/states.json")
+	_ultimate = UltimateConfig.load_file("res://data/ultimate.json")
 	_brief.rules = _rules
 	_brief.catalog = _catalog
 	_brief.library = _library
@@ -774,6 +777,7 @@ func _start_battle(spec: Dictionary) -> void:
 	_battle.terrain = _terrain if _terrain.enabled_for(spec["mode"]) else null
 	_battle.keep_buffs = spec["mode"] == "exterminio"
 	_battle.states = _states if _states.enabled_for(spec["mode"]) else null
+	_battle.ultimate = _ultimate if _ultimate.enabled_for(spec["mode"]) else null
 	_battle.start(
 		_rules,
 		player_build,

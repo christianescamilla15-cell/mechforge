@@ -3,7 +3,8 @@ extends RefCounted
 ## Una accion de combate. Es serializable para poder repetir combates.
 
 ## SHIELD, REPAIR y DARK_MATTER son habilidades del arbol (SkillTree).
-enum Type { WALK, STOMP, WEAPON, COOL, CHARGE, TELEPORT, HOOK, SHIELD, REPAIR, DARK_MATTER }
+## ULTIMATE es la andanada del medidor de definitiva (UltimateConfig, OBS-055).
+enum Type {WALK, STOMP, WEAPON, COOL, CHARGE, TELEPORT, HOOK, SHIELD, REPAIR, DARK_MATTER, ULTIMATE}
 
 var type: Type
 ## Hueco del arma para WEAPON ("side0", "side1", "top0"...).
@@ -59,6 +60,11 @@ static func repair() -> BattleAction:
 ## Materia oscura: el disparo del arma de pecho que casi aniquila.
 static func dark_matter() -> BattleAction:
 	return BattleAction.new(Type.DARK_MATTER, "chest")
+
+
+## Definitiva: la andanada, con el medidor lleno.
+static func ultimate() -> BattleAction:
+	return BattleAction.new(Type.ULTIMATE)
 
 
 func to_dict() -> Dictionary:

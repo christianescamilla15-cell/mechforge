@@ -191,7 +191,11 @@ func _on_autoplay_event(entry: Dictionary) -> void:
 			"evade",
 			"barrier",
 			"repair_kit",
-			"dark_matter"
+			"dark_matter",
+			"ultimate",
+			"burn",
+			"lava",
+			"trap"
 		]
 	):
 		if not _shot_events.has(event):

@@ -16,6 +16,7 @@ extends SceneTree
 ##     --part=0 --parts=1      reparte los emparejamientos entre procesos
 ##     --terrain               con el terreno de la arena (OBS-055)
 ##     --states                con los estados (OBS-055)
+##     --ult                   con la definitiva (OBS-055)
 ## Ademas da, por robot, cuanto gana (para ver si un elemento sale ganando).
 
 var _rules := RulesConfig.new()
@@ -53,6 +54,9 @@ func _initialize() -> void:
 	var states: StateConfig = null
 	if args.has("states"):
 		states = StateConfig.load_file("res://data/states.json")
+	var ultimate: UltimateConfig = null
+	if args.has("ult"):
+		ultimate = UltimateConfig.load_file("res://data/ultimate.json")
 	var by_mech := {}
 	# Cada emparejamiento: el robot del lado 0, el del lado 1 y quien lleva
 	# el plus (-1 nadie).
@@ -103,7 +107,8 @@ func _initialize() -> void:
 					n % 2,
 					200,
 					terrain,
-					states
+					states,
+					ultimate
 				)
 				spent += Time.get_ticks_msec() - started
 				turns += int(result["turns"])

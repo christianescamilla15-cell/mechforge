@@ -10,6 +10,8 @@ const COLOR_HEAT := Color("ff8a3d")
 const COLOR_REPAIR := Color("7dff9b")
 const COLOR_TRAP := Color("ffd23d")
 const COLOR_COOL := Color("9fd8ff")
+## La definitiva (su medidor en el HUD y su andanada).
+const COLOR_ULT := Color("ffcf4a")
 ## Color de cada estado (tambien sus fichas en el HUD).
 const STATE_COLORS := {
 	"burn": Color("ff7a2f"), "corrosion": Color("b6d36b"), "static": Color("7fd4ff")
@@ -42,6 +44,11 @@ static func play(arena: ArenaView, entry: Dictionary, snapshot: Array, step: flo
 			arena.float_text(cell, Txt.t("state_burn_hit", [entry["heat"]]), STATE_COLORS["burn"])
 		"burn_out":
 			arena.float_text(cell, Txt.t("state_burn_out"), COLOR_COOL)
+		"ultimate":
+			Sfx.play("carga_oscura")
+			arena.shake(10.0)
+			arena.super_flash(arena.mechs[who].hit_point(), COLOR_ULT, 1.0)
+			arena.float_text(cell, Txt.t("ultimate_fired"), COLOR_ULT)
 	await arena.get_tree().create_timer(step).timeout
 
 

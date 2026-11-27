@@ -75,6 +75,11 @@ var keep_buffs: bool = false
 ## Estados (OBS-055, StateConfig): {"burn" | "corrosion" | "static":
 ## {"stacks", "turns"}}.
 var states: Dictionary = {}
+## Medidor de definitiva (OBS-055, UltimateConfig): de 0 a 1; si el combate
+## la lleva (ult_enabled), y si esta soltando la andanada.
+var ult: float = 0.0
+var ult_enabled: bool = false
+var firing_ult: bool = false
 ## Huecos que actuan en combate: "legs", "side0", "side1", "top0",
 ## "chest", "drone", "charge", "teleport", "hook".
 var slots: Dictionary[String, Slot] = {}
@@ -164,6 +169,8 @@ func clone() -> BattleMech:
 	copy.buffs = buffs.duplicate(true)
 	copy.keep_buffs = keep_buffs
 	copy.states = states.duplicate(true)
+	copy.ult = ult
+	copy.ult_enabled = ult_enabled
 	for key in slots:
 		copy.slots[key] = slots[key].clone()
 	return copy
@@ -189,6 +196,7 @@ func carry_from(prev: BattleMech) -> void:
 	relief_left = prev.relief_left
 	barrier = prev.barrier
 	buffs = prev.buffs.duplicate(true)
+	ult = prev.ult
 	for key: String in slots:
 		if prev.slots.has(key):
 			slots[key].uses_left = prev.slots[key].uses_left
@@ -400,4 +408,5 @@ func snapshot() -> Dictionary:
 		"stunned": stunned,
 		"stun_guard": stun_guard,
 		"states": states.duplicate(true),
+		"ult": ult,
 	}

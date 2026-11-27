@@ -237,11 +237,13 @@ func test_el_golpe_esperado_cuenta_la_potencia_y_no_el_escudo() -> void:
 	strong.upgrades = ArenaUpgrades.new()
 	strong.upgrades.damage = 1.0
 	var e := Fx.engine(strong, Fx.build())
-	assert_eq(e.expected_hit(e.mechs[0], e.mechs[1], "side0"), 200.0)
+	assert_eq(BattleAI.expected_hit(e, e.mechs[0], e.mechs[1], "side0"), 200.0)
 	e.mechs[1].shield_left = 1
-	assert_eq(e.expected_hit(e.mechs[0], e.mechs[1], "side0"), 200.0)
+	assert_eq(BattleAI.expected_hit(e, e.mechs[0], e.mechs[1], "side0"), 200.0)
 	assert_eq(e.mechs[1].shield_left, 1, "deja el escudo como estaba")
-	assert_eq(e.expected_hit(e.mechs[0], e.mechs[1], "top0"), 0.0, "un hueco vacio no pega")
+	assert_eq(
+		BattleAI.expected_hit(e, e.mechs[0], e.mechs[1], "top0"), 0.0, "un hueco vacio no pega"
+	)
 
 
 ## Las demas dificultades siguen valorando como se calibraron.

@@ -44,6 +44,8 @@ var terrain: TerrainConfig
 var keep_buffs := false
 ## Los estados (OBS-055, StateConfig); null si el modo no los lleva.
 var states: StateConfig
+## El medidor de definitiva (OBS-055, UltimateConfig); null si no lo lleva.
+var ultimate: UltimateConfig
 ## Si no es null, la IA juega tambien por el jugador (pruebas automaticas).
 var player_ai: BattleAI
 ## Si no es null, elige las jugadas del jugador pero las ejecuta a traves de
@@ -67,6 +69,8 @@ var settings: GameSettings
 var settings_path: String = ""
 ## Rendirse contra un jefe acaba la partida: la pausa lo avisa.
 var surrender_ends_run: bool = false
+## Las tarjetas y los motivos del abanico de acciones (ActionCards).
+var _cards := ActionCards.new()
 ## Tarea del WorkerThreadPool en la que piensa la IA; -1 si no hay ninguna.
 var _ai_task: int = -1
 var _pause: Control
@@ -128,6 +132,7 @@ func start(
 	engine.set_terrain(terrain, seed_value)
 	if states != null:
 		engine.extra_rules.append(states)
+	engine.set_ultimate(ultimate)
 	_arena.set_terrain(engine.terrain)
 	_shown = 0
 	_busy = true
@@ -375,7 +380,7 @@ func _play_event(entry: Dictionary) -> void:
 				await _arena.mechs[target].knockback_to(away, step * 2.6).finished
 				_arena.dust(away, step)
 			await get_tree().create_timer(step * 0.8).timeout
-		"lava", "terrain_repair", "trap", "burn", "burn_out":
+		"lava", "terrain_repair", "trap", "burn", "burn_out", "ultimate":
 			await RuleFx.play(_arena, entry, snapshot, step)
 		"drop_taken":
 			Sfx.play("bonificacion")
@@ -532,7 +537,7 @@ func _refresh() -> void:
 	# Con la baliza en la mano se ve la arena entera, para saltar a donde sea
 	# (OBS-035): el rival elige entre todas las casillas, y el jugador tambien.
 	_arena.overview = _teleport_mode and can_act
-	_hud.refresh(can_act, _reason_for, _uses_left_for)
+	_hud.refresh(can_act, _cards.reason_for, _cards.uses_left_for)
 	if engine.turn != _announced and not engine.is_over() and not _surrendered:
 		# El turno no esta fijo en pantalla: se anuncia al cambiar y se va.
 		_announced = engine.turn
@@ -625,6 +630,7 @@ func _show_state() -> void:
 					"over": ratio > 1.0,
 					"layer": layer if layer_max > 0 else -1.0,
 					"states": state.get("states", {}),
+					"ult": float(state.get("ult", 0.0)) if engine.mechs[i].ult_enabled else -1.0,
 				}
 			)
 		)
@@ -684,103 +690,6 @@ func _live_state(index: int) -> Dictionary:
 	}
 
 
-func _reason_for(action: BattleAction) -> String:
-	if action.type == BattleAction.Type.TELEPORT:
-		return engine.why_cant_use(engine.mechs[player], engine.mechs[1 - player], "teleport")
-	return engine.why_illegal(action)
-
-
-func _uses_left_for(action: BattleAction) -> int:
-	var kinds := {
-		BattleAction.Type.SHIELD: "shield",
-		BattleAction.Type.REPAIR: "repair",
-		BattleAction.Type.DARK_MATTER: "dark_matter",
-	}
-	if kinds.has(action.type):
-		return engine.mechs[player].kits_left(kinds[action.type])
-	var key := _slot_of(action)
-	var slots := engine.mechs[player].slots
-	return slots[key].uses_left if slots.has(key) else -1
-
-
-func _slot_of(action: BattleAction) -> String:
-	match action.type:
-		BattleAction.Type.WEAPON:
-			return action.slot
-		BattleAction.Type.STOMP:
-			return "legs"
-		BattleAction.Type.CHARGE:
-			return "charge"
-		BattleAction.Type.HOOK:
-			return "hook"
-		BattleAction.Type.TELEPORT:
-			return "teleport"
-	return ""
-
-
-## La tarjeta de una accion del abanico (BattleHud.card_for): su nombre y, en
-## pequeno, su dano, su critico, lo que cuesta y, si no se puede usar, por que.
-func _card_for(action: BattleAction) -> Dictionary:
-	var mine := engine.mechs[player]
-	var lines: Array = []
-	var title := ""
-	var key := _slot_of(action)
-	var def: ItemDef = mine.slots[key].def if mine.slots.has(key) else null
-	match action.type:
-		BattleAction.Type.COOL:
-			title = Txt.t("cool")
-			lines.append(
-				[Txt.t("card_cool", [mine.heat, maxi(0, mine.heat - mine.cooling)]), COLOR_COOL]
-			)
-		BattleAction.Type.SHIELD:
-			title = Txt.t("ability_shield")
-			lines.append([Txt.t("card_shield"), COLOR_COOL])
-		BattleAction.Type.REPAIR:
-			title = Txt.t("ability_repair")
-			lines.append([Txt.t("card_repair"), COLOR_REPAIR])
-		BattleAction.Type.DARK_MATTER:
-			title = Txt.t("ability_dark_matter")
-		BattleAction.Type.STOMP:
-			title = Txt.t("stomp")
-		_:
-			title = def.display_name if def != null else ""
-	var my_turn := engine.turn == player and not engine.is_over()
-	var reason := _reason_for(action) if my_turn else ""
-	if my_turn and reason == "" and action.type != BattleAction.Type.TELEPORT:
-		# Lo que hara de verdad ahora, contra este rival.
-		var p := engine.preview(action)
-		if p["dmg_max"] > 0:
-			lines.append([Txt.t("card_damage", [p["dmg_min"], p["dmg_max"]]), BattleHud.TEXT])
-		var chance: float = p.get("crit_chance", 0.0)
-		if chance > 0.0:
-			var effect := Txt.t("crit_effect_" + str(p["crit_effect"]))
-			lines.append([Txt.t("card_crit", [roundi(chance * 100.0), effect]), COLOR_CRIT])
-		if p["self_overheats"]:
-			lines.append([Txt.t("preview_self_overheat"), COLOR_WARNING])
-		if p["target_overheats"]:
-			lines.append([Txt.t("preview_target_overheat"), COLOR_REPAIR])
-	elif def != null and def.deals_damage():
-		lines.append([Txt.t("card_damage", [def.dmg_min, def.dmg_max]), BattleHud.TEXT])
-	if def != null:
-		var costs: Array[String] = []
-		if def.range_max > 0:
-			costs.append(Txt.t("card_range", [def.range_min, def.range_max]))
-		if mine.energy_cost(def) > 0:
-			costs.append(Txt.t("card_energy", [mine.energy_cost(def)]))
-		if def.heat_cost > 0:
-			costs.append(Txt.t("card_heat", [def.heat_cost]))
-		if def.backfire > 0:
-			costs.append(Txt.t("card_backfire", [def.backfire]))
-		if not costs.is_empty():
-			lines.append([" · ".join(costs), BattleHud.MUTED])
-	var uses := _uses_left_for(action)
-	if uses >= 0:
-		lines.append([Txt.t("uses", [str(uses)]), BattleHud.MUTED])
-	if reason.strip_edges() != "":
-		lines.append([reason.capitalize() if reason.length() < 3 else reason, COLOR_WARNING])
-	return {"title": title, "lines": lines}
-
-
 func _build_ui() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	var background := ColorRect.new()
@@ -798,7 +707,8 @@ func _build_ui() -> void:
 	add_child(_arena)
 	_hud = BattleHud.new()
 	_hud.arena = _arena
-	_hud.card_for = _card_for
+	_cards.screen = self
+	_hud.card_for = _cards.card_for
 	_hud.action_chosen.connect(_on_action_chosen)
 	_hud.teleport_requested.connect(_on_teleport_requested)
 	add_child(_hud)

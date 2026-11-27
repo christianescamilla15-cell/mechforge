@@ -33,8 +33,10 @@ var expected_crits: bool = false
 ## normal). Sin config no hay terreno.
 var terrain: Array[String] = []
 var terrain_config: TerrainConfig
-## Reglas de fuera del motor (ArenaRule): el terreno y los estados.
+## Reglas de fuera del motor (ArenaRule): el terreno, los estados y la
+## definitiva (ultimate; null si el combate no la lleva).
 var extra_rules: Array[ArenaRule] = []
+var ultimate: UltimateConfig
 var _rng := RandomNumberGenerator.new()
 var _first_turn := true
 ## Las copias que usa la IA para probar jugadas no hacen caer bonificaciones.
@@ -92,6 +94,7 @@ func clone(for_search: bool = true) -> BattleEngine:
 	copy.terrain = terrain.duplicate()
 	copy.terrain_config = terrain_config
 	copy.extra_rules = extra_rules.duplicate()
+	copy.ultimate = ultimate
 	if for_search:
 		copy.logging = false
 		copy.fixed_roll = 0.5
@@ -119,6 +122,16 @@ func set_terrain(config: TerrainConfig, seed_value: int) -> void:
 		extra_rules.append(config)
 		var taken: Array[int] = [mechs[0].position, mechs[1].position]
 		terrain = config.layout(seed_value, rules.arena_size, taken)
+
+
+## Pone el medidor de definitiva (OBS-055); con null, sin definitiva.
+func set_ultimate(config: UltimateConfig) -> void:
+	extra_rules.erase(ultimate)
+	ultimate = config
+	if config != null:
+		extra_rules.append(config)
+	for mech in mechs:
+		mech.ult_enabled = config != null
 
 
 ## El tipo de terreno de una casilla ("" si es normal o no hay terreno).
@@ -231,6 +244,8 @@ func why_illegal(action: BattleAction) -> String:
 			return ""
 		BattleAction.Type.SHIELD, BattleAction.Type.REPAIR, BattleAction.Type.DARK_MATTER:
 			return _why_no_skill(action, me, foe)
+		BattleAction.Type.ULTIMATE:
+			return ultimate.why_not(me) if ultimate != null else "sin definitiva"
 	return "accion desconocida"
 
 
@@ -281,7 +296,10 @@ func legal_actions() -> Array[BattleAction]:
 	if why_cant_use(me, foe, "hook") == "":
 		out.append(BattleAction.hook())
 	for kind: BattleAction in [
-		BattleAction.shield(), BattleAction.repair(), BattleAction.dark_matter()
+		BattleAction.shield(),
+		BattleAction.repair(),
+		BattleAction.dark_matter(),
+		BattleAction.ultimate(),
 	]:
 		if why_illegal(kind) == "":
 			out.append(kind)
@@ -323,8 +341,8 @@ func preview(action: BattleAction) -> Dictionary:
 		if action.type == BattleAction.Type.TELEPORT:
 			hits = absi(action.position - foe.position) == 1
 		if hits:
-			out["dmg_min"] = _damage(def, me, foe, 0.0, 0.0, key)
-			out["dmg_max"] = _damage(def, me, foe, 1.0, 0.0, key)
+			out["dmg_min"] = hit_damage(def, me, foe, 0.0, 0.0, key)
+			out["dmg_max"] = hit_damage(def, me, foe, 1.0, 0.0, key)
 			out["crit_chance"] = crit_chance(def, foe, me)
 			out["crit_effect"] = def.crit_effect
 			out["target_heat"] = foe.heat + _heat_hit(def, me, 0.0)
@@ -398,6 +416,8 @@ func apply(action: BattleAction) -> String:
 			)
 			me.health += healed
 			_log("repair_kit", {"amount": healed})
+		BattleAction.Type.ULTIMATE:
+			ultimate.fire(self, me, foe)
 		BattleAction.Type.DARK_MATTER:
 			me.kits["dark_matter"] -= 1
 			var blast := _dark_matter_damage(me, foe)
@@ -558,7 +578,7 @@ func _use(
 		else:
 			var draw := fixed_crit if fixed_crit >= 0.0 else _rng.randf()
 			crit = 1.0 if draw < chance else 0.0
-	var damage := _damage(def, user, target, roll, crit, key)
+	var damage := hit_damage(def, user, target, roll, crit, key)
 	if shielded:
 		if target.shield_left > 0:
 			target.shield_left -= 1
@@ -639,25 +659,6 @@ func crit_chance(def: ItemDef, target: BattleMech, user: BattleMech = null) -> f
 	return clampf(chance + extra, 0.0, rules.crit_cap)
 
 
-## Dano medio de un golpe de ese hueco (tirada media y critico esperado),
-## como si el rival no tuviera escudo ni bastion: con la potencia, los
-## modulos, la perforacion y la rotura de energia. Es la vara con la que la
-## IA implacable valora los golpes (GDD 7).
-func expected_hit(user: BattleMech, target: BattleMech, key: String) -> float:
-	if not user.slots.has(key) or not user.slots[key].def.deals_damage():
-		return 0.0
-	var def := user.slots[key].def
-	var guard := [target.shield_left, target.barrier, target.bastion_ready]
-	target.shield_left = 0
-	target.barrier = 0
-	target.bastion_ready = false
-	var damage := _damage(def, user, target, 0.5, crit_chance(def, target, user), key)
-	target.shield_left = guard[0]
-	target.barrier = guard[1]
-	target.bastion_ready = guard[2]
-	return float(damage)
-
-
 ## Efectos de un critico ademas del dano (el de "pierce" ya va en el dano).
 ## Devuelve lo que hay que anadir al registro.
 func _apply_crit(def: ItemDef, target: BattleMech) -> Dictionary:
@@ -701,7 +702,7 @@ func _spend_use(slot: BattleMech.Slot) -> void:
 ## Dano final (GDD 2.4). roll en [0, 1]. crit: 1 si es critico, 0 si no, y
 ## entre medias el dano esperado (GDD 2.9). `key`: el hueco del que dispara,
 ## para el dano de mas de los modulos de ataque (OBS-040).
-func _damage(
+func hit_damage(
 	def: ItemDef,
 	attacker: BattleMech,
 	target: BattleMech,
@@ -960,6 +961,11 @@ func _check_winner() -> bool:
 	actions_left = 0
 	_log("win", {"winner": winner})
 	return true
+
+
+## Dispara la pieza de ese hueco sin moverse (la andanada de la definitiva).
+func fire(user: BattleMech, target: BattleMech, key: String, event: String) -> void:
+	_use(user, target, key, event, false)
 
 
 ## Apunta un evento en el registro (para TerrainConfig y demas reglas de

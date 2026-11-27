@@ -108,6 +108,8 @@ func build_for(mech: BattleMech) -> void:
 		_add(BattleAction.repair(), null, "repair")
 	if mech.kits_left("dark_matter") > 0:
 		_add(BattleAction.dark_matter(), null, "dark")
+	if mech.ult_enabled:
+		_add(BattleAction.ultimate(), null, "ultimate")
 	_add(BattleAction.cool(), null, "cool")
 	_reasons.resize(_entries.size())
 	_reasons.fill(" ")
@@ -322,7 +324,7 @@ func _draw_vitals(index: int) -> void:
 	if mine and _open > 0.01:
 		at = _center() - Vector2(width * 0.5, 10.0)
 	# Una placa oscura detras: sobre un robot blanco las rayitas no se veian.
-	var plate := Rect2(at - Vector2(5, 5), Vector2(width + 10, 30))
+	var plate := Rect2(at - Vector2(5, 5), Vector2(width + 10, 35))
 	draw_rect(plate, Color(0.02, 0.04, 0.07, 0.62 * alpha))
 	draw_rect(plate, Color(1, 1, 1, 0.12 * alpha), false, 1.0)
 	var health := float(state["health"])
@@ -339,7 +341,14 @@ func _draw_vitals(index: int) -> void:
 		hot = BAD.lerp(Color.WHITE, 0.5 + 0.5 * sin(_time * 10.0))
 	_bar(at + Vector2(0, 10), width, 4.0, float(state["heat"]), hot, alpha)
 	_bar(at + Vector2(0, 16), width, 4.0, float(state["energy"]), ENERGY, alpha)
-	_draw_states(state.get("states", {}), at + Vector2(0, 26), alpha)
+	# El medidor de definitiva (OBS-055): dorado y, lleno, latiendo.
+	var ult := float(state.get("ult", -1.0))
+	if ult >= 0.0:
+		var glow := RuleFx.COLOR_ULT
+		if ult >= 1.0:
+			glow = glow.lerp(Color.WHITE, 0.5 + 0.5 * sin(_time * 8.0))
+		_bar(at + Vector2(0, 22), width, 3.0, ult, glow, alpha)
+	_draw_states(state.get("states", {}), at + Vector2(0, 30), alpha)
 	if index != _turn:
 		return
 	for i in 2:
@@ -430,6 +439,12 @@ func _draw_glyph(glyph: String, mid: Vector2, r: float, color: Color) -> void:
 				]
 			)
 			draw_polyline(shape, color, 2.0)
+		"ultimate":
+			for ray in 8:
+				var angle := ray * TAU / 8.0
+				var reach := r * (1.2 if ray % 2 == 0 else 0.7)
+				draw_line(mid, mid + Vector2.from_angle(angle) * reach, color, 2.5)
+			draw_circle(mid, r * 0.35, color)
 		"repair":
 			draw_rect(Rect2(mid - Vector2(r * 0.3, r), Vector2(r * 0.6, r * 2.0)), color)
 			draw_rect(Rect2(mid - Vector2(r, r * 0.3), Vector2(r * 2.0, r * 0.6)), color)

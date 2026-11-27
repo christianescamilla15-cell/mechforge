@@ -1,0 +1,7 @@
+{
+  "schema_version": 1,
+  "comment": "Medidor de definitiva (OBS-055, core/ultimate_config.gd). Se llena (de 0 a 1) al dar dano, deal por cada barra del rival que se le quita, y al recibirlo, take por cada barra propia que se pierde; la propia andanada no lo llena. Lleno, se gasta en una accion: la andanada, todas las armas de brazo y hombro que alcanzan al rival disparan a la vez sin pagar calor ni energia. modes: los modos que la llevan.",
+  "deal": 1.0,
+  "take": 1.0,
+  "modes": ["campaign", "arena", "exterminio", "free"]
+}

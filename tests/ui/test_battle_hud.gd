@@ -152,14 +152,14 @@ func test_la_tarjeta_dice_el_dano_el_critico_y_lo_que_cuesta() -> void:
 	var screen := await _screen()
 	var mech := screen.engine.mechs[screen.player]
 	var key: String = mech.weapon_keys()[0]
-	var card := screen._card_for(BattleAction.weapon(key))
+	var card := screen._cards.card_for(BattleAction.weapon(key))
 	assert_eq(card["title"], mech.slots[key].def.display_name)
 	var text := ""
 	for line: Array in card["lines"]:
 		text += str(line[0]) + "\n"
 	assert_string_contains(text, "Daño")
 	assert_string_contains(text, "alcance")
-	var cool := screen._card_for(BattleAction.cool())
+	var cool := screen._cards.card_for(BattleAction.cool())
 	assert_eq(cool["title"], Txt.t("cool"))
 	assert_eq((cool["lines"] as Array).size(), 1)
 

@@ -443,14 +443,14 @@ func _assist_strike(mech: BattleMech, target: BattleMech, side: int) -> float:
 
 
 ## Lo que quita de media cada hueco de cada lado al otro, con el motor
-## (BattleEngine.expected_hit): [{hueco: dano}, {hueco: dano}].
+## (expected_hit): [{hueco: dano}, {hueco: dano}].
 func _measure_hits(engine: BattleEngine) -> Array[Dictionary]:
 	var out: Array[Dictionary] = [{}, {}]
 	for side in 2:
 		var mech := engine.mechs[side]
 		var target := engine.mechs[1 - side]
 		for key: String in mech.slots:
-			out[side][key] = engine.expected_hit(mech, target, key)
+			out[side][key] = expected_hit(engine, mech, target, key)
 	return out
 
 
@@ -523,3 +523,26 @@ func _top_two(values: Array[int]) -> int:
 	for i in mini(2, values.size()):
 		total += values[i]
 	return total
+
+
+## Dano medio de un golpe de ese hueco (tirada media y critico esperado),
+## como si el rival no tuviera escudo ni bastion: con la potencia, los
+## modulos, la perforacion y la rotura de energia. Es la vara con la que la
+## IA implacable valora los golpes (GDD 7). Salio de BattleEngine.
+static func expected_hit(
+	engine: BattleEngine, user: BattleMech, target: BattleMech, key: String
+) -> float:
+	if not user.slots.has(key) or not user.slots[key].def.deals_damage():
+		return 0.0
+	var def := user.slots[key].def
+	var guard := [target.shield_left, target.barrier, target.bastion_ready]
+	target.shield_left = 0
+	target.barrier = 0
+	target.bastion_ready = false
+	var damage := engine.hit_damage(
+		def, user, target, 0.5, engine.crit_chance(def, target, user), key
+	)
+	target.shield_left = guard[0]
+	target.barrier = guard[1]
+	target.bastion_ready = guard[2]
+	return float(damage)
