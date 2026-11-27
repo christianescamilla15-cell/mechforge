@@ -29,6 +29,10 @@ var fixed_crit: float = -1.0
 ## Las copias de busqueda de la IA no tiran criticos: suman su dano esperado
 ## y no aplican sus efectos.
 var expected_crits: bool = false
+## Terreno de la arena (OBS-055, TerrainConfig): un tipo por casilla ("" la
+## normal). Sin config no hay terreno.
+var terrain: Array[String] = []
+var terrain_config: TerrainConfig
 var _rng := RandomNumberGenerator.new()
 var _first_turn := true
 ## Las copias que usa la IA para probar jugadas no hacen caer bonificaciones.
@@ -83,6 +87,8 @@ func clone(for_search: bool = true) -> BattleEngine:
 	copy.drop = drop.duplicate()
 	copy._spawns_drops = _spawns_drops and not for_search
 	copy.fixed_crit = fixed_crit
+	copy.terrain = terrain.duplicate()
+	copy.terrain_config = terrain_config
 	if for_search:
 		copy.logging = false
 		copy.fixed_roll = 0.5
@@ -98,6 +104,21 @@ func clone(for_search: bool = true) -> BattleEngine:
 
 
 # --- Consultas ---------------------------------------------------------------
+
+
+## Pone el terreno del combate (TerrainConfig.layout con su semilla); con
+## config null, ninguno.
+func set_terrain(config: TerrainConfig, seed_value: int) -> void:
+	terrain_config = config
+	terrain.clear()
+	if config != null:
+		var taken: Array[int] = [mechs[0].position, mechs[1].position]
+		terrain = config.layout(seed_value, rules.arena_size, taken)
+
+
+## El tipo de terreno de una casilla ("" si es normal o no hay terreno).
+func terrain_at(cell: int) -> String:
+	return terrain[cell] if cell >= 0 and cell < terrain.size() else ""
 
 
 ## Devuelve "" si el mech puede usar ese hueco ahora; si no, el motivo (GDD 2.6).
@@ -382,6 +403,8 @@ func apply(action: BattleAction) -> String:
 			_log("dark_matter", data)
 	_evade_if_hit(foe, me, foe_health)
 	_check_pickup()
+	if terrain_config != null:
+		terrain_config.spring(self)
 	actions_left -= 1
 	if _check_winner():
 		return ""
@@ -407,6 +430,9 @@ func _begin_turn() -> void:
 		repair = mini(repair, me.max_health - me.health)
 		me.health += repair
 		_log("repair", {"amount": repair})
+	# La casilla en la que empieza (OBS-055): lava o reparacion.
+	if terrain_config != null:
+		terrain_config.on_turn_start(self, me)
 	if me.no_overheat():
 		me.heat = mini(me.heat, me.heat_cap)
 	# Valvula de alivio (prototipo): un sobrecalentamiento que no le cuesta
@@ -458,6 +484,10 @@ func _end_turn(fire_drone: bool) -> void:
 	if not rules.m6_regen_at_turn_start:
 		_regen(me)
 	_check_pickup()
+	if terrain_config != null:
+		terrain_config.spring(self)
+		if _check_winner():
+			return
 	_tick_buffs(me)
 	# Los efectos de un critico duran el turno del mech que los sufrio.
 	me.disabled_slot = ""
@@ -553,11 +583,13 @@ func _use(
 		target.energy_regen = maxi(1, target.energy_regen - def.energy_regen_dmg)
 
 	var data := {"slot": key, "item": def.id, "damage": damage}
+	if terrain_config != null and terrain_config.cover_factor(self, user, target) < 1.0:
+		data["cover"] = def.deals_damage()
 	_note_layer(data, target, soaked)
 	if damage > 0:
 		data.merge(_answer_hit(user, target, damage))
 	if damage > 0 and not def.proto_effects.is_empty():
-		_proto_on_hit(user, def, damage, data)
+		PrototypeLibrary.on_hit(user, def, damage, data)
 	if crit >= 1.0:
 		data.merge(_apply_crit(def, target))
 	# Un escudo que para el golpe tambien para su impacto.
@@ -700,6 +732,9 @@ func _damage(
 		var armor := target.buff_amount("armor")
 		if armor > 0.0:
 			damage = maxi(1, roundi(damage * (1.0 - armor)))
+		# Su cobertura, si le dan desde lejos (OBS-055).
+		if terrain_config != null:
+			damage = maxi(1, roundi(damage * terrain_config.cover_factor(self, attacker, target)))
 	# Rotura de energia: lo que el arma drena de mas se vuelve dano.
 	if not target.free_energy():
 		damage += maxi(0, _energy_hit(def, attacker, crit) - target.energy)
@@ -917,38 +952,22 @@ func _check_winner() -> bool:
 	return true
 
 
+## Apunta un evento en el registro (para TerrainConfig y demas reglas de
+## fuera del motor).
+func note(event: String, data: Dictionary = {}) -> void:
+	_log(event, data)
+
+
 func _log(event: String, data: Dictionary = {}) -> void:
 	if not logging:
 		return
 	var entry := {"event": event, "turn": turn_number, "actor": turn}
 	entry.merge(data)
 	# Foto del estado tras el evento: la pantalla la usa para animar paso a paso.
-	entry["state"] = [_snapshot(mechs[0]), _snapshot(mechs[1])]
+	entry["state"] = [mechs[0].snapshot(), mechs[1].snapshot()]
 	entry["actions_left"] = actions_left
 	entry["drop"] = drop.duplicate()
 	events.append(entry)
-
-
-## Lo que hace un prototipo del especialista con cada golpe que acierta su
-## arma (GDD 8.6): devolver vida, devolver energia o quitar calor.
-func _proto_on_hit(user: BattleMech, def: ItemDef, damage: int, data: Dictionary) -> void:
-	var fx := def.proto_effects
-	var healed := mini(
-		roundi(damage * float(fx.get("lifesteal", 0.0))), user.max_health - user.health
-	)
-	if healed > 0:
-		user.health += healed
-		data["lifesteal"] = healed
-	var gained := mini(
-		roundi(user.energy_cap * float(fx.get("energy_on_hit", 0.0))), user.energy_cap - user.energy
-	)
-	if gained > 0:
-		user.energy += gained
-		data["energy_gain"] = gained
-	var vented := mini(roundi(user.heat_cap * float(fx.get("cool_on_hit", 0.0))), user.heat)
-	if vented > 0:
-		user.heat -= vented
-		data["vented"] = vented
 
 
 ## Lo que paro el manto en un golpe, y si se rompio con el.
@@ -958,24 +977,3 @@ func _note_layer(data: Dictionary, target: BattleMech, soaked: int) -> void:
 	data["layer"] = soaked
 	if target.layer == 0:
 		data["layer_broken"] = true
-
-
-func _snapshot(mech: BattleMech) -> Dictionary:
-	return {
-		"pos": mech.position,
-		"health": mech.health,
-		"layer": mech.layer,
-		"layer_max": mech.layer_max,
-		"heat": mech.heat,
-		"energy": mech.energy,
-		"heat_cap": mech.heat_cap,
-		"energy_cap": mech.energy_cap,
-		"cooling": mech.cooling,
-		"regen": mech.energy_regen,
-		"res": mech.res.duplicate(),
-		"buffs": mech.buffs.duplicate(true),
-		"immobilized": mech.immobilized,
-		"disabled": mech.disabled_slot,
-		"stunned": mech.stunned,
-		"stun_guard": mech.stun_guard,
-	}

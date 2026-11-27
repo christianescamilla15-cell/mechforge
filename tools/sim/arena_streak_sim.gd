@@ -33,6 +33,7 @@ extends SceneTree
 ##                        media el simulador antes del 2026-11-26)
 ##     --plain-protos     A6 cuenta los prototipos como base, no como de mas
 ##     --rival-mult=X     el rival multiplica vida y dano por X (en vez de A6)
+##     --noterrain        sin el terreno de la arena (OBS-055)
 ##     --exterminio       con --only=N: la oleada N del Exterminio, sus robots
 ##                        seguidos sin reparar (OBS-055)
 
@@ -46,6 +47,8 @@ const DIFFICULTY := {
 }
 
 var _rules := RulesConfig.new()
+## El terreno de la arena, como en el juego (OBS-055); --noterrain lo quita.
+var _terrain: TerrainConfig
 
 
 func _initialize() -> void:
@@ -88,6 +91,8 @@ func _initialize() -> void:
 	# Los prototipos del especialista, como en el juego (faltaban hasta el
 	# 2026-11-26: el robot del simulador era mas flojo que el suyo).
 	brief.prototypes = PrototypeLibrary.load_file("res://data/prototypes.json")
+	if not args.has("noterrain"):
+		_terrain = TerrainConfig.load_file("res://data/terrain.json")
 	if args.has("noprotos"):
 		brief.prototypes = null
 	if not campaign.errors.is_empty():
@@ -237,7 +242,9 @@ func _initialize() -> void:
 					_ai(player_ai, n * 2 + 1 + r * 31, null, args, "player"),
 					_ai(rival_ai, n * 2 + 2 + r * 31, temper, args, "rival"),
 					n + 7 + r * 13,
-					n % 2
+					n % 2,
+					200,
+					_terrain
 				)
 				spent += Time.get_ticks_msec() - started
 				decisions += int(result["turns"])
@@ -340,6 +347,7 @@ func _exterminio(
 			)
 			if carry != null:
 				engine.mechs[0].carry_from(carry)
+			engine.set_terrain(_terrain, seed_value + robot)
 			var ais: Array[BattleAI] = [
 				_ai(
 					BattleAI.Difficulty[str(args.get("player", "HARD"))],
@@ -380,6 +388,8 @@ func _trace(build: MechBuild, rival: MechBuild, a: BattleAI, b: BattleAI, seed_v
 	print("tu robot: ", build.summary(_rules))
 	print("rival: ", rival.summary(_rules))
 	var engine := BattleEngine.new(_rules, build, rival, seed_value, seed_value % 2)
+	engine.set_terrain(_terrain, seed_value)
+	print("terreno: ", engine.terrain)
 	var ais: Array[BattleAI] = [a, b]
 	var printed := 0
 	while not engine.is_over() and engine.turn_number <= 80:

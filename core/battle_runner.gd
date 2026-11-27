@@ -15,9 +15,12 @@ static func run(
 	ai_b: BattleAI,
 	seed_value: int,
 	starter: int = 0,
-	max_turns: int = 200
+	max_turns: int = 200,
+	terrain: TerrainConfig = null
 ) -> Dictionary:
 	var engine := BattleEngine.new(rules, build_a, build_b, seed_value, starter)
+	# El terreno de la arena (OBS-055), si se pide.
+	engine.set_terrain(terrain, seed_value)
 	var start_distance := absi(engine.mechs[0].position - engine.mechs[1].position)
 	var ais: Array[BattleAI] = [ai_a, ai_b]
 	while not engine.is_over() and engine.turn_number <= max_turns:

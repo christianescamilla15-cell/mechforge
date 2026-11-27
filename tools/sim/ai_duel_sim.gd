@@ -14,6 +14,7 @@ extends SceneTree
 ##     --edge=1.0              el plus del lado con ventaja (0 = sin ventaja)
 ##     --battles=2             semillas por emparejamiento
 ##     --part=0 --parts=1      reparte los emparejamientos entre procesos
+##     --terrain               con el terreno de la arena (OBS-055)
 
 var _rules := RulesConfig.new()
 
@@ -44,6 +45,9 @@ func _initialize() -> void:
 	var parts := int(args.get("parts", "1"))
 	var a_level: BattleAI.Difficulty = BattleAI.Difficulty[str(args.get("a", "MASTER"))]
 	var b_level: BattleAI.Difficulty = BattleAI.Difficulty[str(args.get("b", "HARD"))]
+	var terrain: TerrainConfig = null
+	if args.has("terrain"):
+		terrain = TerrainConfig.load_file("res://data/terrain.json")
 	# Cada emparejamiento: el robot del lado 0, el del lado 1 y quien lleva
 	# el plus (-1 nadie).
 	var pairings: Array[Array] = []
@@ -84,7 +88,7 @@ func _initialize() -> void:
 					)
 				var started := Time.get_ticks_msec()
 				var result := BattleRunner.run(
-					_rules, builds[0], builds[1], ais[0], ais[1], seed_value, n % 2
+					_rules, builds[0], builds[1], ais[0], ais[1], seed_value, n % 2, 200, terrain
 				)
 				spent += Time.get_ticks_msec() - started
 				turns += int(result["turns"])

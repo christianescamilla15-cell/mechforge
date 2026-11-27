@@ -37,6 +37,8 @@ var engine: BattleEngine
 ## Indice del mech que controla el jugador.
 var player: int = 0
 var enemy_ai: BattleAI
+## El terreno de la arena (OBS-055, TerrainConfig); null si el modo no lo lleva.
+var terrain: TerrainConfig
 ## Si no es null, la IA juega tambien por el jugador (pruebas automaticas).
 var player_ai: BattleAI
 ## Si no es null, elige las jugadas del jugador pero las ejecuta a traves de
@@ -115,6 +117,9 @@ func start(
 	# acabo el combate anterior, sin reparar.
 	if carry != null:
 		engine.mechs[0].carry_from(carry)
+	# Y el terreno de la arena, si el modo lo lleva (OBS-055).
+	engine.set_terrain(terrain, seed_value)
+	_arena.set_terrain(engine.terrain)
 	_shown = 0
 	_busy = true
 	_teleport_mode = false
@@ -257,6 +262,8 @@ func _play_event(entry: Dictionary) -> void:
 			var damage: int = entry.get("damage", 0)
 			if entry.get("shielded", false):
 				_arena.float_text(_state[target]["pos"], Txt.t("shield_hit"), COLOR_COOL)
+			if entry.get("cover", false):
+				_arena.float_text(_state[target]["pos"], Txt.t("terrain_cover_hit"), COLOR_COOL)
 			var crit: bool = entry.get("crit", false)
 			if damage > 0:
 				_arena.mechs[target].hit(step, shot_color)
@@ -360,6 +367,8 @@ func _play_event(entry: Dictionary) -> void:
 				await _arena.mechs[target].knockback_to(away, step * 2.6).finished
 				_arena.dust(away, step)
 			await get_tree().create_timer(step * 0.8).timeout
+		"lava", "terrain_repair", "trap":
+			await TerrainFx.play(_arena, entry, snapshot, step)
 		"drop_taken":
 			Sfx.play("bonificacion")
 			var percent := roundi(float(entry["amount"]) * 100.0)

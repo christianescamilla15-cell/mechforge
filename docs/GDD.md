@@ -40,6 +40,18 @@ Definido por el usuario el 2026-11-16.
 4. **Energía:** al **inicio** de cada turno propio se regenera `energía += regeneración`, sin pasar de la capacidad (mejora M6; el original regeneraba al final del turno).
 5. **Victoria:** gana quien deje al rival en 0 de vida. Si ambos caen en la misma acción (por backfire), gana quien conserve más vida; si empatan, gana el defensor.
 
+### 2.2b Terreno (2026-11-26, OBS-055)
+Del usuario: mecánicas "donde también cuente la estrategia, pero donde se vea más implicada esta misma". En cada combate, dos parejas de casillas especiales en espejo (la casilla i y la del otro lado, de tipos distintos, nunca donde empieza un robot), así que ningún lado empieza con ventaja. Sale de la semilla del combate con su propio azar. Todos los modos lo llevan (`data/terrain.json`, `TerrainConfig`).
+
+| Casilla | Qué hace | Para qué |
+|---|---|---|
+| Lava | Al empezar su turno en ella, el robot suma el 25 % de su tope de calor, antes de mirar si se pasa | Empujar al rival a la lava (pecho, hombros, garfio) puede dejarle sin acciones; quedarse en ella cuesta |
+| Cobertura | Los golpes que vienen desde 2 casillas o más le quitan un 30 % menos; los de cerca, no | Los de distancia buscan sacarle de ahí; los de cuerpo a cuerpo no la notan |
+| Reparación | Al empezar su turno en ella, recupera el 6 % de su vida | Pelear por la casilla |
+| Trampa | Al pisarla (andando, saltando o empujado) le quita el 10 % de su vida y no se mueve ese turno; se gasta | Empujar al rival a ella o rodearla |
+
+La IA valora la casilla en la que está cada uno (la lava como calor que costará acciones, la cobertura y la reparación como vida) y lo que pasa al moverse lo ve al probar las jugadas. Medido (`tools/sim/ai_duel_sim.gd --terrain`, IA difícil contra sí misma, 256 combates): 48 % (ningún lado sale ganando) y algo más de juego para el que va por detrás (con +30 % de vida y daño, el fuerte gana el 94 % en vez del 97 %). En las oleadas de tres del Exterminio, con su robot: 10, 88 %; 15, 69 %; 20, 0 % (sin terreno: 94, 56 y 0).
+
 ### 2.3 Acciones disponibles
 | Acción | Efecto |
 |---|---|

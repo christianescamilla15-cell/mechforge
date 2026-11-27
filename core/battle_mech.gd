@@ -367,3 +367,26 @@ func move_range() -> int:
 
 func can_jump() -> bool:
 	return build.legs.jump > 0
+
+
+## Foto del estado para el registro del combate (BattleEngine): la pantalla
+## la usa para animar paso a paso.
+func snapshot() -> Dictionary:
+	return {
+		"pos": position,
+		"health": health,
+		"layer": layer,
+		"layer_max": layer_max,
+		"heat": heat,
+		"energy": energy,
+		"heat_cap": heat_cap,
+		"energy_cap": energy_cap,
+		"cooling": cooling,
+		"regen": energy_regen,
+		"res": res.duplicate(),
+		"buffs": buffs.duplicate(true),
+		"immobilized": immobilized,
+		"disabled": disabled_slot,
+		"stunned": stunned,
+		"stun_guard": stun_guard,
+	}

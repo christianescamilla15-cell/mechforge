@@ -152,7 +152,31 @@ func evaluate(e: BattleEngine, me: int) -> float:
 	var distance := absi(mine.position - foe.position)
 	score -= config.position_discount * my_strike * (1.0 - _reach(mine, distance))
 	score += config.evasion * config.position_discount * foe_strike * (1.0 - _reach(foe, distance))
+	# El terreno en el que esta cada uno (OBS-055).
+	var my_cell := _cell_terms(e, mine, my_strike, foe_strike)
+	var foe_cell := _cell_terms(e, foe, foe_strike, my_strike)
+	score += config.guard * my_cell.x - config.caution * my_cell.y
+	score += config.pressure * foe_cell.y - config.aggression * foe_cell.x
 	return score
+
+
+## Lo que vale la casilla en la que esta `mech` (OBS-055, TerrainConfig), en
+## fracciones de barra: x, lo que gana su barra (la reparacion de un turno y
+## la cobertura frente a la mitad de lo que pega el otro); y, lo que se ahorra
+## la del otro (las acciones que la lava le costara). `strike` es lo que pega
+## una accion suya; `against`, una del otro.
+func _cell_terms(e: BattleEngine, mech: BattleMech, strike: float, against: float) -> Vector2:
+	var config_t := e.terrain_config
+	match e.terrain_at(mech.position):
+		"repair":
+			return Vector2(config_t.value("repair", "heal"), 0.0)
+		"cover":
+			var per_turn := float(e.rules.actions_per_turn)
+			return Vector2(config_t.value("cover", "cut") * against * per_turn * 0.5, 0.0)
+		"lava":
+			var heat := mech.heat_cap * config_t.value("lava", "heat")
+			return Vector2(0.0, config.heat_discount * strike * heat / maxf(1.0, mech.cooling))
+	return Vector2.ZERO
 
 
 ## Implacable (OBS-054): lo mismo que evaluate, pero como una carrera. Cada
@@ -196,6 +220,10 @@ func _race_value(e: BattleEngine, me: int) -> float:
 	foe_bar += config.barrier_value * my_strike * foe.barrier
 	foe_bar += config.repair_hold * _repair_worth(foe)
 	foe_bar += config.position_discount * my_strike * (1.0 - _reach(mine, distance))
+	var my_cell := _cell_terms(e, mine, my_strike, foe_strike)
+	var foe_cell := _cell_terms(e, foe, foe_strike, my_strike)
+	my_bar += config.guard * my_cell.x + config.pressure * foe_cell.y
+	foe_bar += config.aggression * foe_cell.x + config.caution * my_cell.y
 	var buffs := config.buff_turn_value * (_buff_worth(mine) - _buff_worth(foe))
 	return my_bar * _bar_worth[me] - foe_bar * _bar_worth[1 - me] + buffs
 

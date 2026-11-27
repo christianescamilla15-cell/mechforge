@@ -31,6 +31,13 @@ const OVERVIEW_MARGIN_CELLS := 0.25
 const OVERVIEW_MIN_ZOOM := 0.3
 ## Color de la caja de bonificacion segun lo que da (GDD 2.8).
 const DROP_COLORS := {"armor": Color("6fb6ff"), "firepower": Color("ffb347")}
+## Color de cada tipo de terreno (OBS-055, TerrainConfig).
+const TERRAIN_COLORS := {
+	"lava": Color("ff5a1f"),
+	"cover": Color("9fb4c8"),
+	"repair": Color("4fe08a"),
+	"trap": Color("f2c53d")
+}
 ## Paisaje provisional, dibujado por codigo hasta que haya escenarios con el
 ## estilo aprobado. Cuanto mas lejos esta una capa, menos se mueve.
 ## Escenario por defecto, por si no se indica ninguno (data/stages.json).
@@ -70,6 +77,8 @@ var _highlights: Dictionary = {}
 var _hovered: int = -1
 ## Bonificacion que hay en la arena: {"cell", "kind"}; vacio si no hay.
 var _drop: Dictionary = {}
+## Terreno de la arena (OBS-055): un tipo por casilla ("" la normal).
+var _terrain: Array[String] = []
 ## Textos flotantes vivos por casilla, para no encimarlos.
 var _floating: Dictionary = {}
 ## Capa del mundo: suelo, mechs y textos. La camara la mueve y la escala.
@@ -151,6 +160,12 @@ func cell_point(cell: int) -> Vector2:
 
 func set_highlights(highlights: Dictionary) -> void:
 	_highlights = highlights
+	_floor.queue_redraw()
+
+
+## El terreno de la arena (OBS-055): un tipo por casilla ("" la normal).
+func set_terrain(kinds: Array[String]) -> void:
+	_terrain = kinds.duplicate()
 	_floor.queue_redraw()
 
 
@@ -483,8 +498,14 @@ func _draw_floor() -> void:
 			color = _highlights[cell]
 			if cell == _hovered:
 				color = color.lightened(0.25)
+		var kind := _terrain[cell] if cell < _terrain.size() else ""
+		if kind != "" and not _highlights.has(cell):
+			color = color.lerp(TERRAIN_COLORS[kind], 0.3)
 		_floor.draw_rect(rect, color)
 		_floor.draw_rect(rect, _stage["cell_line"], false, 2.0)
+		if kind != "":
+			_draw_terrain(kind, rect, font)
+			continue
 		_floor.draw_string(
 			font,
 			rect.position + Vector2(0, 27),
@@ -496,6 +517,40 @@ func _draw_floor() -> void:
 		)
 	if not _drop.is_empty():
 		_draw_drop(font)
+
+
+## Una casilla de terreno (OBS-055): su borde y su nombre del color de su
+## tipo, y encima lo que se ve de ella (resplandor de lava, cruz de
+## reparacion, muro bajo de cobertura o pinchos de trampa).
+func _draw_terrain(kind: String, rect: Rect2, font: Font) -> void:
+	var color: Color = TERRAIN_COLORS[kind]
+	_floor.draw_rect(rect.grow(-3.0), color, false, 3.0)
+	_floor.draw_string(
+		font, rect.position + Vector2(0, 26), Txt.t("terrain_" + kind), 1, rect.size.x, 17, color
+	)
+	var mid := rect.get_center().x
+	match kind:
+		"lava":
+			for band in 4:
+				var glow := Color(color, 0.22 - band * 0.05)
+				_floor.draw_rect(
+					Rect2(rect.position.x, -14.0 - band * 12.0, rect.size.x, 14.0), glow
+				)
+		"repair":
+			_floor.draw_rect(Rect2(mid - 6.0, -40.0, 12.0, 34.0), Color(color, 0.7))
+			_floor.draw_rect(Rect2(mid - 17.0, -29.0, 34.0, 12.0), Color(color, 0.7))
+		"cover":
+			for side in [-1.0, 1.0]:
+				var wall := Rect2(mid + side * 82.0 - 14.0, -46.0, 28.0, 46.0)
+				_floor.draw_rect(wall, color.darkened(0.35))
+				_floor.draw_rect(wall, color, false, 2.0)
+		"trap":
+			for spike in 5:
+				var x := mid - 48.0 + spike * 24.0
+				var tip := PackedVector2Array(
+					[Vector2(x - 8, 0), Vector2(x, -22), Vector2(x + 8, 0)]
+				)
+				_floor.draw_colored_polygon(tip, color.darkened(0.2))
 
 
 ## La bonificacion como una caja sobre su casilla, del color de su tipo.

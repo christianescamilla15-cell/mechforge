@@ -79,6 +79,8 @@ var _brief := MissionBrief.new()
 ## pantallas de mejoras y habilidades y la lectura del robot.
 ## Los prototipos del especialista (GDD 8.6).
 var _prototypes: PrototypeLibrary
+## El terreno de la arena (OBS-055).
+var _terrain: TerrainConfig
 var _bench := WorkshopBrief.new()
 ## Lo que dice el panel al acabar un combate de la arena o del Exterminio.
 var _notes := ResultNotes.new()
@@ -123,6 +125,7 @@ func _ready() -> void:
 	_tempers = TemperLibrary.load_file("res://data/tempers.json")
 	_campaign = Campaign.load_file("res://data/campaign.json", _library)
 	_prototypes = PrototypeLibrary.load_file("res://data/prototypes.json")
+	_terrain = TerrainConfig.load_file("res://data/terrain.json")
 	_brief.rules = _rules
 	_brief.catalog = _catalog
 	_brief.library = _library
@@ -765,6 +768,7 @@ func _start_battle(spec: Dictionary) -> void:
 	enemy_build.body = str(spec.get("enemy_body", ""))
 	# Y los rivales normales, sus habilidades (el escudo, la reparacion).
 	enemy_build.skills.add(spec.get("enemy_kits", {}))
+	_battle.terrain = _terrain if _terrain.enabled_for(spec["mode"]) else null
 	_battle.start(
 		_rules,
 		player_build,

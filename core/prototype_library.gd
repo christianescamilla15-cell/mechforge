@@ -210,3 +210,25 @@ func apply(build: MechBuild, profile: PlayerProfile) -> void:
 			effects[effect(id)] = float(effects.get(effect(id), 0.0)) + value(id, rank)
 		item.protos = ranks_of
 		item.proto_effects = effects
+
+
+## Lo que hace un prototipo del especialista con cada golpe que acierta su
+## arma (GDD 8.6): devolver vida, devolver energia o quitar calor.
+static func on_hit(user: BattleMech, def: ItemDef, damage: int, data: Dictionary) -> void:
+	var fx := def.proto_effects
+	var healed := mini(
+		roundi(damage * float(fx.get("lifesteal", 0.0))), user.max_health - user.health
+	)
+	if healed > 0:
+		user.health += healed
+		data["lifesteal"] = healed
+	var gained := mini(
+		roundi(user.energy_cap * float(fx.get("energy_on_hit", 0.0))), user.energy_cap - user.energy
+	)
+	if gained > 0:
+		user.energy += gained
+		data["energy_gain"] = gained
+	var vented := mini(roundi(user.heat_cap * float(fx.get("cool_on_hit", 0.0))), user.heat)
+	if vented > 0:
+		user.heat -= vented
+		data["vented"] = vented
