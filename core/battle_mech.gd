@@ -161,6 +161,29 @@ func clone() -> BattleMech:
 	return copy
 
 
+## Los robots seguidos del Exterminio (OBS-055): lo que se queda de un
+## combate al siguiente, sin reparar: la vida y el manto, el calor, la
+## energia, lo que le rompieron (topes, regeneracion, enfriamiento y
+## resistencias), los kits y los usos de sus armas. El sitio, las
+## bonificaciones y lo que dura un turno, no.
+func carry_from(prev: BattleMech) -> void:
+	health = clampi(prev.health, 1, max_health)
+	layer = mini(prev.layer, layer_max)
+	heat = prev.heat
+	energy_cap = prev.energy_cap
+	energy = mini(prev.energy, energy_cap)
+	energy_regen = prev.energy_regen
+	heat_cap = prev.heat_cap
+	cooling = prev.cooling
+	res = prev.res.duplicate()
+	kits = prev.kits.duplicate()
+	relief_left = prev.relief_left
+	barrier = prev.barrier
+	for key: String in slots:
+		if prev.slots.has(key):
+			slots[key].uses_left = prev.slots[key].uses_left
+
+
 ## Energia que le cuesta a este mech usar una pieza: depende de su chasis,
 ## y la eficiencia del arbol de mejoras abarata sus armas.
 func energy_cost(def: ItemDef) -> int:

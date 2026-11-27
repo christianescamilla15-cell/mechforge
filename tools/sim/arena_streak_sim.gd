@@ -33,6 +33,8 @@ extends SceneTree
 ##                        media el simulador antes del 2026-11-26)
 ##     --plain-protos     A6 cuenta los prototipos como base, no como de mas
 ##     --rival-mult=X     el rival multiplica vida y dano por X (en vez de A6)
+##     --exterminio       con --only=N: la oleada N del Exterminio, sus robots
+##                        seguidos sin reparar (OBS-055)
 
 ## Desde este combate de la racha (0 es el primero) cuenta Titanes (MainScreen.TITAN_STEP).
 const TITAN_STEP := 5
@@ -163,6 +165,25 @@ func _initialize() -> void:
 	var reach := 1.0
 	var pot := 0.0
 	var rows: Array[Dictionary] = []
+	# --exterminio: oleadas de robots seguidos sin reparar (OBS-055), con
+	# --only=N la oleada N (desde 0; sirve pasada la 20).
+	if args.has("exterminio"):
+		var context := {
+			"zone": zone,
+			"library": library,
+			"catalog": catalog,
+			"chassis": chassis,
+			"campaign": campaign,
+			"shop": shop,
+			"skills": skills,
+			"tempers": tempers,
+			"power": power,
+			"gear": gear,
+		}
+		var mine := [build, titan_build]
+		_exterminio(context, mine, [extra, titan_extra], maxi(only, 0), rivals, args)
+		quit(0)
+		return
 	for step in campaign.streak_fights():
 		if only >= 0 and step != only:
 			continue
@@ -262,6 +283,96 @@ func _initialize() -> void:
 			)
 		)
 	quit(0)
+
+
+## Una oleada del Exterminio (OBS-055) con varias semillas: sus robots
+## seguidos, el del jugador sin reparar entre uno y otro. Da cuantas
+## oleadas gana entera, y hasta que robot llega de media.
+func _exterminio(
+	context: Dictionary, mine: Array, extras: Array, wave: int, rivals: int, args: Dictionary
+) -> void:
+	var campaign: Campaign = context["campaign"]
+	var library: BuildLibrary = context["library"]
+	var titan := wave >= TITAN_STEP
+	var player_build: MechBuild = mine[1] if titan else mine[0]
+	var more: float = extras[1] if titan else extras[0]
+	var robots := campaign.exterminio_robots()
+	var whole := 0
+	var beaten := 0
+	var health := 0.0
+	for r in rivals:
+		var seed_value := 1000 + r * 7919
+		var carry: BattleMech = null
+		var down := 0
+		for robot in robots:
+			var fight := campaign.exterminio_fight(
+				context["zone"],
+				library,
+				seed_value + robot * 101,
+				_rules,
+				context["power"],
+				context["gear"],
+				wave,
+				robot
+			)
+			var rival := library.make(
+				fight["enemy"],
+				context["catalog"],
+				_rules,
+				fight["tier"],
+				fight["level"],
+				context["chassis"],
+				{},
+				fight.get("loadout", {})
+			)
+			rival.upgrades = campaign.fight_upgrades(
+				context["zone"], context["shop"], float(fight.get("edge", 0.0)), more
+			)
+			var skills: SkillTree = context["skills"]
+			rival.skills = skills.effects_for(skills.spread(int(fight.get("skills", 0))))
+			rival.skills.add(Campaign.kits_of(fight))
+			rival.body = Campaign.body_of(fight)
+			var tempers: TemperLibrary = context["tempers"]
+			var temper := tempers.config(library.temper_of(fight["enemy"]))
+			var level: BattleAI.Difficulty = BattleAI.Difficulty[str(fight["difficulty"])]
+			var engine := BattleEngine.new(
+				_rules, player_build, rival, seed_value + robot, robot % 2
+			)
+			if carry != null:
+				engine.mechs[0].carry_from(carry)
+			var ais: Array[BattleAI] = [
+				_ai(
+					BattleAI.Difficulty[str(args.get("player", "HARD"))],
+					1 + r,
+					null,
+					args,
+					"player"
+				),
+				_ai(level, 2 + r, temper, args, "rival"),
+			]
+			while not engine.is_over() and engine.turn_number <= 200:
+				var action := ais[engine.turn].choose_action(engine)
+				if action == null or engine.apply(action) != "":
+					break
+			if engine.winner != 0:
+				break
+			down += 1
+			carry = engine.mechs[0].clone()
+			health += float(carry.health) / carry.max_health
+		beaten += down
+		whole += 1 if down == robots else 0
+	print(
+		(
+			"  oleada %d: la gana entera %3.0f %%, tumba %.1f de %d, vida tras cada uno %.0f %%"
+			% [
+				wave + 1,
+				100.0 * whole / rivals,
+				float(beaten) / rivals,
+				robots,
+				100.0 * health / maxf(1.0, float(beaten))
+			]
+		)
+	)
 
 
 ## Imprime un combate jugada a jugada con el estado de los dos.

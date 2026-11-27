@@ -68,8 +68,13 @@ var protection_prices: Dictionary[String, int] = {}
 var arena_streak: Dictionary = {"fights": 1, "prize": [1.0], "steps": [{}]}
 ## Exterminio (OBS-053, del usuario: "una vez que entras no hay final, aqui
 ## unicamente te llega un rival mas fuerte que el otro y asi sucesivamente
-## hasta que pierdes"): {"edge_growth", "gold_growth", "xp_growth"}.
-var exterminio: Dictionary = {"edge_growth": 0.0, "gold_growth": 0.0, "xp_growth": 0.0}
+## hasta que pierdes"): {"edge_growth", "gold_growth", "xp_growth", "robots",
+## "wave_edge"}.
+## "robots": cuantos seguidos tiene cada oleada (OBS-055, del usuario: "donde
+## pueda luchar con 3 robots seguidos para igualar mi fuerza").
+var exterminio: Dictionary = {
+	"edge_growth": 0.0, "gold_growth": 0.0, "xp_growth": 0.0, "robots": 1.0, "wave_edge": 0.0
+}
 ## Sus campeones (OBS-054): cada "every" oleadas sale el campeon de una liga,
 ## por orden, con la IA "difficulty", y ganarle da "points" puntos de mejora
 ## y un arma de arena del rango "rank" (los dos segun cuantos van; el ultimo
@@ -420,7 +425,8 @@ func exterminio_fight(
 	rules: RulesConfig,
 	power: float,
 	loadout: Dictionary,
-	wave: int
+	wave: int,
+	robot: int = 0
 ) -> Dictionary:
 	var last := streak_fights() - 1
 	var fight := arena_streak_fight(
@@ -428,12 +434,18 @@ func exterminio_fight(
 	)
 	var beyond := maxi(0, wave - last)
 	fight["edge"] = float(fight["edge"]) + beyond * float(exterminio["edge_growth"])
+	# Con robots seguidos (OBS-055) el plus tiene su propia rampa, mas suave:
+	# wave_edge por oleada, sin final. El resto (poder, clase, entrenamiento,
+	# IA) sigue los pasos de la racha.
+	if float(exterminio["wave_edge"]) > 0.0:
+		fight["edge"] = float(exterminio["wave_edge"]) * wave
 	fight["streak"] = wave
 	fight["wave"] = wave
+	fight["robot"] = robot
 	# Cada tantas oleadas, un campeon de liga con su habilidad y su
-	# entrenamiento, al poder de la oleada (OBS-054).
+	# entrenamiento, al poder de la oleada (OBS-054); es el ultimo robot.
 	var champion := exterminio_champion(wave)
-	if champion >= 0:
+	if champion >= 0 and robot >= exterminio_robots() - 1:
 		var boss: Dictionary = zones[champion]["boss"]
 		fight["enemy"] = str(boss["enemy"])
 		fight["body"] = body_of(boss)
@@ -442,6 +454,11 @@ func exterminio_fight(
 		if str(exterminio_champions["difficulty"]) != "":
 			fight["difficulty"] = str(exterminio_champions["difficulty"])
 	return fight
+
+
+## Cuantos robots seguidos tiene cada oleada del Exterminio (OBS-055).
+func exterminio_robots() -> int:
+	return maxi(1, int(exterminio["robots"]))
 
 
 ## La liga (zona) cuyo campeon sale en la oleada `wave` (desde 0) del
@@ -502,13 +519,16 @@ func resume_exterminio(profile: PlayerProfile) -> int:
 	var wave := profile.exterminio_wave
 	profile.exterminio_live = false
 	profile.exterminio_wave = 0
+	profile.exterminio_robot = 0
 	profile.losses += 1
 	return wave
 
 
 ## Un combate del Exterminio: ganar paga ya (celdas y, en finish_fight,
-## experiencia), no se arriesga, y llega la oleada siguiente; perder acaba la
-## tanda (vuelve a la 1) y paga lo de perder en la arena. El record queda.
+## experiencia), no se arriesga, y llega el robot siguiente de la oleada o,
+## tras el ultimo, la oleada siguiente; perder acaba la tanda (vuelve a la 1)
+## y paga lo de perder en la arena. El record queda. Entre robots de una
+## oleada el combate sigue en marcha (exterminio_live): salir es perder.
 ## Anade a `out`: "wave" (la oleada que se jugo, desde 0), "best" y "record"
 ## (si esta victoria lo bate).
 func _settle_exterminio(
@@ -520,16 +540,32 @@ func _settle_exterminio(
 	bonus: Dictionary = {}
 ) -> Dictionary:
 	var wave := profile.exterminio_wave
+	var robot := profile.exterminio_robot
 	profile.exterminio_live = false
 	out["wave"] = wave
 	out["step"] = wave
+	out["robot"] = robot
+	out["robots"] = exterminio_robots()
+	out["won"] = won
+	out["next_robot"] = false
 	out["record"] = false
+	out["champion"] = -1
+	out["points"] = 0
+	out["champion_rank"] = 0
 	if won:
 		profile.wins += 1
 		var gold_bonus := 1.0 + float(bonus.get("arena_gold", 0.0))
 		var gold := roundi(shop.reward("arena_win") * mult * exterminio_gold(wave) * gold_bonus)
 		profile.gold += gold
 		out["gold"] = gold
+		if robot + 1 < exterminio_robots():
+			# Queda otro robot en la oleada: sigue, sin reparar.
+			profile.exterminio_robot = robot + 1
+			profile.exterminio_live = true
+			out["next_robot"] = true
+			out["best"] = profile.exterminio_best
+			return out
+		profile.exterminio_robot = 0
 		profile.exterminio_wave = wave + 1
 		out["record"] = profile.exterminio_wave > profile.exterminio_best
 		profile.exterminio_best = maxi(profile.exterminio_best, profile.exterminio_wave)
@@ -543,6 +579,7 @@ func _settle_exterminio(
 	else:
 		out["gold"] = profile.earn(shop, "arena_loss", mult)
 		profile.exterminio_wave = 0
+		profile.exterminio_robot = 0
 	out["best"] = profile.exterminio_best
 	return out
 

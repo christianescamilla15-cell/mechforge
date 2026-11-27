@@ -104,12 +104,17 @@ func start(
 	build_enemy: MechBuild,
 	seed_value: int,
 	difficulty: BattleAI.Difficulty,
-	temper: AIConfig = null
+	temper: AIConfig = null,
+	carry: BattleMech = null
 ) -> void:
 	rules = p_rules
 	# Con su caracter, si el rival lo tiene (TemperLibrary).
 	enemy_ai = BattleAI.new(difficulty, seed_value + 1, temper)
 	engine = BattleEngine.new(rules, build_player, build_enemy, seed_value, seed_value % 2)
+	# Los robots seguidos del Exterminio (OBS-055): el jugador sigue como
+	# acabo el combate anterior, sin reparar.
+	if carry != null:
+		engine.mechs[0].carry_from(carry)
 	_shown = 0
 	_busy = true
 	_teleport_mode = false

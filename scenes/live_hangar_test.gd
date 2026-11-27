@@ -665,6 +665,10 @@ func exterminio_test() -> void:
 	var spec := [main._spec["enemy"], main._spec["difficulty"], main._spec["enemy_skills"]]
 	print("EXTERMINIO rival: %s, dificultad %d, entrenamiento %d" % spec)
 	await get_tree().create_timer(1.2).timeout
+	# Sale herido y caliente, para ver que el siguiente robot le encuentra asi.
+	var hurt: BattleMech = main._battle.engine.mechs[0]
+	hurt.health = hurt.max_health / 3
+	hurt.heat = 123
 	main._on_battle_finished(true)
 	main._battle._result.show()
 	await get_tree().create_timer(0.3).timeout
@@ -676,6 +680,11 @@ func exterminio_test() -> void:
 	await get_tree().create_timer(1.2).timeout
 	var rival := [main._spec["enemy"], main._spec["enemy_edge"], main._spec.get("enemy_extra")]
 	print("EXTERMINIO rival siguiente: %s, plus %.2f, extra %.2f" % rival)
+	# Los robots seguidos (OBS-055): el suyo sigue como acabo el anterior.
+	var mine: BattleMech = main._battle.engine.mechs[0]
+	var carried := [profile.exterminio_robot + 1, mine.health, mine.max_health, mine.heat]
+	print("EXTERMINIO robot %d: vida %d de %d, calor %d" % carried)
+	await shot("siguiente")
 	main._on_battle_finished(false)
 	main._battle._result.show()
 	await get_tree().create_timer(0.3).timeout

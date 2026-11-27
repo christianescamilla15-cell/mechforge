@@ -80,6 +80,11 @@ var _brief := MissionBrief.new()
 ## Los prototipos del especialista (GDD 8.6).
 var _prototypes: PrototypeLibrary
 var _bench := WorkshopBrief.new()
+## Lo que dice el panel al acabar un combate de la arena o del Exterminio.
+var _notes := ResultNotes.new()
+## Los robots seguidos del Exterminio (OBS-055): como acabo el robot del
+## jugador el combate anterior de la oleada; null si no hay oleada a medias.
+var _carry: BattleMech
 ## Semilla del rival de la arena: el que se ve en el hangar es el que sale.
 var _arena_seed: int = 0
 ## Como vuelve el hangar de un combate: {"channel", "how", "beaten"}
@@ -138,6 +143,9 @@ func _ready() -> void:
 	_bench.aspects = _aspects
 	_bench.gear = _gear
 	_bench.tree = _tree
+	_notes.campaign = _campaign
+	_notes.shop = _shop
+	_notes.catalog = _catalog
 	_arena_seed = randi()
 	if _args.has("showcase"):
 		# Muestra de movimientos para revisar animaciones (tools/clip.ps1 -Showcase).
@@ -597,11 +605,19 @@ func _on_exterminio_pressed() -> void:
 	var power := Campaign.mean_power(_rules, _profile, _player_items())
 	var gear := Campaign.loadout_of(_player_build())
 	var wave := _profile.exterminio_wave
-	var fight := _campaign.exterminio_fight(zone, _library, _arena_seed, _rules, power, gear, wave)
+	var robot := _profile.exterminio_robot
+	var fight := _campaign.exterminio_fight(
+		zone, _library, _arena_seed, _rules, power, gear, wave, robot
+	)
 	_arena_seed = randi()
 	_campaign.begin_exterminio(_profile)
 	_save()
-	_start_battle(_spec_for("exterminio", zone, fight))
+	var spec := _spec_for("exterminio", zone, fight)
+	# El robot que toca de la oleada (OBS-055), y el jugador como acabo el
+	# anterior, sin reparar.
+	spec["robot_tag"] = " · %d/%d" % [robot + 1, _campaign.exterminio_robots()]
+	spec["carry"] = _carry if robot > 0 else null
+	_start_battle(spec)
 
 
 func _on_free_pressed() -> void:
@@ -670,7 +686,10 @@ func _start_battle(spec: Dictionary) -> void:
 	_stage_seed += 1
 	_battle.names = [
 		"%s · %s" % [Txt.t("you"), spec["name"]] if spec["name"] != "" else Txt.t("you"),
-		"%s · %s" % [Txt.t("rival"), _library.display_name(spec["enemy"])],
+		(
+			"%s · %s%s"
+			% [Txt.t("rival"), _library.display_name(spec["enemy"]), spec.get("robot_tag", "")]
+		),
 	]
 	# En la campana no hay revancha: se vuelve a la base y se decide de nuevo.
 	_battle.allow_rematch = spec["mode"] != "campaign"
@@ -752,7 +771,8 @@ func _start_battle(spec: Dictionary) -> void:
 		enemy_build,
 		spec["seed"],
 		MENU_DIFFICULTIES[spec["difficulty"]],
-		_tempers.config(_library.temper_of(spec["enemy"]))
+		_tempers.config(_library.temper_of(spec["enemy"])),
+		spec.get("carry")
 	)
 	_raise_curtain()
 
@@ -783,6 +803,9 @@ func _on_battle_finished(player_won: bool) -> void:
 	# Un campeon del Exterminio vencido (OBS-054): tambien un arma de arena.
 	if player_won and int(result.get("champion_rank", 0)) > 0:
 		prize = _gear.grant(_profile, _catalog, int(result["champion_rank"]), bonus, luck)
+	# Queda otro robot en la oleada (OBS-055): sigue como acabo este.
+	var going := bool(result.get("next_robot", false))
+	_carry = _battle.engine.mechs[_battle.player].clone() if going else null
 	_save()
 	if _persist:
 		FightLog.append(_fight_entry(player_won, result))
@@ -815,27 +838,16 @@ func _on_battle_finished(player_won: bool) -> void:
 	if result["level_up"]:
 		_last_result += "\n" + Txt.t("result_level_up", [_player_level()])
 	if _spec["mode"] == "arena":
-		_arena_result(result)
-		_last_result += _milestone_text(prize)
+		_show_choices(_notes.arena(result, _profile, _player_level(), _last_result), prize)
 	elif _spec["mode"] == "exterminio":
-		_exterminio_result(result)
-		_last_result += _milestone_text(prize)
+		_show_choices(_notes.exterminio(result, _player_level()), prize)
 	_battle.set_result_note(_last_result)
 
 
-## Lo que dio un hito de la racha: sus armas de arena y su suerte.
-func _milestone_text(prize: Dictionary) -> String:
-	var out := ""
-	for got: Dictionary in prize.get("weapons", []):
-		var rank := Txt.t("arena_rank_%d" % int(got["rank"]))
-		var said := str(_catalog.get_item(str(got["id"])).display_name)
-		var key := "arena_weapon" if bool(got["new"]) else "arena_weapon_up"
-		out += String.chr(10) + Txt.t(key, [said, rank])
-	if int(prize.get("melted", 0)) > 0:
-		out += String.chr(10) + Txt.t("arena_melted", [HangarProps.thousands(prize["melted"])])
-	if int(prize.get("double", 0)) > 0:
-		out += String.chr(10) + Txt.t("arena_double", [HangarProps.thousands(prize["double"])])
-	return out
+## La nota y las dos teclas del panel (ResultNotes) y lo que dio el premio.
+func _show_choices(said: Dictionary, prize: Dictionary) -> void:
+	_last_result = str(said["note"]) + _notes.milestone(prize)
+	_battle.set_result_choices(said["again"], true, said["back"])
 
 
 ## El arbol de mejoras en el robot del jugador (OBS-051): lo que suma a sus
@@ -875,72 +887,8 @@ func _fight_entry(player_won: bool, result: Dictionary) -> Dictionary:
 		"xp": int(result.get("xp", 0)),
 		"points": int(result.get("points", 0)),
 		"pot": int(result.get("pot", 0)),
+		"robot": int(result.get("robot", -1)),
 	}
-
-
-## La racha de la arena tras un combate (OBS-049): lo que paso con el bote
-## y las dos teclas, otro combate (con lo que pagaria) o cobrar.
-func _arena_result(result: Dictionary) -> void:
-	var more := bool(result.get("more", false))
-	var prize := int(result.get("prize", 0))
-	var lost := int(result.get("lost", 0))
-	var again := Txt.t("arena_again")
-	var back := Txt.t("menu")
-	if more:
-		var pot := int(result["pot"])
-		var mult := _campaign.reward_mult(_profile.zone)
-		var factor := _campaign.streak_prize(int(result["streak"]))
-		var next := roundi(_shop.reward("arena_win") * mult * factor)
-		var note := [
-			HangarProps.thousands(prize),
-			int(result["points"]),
-			HangarProps.thousands(pot),
-			int(result["points_pot"]),
-		]
-		_last_result = Txt.t("arena_pot_note", note)
-		_last_result += String.chr(10) + Txt.t("arena_risk")
-		again = Txt.t("arena_more", [HangarProps.thousands(next)])
-		back = Txt.t("arena_cash", [HangarProps.thousands(pot)])
-	elif prize > 0:
-		var done := [HangarProps.thousands(result["gold"]), int(result["points_cashed"])]
-		_last_result = Txt.t("arena_streak_done", done)
-	elif lost > 0 or int(result.get("points_lost", 0)) > 0:
-		var gone := [HangarProps.thousands(lost), int(result["points_lost"])]
-		_last_result = Txt.t("arena_pot_lost", gone)
-		_last_result += String.chr(10) + Txt.t("result_reward", [result["gold"]])
-	if prize > 0:
-		var boost := _campaign.streak_xp(int(result["step"]))
-		var xp := [HangarProps.thousands(result["xp"]), "%.1f" % boost]
-		_last_result += String.chr(10) + Txt.t("arena_xp", xp)
-	if bool(result.get("level_up", false)):
-		_last_result += String.chr(10) + Txt.t("result_level_up", [_player_level()])
-	_battle.set_result_choices(again, true, back)
-
-
-## Tras un combate del Exterminio (OBS-053): la oleada superada y lo que
-## pago, o hasta donde llego; y las dos teclas, la oleada siguiente (o
-## empezar de nuevo) y el menu.
-func _exterminio_result(result: Dictionary) -> void:
-	var wave := int(result["wave"]) + 1
-	var won := int(_profile.exterminio_wave) > 0
-	if won:
-		_last_result = Txt.t("exterminio_won", [wave, HangarProps.thousands(result["gold"])])
-		if bool(result.get("record", false)):
-			_last_result += String.chr(10) + Txt.t("exterminio_record", [int(result["best"])])
-		if int(result.get("champion", -1)) >= 0:
-			var beaten := [int(result["champion"]) + 1, int(result["points"])]
-			_last_result += String.chr(10) + Txt.t("exterminio_champion_won", beaten)
-	else:
-		_last_result = Txt.t("exterminio_lost", [wave, int(result["best"])])
-		_last_result += String.chr(10) + Txt.t("result_reward", [result["gold"]])
-	if won and int(result.get("xp", 0)) > 0:
-		var boost := "%.2f" % _campaign.exterminio_xp(wave - 1)
-		var xp := [HangarProps.thousands(result["xp"]), boost]
-		_last_result += String.chr(10) + Txt.t("exterminio_xp", xp)
-	if bool(result.get("level_up", false)):
-		_last_result += String.chr(10) + Txt.t("result_level_up", [_player_level()])
-	var again := Txt.t("exterminio_next", [wave + 1]) if won else Txt.t("exterminio_restart")
-	_battle.set_result_choices(again, true, Txt.t("menu"))
 
 
 ## Volver del combate. En la arena, el bote se cobra al volver; si el

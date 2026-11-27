@@ -60,6 +60,9 @@ var arena_live: bool = false
 var exterminio_wave: int = 0
 var exterminio_best: int = 0
 var exterminio_live: bool = false
+## Robots ya tumbados de la oleada en curso (OBS-055: cada oleada son
+## varios seguidos, sin reparar entre uno y otro).
+var exterminio_robot: int = 0
 ## Puntos de mejora (OBS-051): se ganan en la racha de la arena y se gastan
 ## en las ramas del arbol que salen de la armeria. `arena_points` es el bote
 ## de puntos sin cobrar de la racha en marcha; se pierde con el de celdas.
@@ -242,6 +245,7 @@ func end_run() -> void:
 	arena_live = false
 	exterminio_wave = 0
 	exterminio_live = false
+	exterminio_robot = 0
 	upgrade_points = 0
 	arena_points = 0
 	tree.clear()
@@ -512,6 +516,7 @@ func to_dict() -> Dictionary:
 		"exterminio_wave": exterminio_wave,
 		"exterminio_best": exterminio_best,
 		"exterminio_live": exterminio_live,
+		"exterminio_robot": exterminio_robot,
 		"upgrade_points": upgrade_points,
 		"arena_points": arena_points,
 		"tree": tree.duplicate(),
@@ -553,6 +558,7 @@ static func from_dict(data: Dictionary) -> PlayerProfile:
 	profile.exterminio_wave = maxi(0, int(data.get("exterminio_wave", 0)))
 	profile.exterminio_best = maxi(0, int(data.get("exterminio_best", 0)))
 	profile.exterminio_live = bool(data.get("exterminio_live", false))
+	profile.exterminio_robot = maxi(0, int(data.get("exterminio_robot", 0)))
 	profile.upgrade_points = maxi(0, int(data.get("upgrade_points", 0)))
 	profile.arena_points = maxi(0, int(data.get("arena_points", 0)))
 	for id: Variant in data.get("tree", []):

@@ -159,16 +159,20 @@ func exterminio_state(
 	var state := _blank("exterminio")
 	var zone := mini(profile.zone, campaign.zone_count() - 1)
 	var wave := profile.exterminio_wave
+	var robot := profile.exterminio_robot
+	var robots := campaign.exterminio_robots()
 	state["zone_line"] = Txt.t("mission_zone", [zone + 1, campaign.zone_name(zone)])
-	state["title"] = Txt.t("exterminio_title", [wave + 1])
-	var fight := campaign.exterminio_fight(zone, library, seed_value, rules, power, loadout, wave)
+	state["title"] = Txt.t("exterminio_title", [wave + 1, robot + 1, robots])
+	var fight := campaign.exterminio_fight(
+		zone, library, seed_value, rules, power, loadout, wave, robot
+	)
 	var rivals: Array[Dictionary] = [rival(fight, campaign.tier_of(zone))]
 	state["rivals"] = rivals
 	var pay := shop.reward("arena_win") * campaign.reward_mult(profile.zone)
 	pay = roundi(pay * campaign.exterminio_gold(wave))
 	var best := profile.exterminio_best
 	var lines: Array[String] = [
-		Txt.t("mission_exterminio_info"),
+		Txt.t("mission_exterminio_info", [robots]),
 		Txt.t("mission_exterminio_next_champion", [campaign.next_exterminio_champion(wave) + 1]),
 		(
 			Txt.t("mission_exterminio_best", [best, pay])
@@ -180,7 +184,7 @@ func exterminio_state(
 	var champion := campaign.exterminio_champion(wave)
 	if champion >= 0:
 		var prize := campaign.exterminio_champion_prize(wave)
-		state["title"] = Txt.t("exterminio_champion_title", [wave + 1])
+		state["title"] = Txt.t("exterminio_champion_title", [wave + 1, robot + 1, robots])
 		lines[0] = Txt.t("mission_exterminio_champion", [champion + 1])
 		lines[1] = Txt.t(
 			"mission_exterminio_champion_prize",
