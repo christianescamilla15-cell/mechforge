@@ -156,7 +156,22 @@ func _load_streak(raw: Variant) -> void:
 		):
 			errors.append("'arena_streak': 'xp' y 'points' llevan un valor por combate")
 			return
-	arena_streak = {"fights": fights, "prize": prize, "steps": steps, "xp": xp, "points": points}
+	# Los robots seguidos de cada combate (OBS-058): sin ellos, uno.
+	var robots: Variant = raw.get("robots", [])
+	if (
+		not robots is Array
+		or ((robots as Array).size() != fights and not (robots as Array).is_empty())
+	):
+		errors.append("'arena_streak': 'robots' lleva un valor por combate")
+		return
+	arena_streak = {
+		"fights": fights,
+		"prize": prize,
+		"steps": steps,
+		"xp": xp,
+		"points": points,
+		"robots": robots,
+	}
 
 
 func zone_count() -> int:
@@ -363,6 +378,13 @@ func streak_xp(step: int) -> float:
 	return 1.0 if xp.is_empty() else float(xp[clampi(step, 0, xp.size() - 1)])
 
 
+## Cuantos robots seguidos tiene el combate `step` de la racha (OBS-058:
+## los ultimos son tres, sin reparar entre uno y otro, como el Exterminio).
+func streak_robots(step: int) -> int:
+	var robots: Array = arena_streak.get("robots", [])
+	return 1 if robots.is_empty() else maxi(1, int(robots[clampi(step, 0, robots.size() - 1)]))
+
+
 ## Los puntos de mejora que pone en el bote ganar el combate `step`.
 func streak_points(step: int) -> int:
 	var points: Array = arena_streak.get("points", [])
@@ -379,7 +401,8 @@ func arena_streak_fight(
 	rules: RulesConfig,
 	power: float,
 	loadout: Dictionary,
-	step: int
+	step: int,
+	robot: int = 0
 ) -> Dictionary:
 	var steps: Array = arena_streak["steps"]
 	var boost: Dictionary = steps[clampi(step, 0, steps.size() - 1)]
@@ -391,6 +414,7 @@ func arena_streak_fight(
 	if hard != "":
 		fight["difficulty"] = hard
 	fight["streak"] = step
+	fight["robot"] = robot
 	fight["edge"] = float(boost.get("edge", 0.0))
 	return fight
 
@@ -410,6 +434,8 @@ func cash_arena(profile: PlayerProfile) -> int:
 	profile.arena_points = 0
 	profile.arena_streak = 0
 	profile.arena_live = false
+	profile.arena_robot = 0
+	profile.arena_field.clear()
 	return amount
 
 
@@ -592,6 +618,8 @@ func _settle_exterminio(
 func resume_arena(profile: PlayerProfile) -> Dictionary:
 	if profile.arena_live:
 		var lost := profile.arena_pot
+		profile.arena_robot = 0
+		profile.arena_field.clear()
 		profile.arena_pot = 0
 		profile.arena_points = 0
 		profile.arena_streak = 0
@@ -764,11 +792,29 @@ func _settle_arena(
 ) -> Dictionary:
 	var step := clampi(profile.arena_streak, 0, streak_fights() - 1)
 	profile.arena_live = false
+	out["robot"] = profile.arena_robot
+	out["robots"] = streak_robots(step)
+	out["next_robot"] = false
 	out["prize"] = 0
 	out["lost"] = 0
 	out["points"] = 0
 	out["points_lost"] = 0
 	out["step"] = step
+	if won and profile.arena_robot + 1 < streak_robots(step):
+		# Quedan robots en este combate (OBS-058): sigue, sin reparar; el bote,
+		# en juego.
+		profile.wins += 1
+		profile.arena_robot += 1
+		profile.arena_live = true
+		out["next_robot"] = true
+		out["pot"] = profile.arena_pot
+		out["points_pot"] = profile.arena_points
+		out["streak"] = profile.arena_streak
+		out["more"] = true
+		out["points_cashed"] = 0
+		return out
+	profile.arena_robot = 0
+	profile.arena_field.clear()
 	if won:
 		profile.wins += 1
 		# El arbol (rama Botin): mas celdas y mas puntos en la racha.

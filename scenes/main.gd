@@ -610,10 +610,15 @@ func _on_arena_pressed() -> void:
 	var gear := Campaign.loadout_of(_player_build())
 	# En racha (OBS-049), el rival de su paso: mas fuerte que el anterior.
 	var step := _profile.arena_streak
+	var robot := _profile.arena_robot
 	var fight := _campaign.arena_streak_fight(
-		zone, _library, _arena_seed, _rules, power, gear, step
+		zone, _library, _arena_seed, _rules, power, gear, step, robot
 	)
 	var spec := _spec_for("arena", zone, fight)
+	# Los combates de tres robots seguidos (OBS-058), como el Exterminio.
+	if _campaign.streak_robots(step) > 1:
+		spec["robot_tag"] = " · %d/%d" % [robot + 1, _campaign.streak_robots(step)]
+		spec["carry"] = _carry if robot > 0 else null
 	spec["field_seed"] = _arena_seed
 	spec["fight"] = fight
 	_arena_seed = randi()
@@ -772,6 +777,8 @@ func _start_battle(spec: Dictionary) -> void:
 		# Las mejoras de campo que eligio en la oleada (OBS-057).
 		if spec["mode"] == "exterminio":
 			_field.apply(player_build, _profile.exterminio_field)
+		elif spec["mode"] == "arena":
+			_field.apply(player_build, _profile.arena_field)
 	var enemy_build := _library.make(
 		spec["enemy"],
 		_catalog,
@@ -802,7 +809,7 @@ func _start_battle(spec: Dictionary) -> void:
 			enemy_build, spec["fight"], _profile, armory, _field, seed_value
 		)
 	_battle.terrain = _terrain if _terrain.enabled_for(spec["mode"]) else null
-	_battle.keep_buffs = spec["mode"] == "exterminio"
+	_battle.keep_buffs = spec["mode"] == "exterminio" or spec.has("robot_tag")
 	_battle.states = _states if _states.enabled_for(spec["mode"]) else null
 	_battle.ultimate = _ultimate if _ultimate.enabled_for(spec["mode"]) else null
 	_battle.start(
@@ -819,10 +826,15 @@ func _start_battle(spec: Dictionary) -> void:
 
 ## Elige una mejora de campo entre robots (OBS-057) y sale el siguiente.
 func _on_field_pick(index: int) -> void:
+	var arena: bool = _spec["mode"] == "arena"
 	if index >= 0 and index < _offers.size():
-		_profile.exterminio_field.append(_offers[index])
+		var picks := _profile.arena_field if arena else _profile.exterminio_field
+		picks.append(_offers[index])
 	_offers.clear()
-	_on_exterminio_pressed()
+	if arena:
+		_on_arena_pressed()
+	else:
+		_on_exterminio_pressed()
 
 
 func _on_rematch() -> void:
@@ -857,7 +869,7 @@ func _on_battle_finished(player_won: bool) -> void:
 	_offers.clear()
 	if going:
 		var offer_luck := RandomNumberGenerator.new()
-		offer_luck.seed = hash([int(_spec.get("seed", 0)), _profile.exterminio_robot, "elige"])
+		offer_luck.seed = hash([int(_spec.get("seed", 0)), int(result.get("robot", 0)), "elige"])
 		_offers = _field.draw(_player_build(), _field.choices, offer_luck, true)
 	_save()
 	if _persist:
@@ -894,10 +906,11 @@ func _on_battle_finished(player_won: bool) -> void:
 		_show_choices(_notes.arena(result, _profile, _player_level(), _last_result), prize)
 	elif _spec["mode"] == "exterminio":
 		_show_choices(_notes.exterminio(result, _player_level()), prize)
-		var labels: Array[String] = []
-		for pick in _offers:
-			labels.append(_notes.field_label(pick, _player_build()))
-		_battle.set_result_picks(labels)
+	# Entre robots (OBS-057, OBS-058): una de tres mejoras de campo.
+	var labels: Array[String] = []
+	for pick in _offers:
+		labels.append(_notes.field_label(pick, _player_build()))
+	_battle.set_result_picks(labels)
 	_battle.set_result_note(_last_result)
 
 

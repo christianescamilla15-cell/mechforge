@@ -94,7 +94,9 @@ func test_la_racha_completa_se_cobra_sola() -> void:
 	var expected := 0
 	for step in 20:
 		expected += roundi(960 * _campaign.streak_prize(step))
-		out = _campaign.finish_fight(profile, _shop, "arena", true)
+		# Los ultimos son de varios robots seguidos (OBS-058).
+		for robot in _campaign.streak_robots(step):
+			out = _campaign.finish_fight(profile, _shop, "arena", true)
 		if step < 19:
 			assert_true(out["more"], "tras el %d se puede seguir" % (step + 1))
 	assert_false(out["more"], "no hay combate 21")
@@ -226,3 +228,56 @@ func test_el_plus_suma_vida_y_dano_al_rival() -> void:
 		var fight := _campaign.arena_streak_fight(zone, _library, 7, _rules, 1.0, {}, step)
 		assert_true(float(fight["edge"]) >= last, "paso %d: nunca menos plus" % step)
 		last = float(fight["edge"])
+
+
+# --- Los ultimos combates, de tres robots seguidos (OBS-058) ---------------
+
+
+func test_los_ultimos_son_de_tres_robots() -> void:
+	for step in 15:
+		assert_eq(_campaign.streak_robots(step), 1, "combate %d" % (step + 1))
+	for step in range(15, 20):
+		assert_eq(_campaign.streak_robots(step), 3, "combate %d" % (step + 1))
+
+
+## Entre robots el bote sigue en juego y no entra el premio; al tumbar al
+## ultimo, entra y toca el combate siguiente.
+func test_entre_robots_el_bote_sigue_en_juego() -> void:
+	var profile := _profile()
+	profile.arena_streak = 15
+	profile.arena_pot = 5000
+	var first := _campaign.finish_fight(profile, _shop, "arena", true)
+	assert_true(bool(first["next_robot"]))
+	assert_eq([profile.arena_robot, profile.arena_pot, profile.arena_streak], [1, 5000, 15])
+	assert_true(profile.arena_live, "salir ahora es abandonar")
+	assert_eq(int(first["prize"]), 0)
+	_campaign.finish_fight(profile, _shop, "arena", true)
+	var last := _campaign.finish_fight(profile, _shop, "arena", true)
+	assert_false(bool(last["next_robot"]))
+	assert_eq([profile.arena_robot, profile.arena_streak], [0, 16])
+	assert_gt(profile.arena_pot, 5000, "entra el premio")
+
+
+func test_caer_en_el_segundo_pierde_el_bote() -> void:
+	var profile := _profile()
+	profile.arena_streak = 17
+	profile.arena_robot = 1
+	profile.arena_pot = 9000
+	profile.arena_field.append({"id": "plates", "slot": ""})
+	var out := _campaign.finish_fight(profile, _shop, "arena", false)
+	assert_eq(int(out["lost"]), 9000)
+	assert_eq([profile.arena_robot, profile.arena_pot, profile.arena_streak], [0, 0, 0])
+	assert_eq(profile.arena_field.size(), 0)
+
+
+## Salir o cerrar el juego entre robots es abandonar: se pierde el bote.
+func test_salir_entre_robots_pierde_el_bote() -> void:
+	var profile := _profile()
+	profile.arena_streak = 15
+	profile.arena_pot = 7000
+	_campaign.finish_fight(profile, _shop, "arena", true)
+	var copy := PlayerProfile.from_dict(profile.to_dict())
+	assert_eq(copy.arena_robot, 1, "se guarda")
+	var resumed := _campaign.resume_arena(copy)
+	assert_eq(int(resumed["lost"]), 7000)
+	assert_eq([copy.arena_robot, copy.arena_pot], [0, 0])

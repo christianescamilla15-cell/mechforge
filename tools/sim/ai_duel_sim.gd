@@ -17,6 +17,9 @@ extends SceneTree
 ##     --terrain               con el terreno de la arena (OBS-055)
 ##     --states                con los estados (OBS-055)
 ##     --ult                   con la definitiva (OBS-055)
+##     --notemper              sin el caracter de cada robot (todos juegan igual)
+##     --nocrits --noimpact --nodrops   apaga criticos, impacto o bonificaciones
+##     --describe              imprime lo que lleva cada robot y sale
 ## Ademas da, por robot, cuanto gana (para ver si un elemento sale ganando).
 
 var _rules := RulesConfig.new()
@@ -27,9 +30,9 @@ func _initialize() -> void:
 	for arg in OS.get_cmdline_user_args():
 		var parts := arg.trim_prefix("--").split("=", true, 1)
 		args[parts[0]] = parts[1] if parts.size() > 1 else "true"
-	_rules.crits_enabled = true
-	_rules.impact_enabled = true
-	_rules.drops_enabled = true
+	_rules.crits_enabled = not args.has("nocrits")
+	_rules.impact_enabled = not args.has("noimpact")
+	_rules.drops_enabled = not args.has("nodrops")
 	var catalog := Catalog.load_file("res://data/catalog.json")
 	var library := BuildLibrary.load_file("res://data/builds.json")
 	var chassis := ChassisLibrary.load_file("res://data/chassis.json")
@@ -58,6 +61,19 @@ func _initialize() -> void:
 	if args.has("ult"):
 		ultimate = UltimateConfig.load_file("res://data/ultimate.json")
 	var by_mech := {}
+	# --describe: lo que lleva cada robot (para buscar desequilibrios).
+	if args.has("describe"):
+		for id in ids:
+			var build := library.make(id, catalog, _rules, tier, level, chassis)
+			print(id, " ", build.summary(_rules))
+			for def in build.sides + build.tops + [build.chest, build.drone]:
+				if def != null and def.deals_damage():
+					var row := [def.id, def.dmg_min, def.dmg_max, def.heat_dmg, def.energy_dmg]
+					row += [def.heat_cost, def.energy_cost, def.range_min, def.range_max, def.crit]
+					var text := "    %s dano %d-%d calor %d drena %d | cuesta calor %d energia %d"
+					print(text % row.slice(0, 7), " | alcance %d-%d | critico %d" % row.slice(7))
+		quit(0)
+		return
 	# Cada emparejamiento: el robot del lado 0, el del lado 1 y quien lleva
 	# el plus (-1 nadie).
 	var pairings: Array[Array] = []
@@ -89,6 +105,8 @@ func _initialize() -> void:
 				for side in 2:
 					var mine := side == a_side
 					var temper := tempers.config(library.temper_of(ids[pairing[side]]))
+					if args.has("notemper"):
+						temper = null
 					ais[side] = _ai(
 						a_level if mine else b_level,
 						seed_value + side,

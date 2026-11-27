@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "comment": "De donde sale la fuerza de los rivales de la racha y del Exterminio (OBS-057, core/rival_gear.gd). En vez de un plus de vida y dano, el rival lleva una parte (de 0 a 1) de las mismas mejoras que el jugador: su armeria (nunca menos que la del Orden de la zona), la media de sus aspectos en todas sus piezas, el rango mas alto de cada prototipo, el rango de sus armas de arena (sus armas de brazo y hombro pasan a ser de arena) y los primeros nodos de su arbol. streak: la parte de cada combate de la racha, desde el primero. exterminio: la de la primera oleada (start), lo que sube por oleada (per_wave) y su tope (max).",
-  "streak": [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 1, 1, 1, 1, 1],
+  "comment": "De donde sale la fuerza de los rivales de la racha y del Exterminio (OBS-057, core/rival_gear.gd). En vez de un plus de vida y dano, el rival lleva una parte (de 0 a 1) de las mismas mejoras que el jugador: su armeria (nunca menos que la del Orden de la zona), la media de sus aspectos en todas sus piezas, el rango mas alto de cada prototipo, el rango de sus armas de arena (sus armas de brazo y hombro pasan a ser de arena) y los primeros nodos de su arbol. streak: la parte de cada combate de la racha, desde el primero; en los combates 16 a 20, que son de tres robots seguidos (OBS-058), cada uno lleva menos. exterminio: la de la primera oleada (start), lo que sube por oleada (per_wave) y su tope (max).",
+  "streak": [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 0.8, 0.83, 0.86, 0.89, 0.93],
   "exterminio": {"start": 0.5, "per_wave": 0.03, "max": 1.0}
 }

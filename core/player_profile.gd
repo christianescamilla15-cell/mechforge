@@ -54,6 +54,10 @@ var skill_bonus: int = 0
 var arena_pot: int = 0
 var arena_streak: int = 0
 var arena_live: bool = false
+## Robots ya tumbados del combate de la racha en curso (OBS-058: los
+## ultimos son tres seguidos) y las mejoras de campo que eligio en el.
+var arena_robot: int = 0
+var arena_field: Array[Dictionary] = []
 ## El Exterminio (OBS-053): oleadas ganadas en la tanda en marcha, el record
 ## (la mas alta a la que se llego; no se pierde con la partida) y si hay un
 ## combate a medias (cerrar el juego en mitad cuenta como perder).
@@ -246,6 +250,8 @@ func end_run() -> void:
 	arena_pot = 0
 	arena_streak = 0
 	arena_live = false
+	arena_robot = 0
+	arena_field.clear()
 	exterminio_wave = 0
 	exterminio_live = false
 	exterminio_robot = 0
@@ -515,6 +521,8 @@ func to_dict() -> Dictionary:
 		"unique_cores": unique_cores,
 		"skill_bonus": skill_bonus,
 		"arena_pot": arena_pot,
+		"arena_robot": arena_robot,
+		"arena_field": arena_field.duplicate(true),
 		"arena_streak": arena_streak,
 		"arena_live": arena_live,
 		"exterminio_wave": exterminio_wave,
@@ -564,6 +572,10 @@ static func from_dict(data: Dictionary) -> PlayerProfile:
 	profile.exterminio_best = maxi(0, int(data.get("exterminio_best", 0)))
 	profile.exterminio_live = bool(data.get("exterminio_live", false))
 	profile.exterminio_robot = maxi(0, int(data.get("exterminio_robot", 0)))
+	profile.arena_robot = maxi(0, int(data.get("arena_robot", 0)))
+	for pick: Variant in data.get("arena_field", []):
+		if pick is Dictionary:
+			profile.arena_field.append(pick)
 	for pick: Variant in data.get("exterminio_field", []):
 		if pick is Dictionary:
 			profile.exterminio_field.append(pick)

@@ -137,7 +137,14 @@ func arena_state(
 	state["zone_line"] = Txt.t("mission_zone", [zone + 1, campaign.zone_name(zone)])
 	state["title"] = Txt.t("menu_arena")
 	var step := profile.arena_streak
-	var fight := campaign.arena_streak_fight(zone, library, seed_value, rules, power, loadout, step)
+	var robot := profile.arena_robot
+	var fight := campaign.arena_streak_fight(
+		zone, library, seed_value, rules, power, loadout, step, robot
+	)
+	# Los combates de tres robots seguidos (OBS-058): cual toca.
+	if campaign.streak_robots(step) > 1:
+		var robots := campaign.streak_robots(step)
+		state["title"] = Txt.t("arena_robots_title", [step + 1, robot + 1, robots])
 	var rivals: Array[Dictionary] = [rival(fight, campaign.tier_of(zone))]
 	_outfit(rivals[0], fight, profile, zone, seed_value)
 	state["rivals"] = rivals

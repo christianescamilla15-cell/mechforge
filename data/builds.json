@@ -129,8 +129,8 @@
         "torso": "torso_fragua",
         "legs": "piernas_pisabrasas",
         "sides": [
-          "corto_balas_ter",
-          "medio_balas_ter"
+          "hoja_balas_ter",
+          "corto_balas_ter"
         ],
         "tops": [
           "bateria_balas_ter"
@@ -159,8 +159,8 @@
         "torso": "torso_fragua",
         "legs": "piernas_pisabrasas",
         "sides": [
-          "corto_canon_ter",
-          "medio_canon_ter"
+          "hoja_blaster_ter",
+          "corto_canon_ter"
         ],
         "tops": [
           "bateria_canon_ter"
@@ -189,8 +189,8 @@
         "torso": "torso_fragua",
         "legs": "piernas_pisabrasas",
         "sides": [
-          "corto_blaster_ter",
-          "medio_blaster_ter"
+          "hoja_blaster_ter",
+          "corto_blaster_ter"
         ],
         "tops": [
           "bateria_blaster_ter"
@@ -219,8 +219,8 @@
         "torso": "torso_fragua",
         "legs": "piernas_pisabrasas",
         "sides": [
-          "corto_laser_ter",
-          "medio_laser_ter"
+          "hoja_laser_ter",
+          "corto_laser_ter"
         ],
         "tops": [
           "bateria_laser_ter"
@@ -250,7 +250,7 @@
         "torso": "torso_dinamo",
         "legs": "piernas_zancas_arco",
         "sides": [
-          "medio_balas_ion",
+          "hoja_balas_ion",
           "corto_balas_ion"
         ],
         "tops": [
@@ -281,7 +281,7 @@
         "torso": "torso_dinamo",
         "legs": "piernas_zancas_arco",
         "sides": [
-          "medio_canon_ion",
+          "hoja_blaster_ion",
           "corto_canon_ion"
         ],
         "tops": [
@@ -312,7 +312,7 @@
         "torso": "torso_dinamo",
         "legs": "piernas_zancas_arco",
         "sides": [
-          "medio_blaster_ion",
+          "hoja_blaster_ion",
           "corto_blaster_ion"
         ],
         "tops": [
@@ -343,7 +343,7 @@
         "torso": "torso_dinamo",
         "legs": "piernas_zancas_arco",
         "sides": [
-          "medio_laser_ion",
+          "hoja_laser_ion",
           "corto_laser_ion"
         ],
         "tops": [

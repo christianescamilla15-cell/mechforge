@@ -48,11 +48,14 @@ func _rival() -> MechBuild:
 func test_los_datos() -> void:
 	assert_eq(_gear.errors, [] as Array[String])
 	assert_eq(_field.errors, [] as Array[String])
-	var before := -1.0
-	for step in 20:
-		assert_gte(_gear.share_for_streak(step), before, "la parte crece en la racha")
-		before = _gear.share_for_streak(step)
-	assert_almost_eq(_gear.share_for_streak(19), 1.0, 0.0001)
+	# La parte crece en la racha y, en los combates de tres robots seguidos
+	# (OBS-058), vuelve a crecer desde mas abajo.
+	for start: int in [0, 15]:
+		var before := -1.0
+		for step in range(start, 15 if start == 0 else 20):
+			assert_gte(_gear.share_for_streak(step), before, "combate %d" % (step + 1))
+			before = _gear.share_for_streak(step)
+	assert_lt(_gear.share_for_streak(15), _gear.share_for_streak(14))
 	assert_lte(_gear.share_for_wave(500), _gear.wave_max)
 	assert_eq(_field.for_wave(0), 0)
 	assert_gt(_field.for_wave(30), _field.for_wave(10), "y las de campo, sin final")

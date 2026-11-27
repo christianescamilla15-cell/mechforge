@@ -203,28 +203,40 @@ func _initialize() -> void:
 	var rows: Array[Dictionary] = []
 	# --exterminio: oleadas de robots seguidos sin reparar (OBS-055), con
 	# --only=N la oleada N (desde 0; sirve pasada la 20).
+	var context := {
+		"zone": zone,
+		"library": library,
+		"catalog": catalog,
+		"chassis": chassis,
+		"campaign": campaign,
+		"shop": shop,
+		"skills": skills,
+		"tempers": tempers,
+		"power": power,
+		"gear": gear,
+		"profile": profile,
+		"rival_gear": rival_gear if use_gear else null,
+		"field": field,
+	}
+	var mine := [build, titan_build]
 	if args.has("exterminio"):
-		var context := {
-			"zone": zone,
-			"library": library,
-			"catalog": catalog,
-			"chassis": chassis,
-			"campaign": campaign,
-			"shop": shop,
-			"skills": skills,
-			"tempers": tempers,
-			"power": power,
-			"gear": gear,
-			"profile": profile,
-			"rival_gear": rival_gear if use_gear else null,
-			"field": field,
-		}
-		var mine := [build, titan_build]
 		_exterminio(context, mine, [extra, titan_extra], maxi(only, 0), rivals, args)
 		quit(0)
 		return
+	var reached := 1.0
 	for step in campaign.streak_fights():
 		if only >= 0 and step != only:
+			continue
+		# Los combates de varios robots seguidos (OBS-058), como una oleada.
+		if campaign.streak_robots(step) > 1:
+			var whole := _exterminio(context, mine, [extra, titan_extra], step, rivals, args, true)
+			reached *= whole
+			print(
+				(
+					"  combate %d: ganas %3.0f %%  (de %d robots seguidos)  llegas %4.1f %%"
+					% [step + 1, 100.0 * whole, campaign.streak_robots(step), 100.0 * reached]
+				)
+			)
 			continue
 		var wins := 0
 		var total := 0
@@ -269,10 +281,10 @@ func _initialize() -> void:
 			var temper := tempers.config(library.temper_of(fight["enemy"]))
 			seen["%s %d" % [Txt.TIER_NAMES[fight["tier"]], fight["level"]]] = true
 			if args.has("trace"):
-				var mine := titan_build if step >= TITAN_STEP else build
+				var traced := titan_build if step >= TITAN_STEP else build
 				var player := _ai(player_ai, 1 + r * 31, null, args, "player")
 				var foe := _ai(rival_ai, 2 + r * 31, temper, args, "rival")
-				_trace(mine, rival, player, foe, int(args.get("seed", "7")))
+				_trace(traced, rival, player, foe, int(args.get("seed", "7")))
 				quit(0)
 				return
 			if args.has("bench"):
@@ -344,14 +356,20 @@ func _initialize() -> void:
 ## seguidos, el del jugador sin reparar entre uno y otro. Da cuantas
 ## oleadas gana entera, y hasta que robot llega de media.
 func _exterminio(
-	context: Dictionary, mine: Array, extras: Array, wave: int, rivals: int, args: Dictionary
-) -> void:
+	context: Dictionary,
+	mine: Array,
+	extras: Array,
+	wave: int,
+	rivals: int,
+	args: Dictionary,
+	streak: bool = false
+) -> float:
 	var campaign: Campaign = context["campaign"]
 	var library: BuildLibrary = context["library"]
 	var titan := wave >= TITAN_STEP
 	var player_build: MechBuild = mine[1] if titan else mine[0]
 	var more: float = extras[1] if titan else extras[0]
-	var robots := campaign.exterminio_robots()
+	var robots := campaign.streak_robots(wave) if streak else campaign.exterminio_robots()
 	var whole := 0
 	var beaten := 0
 	var health := 0.0
@@ -371,6 +389,17 @@ func _exterminio(
 				wave,
 				robot
 			)
+			if streak:
+				fight = campaign.arena_streak_fight(
+					context["zone"],
+					library,
+					seed_value + robot * 101,
+					_rules,
+					context["power"],
+					context["gear"],
+					wave,
+					robot
+				)
 			var rival := library.make(
 				fight["enemy"],
 				context["catalog"],
@@ -391,7 +420,9 @@ func _exterminio(
 			var rival_gear: RivalGear = context["rival_gear"]
 			if rival_gear != null:
 				var zone_armory: int = campaign.enemy_armory(context["zone"])
-				var share := rival_gear.share_for_wave(wave)
+				var share := (
+					rival_gear.share_for_streak(wave) if streak else rival_gear.share_for_wave(wave)
+				)
 				var trained := int(fight.get("skills", 0))
 				var rival_kit := rival_gear.kit(context["profile"], share, zone_armory, trained)
 				rival_gear.dress(rival, rival_kit, Campaign.kits_of(fight))
@@ -401,7 +432,8 @@ func _exterminio(
 			if field != null:
 				var luck := RandomNumberGenerator.new()
 				luck.seed = seed_value + robot * 101 + 17
-				var count := int(args.get("rival-field", str(field.for_wave(wave))))
+				var planned := field.for_streak(wave) if streak else field.for_wave(wave)
+				var count := int(args.get("rival-field", str(planned)))
 				field.apply(rival, field.draw(rival, count, luck))
 			var tempers: TemperLibrary = context["tempers"]
 			var temper := tempers.config(library.temper_of(fight["enemy"]))
@@ -445,6 +477,8 @@ func _exterminio(
 			health += float(carry.health) / carry.max_health
 		beaten += down
 		whole += 1 if down == robots else 0
+	if streak:
+		return float(whole) / rivals
 	print(
 		(
 			"  oleada %d: la gana entera %3.0f %%, tumba %.1f de %d, vida tras cada uno %.0f %%"
@@ -457,6 +491,7 @@ func _exterminio(
 			]
 		)
 	)
+	return float(whole) / rivals
 
 
 ## El kit del rival en una linea (OBS-057).

@@ -45,6 +45,15 @@ func arena(result: Dictionary, profile: PlayerProfile, level: int, note: String)
 	var lost := int(result.get("lost", 0))
 	var again := Txt.t("arena_again")
 	var back := Txt.t("menu")
+	if bool(result.get("next_robot", false)):
+		# Quedan robots en este combate (OBS-058): el bote sigue en juego.
+		var robot := int(result["robot"]) + 1
+		var robots := int(result["robots"])
+		note = Txt.t("arena_robot_won", [robot, robots, HangarProps.thousands(result["pot"])])
+		note += String.chr(10) + Txt.t("arena_carry")
+		again = Txt.t("exterminio_robot_next", [robot + 1, robots])
+		back = Txt.t("arena_leave")
+		return {"note": note, "again": again, "back": back}
 	if more:
 		var pot := int(result["pot"])
 		var mult := campaign.reward_mult(profile.zone)
