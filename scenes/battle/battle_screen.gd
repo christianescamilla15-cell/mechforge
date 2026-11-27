@@ -8,6 +8,8 @@ signal event_played(entry: Dictionary)
 signal finished(player_won: bool)
 signal rematch_requested
 signal menu_requested
+## Eligio una de las mejoras de campo del panel (OBS-057).
+signal pick_chosen(index: int)
 ## Se mostro la prevision de una accion (lo usa la prueba en vivo).
 signal preview_shown
 
@@ -92,6 +94,8 @@ var _announced: int = -1
 var _hud_turn: int = -1
 var _hud_actions: int = 0
 var _result: PanelContainer
+## Las mejoras de campo para elegir (set_result_picks).
+var _picks: VBoxContainer
 var _result_label: Label
 var _result_note: Label
 var _rematch_button: Button
@@ -668,6 +672,22 @@ func set_result_choices(again: String, show_again: bool, back: String) -> void:
 		_menu_button.text = back
 
 
+## Las mejoras de campo para elegir entre robots del Exterminio (OBS-057):
+## un boton por cada una, y mientras estan, no hay tecla de revancha.
+func set_result_picks(labels: Array[String]) -> void:
+	for child in _picks.get_children():
+		child.queue_free()
+	for i in labels.size():
+		var button := Button.new()
+		button.text = labels[i]
+		button.custom_minimum_size = Vector2(420, 40)
+		button.pressed.connect(func() -> void: pick_chosen.emit(i))
+		_picks.add_child(button)
+	_picks.visible = not labels.is_empty()
+	if _rematch_button != null and not labels.is_empty():
+		_rematch_button.visible = false
+
+
 func set_result_note(text: String) -> void:
 	if _surrendered:
 		text = Txt.t("surrendered") + (String.chr(10) + text if text != "" else "")
@@ -733,6 +753,10 @@ func _build_ui() -> void:
 	_result_label = _label(result_box, 44)
 	_result_note = _label(result_box, 18)
 	_result_note.hide()
+	_picks = VBoxContainer.new()
+	_picks.add_theme_constant_override("separation", 8)
+	_picks.hide()
+	result_box.add_child(_picks)
 	var buttons := HBoxContainer.new()
 	buttons.alignment = BoxContainer.ALIGNMENT_CENTER
 	buttons.add_theme_constant_override("separation", 12)

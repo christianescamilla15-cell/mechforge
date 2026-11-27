@@ -25,6 +25,18 @@ func milestone(prize: Dictionary) -> String:
 	return out
 
 
+## Una mejora de campo en palabras (OBS-057): que es y, si es de un arma,
+## de cual de `build`.
+func field_label(pick: Dictionary, build: MechBuild) -> String:
+	var kind := str(pick.get("id", ""))
+	var slot := str(pick.get("slot", ""))
+	if slot == "":
+		return Txt.t("field_" + kind)
+	var def := FieldUpgrades.weapon_at(build, slot)
+	var weapon := str(def.display_name) if def != null else slot
+	return Txt.t("field_" + kind, [weapon])
+
+
 ## La racha de la arena tras un combate (OBS-049): lo que paso con el bote
 ## y las dos teclas, otro combate (con lo que pagaria) o cobrar.
 func arena(result: Dictionary, profile: PlayerProfile, level: int, note: String) -> Dictionary:
@@ -100,3 +112,36 @@ func exterminio(result: Dictionary, level: int) -> Dictionary:
 	if bool(result.get("level_up", false)):
 		note += String.chr(10) + Txt.t("result_level_up", [level])
 	return {"note": note, "again": again, "back": back}
+
+
+## Lo que se apunta de un combate (OBS-051; salio de MainScreen).
+static func log_entry(
+	battle: BattleScreen, spec: Dictionary, player_won: bool, result: Dictionary
+) -> Dictionary:
+	var me: BattleMech = battle.engine.mechs[battle.player]
+	var foe: BattleMech = battle.engine.mechs[1 - battle.player]
+	return {
+		"when": Time.get_datetime_string_from_system(),
+		"mode": spec["mode"],
+		"zone": int(spec.get("zone", -1)),
+		"step": int(result.get("step", -1)),
+		"enemy": spec["enemy"],
+		"tier": int(spec["enemy_tier"]),
+		"level": int(spec["enemy_level"]),
+		"edge": float(spec.get("enemy_edge", 0.0)),
+		"extra": snappedf(float(spec.get("enemy_extra", 0.0)), 0.001),
+		"skills": int(spec.get("enemy_skills", 0)),
+		"difficulty": Campaign.DIFFICULTIES[spec["difficulty"]],
+		"won": player_won,
+		"turns": battle.engine.turn_number,
+		"hp": snappedf(float(me.health) / maxf(1.0, me.max_health), 0.01),
+		"enemy_hp": snappedf(float(foe.health) / maxf(1.0, foe.max_health), 0.01),
+		"gold": int(result.get("gold", 0)),
+		"xp": int(result.get("xp", 0)),
+		"points": int(result.get("points", 0)),
+		"pot": int(result.get("pot", 0)),
+		"robot": int(result.get("robot", -1)),
+		# De donde salio su fuerza (OBS-057): la parte del kit y sus mejoras de campo.
+		"kit": float(spec.get("rival_outfit", {}).get("kit", {}).get("share", 0.0)),
+		"field": (spec.get("rival_outfit", {}).get("field", []) as Array).size(),
+	}

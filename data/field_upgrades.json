@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "comment": "Mejoras de campo (OBS-057, core/field_upgrades.gd): mejoras de blindaje, escudo o armas que se ganan dentro del juego. En el Exterminio, entre un robot y otro de la oleada el jugador elige 1 de 3 (choices) para lo que queda de oleada; los rivales de lo alto de la racha y del Exterminio traen las suyas, que se anuncian. Se acumulan (la misma puede salir varias veces). kinds: weight (probabilidad de salir), value (lo que da) y on (body: el robot; weapon: un arma al azar de brazo, hombro o pecho). plates: vida de mas (fraccion). shield: escudos de energia de mas para usar. tuned: dano de mas de esa arma (fraccion). striker: critico de mas de esa arma. ammo: cargas de estado de mas por golpe de esa arma. rivals: cuantas trae cada rival: en la racha, por combate (desde 0); en el Exterminio, a partir de la oleada from (desde 0), una mas cada every oleadas.",
+  "choices": 3,
+  "kinds": {
+    "plates": {"weight": 1, "value": 0.15, "on": "body"},
+    "shield": {"weight": 1, "value": 1, "on": "body"},
+    "tuned": {"weight": 1, "value": 0.15, "on": "weapon"},
+    "striker": {"weight": 1, "value": 0.1, "on": "weapon"},
+    "ammo": {"weight": 1, "value": 1, "on": "weapon"}
+  },
+  "rivals": {
+    "streak": [0, 0, 0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 4, 4, 5, 6, 6, 7, 8],
+    "exterminio": {"from": 3, "every": 2}
+  }
+}

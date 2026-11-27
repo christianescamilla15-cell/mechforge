@@ -36,6 +36,9 @@ extends SceneTree
 ##     --noterrain        sin el terreno de la arena (OBS-055)
 ##     --nostates         sin los estados (OBS-055)
 ##     --noult            sin la definitiva (OBS-055)
+##     --plus             el rival con el plus de vida y dano de antes (sin kit)
+##     --gear=<ruta>      otro rival_gear.json
+##     --rival-field=N    cada rival trae N mejoras de campo; --nofield, ninguna
 ##     --exterminio       con --only=N: la oleada N del Exterminio, sus robots
 ##                        seguidos sin reparar (OBS-055)
 
@@ -105,6 +108,24 @@ func _initialize() -> void:
 		_ultimate = UltimateConfig.load_file("res://data/ultimate.json")
 	if args.has("noprotos"):
 		brief.prototypes = null
+	# De donde sale la fuerza del rival (OBS-057): una parte de sus mejoras.
+	# Con --plus, el plus de vida y dano de antes (y A6).
+	var rival_gear := RivalGear.load_file(str(args.get("gear", "res://data/rival_gear.json")))
+	rival_gear.rules = _rules
+	rival_gear.catalog = catalog
+	rival_gear.shop = shop
+	rival_gear.aspects = brief.aspects
+	rival_gear.prototypes = PrototypeLibrary.load_file("res://data/prototypes.json")
+	rival_gear.gear = brief.gear
+	rival_gear.tree = tree
+	rival_gear.skill_tree = skills
+	var use_gear := not args.has("plus")
+	# Mejoras de campo (OBS-057): las que traen los rivales y, en el
+	# Exterminio, la que elige el jugador entre robots. --rival-field=N fija
+	# cuantas trae cada rival; --nofield las quita.
+	var field := FieldUpgrades.load_file("res://data/field_upgrades.json")
+	if args.has("nofield"):
+		field = null
 	if not campaign.errors.is_empty():
 		print("ERRORES en campaign.json: ", campaign.errors)
 		quit(1)
@@ -194,6 +215,9 @@ func _initialize() -> void:
 			"tempers": tempers,
 			"power": power,
 			"gear": gear,
+			"profile": profile,
+			"rival_gear": rival_gear if use_gear else null,
+			"field": field,
 		}
 		var mine := [build, titan_build]
 		_exterminio(context, mine, [extra, titan_extra], maxi(only, 0), rivals, args)
@@ -227,6 +251,18 @@ func _initialize() -> void:
 			rival.upgrades = campaign.fight_upgrades(zone, shop, edge, more)
 			rival.skills = skills.effects_for(skills.spread(int(fight.get("skills", 0))))
 			rival.skills.add(Campaign.kits_of(fight))
+			if use_gear:
+				var part := rival_gear.share_for_streak(step)
+				var trained := int(fight.get("skills", 0))
+				var rival_kit := rival_gear.kit(profile, part, campaign.enemy_armory(zone), trained)
+				rival_gear.dress(rival, rival_kit, Campaign.kits_of(fight))
+				if r == 0:
+					print("  kit del combate %d: %s" % [step + 1, _kit_text(rival_kit)])
+			if field != null:
+				var luck := RandomNumberGenerator.new()
+				luck.seed = seed_value + 17
+				var count := int(args.get("rival-field", str(field.for_streak(step))))
+				field.apply(rival, field.draw(rival, count, luck))
 			var rival_ai: BattleAI.Difficulty = BattleAI.Difficulty[str(
 				args.get("rival", fight["difficulty"])
 			)]
@@ -323,6 +359,7 @@ func _exterminio(
 		var seed_value := 1000 + r * 7919
 		var carry: BattleMech = null
 		var down := 0
+		var picks: Array[Dictionary] = []
 		for robot in robots:
 			var fight := campaign.exterminio_fight(
 				context["zone"],
@@ -351,12 +388,29 @@ func _exterminio(
 			rival.skills = skills.effects_for(skills.spread(int(fight.get("skills", 0))))
 			rival.skills.add(Campaign.kits_of(fight))
 			rival.body = Campaign.body_of(fight)
+			var rival_gear: RivalGear = context["rival_gear"]
+			if rival_gear != null:
+				var zone_armory: int = campaign.enemy_armory(context["zone"])
+				var share := rival_gear.share_for_wave(wave)
+				var trained := int(fight.get("skills", 0))
+				var rival_kit := rival_gear.kit(context["profile"], share, zone_armory, trained)
+				rival_gear.dress(rival, rival_kit, Campaign.kits_of(fight))
+				if r == 0 and robot == 0:
+					print("  kit de la oleada %d: %s" % [wave + 1, _kit_text(rival_kit)])
+			var field: FieldUpgrades = context["field"]
+			if field != null:
+				var luck := RandomNumberGenerator.new()
+				luck.seed = seed_value + robot * 101 + 17
+				var count := int(args.get("rival-field", str(field.for_wave(wave))))
+				field.apply(rival, field.draw(rival, count, luck))
 			var tempers: TemperLibrary = context["tempers"]
 			var temper := tempers.config(library.temper_of(fight["enemy"]))
 			var level: BattleAI.Difficulty = BattleAI.Difficulty[str(fight["difficulty"])]
-			var engine := BattleEngine.new(
-				_rules, player_build, rival, seed_value + robot, robot % 2
-			)
+			var fighter: MechBuild = player_build
+			if not picks.is_empty():
+				fighter = player_build.duplicate()
+				(context["field"] as FieldUpgrades).apply(fighter, picks)
+			var engine := BattleEngine.new(_rules, fighter, rival, seed_value + robot, robot % 2)
 			if carry != null:
 				engine.mechs[0].carry_from(carry)
 			engine.mechs[0].keep_buffs = true
@@ -382,6 +436,12 @@ func _exterminio(
 				break
 			down += 1
 			carry = engine.mechs[0].clone()
+			# Entre robots elige una mejora de campo (aqui, la primera de tres).
+			var offer: FieldUpgrades = context["field"]
+			if offer != null and robot + 1 < robots:
+				var choice := RandomNumberGenerator.new()
+				choice.seed = seed_value + robot * 7 + 3
+				picks.append(offer.draw(player_build, offer.choices, choice)[0])
 			health += float(carry.health) / carry.max_health
 		beaten += down
 		whole += 1 if down == robots else 0
@@ -396,6 +456,27 @@ func _exterminio(
 				100.0 * health / maxf(1.0, float(beaten))
 			]
 		)
+	)
+
+
+## El kit del rival en una linea (OBS-057).
+static func _kit_text(rival_kit: Dictionary) -> String:
+	var armory: Dictionary = rival_kit["armory"]
+	var mean := 0.0
+	for level: Variant in armory.values():
+		mean += float(level)
+	mean /= maxf(1.0, armory.size())
+	return (
+		"parte %.2f, armeria %.1f, aspectos %d, prototipos %s, arena %d, arbol %d, habilidades %d"
+		% [
+			float(rival_kit["share"]),
+			mean,
+			int(rival_kit["aspects"]),
+			rival_kit["prototypes"],
+			int(rival_kit["arena"]),
+			(rival_kit["tree"] as Array).size(),
+			(rival_kit["skills"] as Array).size()
+		]
 	)
 
 

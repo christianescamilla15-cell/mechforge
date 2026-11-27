@@ -520,6 +520,7 @@ func resume_exterminio(profile: PlayerProfile) -> int:
 	profile.exterminio_live = false
 	profile.exterminio_wave = 0
 	profile.exterminio_robot = 0
+	profile.exterminio_field.clear()
 	profile.losses += 1
 	return wave
 
@@ -566,6 +567,7 @@ func _settle_exterminio(
 			out["best"] = profile.exterminio_best
 			return out
 		profile.exterminio_robot = 0
+		profile.exterminio_field.clear()
 		profile.exterminio_wave = wave + 1
 		out["record"] = profile.exterminio_wave > profile.exterminio_best
 		profile.exterminio_best = maxi(profile.exterminio_best, profile.exterminio_wave)
@@ -580,6 +582,7 @@ func _settle_exterminio(
 		out["gold"] = profile.earn(shop, "arena_loss", mult)
 		profile.exterminio_wave = 0
 		profile.exterminio_robot = 0
+		profile.exterminio_field.clear()
 	out["best"] = profile.exterminio_best
 	return out
 

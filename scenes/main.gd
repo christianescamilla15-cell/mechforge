@@ -85,6 +85,11 @@ var _terrain: TerrainConfig
 var _states: StateConfig
 ## El medidor de definitiva (OBS-055).
 var _ultimate: UltimateConfig
+## De donde sale la fuerza del rival (OBS-057): su kit y sus mejoras de campo.
+var _rival_gear: RivalGear
+var _field: FieldUpgrades
+## Las tres mejoras de campo que se ofrecen entre robots del Exterminio.
+var _offers: Array[Dictionary] = []
 var _bench := WorkshopBrief.new()
 ## Lo que dice el panel al acabar un combate de la arena o del Exterminio.
 var _notes := ResultNotes.new()
@@ -132,6 +137,7 @@ func _ready() -> void:
 	_terrain = TerrainConfig.load_file("res://data/terrain.json")
 	_states = StateConfig.load_file("res://data/states.json")
 	_ultimate = UltimateConfig.load_file("res://data/ultimate.json")
+	_field = FieldUpgrades.load_file("res://data/field_upgrades.json")
 	_brief.rules = _rules
 	_brief.catalog = _catalog
 	_brief.library = _library
@@ -155,6 +161,13 @@ func _ready() -> void:
 	_notes.campaign = _campaign
 	_notes.shop = _shop
 	_notes.catalog = _catalog
+	_rival_gear = RivalGear.load_file("res://data/rival_gear.json")
+	for key: String in ["rules", "catalog", "shop", "aspects", "gear", "tree"]:
+		_rival_gear.set(key, get("_" + key))
+	_rival_gear.prototypes = _prototypes
+	_rival_gear.skill_tree = _skills
+	_brief.rival_gear = _rival_gear
+	_brief.field = _field
 	_arena_seed = randi()
 	if _args.has("showcase"):
 		# Muestra de movimientos para revisar animaciones (tools/clip.ps1 -Showcase).
@@ -600,11 +613,14 @@ func _on_arena_pressed() -> void:
 	var fight := _campaign.arena_streak_fight(
 		zone, _library, _arena_seed, _rules, power, gear, step
 	)
+	var spec := _spec_for("arena", zone, fight)
+	spec["field_seed"] = _arena_seed
+	spec["fight"] = fight
 	_arena_seed = randi()
 	_campaign.begin_arena(_profile)
 	if _profile.arena_live:
 		_save()
-	_start_battle(_spec_for("arena", zone, fight))
+	_start_battle(spec)
 
 
 ## El Exterminio (OBS-053): el rival de la oleada que toca, mas fuerte que
@@ -618,10 +634,12 @@ func _on_exterminio_pressed() -> void:
 	var fight := _campaign.exterminio_fight(
 		zone, _library, _arena_seed, _rules, power, gear, wave, robot
 	)
+	var spec := _spec_for("exterminio", zone, fight)
+	spec["field_seed"] = _arena_seed
+	spec["fight"] = fight
 	_arena_seed = randi()
 	_campaign.begin_exterminio(_profile)
 	_save()
-	var spec := _spec_for("exterminio", zone, fight)
 	# El robot que toca de la oleada (OBS-055), y el jugador como acabo el
 	# anterior, sin reparar.
 	spec["robot_tag"] = " · %d/%d" % [robot + 1, _campaign.exterminio_robots()]
@@ -705,6 +723,7 @@ func _start_battle(spec: Dictionary) -> void:
 	if spec["mode"] == "arena":
 		_battle.rematch_text = Txt.t("arena_again")
 	_battle.rematch_requested.connect(_on_rematch)
+	_battle.pick_chosen.connect(_on_field_pick)
 	_battle.menu_requested.connect(_on_battle_menu)
 	_battle.speed = _settings.speed()
 	_battle.settings = _settings
@@ -746,12 +765,13 @@ func _start_battle(spec: Dictionary) -> void:
 		_gear.apply_build(player_build, _profile, _tree.effects_for(_profile.tree))
 		_aspects.apply_build(player_build, _profile.aspects)
 		_apply_tree(player_build, boss or int(spec.get("streak", -1)) >= TITAN_STEP)
-		# El rival de la racha cuenta parte de lo que llevas de mas (A6).
+		# El rival lleva su kit (OBS-057), no un plus: ni el de antes ni A6.
 		spec["enemy_extra"] = 0.0
-		if int(spec.get("streak", -1)) >= 0:
-			var plain := _bench.plain_build(_profile)
-			var extra := StreakEdge.extra(_rules, plain, player_build, _gear.boost)
-			spec["enemy_extra"] = StreakEdge.rival_extra(extra, _gear.rival_share)
+		if spec.has("fight"):
+			spec["enemy_edge"] = 0.0
+		# Las mejoras de campo que eligio en la oleada (OBS-057).
+		if spec["mode"] == "exterminio":
+			_field.apply(player_build, _profile.exterminio_field)
 	var enemy_build := _library.make(
 		spec["enemy"],
 		_catalog,
@@ -774,6 +794,13 @@ func _start_battle(spec: Dictionary) -> void:
 	enemy_build.body = str(spec.get("enemy_body", ""))
 	# Y los rivales normales, sus habilidades (el escudo, la reparacion).
 	enemy_build.skills.add(spec.get("enemy_kits", {}))
+	# El de la racha y el Exterminio, su kit y sus mejoras de campo (OBS-057).
+	if spec.has("fight"):
+		var armory := _campaign.enemy_armory(spec["zone"])
+		var seed_value := int(spec.get("field_seed", 0))
+		spec["rival_outfit"] = _rival_gear.outfit(
+			enemy_build, spec["fight"], _profile, armory, _field, seed_value
+		)
 	_battle.terrain = _terrain if _terrain.enabled_for(spec["mode"]) else null
 	_battle.keep_buffs = spec["mode"] == "exterminio"
 	_battle.states = _states if _states.enabled_for(spec["mode"]) else null
@@ -788,6 +815,14 @@ func _start_battle(spec: Dictionary) -> void:
 		spec.get("carry")
 	)
 	_raise_curtain()
+
+
+## Elige una mejora de campo entre robots (OBS-057) y sale el siguiente.
+func _on_field_pick(index: int) -> void:
+	if index >= 0 and index < _offers.size():
+		_profile.exterminio_field.append(_offers[index])
+	_offers.clear()
+	_on_exterminio_pressed()
 
 
 func _on_rematch() -> void:
@@ -819,9 +854,14 @@ func _on_battle_finished(player_won: bool) -> void:
 	# Queda otro robot en la oleada (OBS-055): sigue como acabo este.
 	var going := bool(result.get("next_robot", false))
 	_carry = _battle.engine.mechs[_battle.player].clone() if going else null
+	_offers.clear()
+	if going:
+		var offer_luck := RandomNumberGenerator.new()
+		offer_luck.seed = hash([int(_spec.get("seed", 0)), _profile.exterminio_robot, "elige"])
+		_offers = _field.draw(_player_build(), _field.choices, offer_luck, true)
 	_save()
 	if _persist:
-		FightLog.append(_fight_entry(player_won, result))
+		FightLog.append(ResultNotes.log_entry(_battle, _spec, player_won, result))
 	if _spec["mode"] == "campaign" and player_won:
 		# En el hangar, el vencido se apaga y la fila avanza un sitio.
 		_return["how"] = "advance"
@@ -854,6 +894,10 @@ func _on_battle_finished(player_won: bool) -> void:
 		_show_choices(_notes.arena(result, _profile, _player_level(), _last_result), prize)
 	elif _spec["mode"] == "exterminio":
 		_show_choices(_notes.exterminio(result, _player_level()), prize)
+		var labels: Array[String] = []
+		for pick in _offers:
+			labels.append(_notes.field_label(pick, _player_build()))
+		_battle.set_result_picks(labels)
 	_battle.set_result_note(_last_result)
 
 
@@ -874,34 +918,6 @@ func _apply_tree(build: MechBuild, titan: bool) -> void:
 	if titan:
 		build.upgrades.damage += float(grown.get("titan_damage", 0.0))
 		build.skills.health += float(grown.get("titan_health", 0.0))
-
-
-## Lo que se apunta de un combate en el registro (FightLog, OBS-051).
-func _fight_entry(player_won: bool, result: Dictionary) -> Dictionary:
-	var me: BattleMech = _battle.engine.mechs[_battle.player]
-	var foe: BattleMech = _battle.engine.mechs[1 - _battle.player]
-	return {
-		"when": Time.get_datetime_string_from_system(),
-		"mode": _spec["mode"],
-		"zone": int(_spec.get("zone", -1)),
-		"step": int(result.get("step", -1)),
-		"enemy": _spec["enemy"],
-		"tier": int(_spec["enemy_tier"]),
-		"level": int(_spec["enemy_level"]),
-		"edge": float(_spec.get("enemy_edge", 0.0)),
-		"extra": snappedf(float(_spec.get("enemy_extra", 0.0)), 0.001),
-		"skills": int(_spec.get("enemy_skills", 0)),
-		"difficulty": DIFFICULTY_IDS[_spec["difficulty"]],
-		"won": player_won,
-		"turns": _battle.engine.turn_number,
-		"hp": snappedf(float(me.health) / maxf(1.0, me.max_health), 0.01),
-		"enemy_hp": snappedf(float(foe.health) / maxf(1.0, foe.max_health), 0.01),
-		"gold": int(result.get("gold", 0)),
-		"xp": int(result.get("xp", 0)),
-		"points": int(result.get("points", 0)),
-		"pot": int(result.get("pot", 0)),
-		"robot": int(result.get("robot", -1)),
-	}
 
 
 ## Volver del combate. En la arena, el bote se cobra al volver; si el

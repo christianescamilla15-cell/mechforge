@@ -88,11 +88,14 @@ func on_hit(
 	var weapon := key.begins_with("side") or key.begins_with("top") or key == "chest"
 	if not weapon or target.health <= 0:
 		return
-	var kind := kind_for(user.slots[key].def.element)
+	var def := user.slots[key].def
+	var kind := kind_for(def.element)
 	if kind == "":
 		return
 	var top := maxi(1, roundi(value(kind, "max")))
-	var count := mini(stacks(target, kind) + 1, top)
+	# Municion especial (mejora de campo, OBS-057): cargas de mas por golpe.
+	var more := 1 + roundi(float(def.proto_effects.get("state_bonus", 0.0)))
+	var count := mini(stacks(target, kind) + more, top)
 	target.states[kind] = {"stacks": count, "turns": roundi(value(kind, "turns"))}
 	# "applied" y no "state": esa clave es la foto del estado en el registro.
 	data["applied"] = kind

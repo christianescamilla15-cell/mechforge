@@ -37,6 +37,9 @@ var library: BuildLibrary
 var chassis: ChassisLibrary
 var campaign: Campaign
 var shop: ArenaShop
+## De donde sale la fuerza del rival de la racha y del Exterminio (OBS-057).
+var rival_gear: RivalGear
+var field: FieldUpgrades
 
 
 ## La campana: la zona, su avance y la fila desde el combate que toca.
@@ -133,8 +136,10 @@ func arena_state(
 	var zone := mini(profile.zone, campaign.zone_count() - 1)
 	state["zone_line"] = Txt.t("mission_zone", [zone + 1, campaign.zone_name(zone)])
 	state["title"] = Txt.t("menu_arena")
-	var fight := campaign.arena_fight(zone, library, seed_value, rules, power, loadout)
+	var step := profile.arena_streak
+	var fight := campaign.arena_streak_fight(zone, library, seed_value, rules, power, loadout, step)
 	var rivals: Array[Dictionary] = [rival(fight, campaign.tier_of(zone))]
+	_outfit(rivals[0], fight, profile, zone, seed_value)
 	state["rivals"] = rivals
 	var mult := campaign.reward_mult(profile.zone)
 	var lines: Array[String] = [
@@ -146,6 +151,9 @@ func arena_state(
 			[roundi(shop.reward("arena_win") * mult), roundi(shop.reward("arena_loss") * mult)]
 		)
 	]
+	# Lo que trae el rival de mas, para que se vea (OBS-057).
+	if str(rivals[0].get("field_line", "")) != "":
+		lines.append(str(rivals[0]["field_line"]))
 	state["lines"] = lines
 	return state
 
@@ -167,6 +175,7 @@ func exterminio_state(
 		zone, library, seed_value, rules, power, loadout, wave, robot
 	)
 	var rivals: Array[Dictionary] = [rival(fight, campaign.tier_of(zone))]
+	_outfit(rivals[0], fight, profile, zone, seed_value)
 	state["rivals"] = rivals
 	var pay := shop.reward("arena_win") * campaign.reward_mult(profile.zone)
 	pay = roundi(pay * campaign.exterminio_gold(wave))
@@ -190,6 +199,9 @@ func exterminio_state(
 			"mission_exterminio_champion_prize",
 			[int(prize["points"]), Txt.t("arena_rank_%d" % int(prize["rank"]))]
 		)
+	# Lo que trae el rival de mas, para que se vea (OBS-057).
+	if str(rivals[0].get("field_line", "")) != "":
+		lines.append(str(rivals[0]["field_line"]))
 	state["lines"] = lines
 	state["warning"] = Txt.t("mission_exterminio_warning")
 	return state
@@ -315,3 +327,43 @@ func rival(entry: Dictionary, zone_tier: int) -> Dictionary:
 		"temper": temper,
 		"kits": kits,
 	}
+
+
+## El rival de la racha o del Exterminio con su kit y sus mejoras de campo
+## (OBS-057), los mismos que trae al combate, y dicho en sus rasgos: que
+## parte de tus mejoras lleva y que mejoras de campo trae.
+func _outfit(
+	entry: Dictionary, fight: Dictionary, profile: PlayerProfile, zone: int, seed_value: int
+) -> void:
+	if rival_gear == null:
+		return
+	var build: MechBuild = entry["build"]
+	var armory := campaign.enemy_armory(zone)
+	var dressed := rival_gear.outfit(build, fight, profile, armory, field, seed_value)
+	var said: Array[String] = []
+	if str(entry["traits"]) != "":
+		said.append(str(entry["traits"]))
+	var share := float(dressed["kit"]["share"])
+	if share > 0.0:
+		said.append(Txt.t("rival_kit", [roundi(share * 100.0)]))
+	var picks: Array = dressed["field"]
+	if not picks.is_empty():
+		said.append(Txt.t("rival_field", [picks.size()]))
+	entry["traits"] = " · ".join(said)
+	entry["outfit"] = dressed
+	entry["field_line"] = field_line(picks)
+
+
+## Las mejoras de campo que trae, en una linea para el monitor: "Trae:
+## placas ×2, percutor, escudo"; "" si no trae ninguna.
+static func field_line(picks: Array) -> String:
+	if picks.is_empty():
+		return ""
+	var counts := {}
+	for pick: Dictionary in picks:
+		var name := Txt.t("field_short_" + str(pick["id"]))
+		counts[name] = int(counts.get(name, 0)) + 1
+	var parts: Array[String] = []
+	for name: String in counts:
+		parts.append(name if counts[name] == 1 else "%s ×%d" % [name, counts[name]])
+	return Txt.t("mission_rival_field", [", ".join(parts)])
